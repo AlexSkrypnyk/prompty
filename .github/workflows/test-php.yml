@@ -1,0 +1,124 @@
+name: Test PHP
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+      - 'feature/**'
+  workflow_dispatch:
+    inputs:
+      enable_terminal:
+        type: boolean
+        description: 'Enable terminal session.'
+        required: false
+        default: false
+
+jobs:
+  test-php:
+    name: PHP ${{ matrix.php-versions }}, Deps ${{ matrix.deps }}
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        php-versions: ['8.2', '8.3', '8.4', '8.5']
+        deps: ['normal', 'lowest']
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Cache Composer dependencies
+        uses: actions/cache@v5
+        with:
+          path: /tmp/composer-cache
+          key: ${{ runner.os }}-${{ matrix.deps }}-${{ hashFiles('**/composer.lock') }}
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php-versions }}
+          coverage: pcov
+          ini-values: pcov.directory=.
+
+      - name: Install dependencies
+        run: |
+          if [[ "${{ matrix.deps }}" == "lowest" ]]; then
+            composer update --prefer-lowest --prefer-stable ${{ matrix.php-versions == '8.5' && '--ignore-platform-reqs' || '' }}
+          else
+            composer install ${{ matrix.php-versions == '8.5' && '--ignore-platform-reqs' || '' }}
+          fi
+
+      - name: Validate composer.json
+        run: |
+          composer --verbose validate
+          composer normalize --dry-run
+
+      - name: Check coding standards
+        if: matrix.php-versions == '8.3' && matrix.deps == 'normal'
+        run: composer lint
+        continue-on-error: ${{ vars.CI_LINT_IGNORE_FAILURE == '1' }}
+
+      - name: Run tests
+        run: composer test-coverage
+        continue-on-error: ${{ vars.CI_TEST_IGNORE_FAILURE == '1' }}
+
+      - name: Check code coverage threshold
+        if: matrix.php-versions == '8.3' && matrix.deps == 'normal'
+        run: |
+          RATE=$(grep -o 'line-rate="[0-9.]*"' .logs/cobertura.xml | head -1 | tr -cd '0-9.')
+          PERCENT=$(awk "BEGIN {printf \"%.2f\", $RATE*100}")
+          echo "Coverage: $PERCENT% (threshold: $CI_CODE_COVERAGE_THRESHOLD%)"
+          if [[ ${PERCENT//./} -lt $((CI_CODE_COVERAGE_THRESHOLD*100)) ]]; then
+            echo "FAIL: coverage too low"
+            exit 1
+          fi
+          { echo "COVERAGE_CONTENT<<EOF"; sed '/./,$!d' .logs/coverage.txt; echo "EOF"; } >> "$GITHUB_ENV"
+        env:
+          CI_CODE_COVERAGE_THRESHOLD: ${{ vars.CI_CODE_COVERAGE_THRESHOLD || '80' }}
+
+      - name: Post coverage summary as PR comment
+        if: matrix.php-versions == '8.3' && matrix.deps == 'normal' && github.event_name == 'pull_request'
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          message: |
+            ```
+            ${{ env.COVERAGE_CONTENT }}
+            ```
+          # Post a new comment every time to keep the coverage history.
+          hide_and_recreate: true
+
+      - name: Upload coverage report as an artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{github.job}}-code-coverage-report-${{ matrix.php-versions }}-${{ matrix.deps }}
+          path: .logs
+          include-hidden-files: true
+          if-no-files-found: error
+
+      - name: Upload test results to Codecov
+        uses: codecov/test-results-action@v1
+        if: matrix.php-versions == '8.3' && matrix.deps == 'normal' && env.CODECOV_TOKEN != ''
+        with:
+          files: .logs/junit.xml
+          fail_ci_if_error: true
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
+      - name: Upload coverage report to Codecov
+        uses: codecov/codecov-action@v5
+        if: matrix.php-versions == '8.3' && matrix.deps == 'normal' && env.CODECOV_TOKEN != ''
+        with:
+          files: .logs/cobertura.xml
+          fail_ci_if_error: true
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
+      - name: Setup tmate session
+        if: ${{ !cancelled() && github.event.inputs.enable_terminal }}
+        uses: mxschmitt/action-tmate@v3
+        timeout-minutes: 30
+

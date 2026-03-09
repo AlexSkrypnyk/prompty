@@ -1,0 +1,73 @@
+{
+    "name": "alexskrypnyk/prompty",
+    "description": "Zero-dependency interactive CLI prompt library",
+    "license": "MIT",
+    "type": "library",
+    "authors": [
+        {
+            "name": "Alex Skrypnyk",
+            "email": "prompty@alexskrypnyk.com",
+            "homepage": "https://alexskrypnyk.com",
+            "role": "Maintainer"
+        }
+    ],
+    "homepage": "https://github.com/alexskrypnyk/prompty",
+    "support": {
+        "issues": "https://github.com/alexskrypnyk/prompty/issues",
+        "source": "https://github.com/alexskrypnyk/prompty"
+    },
+    "require": {
+        "php": ">=8.2"
+    },
+    "require-dev": {
+        "bamarni/composer-bin-plugin": "^1.8",
+        "dealerdirect/phpcodesniffer-composer-installer": "^1",
+        "drevops/phpcs-standard": "^0.6",
+        "drupal/coder": "^9.0@alpha",
+        "ergebnis/composer-normalize": "^2.48",
+        "opis/closure": "^4.4",
+        "phpstan/phpstan": "^2",
+        "phpunit/phpunit": "^11.5",
+        "rector/rector": "^2"
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true,
+    "autoload": {
+        "classmap": [
+            "Prompty.php",
+            "PromptyTestTrait.php"
+        ]
+    },
+    "autoload-dev": {
+        "classmap": [
+            "tests/phpunit"
+        ]
+    },
+    "config": {
+        "allow-plugins": {
+            "bamarni/composer-bin-plugin": true,
+            "dealerdirect/phpcodesniffer-composer-installer": true,
+            "ergebnis/composer-normalize": true
+        },
+        "audit": {
+            "abandoned": "report",
+            "block-insecure": true
+        },
+        "discard-changes": true,
+        "sort-packages": true
+    },
+    "scripts": {
+        "lint": [
+            "phpcs",
+            "phpstan",
+            "rector --dry-run"
+        ],
+        "lint-fix": [
+            "rector",
+            "phpcbf"
+        ],
+        "reset": "rm -Rf vendor vendor-bin composer.lock",
+        "test": "phpunit --no-coverage",
+        "test-coverage": "phpunit"
+    }
+}
