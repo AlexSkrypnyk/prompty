@@ -1,5 +1,15 @@
 {
     "extends": ["config:recommended"],
     "automerge": true,
-    "dependencyDashboard": true
+    "dependencyDashboard": true,
+    "pinDigests": true,
+    "branchPrefix": "deps/",
+    "enabledManagers": ["github-actions"],
+    "packageRules": [
+        {
+            "matchPackageNames": ["*"],
+            "groupName": "all dependencies",
+            "groupSlug": "all"
+        }
+    ]
 }
