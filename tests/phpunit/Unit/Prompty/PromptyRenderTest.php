@@ -22,9 +22,8 @@ final class PromptyRenderTest extends PromptyTestCase {
   public function testRenderIntro(string $message, string $expected): void {
     $p = $this->createInstance();
 
-    $lines = $this->callProtected($p, 'renderIntro', $message);
+    $lines = $this->callProtectedLines($p, 'renderIntro', $message);
 
-    $this->assertIsArray($lines);
     $actual = $this->stripAnsi(implode("\n", $lines));
 
     $this->assertSame($expected, $actual);
@@ -54,9 +53,8 @@ EXPECTED,
   public function testRenderOutro(string $message, string $expected): void {
     $p = $this->createInstance();
 
-    $lines = $this->callProtected($p, 'renderOutro', $message);
+    $lines = $this->callProtectedLines($p, 'renderOutro', $message);
 
-    $this->assertIsArray($lines);
     $actual = $this->stripAnsi(implode("\n", $lines));
 
     $this->assertSame($expected, $actual);
@@ -86,9 +84,8 @@ EXPECTED,
   public function testRenderDescription(string $description, int $depth, array $open, string $expected): void {
     $p = $this->createInstance();
 
-    $lines = $this->callProtected($p, 'renderDescription', $description, $depth, $open);
+    $lines = $this->callProtectedLines($p, 'renderDescription', $description, $depth, $open);
 
-    $this->assertIsArray($lines);
     $actual = $this->stripAnsi(implode("\n", $lines));
 
     $this->assertSame($expected, $actual);
@@ -145,9 +142,8 @@ EXPECTED,
   public function testRenderHint(string $hint, int $depth, array $open, string $expected): void {
     $p = $this->createInstance();
 
-    $lines = $this->callProtected($p, 'renderHint', $hint, $depth, $open);
+    $lines = $this->callProtectedLines($p, 'renderHint', $hint, $depth, $open);
 
-    $this->assertIsArray($lines);
     $actual = $this->stripAnsi(implode("\n", $lines));
 
     $this->assertSame($expected, $actual);
@@ -187,9 +183,8 @@ EXPECTED,
   public function testRenderCompleted(string $label, string $value, int $depth, bool $is_last, array $open, string $expected): void {
     $p = $this->createInstance();
 
-    $lines = $this->callProtected($p, 'renderCompleted', $label, $value, $depth, $is_last, $open);
+    $lines = $this->callProtectedLines($p, 'renderCompleted', $label, $value, $depth, $is_last, $open);
 
-    $this->assertIsArray($lines);
     $actual = $this->stripAnsi(implode("\n", $lines));
 
     $this->assertSame($expected, $actual);
@@ -257,9 +252,8 @@ EXPECTED,
   public function testRenderCancelled(string $label, string $value, int $depth, bool $is_last, array $open, string $expected): void {
     $p = $this->createInstance();
 
-    $lines = $this->callProtected($p, 'renderCancelled', $label, $value, $depth, $is_last, $open);
+    $lines = $this->callProtectedLines($p, 'renderCancelled', $label, $value, $depth, $is_last, $open);
 
-    $this->assertIsArray($lines);
     $actual = $this->stripAnsi(implode("\n", $lines));
 
     $this->assertSame($expected, $actual);

@@ -29,6 +29,24 @@ abstract class PromptyTestCase extends TestCase {
     return $this->promptyCallProtected($instance, $method, ...$args);
   }
 
+  /**
+   * Call a protected method and assert it returns an array of strings.
+   *
+   * @return string[]
+   *   The array of strings returned by the method.
+   */
+  protected function callProtectedLines(object $instance, string $method, mixed ...$args): array {
+    $result = $this->promptyCallProtected($instance, $method, ...$args);
+    $this->assertIsArray($result);
+    $lines = [];
+    foreach ($result as $item) {
+      $this->assertIsString($item);
+      $lines[] = $item;
+    }
+
+    return $lines;
+  }
+
   protected function setStaticProperty(string $name, mixed $value): void {
     $this->promptySetStatic($name, $value);
   }

@@ -1,16 +1,11 @@
 {
     "extends": ["config:recommended"],
     "automerge": true,
-    "rangeStrategy": "bump",
     "dependencyDashboard": true,
     "pinDigests": true,
     "branchPrefix": "deps/",
+    "enabledManagers": ["github-actions"],
     "packageRules": [
-        {
-            "matchManagers": ["composer"],
-            "matchUpdateTypes": ["major"],
-            "enabled": false
-        },
         {
             "matchPackageNames": ["*"],
             "groupName": "all dependencies",
