@@ -25,8 +25,8 @@
     <td align="center"><strong>Nested flow</strong></td>
   </tr>
   <tr>
-    <td><img src=".util/assets/screenshot_flat.png" width="100%" alt="Flat flow"></td>
-    <td><img src=".util/assets/screenshot_nested.png" width="100%" alt="Nested flow"></td>
+    <td><img src=".util/assets/flow.svg" width="100%" alt="Flat flow"></td>
+    <td><img src=".util/assets/flow-nested.svg" width="100%" alt="Nested flow"></td>
   </tr>
 </table>
 
@@ -104,6 +104,8 @@ $name = Prompty::text('Project name',
 );
 ```
 
+<img src=".util/assets/widget-text.svg" alt="Text widget">
+
 ### Select
 
 Single-choice from a list. Arrow keys to navigate, Enter to confirm.
@@ -120,6 +122,8 @@ $framework = Prompty::select('Framework',
 );
 ```
 
+<img src=".util/assets/widget-select.svg" alt="Select widget">
+
 ### Multiselect
 
 Multiple-choice from a list. Space to toggle, Enter to confirm.
@@ -131,6 +135,8 @@ $features = Prompty::multiselect('Features',
 );
 ```
 
+<img src=".util/assets/widget-multiselect.svg" alt="Multiselect widget">
+
 ### Confirm
 
 Yes/No toggle. Arrow keys or `y`/`n` to switch, Enter to confirm.
@@ -140,6 +146,8 @@ $install = Prompty::confirm('Install dependencies?',
   description: 'Runs npm install after scaffolding.',
 );
 ```
+
+<img src=".util/assets/widget-confirm.svg" alt="Confirm widget">
 
 ## Flows
 
@@ -292,12 +300,12 @@ $results = Prompty::flow(fn(): array => [/* ... */], unicode: FALSE);
 
 <table align="center">
   <tr>
-    <td align="center"><strong>Flat flow</strong></td>
-    <td align="center"><strong>Nested flow</strong></td>
+    <td align="center"><strong>Flat flow (ASCII)</strong></td>
+    <td align="center"><strong>Nested flow (ASCII)</strong></td>
   </tr>
   <tr>
-    <td><img src=".util/assets/screenshot_flat_ascii.png" width="100%" alt="Flat ASCII flow"></td>
-    <td><img src=".util/assets/screenshot_nested_ascii.png" width="100%" alt="Nested ASCII flow"></td>
+    <td><img src=".util/assets/flow-ascii.svg" width="100%" alt="Flat ASCII flow"></td>
+    <td><img src=".util/assets/flow-nested-ascii.svg" width="100%" alt="Nested ASCII flow"></td>
   </tr>
 </table>
 
