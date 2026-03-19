@@ -19,16 +19,9 @@
 
 ---
 
-<table align="center">
-  <tr>
-    <td align="center"><strong>Flat flow</strong></td>
-    <td align="center"><strong>Nested flow</strong></td>
-  </tr>
-  <tr>
-    <td><img src=".util/assets/flow.svg" width="100%" alt="Flat flow"></td>
-    <td><img src=".util/assets/flow-nested.svg" width="100%" alt="Nested flow"></td>
-  </tr>
-</table>
+<p align="center">
+  <img src=".util/assets/flow-nested.svg" height="400" alt="Nested flow">
+</p>
 
 ## Features
 
@@ -40,6 +33,7 @@
 - 🌍 [**Environment variable discovery**](#environment-variable-discovery) — auto-fill answers from env vars
 - 💬 [**Descriptions and hints**](#descriptions-and-hints) — contextual help below labels and per-option
 - ✨ [**Unicode and ASCII**](#unicode-and-ascii) — auto-detects terminal support or force a mode
+- 🎨 [**ANSI colors**](#ansi-colors) — auto-detects color support, respects `NO_COLOR`
 - ⚙️ [**Configuration**](#configuration) — symbols, colors, spacing, labels, env prefix, truthy/falsy values
 - 🧪 [**Test harness**](#test-harness) — `PromptyTestTrait` injects keystrokes for PHPUnit testing
 - 🚀 [**Starter script**](#starter-script) — [`starter.php`](starter.php) as a template for your own scripts
@@ -104,7 +98,23 @@ $name = Prompty::text('Project name',
 );
 ```
 
-<img src=".util/assets/widget-text.svg" alt="Text widget">
+<table>
+  <tr>
+    <td></td>
+    <td align="center"><strong>ANSI</strong></td>
+    <td align="center"><strong>No ANSI</strong></td>
+  </tr>
+  <tr>
+    <td align="right"><strong>Unicode</strong></td>
+    <td><img src=".util/assets/widget-text.svg" alt="Text: Unicode + ANSI"></td>
+    <td><img src=".util/assets/widget-text-no-ansi.svg" alt="Text: Unicode + No ANSI"></td>
+  </tr>
+  <tr>
+    <td align="right"><strong>ASCII</strong></td>
+    <td><img src=".util/assets/widget-text-ascii.svg" alt="Text: ASCII + ANSI"></td>
+    <td><img src=".util/assets/widget-text-ascii-no-ansi.svg" alt="Text: ASCII + No ANSI"></td>
+  </tr>
+</table>
 
 ### Select
 
@@ -122,7 +132,23 @@ $framework = Prompty::select('Framework',
 );
 ```
 
-<img src=".util/assets/widget-select.svg" alt="Select widget">
+<table>
+  <tr>
+    <td></td>
+    <td align="center"><strong>ANSI</strong></td>
+    <td align="center"><strong>No ANSI</strong></td>
+  </tr>
+  <tr>
+    <td align="right"><strong>Unicode</strong></td>
+    <td><img src=".util/assets/widget-select.svg" alt="Select: Unicode + ANSI"></td>
+    <td><img src=".util/assets/widget-select-no-ansi.svg" alt="Select: Unicode + No ANSI"></td>
+  </tr>
+  <tr>
+    <td align="right"><strong>ASCII</strong></td>
+    <td><img src=".util/assets/widget-select-ascii.svg" alt="Select: ASCII + ANSI"></td>
+    <td><img src=".util/assets/widget-select-ascii-no-ansi.svg" alt="Select: ASCII + No ANSI"></td>
+  </tr>
+</table>
 
 ### Multiselect
 
@@ -135,7 +161,23 @@ $features = Prompty::multiselect('Features',
 );
 ```
 
-<img src=".util/assets/widget-multiselect.svg" alt="Multiselect widget">
+<table>
+  <tr>
+    <td></td>
+    <td align="center"><strong>ANSI</strong></td>
+    <td align="center"><strong>No ANSI</strong></td>
+  </tr>
+  <tr>
+    <td align="right"><strong>Unicode</strong></td>
+    <td><img src=".util/assets/widget-multiselect.svg" alt="Multiselect: Unicode + ANSI"></td>
+    <td><img src=".util/assets/widget-multiselect-no-ansi.svg" alt="Multiselect: Unicode + No ANSI"></td>
+  </tr>
+  <tr>
+    <td align="right"><strong>ASCII</strong></td>
+    <td><img src=".util/assets/widget-multiselect-ascii.svg" alt="Multiselect: ASCII + ANSI"></td>
+    <td><img src=".util/assets/widget-multiselect-ascii-no-ansi.svg" alt="Multiselect: ASCII + No ANSI"></td>
+  </tr>
+</table>
 
 ### Confirm
 
@@ -147,7 +189,23 @@ $install = Prompty::confirm('Install dependencies?',
 );
 ```
 
-<img src=".util/assets/widget-confirm.svg" alt="Confirm widget">
+<table>
+  <tr>
+    <td></td>
+    <td align="center"><strong>ANSI</strong></td>
+    <td align="center"><strong>No ANSI</strong></td>
+  </tr>
+  <tr>
+    <td align="right"><strong>Unicode</strong></td>
+    <td><img src=".util/assets/widget-confirm.svg" alt="Confirm: Unicode + ANSI"></td>
+    <td><img src=".util/assets/widget-confirm-no-ansi.svg" alt="Confirm: Unicode + No ANSI"></td>
+  </tr>
+  <tr>
+    <td align="right"><strong>ASCII</strong></td>
+    <td><img src=".util/assets/widget-confirm-ascii.svg" alt="Confirm: ASCII + ANSI"></td>
+    <td><img src=".util/assets/widget-confirm-ascii-no-ansi.svg" alt="Confirm: ASCII + No ANSI"></td>
+  </tr>
+</table>
 
 ## Flows
 
@@ -298,14 +356,64 @@ Or per-flow:
 $results = Prompty::flow(fn(): array => [/* ... */], unicode: FALSE);
 ```
 
+## ANSI colors
+
+Prompty auto-detects ANSI color support. It respects the
+[`NO_COLOR`](https://no-color.org/) environment variable and `TERM=dumb`.
+
+Force colors on or off:
+
+```php
+Prompty::configure(ansi: FALSE); // Suppress all color codes
+Prompty::configure(ansi: TRUE);  // Force ANSI colors
+```
+
+Or per-flow:
+
+```php
+$results = Prompty::flow(fn(): array => [/* ... */], ansi: FALSE);
+```
+
+### Display modes
+
+Combine `unicode` and `ansi` to control the output style. Here is how a flat
+flow looks in each combination:
+
 <table align="center">
   <tr>
-    <td align="center"><strong>Flat flow (ASCII)</strong></td>
-    <td align="center"><strong>Nested flow (ASCII)</strong></td>
+    <td></td>
+    <td align="center"><strong>ANSI</strong></td>
+    <td align="center"><strong>No ANSI</strong></td>
   </tr>
   <tr>
-    <td><img src=".util/assets/flow-ascii.svg" width="100%" alt="Flat ASCII flow"></td>
-    <td><img src=".util/assets/flow-nested-ascii.svg" width="100%" alt="Nested ASCII flow"></td>
+    <td align="right"><strong>Unicode</strong></td>
+    <td><img src=".util/assets/flow.svg" width="100%" alt="Unicode + ANSI"></td>
+    <td><img src=".util/assets/flow-no-ansi.svg" width="100%" alt="Unicode + No ANSI"></td>
+  </tr>
+  <tr>
+    <td align="right"><strong>ASCII</strong></td>
+    <td><img src=".util/assets/flow-ascii.svg" width="100%" alt="ASCII + ANSI"></td>
+    <td><img src=".util/assets/flow-ascii-no-ansi.svg" width="100%" alt="ASCII + No ANSI"></td>
+  </tr>
+</table>
+
+And a nested flow:
+
+<table align="center">
+  <tr>
+    <td></td>
+    <td align="center"><strong>ANSI</strong></td>
+    <td align="center"><strong>No ANSI</strong></td>
+  </tr>
+  <tr>
+    <td align="right"><strong>Unicode</strong></td>
+    <td><img src=".util/assets/flow-nested.svg" width="100%" alt="Nested Unicode + ANSI"></td>
+    <td><img src=".util/assets/flow-nested-no-ansi.svg" width="100%" alt="Nested Unicode + No ANSI"></td>
+  </tr>
+  <tr>
+    <td align="right"><strong>ASCII</strong></td>
+    <td><img src=".util/assets/flow-nested-ascii.svg" width="100%" alt="Nested ASCII + ANSI"></td>
+    <td><img src=".util/assets/flow-nested-ascii-no-ansi.svg" width="100%" alt="Nested ASCII + No ANSI"></td>
   </tr>
 </table>
 
@@ -336,6 +444,7 @@ $results = Prompty::flow(fn(): array => [/* ... */],
 | Parameter         | Type                    | Description                                              |
 |-------------------|-------------------------|----------------------------------------------------------|
 | `unicode`         | `bool`                  | Force Unicode or ASCII symbols                           |
+| `ansi`            | `bool`                  | Force ANSI colors on or suppress all color codes         |
 | `env_prefix`      | `string`                | Prefix for env var discovery                             |
 | `labels`          | `array<string, string>` | UI labels: `yes`, `no`, `cancelled`, `none`, `separator` |
 | `truthy`          | `list<string>`          | Strings treated as `true` for confirm env values         |

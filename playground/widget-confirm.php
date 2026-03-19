@@ -11,6 +11,9 @@ require __DIR__ . '/../Prompty.php';
 
 use AlexSkrypnyk\Prompty\Prompty;
 
+$opts = getopt('', ['no-unicode', 'no-ansi']);
+Prompty::configure(unicode: !isset($opts['no-unicode']), ansi: !isset($opts['no-ansi']));
+
 echo "\n--- Confirm: default yes ---\n";
 $r = Prompty::confirm('Install dependencies?');
 echo '  Result: ' . ($r !== NULL ? ($r ? 'yes' : 'no') : 'cancelled') . "\n";

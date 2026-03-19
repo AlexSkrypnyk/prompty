@@ -13,6 +13,10 @@ require __DIR__ . '/../Prompty.php';
 
 use AlexSkrypnyk\Prompty\Prompty;
 
+$opts = getopt('', ['no-unicode', 'no-ansi']);
+$unicode = !isset($opts['no-unicode']);
+$ansi = !isset($opts['no-ansi']);
+
 $results = Prompty::flow(fn(): array => [
   'name' => Prompty::text('Project name', placeholder: 'my-app', description: "Used as the directory name and the \"name\" field\nin package.json."),
   'framework' => Prompty::select('Framework',
@@ -49,5 +53,7 @@ $results = Prompty::flow(fn(): array => [
   },
   cancelled: 'Cancelled.',
   numbering: TRUE,
+  unicode: $unicode,
+  ansi: $ansi,
   env_prefix: 'PROMPTY_',
 );

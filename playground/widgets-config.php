@@ -16,8 +16,11 @@ require __DIR__ . '/../Prompty.php';
 use AlexSkrypnyk\Prompty\Prompty;
 
 // Configure before any widget calls.
+$opts = getopt('', ['no-unicode', 'no-ansi']);
 Prompty::configure(
   labels: ['yes' => 'Yep', 'no' => 'Nope', 'cancelled' => '(aborted)', 'none' => 'Nothing selected'],
+  unicode: !isset($opts['no-unicode']),
+  ansi: !isset($opts['no-ansi']),
   env_prefix: 'MYAPP_',
 );
 

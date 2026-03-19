@@ -49,8 +49,15 @@ define('END_PAUSE', 10);
  *   optionally at (for static screenshots).
  */
 function getJobs(string $project_dir): array {
-  return [
-    // Animated recordings — full interaction sequences.
+  // Flag variants for animated recordings.
+  $variants = [
+    '' => '',
+    '-ascii' => ' --no-unicode',
+    '-no-ansi' => ' --no-ansi',
+    '-ascii-no-ansi' => ' --no-unicode --no-ansi',
+  ];
+
+  $animated_bases = [
     'widgets' => [
       'script' => $project_dir . '/playground/widgets.php',
       'expect_fn' => 'createWidgetsExpectScript',
@@ -66,42 +73,63 @@ function getJobs(string $project_dir): array {
       'expect_fn' => 'createFlowNestedExpectScript',
       'rows' => 20,
     ],
-    'flow-ascii' => [
-      'script' => $project_dir . '/playground/flow-ascii.php',
-      'expect_fn' => 'createFlowExpectScript',
-      'rows' => 20,
-    ],
-    'flow-nested-ascii' => [
-      'script' => $project_dir . '/playground/flow-nested-ascii.php',
-      'expect_fn' => 'createFlowNestedExpectScript',
-      'rows' => 20,
-    ],
-    // Static screenshots — capture a single frame showing the widget.
+  ];
+
+  $jobs = [];
+
+  // Generate 4 variants per animated script.
+  foreach ($animated_bases as $base_name => $base_job) {
+    foreach ($variants as $suffix => $flags) {
+      $jobs[$base_name . $suffix] = [
+        'script' => $base_job['script'] . $flags,
+        'expect_fn' => $base_job['expect_fn'],
+        'rows' => $base_job['rows'],
+      ];
+    }
+  }
+
+  // Static screenshots — capture a single frame showing the widget.
+  $static_bases = [
     'widget-text' => [
       'script' => $project_dir . '/playground/widget-text.php',
       'expect_fn' => 'createWidgetTextExpectScript',
       'at' => 500,
       'rows' => 8,
+      'cols' => 40,
     ],
     'widget-select' => [
       'script' => $project_dir . '/playground/widget-select.php',
       'expect_fn' => 'createWidgetSelectExpectScript',
       'at' => 500,
       'rows' => 10,
+      'cols' => 40,
     ],
     'widget-multiselect' => [
       'script' => $project_dir . '/playground/widget-multiselect.php',
       'expect_fn' => 'createWidgetMultiselectExpectScript',
       'at' => 500,
       'rows' => 10,
+      'cols' => 40,
     ],
     'widget-confirm' => [
       'script' => $project_dir . '/playground/widget-confirm.php',
       'expect_fn' => 'createWidgetConfirmExpectScript',
       'at' => 500,
       'rows' => 7,
+      'cols' => 40,
     ],
   ];
+
+  // Generate 4 variants per static screenshot.
+  foreach ($static_bases as $base_name => $base_job) {
+    foreach ($variants as $suffix => $flags) {
+      $jobs[$base_name . $suffix] = array_merge($base_job, [
+        'script' => $base_job['script'] . $flags,
+      ]);
+    }
+  }
+
+  return $jobs;
 }
 
 /**
@@ -237,9 +265,10 @@ function processOne(string $name): void {
   $expect_script = $tmp_dir . '/' . $name . '.exp';
   $svg_file = $assets_dir . '/' . $name . '.svg';
   $rows = $job['rows'] ?? TERMINAL_ROWS;
+  $cols = $job['cols'] ?? TERMINAL_COLS;
   $at = $job['at'] ?? NULL;
 
-  recordSession($cast_file, $expect_script, $rows);
+  recordSession($cast_file, $expect_script, $rows, $cols);
   postProcessCast($cast_file);
   convertToSvg($cast_file, $svg_file, $script_dir, $at);
 }
@@ -299,11 +328,11 @@ function installNodeDependencies(string $util_dir): void {
  * @param int $rows
  *   Number of terminal rows.
  */
-function recordSession(string $cast_file, string $expect_script, int $rows = TERMINAL_ROWS): void {
+function recordSession(string $cast_file, string $expect_script, int $rows = TERMINAL_ROWS, int $cols = TERMINAL_COLS): void {
   $cmd = sprintf(
     'asciinema rec --command=%s --window-size=%dx%d --idle-time-limit=%d --overwrite %s 2>&1',
     escapeshellarg($expect_script),
-    TERMINAL_COLS,
+    $cols,
     $rows,
     MAX_IDLE_TIME,
     escapeshellarg($cast_file)

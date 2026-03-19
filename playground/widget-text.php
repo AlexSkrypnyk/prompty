@@ -11,6 +11,9 @@ require __DIR__ . '/../Prompty.php';
 
 use AlexSkrypnyk\Prompty\Prompty;
 
+$opts = getopt('', ['no-unicode', 'no-ansi']);
+Prompty::configure(unicode: !isset($opts['no-unicode']), ansi: !isset($opts['no-ansi']));
+
 echo "\n--- Text: basic ---\n";
 $r = Prompty::text('Project name', placeholder: 'my-app');
 echo '  Result: ' . ($r ?? 'cancelled') . "\n";

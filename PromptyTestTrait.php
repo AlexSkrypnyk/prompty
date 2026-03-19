@@ -61,7 +61,7 @@ trait PromptyTestTrait {
    *   - output: ANSI-stripped terminal output.
    */
   protected function promptyRun(callable $callback, string $keystrokes = '', array $config = []): array {
-    $config = array_merge(['unicode' => FALSE], $config);
+    $config = array_merge(['unicode' => FALSE, 'ansi' => TRUE], $config);
     $stream = NULL;
 
     if ($keystrokes !== '') {
@@ -180,12 +180,13 @@ trait PromptyTestTrait {
    *   A new instance.
    */
   protected function promptyCreateInstance(array $config = []): Prompty {
-    $config = array_merge(['unicode' => FALSE], $config);
+    $config = array_merge(['unicode' => FALSE, 'ansi' => TRUE], $config);
     $ref = new \ReflectionClass(Prompty::class);
     $instance = $ref->newInstanceWithoutConstructor();
 
     $property_map = [
       'unicode' => 'cfgUnicode',
+      'ansi' => 'cfgAnsi',
       'env_prefix' => 'cfgEnvPrefix',
       'truthy' => 'cfgTruthy',
       'falsy' => 'cfgFalsy',

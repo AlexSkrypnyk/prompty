@@ -239,6 +239,100 @@ final class PromptyConfigTest extends PromptyTestCase {
     $this->assertSame('!', $symbols['bar']);
   }
 
+  #[DataProvider('dataProviderAnsiDetection')]
+  public function testAnsiDetection(string $env_var, string $env_value, bool $expected): void {
+    $saved_no_color = getenv('NO_COLOR');
+    $saved_term = getenv('TERM');
+    putenv('NO_COLOR');
+    putenv('TERM');
+
+    if ($env_value !== '') {
+      putenv($env_var . '=' . $env_value);
+    }
+
+    $p = $this->createInstance(['ansi' => NULL]);
+
+    $this->assertSame($expected, $this->getProperty($p, 'cfgAnsi'));
+
+    $saved_no_color !== FALSE ? putenv('NO_COLOR=' . $saved_no_color) : putenv('NO_COLOR');
+    $saved_term !== FALSE ? putenv('TERM=' . $saved_term) : putenv('TERM');
+  }
+
+  public static function dataProviderAnsiDetection(): \Iterator {
+    yield 'NO_COLOR set' => ['NO_COLOR', '1', FALSE];
+    yield 'NO_COLOR empty string' => ['NO_COLOR', '', TRUE];
+    yield 'TERM dumb' => ['TERM', 'dumb', FALSE];
+    yield 'TERM xterm' => ['TERM', 'xterm-256color', TRUE];
+  }
+
+  #[DataProvider('dataProviderAnsiForced')]
+  public function testAnsiForced(bool $ansi): void {
+    $p = $this->createInstance(['ansi' => $ansi]);
+
+    $this->assertSame($ansi, $this->getProperty($p, 'cfgAnsi'));
+    /** @var array<string, string> $colors */
+    $colors = $this->getProperty($p, 'cfgColors');
+    if ($ansi) {
+      $this->assertSame("\033[36m", $colors['cyan']);
+    }
+    else {
+      $this->assertSame('', $colors['cyan']);
+      $this->assertSame('', $colors['reset']);
+    }
+  }
+
+  public static function dataProviderAnsiForced(): \Iterator {
+    yield 'forced ansi on' => [TRUE];
+    yield 'forced ansi off' => [FALSE];
+  }
+
+  public function testConfigureAnsiToggle(): void {
+    $p = $this->createInstance();
+    $this->setStaticProperty('instance', $p);
+
+    Prompty::configure(ansi: FALSE);
+
+    /** @var array<string, string> $colors */
+    $colors = $this->getProperty($p, 'cfgColors');
+    $this->assertSame('', $colors['cyan']);
+    $this->assertSame('', $colors['reset']);
+
+    Prompty::configure(ansi: TRUE);
+
+    /** @var array<string, string> $colors_restored */
+    $colors_restored = $this->getProperty($p, 'cfgColors');
+    $this->assertSame("\033[36m", $colors_restored['cyan']);
+    $this->assertSame("\033[0m", $colors_restored['reset']);
+  }
+
+  public function testConfigureAnsiWithColorOverrides(): void {
+    $p = $this->createInstance();
+    $this->setStaticProperty('instance', $p);
+
+    Prompty::configure(colors: ['cyan' => "\033[96m"]);
+    Prompty::configure(ansi: FALSE);
+
+    /** @var array<string, string> $colors_off */
+    $colors_off = $this->getProperty($p, 'cfgColors');
+    $this->assertSame('', $colors_off['cyan']);
+
+    Prompty::configure(ansi: TRUE);
+
+    /** @var array<string, string> $colors_on */
+    $colors_on = $this->getProperty($p, 'cfgColors');
+    $this->assertSame("\033[96m", $colors_on['cyan']);
+  }
+
+  public function testAnsiInConfig(): void {
+    $p = $this->createInstance(['ansi' => FALSE]);
+    $this->setStaticProperty('instance', $p);
+
+    /** @var array<string, mixed> $cfg */
+    $cfg = Prompty::config();
+    $this->assertArrayHasKey('ansi', $cfg);
+    $this->assertFalse($cfg['ansi']);
+  }
+
   public function testConfigureUnicodeResolvesSymbols(): void {
     $p = $this->createInstance(['unicode' => FALSE]);
     $this->setStaticProperty('instance', $p);
