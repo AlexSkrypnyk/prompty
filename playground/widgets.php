@@ -14,6 +14,9 @@ require __DIR__ . '/../Prompty.php';
 
 use AlexSkrypnyk\Prompty\Prompty;
 
+$opts = getopt('', ['no-unicode', 'no-ansi']);
+Prompty::configure(unicode: !isset($opts['no-unicode']), ansi: !isset($opts['no-ansi']));
+
 echo "\n--- Text ---\n";
 $r = Prompty::text('Project name', placeholder: 'my-app', description: "Used as the directory name and the \"name\" field\nin package.json.");
 echo '  Result: ' . ($r ?? 'cancelled') . "\n";

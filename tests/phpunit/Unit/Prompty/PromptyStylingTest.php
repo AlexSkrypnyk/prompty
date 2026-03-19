@@ -68,6 +68,15 @@ final class PromptyStylingTest extends PromptyTestCase {
     yield 'unicode bar' => [TRUE, '│'];
   }
 
+  public function testColorWithAnsiDisabled(): void {
+    $p = $this->createInstance(['ansi' => FALSE]);
+
+    $result = $this->callProtected($p, 'color', 'hello', 'cyan');
+
+    $this->assertIsString($result);
+    $this->assertSame('hello', $result);
+  }
+
   public function testBarHasGrayColor(): void {
     $p = $this->createInstance();
 

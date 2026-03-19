@@ -11,6 +11,10 @@ require __DIR__ . '/../Prompty.php';
 
 use AlexSkrypnyk\Prompty\Prompty;
 
+$opts = getopt('', ['no-unicode', 'no-ansi']);
+$unicode = !isset($opts['no-unicode']);
+$ansi = !isset($opts['no-ansi']);
+
 $results = Prompty::flow(fn(): array => [
   // --- Level 0, item 1: Project type ---
   'type' => Prompty::select('Project type',
@@ -152,4 +156,6 @@ $results = Prompty::flow(fn(): array => [
   cancelled: 'Cancelled.',
   numbering: TRUE,
   env_prefix: 'SCAFFOLD_',
+  unicode: $unicode,
+  ansi: $ansi,
 );

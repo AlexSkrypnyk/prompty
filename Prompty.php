@@ -154,6 +154,18 @@ class Prompty {
   protected ?bool $cfgUnicode = NULL;
 
   /**
+   * Whether to emit ANSI color codes (NULL = auto-detect).
+   */
+  protected ?bool $cfgAnsi = NULL;
+
+  /**
+   * Default ANSI color escape sequences (used to restore after suppression).
+   *
+   * @var array<string, string>
+   */
+  protected array $cfgColorsDefault = [];
+
+  /**
    * Environment variable prefix for auto-discovery.
    */
   protected string $cfgEnvPrefix = 'PROMPTY_';
@@ -183,6 +195,17 @@ class Prompty {
     }
 
     $this->cfgSymbols = $this->cfgUnicode ? $this->cfgSymbolsUnicode : $this->cfgSymbolsAscii;
+
+    // Resolve ANSI: TRUE/FALSE to force, NULL to auto-detect.
+    $this->cfgColorsDefault = $this->cfgColors;
+    if ($this->cfgAnsi === NULL) {
+      $no_color = getenv('NO_COLOR');
+      $this->cfgAnsi = ($no_color !== FALSE && $no_color !== '') || getenv('TERM') === 'dumb' ? FALSE : TRUE;
+    }
+
+    if ($this->cfgAnsi === FALSE) {
+      $this->cfgColors = array_fill_keys(array_keys($this->cfgColors), '');
+    }
   }
 
   /**
@@ -212,6 +235,7 @@ class Prompty {
       'spacing' => $p->cfgSpacing,
       'labels' => $p->cfgLabels,
       'unicode' => $p->cfgUnicode,
+      'ansi' => $p->cfgAnsi,
       'env_prefix' => $p->cfgEnvPrefix,
       'truthy' => $p->cfgTruthy,
       'falsy' => $p->cfgFalsy,
@@ -246,6 +270,8 @@ class Prompty {
    *   Partial label overrides.
    * @param bool|null $unicode
    *   Force unicode (TRUE), ASCII (FALSE), or auto-detect (NULL).
+   * @param bool|null $ansi
+   *   Force ANSI colors (TRUE), suppress (FALSE), or auto-detect (NULL).
    * @param string|null $env_prefix
    *   Environment variable prefix.
    * @param list<string>|null $truthy
@@ -253,7 +279,7 @@ class Prompty {
    * @param list<string>|null $falsy
    *   Values treated as FALSE.
    */
-  public static function configure(?array $symbols_unicode = NULL, ?array $symbols_ascii = NULL, ?array $colors = NULL, ?array $spacing = NULL, ?array $labels = NULL, ?bool $unicode = NULL, ?string $env_prefix = NULL, ?array $truthy = NULL, ?array $falsy = NULL): void {
+  public static function configure(?array $symbols_unicode = NULL, ?array $symbols_ascii = NULL, ?array $colors = NULL, ?array $spacing = NULL, ?array $labels = NULL, ?bool $unicode = NULL, ?bool $ansi = NULL, ?string $env_prefix = NULL, ?array $truthy = NULL, ?array $falsy = NULL): void {
     $p = static::instance();
     if ($symbols_unicode !== NULL) {
       $p->cfgSymbolsUnicode = array_replace($p->cfgSymbolsUnicode, $symbols_unicode);
@@ -262,6 +288,7 @@ class Prompty {
       $p->cfgSymbolsAscii = array_replace($p->cfgSymbolsAscii, $symbols_ascii);
     }
     if ($colors !== NULL) {
+      $p->cfgColorsDefault = array_replace($p->cfgColorsDefault, $colors);
       $p->cfgColors = array_replace($p->cfgColors, $colors);
     }
     if ($spacing !== NULL) {
@@ -273,6 +300,9 @@ class Prompty {
     if ($unicode !== NULL) {
       $p->cfgUnicode = $unicode;
     }
+    if ($ansi !== NULL) {
+      $p->cfgAnsi = $ansi;
+    }
     if ($env_prefix !== NULL) {
       $p->cfgEnvPrefix = $env_prefix;
     }
@@ -283,6 +313,7 @@ class Prompty {
       $p->cfgFalsy = $falsy;
     }
     $p->cfgSymbols = $p->cfgUnicode ? $p->cfgSymbolsUnicode : $p->cfgSymbolsAscii;
+    $p->cfgColors = $p->cfgAnsi ? $p->cfgColorsDefault : array_fill_keys(array_keys($p->cfgColorsDefault), '');
   }
 
   /**
@@ -314,6 +345,8 @@ class Prompty {
    *   Partial label overrides.
    * @param bool|null $unicode
    *   Force unicode (TRUE), ASCII (FALSE), or auto-detect (NULL).
+   * @param bool|null $ansi
+   *   Force ANSI colors (TRUE), suppress (FALSE), or auto-detect (NULL).
    * @param string|null $env_prefix
    *   Environment variable prefix.
    * @param list<string>|null $truthy
@@ -324,10 +357,10 @@ class Prompty {
    * @return array<string, string|bool|int|array<string,string>>|null
    *   Collected results or NULL if cancelled.
    */
-  public static function flow(callable $steps, string|callable|null $intro = NULL, string|callable|null $outro = NULL, string|callable|null $cancelled = NULL, bool $numbering = FALSE, ?array $symbols_unicode = NULL, ?array $symbols_ascii = NULL, ?array $colors = NULL, ?array $spacing = NULL, ?array $labels = NULL, ?bool $unicode = NULL, ?string $env_prefix = NULL, ?array $truthy = NULL, ?array $falsy = NULL): ?array {
+  public static function flow(callable $steps, string|callable|null $intro = NULL, string|callable|null $outro = NULL, string|callable|null $cancelled = NULL, bool $numbering = FALSE, ?array $symbols_unicode = NULL, ?array $symbols_ascii = NULL, ?array $colors = NULL, ?array $spacing = NULL, ?array $labels = NULL, ?bool $unicode = NULL, ?bool $ansi = NULL, ?string $env_prefix = NULL, ?array $truthy = NULL, ?array $falsy = NULL): ?array {
     // Apply config overrides if any are provided.
-    if ($symbols_unicode !== NULL || $symbols_ascii !== NULL || $colors !== NULL || $spacing !== NULL || $labels !== NULL || $unicode !== NULL || $env_prefix !== NULL || $truthy !== NULL || $falsy !== NULL) {
-      static::configure($symbols_unicode, $symbols_ascii, $colors, $spacing, $labels, $unicode, $env_prefix, $truthy, $falsy);
+    if ($symbols_unicode !== NULL || $symbols_ascii !== NULL || $colors !== NULL || $spacing !== NULL || $labels !== NULL || $unicode !== NULL || $ansi !== NULL || $env_prefix !== NULL || $truthy !== NULL || $falsy !== NULL) {
+      static::configure($symbols_unicode, $symbols_ascii, $colors, $spacing, $labels, $unicode, $ansi, $env_prefix, $truthy, $falsy);
     }
     $p = static::instance();
     $p->results = [];

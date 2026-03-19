@@ -11,6 +11,9 @@ require __DIR__ . '/../Prompty.php';
 
 use AlexSkrypnyk\Prompty\Prompty;
 
+$opts = getopt('', ['no-unicode', 'no-ansi']);
+Prompty::configure(unicode: !isset($opts['no-unicode']), ansi: !isset($opts['no-ansi']));
+
 echo "\n--- Multiselect: basic ---\n";
 $r = Prompty::multiselect('Features', options: [
   'ts' => 'TypeScript',
