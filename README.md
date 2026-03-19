@@ -548,7 +548,7 @@ file with no `require_once` and no external dependencies.
 
 ### Setup
 
-Add `// @prompty-start` and `// @prompty-end` markers in your script around the
+Add `// @embed-start` and `// @embed-end` markers in your script around the
 `require_once` line:
 
 ```php
@@ -557,9 +557,9 @@ Add `// @prompty-start` and `// @prompty-end` markers in your script around the
 declare(strict_types=1);
 
 // phpcs:disable
-// @prompty-start
+// @embed-start
 require_once __DIR__ . '/Prompty.php';
-// @prompty-end
+// @embed-end
 // phpcs:enable
 
 use AlexSkrypnyk\Prompty\Prompty;
@@ -579,6 +579,13 @@ Embed into a separate output file (source stays unchanged):
 
 ```bash
 php embed.php my-script.php dist/my-script.php
+```
+
+Use `--compact` to apply additional size optimizations (shortens internal
+property and method names, renames local variables, reduces whitespace):
+
+```bash
+php embed.php --compact my-script.php
 ```
 
 The script replaces everything between the markers with the minified class,
