@@ -25,7 +25,7 @@
 
 ## Features
 
-- 📦 [**Zero dependencies**](#zero-dependencies) — drop `Prompty.php` into your project or embed into your script
+- 📦 [**Zero dependencies**](#zero-dependencies) — drop `Prompty.php` into your project or [embed](#embedding) into your script
 - 🧩 [**Widgets**](#widgets) — `text`, `select`, `multiselect`, `confirm`
 - 🔀 [**Flows**](#flows) — group prompts into a wizard with intro/outro, numbering, and cancellation
 - 🌳 [**Nested flows**](#nested-flows-with-conditions) — conditional children rendered as a tree
@@ -56,10 +56,8 @@ require_once __DIR__ . '/Prompty.php';
 $name = Prompty::text('Project name');
 ```
 
-Or embed into your own script by copy-pasting the class definition.
-
-> [!NOTE]
-> A helper to minify and embed the class into your script will be provided soon.
+Or [embed](#embedding) the minified class directly into your script to ship a
+single file with no external dependencies.
 
 ### Composer projects — require as a package
 
@@ -541,6 +539,54 @@ echo 'Creating ' . $results['name'] . "\n";
 ```
 
 Copy `starter.php`, rename it, and replace the steps with your own.
+
+## Embedding
+
+[`embed.php`](embed.php) minifies `Prompty.php` (strips comments, collapses
+blank lines) and embeds it directly into your script — so you can ship a single
+file with no `require_once` and no external dependencies.
+
+### Setup
+
+Add `// @prompty-start` and `// @prompty-end` markers in your script around the
+`require_once` line:
+
+```php
+<?php
+
+declare(strict_types=1);
+
+// phpcs:disable
+// @prompty-start
+require_once __DIR__ . '/Prompty.php';
+// @prompty-end
+// phpcs:enable
+
+use AlexSkrypnyk\Prompty\Prompty;
+
+$name = Prompty::text('Project name');
+```
+
+### Usage
+
+Embed in place (modifies the file directly):
+
+```bash
+php embed.php my-script.php
+```
+
+Embed into a separate output file (source stays unchanged):
+
+```bash
+php embed.php my-script.php dist/my-script.php
+```
+
+The script replaces everything between the markers with the minified class,
+preserving the license header. It runs `php -l` on the result to verify the
+output is valid PHP. Wrap the markers in `// phpcs:disable` / `// phpcs:enable`
+to suppress coding standard warnings on the minified code.
+
+See [`starter.php`](starter.php) for an example with markers already in place.
 
 ## Maintenance
 

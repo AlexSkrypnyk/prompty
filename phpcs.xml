@@ -17,6 +17,7 @@
     <file>Prompty.php</file>
     <file>PromptyTestTrait.php</file>
     <file>playground</file>
+    <file>embed.php</file>
     <file>starter.php</file>
     <file>tests/phpunit</file>
 
