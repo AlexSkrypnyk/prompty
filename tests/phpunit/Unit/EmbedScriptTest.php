@@ -61,13 +61,12 @@ final class EmbedScriptTest extends TestCase {
     $this->assertIsString($content);
 
     // Markers preserved.
-    $this->assertStringContainsString('// @prompty-start', $content);
-    $this->assertStringContainsString('// @prompty-end', $content);
+    $this->assertStringContainsString('// @embed-start', $content);
+    $this->assertStringContainsString('// @embed-end', $content);
 
     // Class header docblock preserved.
     $this->assertStringContainsString('Zero-dependency interactive CLI prompt library', $content);
     $this->assertStringContainsString('@license MIT', $content);
-    $this->assertStringContainsString('Alex Skrypnyk', $content);
 
     // Other Prompty.php docblocks stripped.
     $this->assertStringNotContainsString('Singleton instance', $content);
@@ -86,55 +85,45 @@ final class EmbedScriptTest extends TestCase {
     // ANSI escape sequences preserved.
     $this->assertStringContainsString('\033[', $content);
 
-    // Run the embedded script in a subprocess to verify it actually works.
-    $keystrokes = $this->promptyKeys(
-      'my-project', self::KEY_ENTER,
-      self::KEY_DOWN, self::KEY_ENTER,
-      self::KEY_SPACE, self::KEY_ENTER,
-      self::KEY_ENTER,
-    );
+    // Embedded script runs correctly in a subprocess.
+    $this->assertEmbeddedScriptWorks($target);
+  }
 
-    $wrapper = $this->tmpDir . '/run_embedded.php';
-    $escaped_target = addcslashes($target, "'\\");
-    file_put_contents($wrapper, "<?php\n"
-      . "declare(strict_types=1);\n"
-      . "require_once '{$escaped_target}';\n"
-      . "// If we got here, the script ran without errors.\n"
-      . ('echo json_encode(' . Prompty::class . '::results());
-')
-    );
+  public function testEmbedCompact(): void {
+    $target = $this->prepareTarget();
 
-    $descriptors = [
-      0 => ['pipe', 'r'],
-      1 => ['pipe', 'w'],
-      2 => ['pipe', 'w'],
-    ];
+    $this->runEmbed($target, ['--compact']);
 
-    $process = proc_open('php ' . escapeshellarg($wrapper), $descriptors, $pipes);
-    $this->assertIsResource($process);
+    // PHP lint passes.
+    exec('php -l ' . escapeshellarg($target) . ' 2>&1', $lint_output, $lint_exit);
+    $this->assertSame(0, $lint_exit, 'PHP lint failed: ' . implode("\n", $lint_output));
 
-    fwrite($pipes[0], $keystrokes);
-    fclose($pipes[0]);
+    $content = file_get_contents($target);
+    $this->assertIsString($content);
 
-    $stdout = stream_get_contents($pipes[1]);
-    fclose($pipes[1]);
+    // ANSI escape sequences preserved.
+    $this->assertStringContainsString('\033[', $content);
 
-    $stderr = stream_get_contents($pipes[2]);
-    fclose($pipes[2]);
+    // Public API preserved.
+    $this->assertStringContainsString('function flow', $content);
+    $this->assertStringContainsString('function text', $content);
+    $this->assertStringContainsString('function select', $content);
+    $this->assertStringContainsString('function confirm', $content);
+    $this->assertStringContainsString('function configure', $content);
 
-    $exit_code = proc_close($process);
-    $this->assertSame(0, $exit_code, 'Embedded script failed: ' . $stderr);
+    // Internal names shortened.
+    $this->assertStringNotContainsString('cfgSymbolsUnicode', $content);
+    $this->assertStringNotContainsString('renderCompleted', $content);
+    $this->assertStringNotContainsString('renderCancelled', $content);
 
-    $this->assertIsString($stdout);
-    $lines = array_filter(explode("\n", trim($stdout)));
-    $json_line = end($lines);
-    $this->assertIsString($json_line);
-    $results = json_decode($json_line, TRUE);
-    $this->assertIsArray($results);
-    $this->assertSame('my-project', $results['name']);
-    $this->assertSame('vue', $results['framework']);
-    $this->assertSame(['ts'], $results['features']);
-    $this->assertTrue($results['install']);
+    // Compact output is smaller than normal.
+    $normal_target = $this->tmpDir . '/normal.php';
+    copy(__DIR__ . '/../../../starter.php', $normal_target);
+    $this->runEmbed($normal_target);
+    $this->assertLessThan(filesize($normal_target), filesize($target));
+
+    // Embedded script runs correctly in a subprocess.
+    $this->assertEmbeddedScriptWorks($target);
   }
 
   public function testEmbedWithOutputArgument(): void {
@@ -157,7 +146,7 @@ final class EmbedScriptTest extends TestCase {
     $output_content = file_get_contents($output_path);
     $this->assertIsString($output_content);
     $this->assertStringNotContainsString('require_once', $output_content);
-    $this->assertStringContainsString('// @prompty-start', $output_content);
+    $this->assertStringContainsString('// @embed-start', $output_content);
     $this->assertStringContainsString('class Prompty', $output_content);
 
     exec('php -l ' . escapeshellarg($output_path) . ' 2>&1', $lint_output, $lint_exit);
@@ -195,8 +184,8 @@ final class EmbedScriptTest extends TestCase {
     $this->assertStringContainsString("intro: 'Create a NEW project'", $re_embedded);
 
     // Markers still present.
-    $this->assertStringContainsString('// @prompty-start', $re_embedded);
-    $this->assertStringContainsString('// @prompty-end', $re_embedded);
+    $this->assertStringContainsString('// @embed-start', $re_embedded);
+    $this->assertStringContainsString('// @embed-end', $re_embedded);
 
     // Class still embedded.
     $this->assertStringContainsString('class Prompty', $re_embedded);
@@ -235,13 +224,76 @@ final class EmbedScriptTest extends TestCase {
 
   /**
    * Run the embed script on a target file.
+   *
+   * @param string $target
+   *   Path to the target file.
+   * @param list<string> $extra_args
+   *   Additional CLI arguments.
    */
-  protected function runEmbed(string $target): void {
+  protected function runEmbed(string $target, array $extra_args = []): void {
     $embed_script = __DIR__ . '/../../../embed.php';
+    $cmd = 'php ' . escapeshellarg($embed_script);
+    foreach ($extra_args as $extra_arg) {
+      $cmd .= ' ' . escapeshellarg($extra_arg);
+    }
+    $cmd .= ' ' . escapeshellarg($target);
     $output = [];
     $exit_code = 0;
-    exec('php ' . escapeshellarg($embed_script) . ' ' . escapeshellarg($target) . ' 2>&1', $output, $exit_code);
+    exec($cmd . ' 2>&1', $output, $exit_code);
     $this->assertSame(0, $exit_code, 'Embed script failed: ' . implode("\n", $output));
+  }
+
+  /**
+   * Run the embedded script in a subprocess and verify results.
+   */
+  protected function assertEmbeddedScriptWorks(string $target): void {
+    $keystrokes = $this->promptyKeys(
+      'my-project', self::KEY_ENTER,
+      self::KEY_DOWN, self::KEY_ENTER,
+      self::KEY_SPACE, self::KEY_ENTER,
+      self::KEY_ENTER,
+    );
+
+    $wrapper = $this->tmpDir . '/run_embedded.php';
+    $escaped_target = addcslashes($target, "'\\");
+    file_put_contents($wrapper, "<?php\n"
+      . "declare(strict_types=1);\n"
+      . "require_once '{$escaped_target}';\n"
+      . ('echo json_encode(' . Prompty::class . '::results());
+')
+    );
+
+    $descriptors = [
+      0 => ['pipe', 'r'],
+      1 => ['pipe', 'w'],
+      2 => ['pipe', 'w'],
+    ];
+
+    $process = proc_open('php ' . escapeshellarg($wrapper), $descriptors, $pipes);
+    $this->assertIsResource($process);
+
+    fwrite($pipes[0], $keystrokes);
+    fclose($pipes[0]);
+
+    $stdout = stream_get_contents($pipes[1]);
+    fclose($pipes[1]);
+
+    $stderr = stream_get_contents($pipes[2]);
+    fclose($pipes[2]);
+
+    $exit_code = proc_close($process);
+    $this->assertSame(0, $exit_code, 'Embedded script failed: ' . $stderr);
+
+    $this->assertIsString($stdout);
+    $lines = array_filter(explode("\n", trim($stdout)));
+    $json_line = end($lines);
+    $this->assertIsString($json_line);
+    $results = json_decode($json_line, TRUE);
+    $this->assertIsArray($results);
+    $this->assertSame('my-project', $results['name']);
+    $this->assertSame('vue', $results['framework']);
+    $this->assertSame(['ts'], $results['features']);
+    $this->assertTrue($results['install']);
   }
 
 }

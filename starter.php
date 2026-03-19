@@ -17,11 +17,11 @@
 declare(strict_types=1);
 
 // phpcs:disable
-// @prompty-start
+// @embed-start
 // Run `php embed.php starter.php` to embed Prompty here
 // and ship as a single file.
 require_once __DIR__ . '/Prompty.php';
-// @prompty-end
+// @embed-end
 // phpcs:enable
 
 use AlexSkrypnyk\Prompty\Prompty;
