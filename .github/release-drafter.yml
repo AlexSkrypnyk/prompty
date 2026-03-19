@@ -12,3 +12,31 @@ template: |
   **Full Changelog**: https://github.com/$OWNER/$REPOSITORY/compare/$PREVIOUS_TAG...$RESOLVED_VERSION
 
   $CONTRIBUTORS
+
+  ---
+
+  ## Release assets
+
+  | File | Description |
+  |------|-------------|
+  | `Prompty.php` | Full class with comments |
+  | `Prompty.min.php` | Minified — comments stripped, single line |
+  | `Prompty.compact.php` | Compacted — minified + shortened internals (~60% smaller) |
+  | `starter.php` | Example script template |
+  | `embed.php` | Embed/minify helper |
+
+  ## Verifying release assets
+
+  Download the asset files, `SHA256SUMS`, and `SHA256SUMS.asc` into the same
+  directory, then:
+
+  ```bash
+  # Import the public key (first time only).
+  curl -sL https://raw.githubusercontent.com/AlexSkrypnyk/prompty/main/PUBLIC_KEY.asc | gpg --import
+
+  # Verify the signature.
+  gpg --verify SHA256SUMS.asc SHA256SUMS
+
+  # Verify file checksums.
+  sha256sum -c SHA256SUMS
+  ```

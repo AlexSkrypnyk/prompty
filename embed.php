@@ -10,6 +10,7 @@
  *
  * Usage:
  *   php embed.php [--compact] <source-script> [<output-script>]
+ *   php embed.php [--compact] --stdout <output-file>
  *
  * The source script must contain // @embed-start and // @embed-end markers.
  * The minified class will be inserted between these markers.
@@ -21,6 +22,8 @@
  * Options:
  *   --compact  Apply additional size optimizations: shorten internal property
  *              and method names, rename local variables, reduce whitespace.
+ *   --stdout   Output the processed class as a standalone PHP file instead of
+ *              embedding into a target script. Requires an output file path.
  */
 
 declare(strict_types=1);
@@ -35,11 +38,15 @@ define('EMBED_MARKER_END', '@embed-end');
 
 // Argument parsing.
 $compact = FALSE;
+$stdout = FALSE;
 $positional = [];
 
 for ($arg_i = 1; $arg_i < $argc; $arg_i++) {
   if ($argv[$arg_i] === '--compact') {
     $compact = TRUE;
+  }
+  elseif ($argv[$arg_i] === '--stdout') {
+    $stdout = TRUE;
   }
   else {
     $positional[] = $argv[$arg_i];
@@ -47,23 +54,29 @@ for ($arg_i = 1; $arg_i < $argc; $arg_i++) {
 }
 
 if ($positional === []) {
-  fwrite(STDERR, "Usage: php embed.php [--compact] <source-script> [<output-script>]\n");
+  fwrite(STDERR, "Usage: php embed.php [--compact] [--stdout] <source-script> [<output-script>]\n");
   exit(1);
 }
 
-$input_path = $positional[0];
-
-if (!is_file($input_path)) {
-  fwrite(STDERR, sprintf('Error: Source file not found: %s%s', $input_path, PHP_EOL));
-  exit(1);
+if ($stdout) {
+  // --stdout mode: no source script needed, just an output file.
+  $stdout_path = $positional[0];
 }
+else {
+  $input_path = $positional[0];
 
-// If output path is provided, copy source there first.
-$target_path = $positional[1] ?? $input_path;
+  if (!is_file($input_path)) {
+    fwrite(STDERR, sprintf('Error: Source file not found: %s%s', $input_path, PHP_EOL));
+    exit(1);
+  }
 
-if (isset($positional[1]) && !copy($input_path, $target_path)) {
-  fwrite(STDERR, sprintf('Error: Could not copy source to output: %s%s', $target_path, PHP_EOL));
-  exit(1);
+  // If output path is provided, copy source there first.
+  $target_path = $positional[1] ?? $input_path;
+
+  if (isset($positional[1]) && !copy($input_path, $target_path)) {
+    fwrite(STDERR, sprintf('Error: Could not copy source to output: %s%s', $target_path, PHP_EOL));
+    exit(1);
+  }
 }
 
 if (!is_file(EMBED_SOURCE)) {
@@ -555,18 +568,45 @@ if ($compact && $class_start !== NULL) {
   $minified = implode("\n", $result_lines);
 }
 
-// Build and inject the embedded block.
 // Extract namespace from source.
 $namespace = '';
 if (preg_match('/^\s*namespace\s+(.+?)\s*;/m', $source, $ns_match)) {
   $namespace = $ns_match[1];
 }
 
+$class_content = preg_replace('/^\s+|\s+$/', '', $minified) . "\n";
+
+if ($stdout) {
+  // --stdout mode: write a standalone PHP file.
+  $standalone = "<?php\n\ndeclare(strict_types=1);\n\n";
+  if ($namespace !== '') {
+    $standalone .= "namespace {$namespace};\n\n";
+  }
+  $standalone .= $class_content;
+
+  file_put_contents($stdout_path, $standalone);
+
+  // Validate with php -l.
+  $lint_output = [];
+  $lint_exit = 0;
+  exec('php -l ' . escapeshellarg($stdout_path) . ' 2>&1', $lint_output, $lint_exit);
+
+  if ($lint_exit !== 0) {
+    fwrite(STDERR, "Error: PHP lint failed:\n");
+    fwrite(STDERR, implode("\n", $lint_output) . "\n");
+    exit(1);
+  }
+
+  echo sprintf('Written to %s%s', $stdout_path, PHP_EOL);
+  exit(0);
+}
+
+// Build and inject the embedded block.
 $embedded = '// ' . EMBED_MARKER_START . "\n";
 if ($namespace !== '') {
   $embedded .= "namespace {$namespace};\n\n";
 }
-$embedded .= preg_replace('/^\s+|\s+$/', '', $minified) . "\n";
+$embedded .= $class_content;
 $embedded .= '// ' . EMBED_MARKER_END;
 
 // Read target file and replace marker region.
