@@ -155,7 +155,7 @@ $results = Prompty::flow(fn(): array => [
   },
   cancelled: 'Cancelled.',
   numbering: TRUE,
-  env_prefix: 'SCAFFOLD_',
   unicode: $unicode,
   ansi: $ansi,
+  env_prefix: 'SCAFFOLD_',
 );

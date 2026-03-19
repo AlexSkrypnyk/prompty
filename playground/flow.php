@@ -53,7 +53,7 @@ $results = Prompty::flow(fn(): array => [
   },
   cancelled: 'Cancelled.',
   numbering: TRUE,
-  env_prefix: 'PROMPTY_',
   unicode: $unicode,
   ansi: $ansi,
+  env_prefix: 'PROMPTY_',
 );

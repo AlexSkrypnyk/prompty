@@ -19,9 +19,9 @@ use AlexSkrypnyk\Prompty\Prompty;
 $opts = getopt('', ['no-unicode', 'no-ansi']);
 Prompty::configure(
   labels: ['yes' => 'Yep', 'no' => 'Nope', 'cancelled' => '(aborted)', 'none' => 'Nothing selected'],
-  env_prefix: 'MYAPP_',
   unicode: !isset($opts['no-unicode']),
   ansi: !isset($opts['no-ansi']),
+  env_prefix: 'MYAPP_',
 );
 
 echo "\n--- Text (ASCII mode, MYAPP_ prefix) ---\n";

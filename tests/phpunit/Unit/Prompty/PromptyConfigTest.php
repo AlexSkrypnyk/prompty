@@ -330,7 +330,7 @@ final class PromptyConfigTest extends PromptyTestCase {
     /** @var array<string, mixed> $cfg */
     $cfg = Prompty::config();
     $this->assertArrayHasKey('ansi', $cfg);
-    $this->assertSame(FALSE, $cfg['ansi']);
+    $this->assertFalse($cfg['ansi']);
   }
 
   public function testConfigureUnicodeResolvesSymbols(): void {
