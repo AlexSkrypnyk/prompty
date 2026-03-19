@@ -17,6 +17,37 @@ on:
         default: false
 
 jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Cache Composer dependencies
+        uses: actions/cache@v5
+        with:
+          path: /tmp/composer-cache
+          key: ${{ runner.os }}-normal-${{ hashFiles('**/composer.lock') }}
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+
+      - name: Install dependencies
+        run: composer install
+
+      - name: Validate composer.json
+        run: |
+          composer --verbose validate
+          composer normalize --dry-run
+
+      - name: Check coding standards
+        run: composer lint
+        continue-on-error: ${{ vars.CI_LINT_IGNORE_FAILURE == '1' }}
+
   test-php:
     name: PHP ${{ matrix.php-versions }}, Deps ${{ matrix.deps }}
     runs-on: ubuntu-latest
@@ -56,11 +87,6 @@ jobs:
         run: |
           composer --verbose validate
           composer normalize --dry-run
-
-      - name: Check coding standards
-        if: matrix.php-versions == '8.3' && matrix.deps == 'normal'
-        run: composer lint
-        continue-on-error: ${{ vars.CI_LINT_IGNORE_FAILURE == '1' }}
 
       - name: Run tests
         run: composer test-coverage
