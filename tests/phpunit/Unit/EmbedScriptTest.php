@@ -192,6 +192,72 @@ final class EmbedScriptTest extends TestCase {
     $this->assertStringNotContainsString('require_once', $re_embedded);
   }
 
+  public function testStdout(): void {
+    $output_path = $this->tmpDir . '/Prompty.min.php';
+
+    $embed_script = __DIR__ . '/../../../embed.php';
+    $cmd_output = [];
+    $exit_code = 0;
+    exec('php ' . escapeshellarg($embed_script) . ' --stdout ' . escapeshellarg($output_path) . ' 2>&1', $cmd_output, $exit_code);
+    $this->assertSame(0, $exit_code, 'Embed --stdout failed: ' . implode("\n", $cmd_output));
+
+    // PHP lint passes.
+    exec('php -l ' . escapeshellarg($output_path) . ' 2>&1', $lint_output, $lint_exit);
+    $this->assertSame(0, $lint_exit, 'PHP lint failed: ' . implode("\n", $lint_output));
+
+    $content = file_get_contents($output_path);
+    $this->assertIsString($content);
+
+    // Standalone PHP file with proper preamble.
+    $this->assertStringContainsString('<?php', $content);
+    $this->assertStringContainsString('declare(strict_types=1)', $content);
+    $this->assertStringContainsString('namespace AlexSkrypnyk\Prompty', $content);
+    $this->assertStringContainsString('class Prompty', $content);
+
+    // Header docblock preserved, ANSI preserved.
+    $this->assertStringContainsString('Zero-dependency interactive CLI prompt library', $content);
+    $this->assertStringContainsString('\033[', $content);
+
+    // Smaller than original.
+    $this->assertLessThan(
+      filesize(__DIR__ . '/../../../Prompty.php'),
+      filesize($output_path),
+    );
+  }
+
+  public function testStdoutCompact(): void {
+    $min_path = $this->tmpDir . '/Prompty.min.php';
+    $compact_path = $this->tmpDir . '/Prompty.compact.php';
+
+    $embed_script = __DIR__ . '/../../../embed.php';
+
+    // Generate both variants.
+    $cmd_output = [];
+    exec('php ' . escapeshellarg($embed_script) . ' --stdout ' . escapeshellarg($min_path) . ' 2>&1', $cmd_output, $exit_code);
+    $this->assertSame(0, $exit_code);
+
+    $cmd_output = [];
+    exec('php ' . escapeshellarg($embed_script) . ' --compact --stdout ' . escapeshellarg($compact_path) . ' 2>&1', $cmd_output, $exit_code);
+    $this->assertSame(0, $exit_code);
+
+    // PHP lint passes on compact.
+    exec('php -l ' . escapeshellarg($compact_path) . ' 2>&1', $lint_output, $lint_exit);
+    $this->assertSame(0, $lint_exit, 'PHP lint failed: ' . implode("\n", $lint_output));
+
+    // Compact is smaller than minimized.
+    $this->assertLessThan(filesize($min_path), filesize($compact_path));
+
+    // Public API preserved in compact.
+    $content = file_get_contents($compact_path);
+    $this->assertIsString($content);
+    $this->assertStringContainsString('function flow', $content);
+    $this->assertStringContainsString('function text', $content);
+
+    // Internal names shortened.
+    $this->assertStringNotContainsString('cfgSymbolsUnicode', $content);
+    $this->assertStringNotContainsString('renderCompleted', $content);
+  }
+
   public function testEmbedErrors(): void {
     // Missing argument.
     $output = [];

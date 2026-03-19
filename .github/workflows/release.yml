@@ -1,0 +1,72 @@
+name: Release assets
+
+on:
+  release:
+    types:
+      - published
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build and upload release assets
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+
+      - name: Verify starter script
+        run: |
+          echo -e "test\n\n\n\n" | php starter.php
+          echo "Starter script verified."
+
+      - name: Build minimized class
+        run: php embed.php --stdout Prompty.min.php
+
+      - name: Build compacted class
+        run: php embed.php --compact --stdout Prompty.compact.php
+
+      - name: Generate checksums
+        run: sha256sum Prompty.php Prompty.min.php Prompty.compact.php starter.php embed.php > SHA256SUMS
+
+      - name: Import GPG key
+        run: echo "${{ secrets.GPG_PRIVATE_KEY }}" | gpg --batch --import
+
+      - name: Sign checksums
+        run: gpg --batch --yes --detach-sign --armor SHA256SUMS
+
+      - name: Verify signature before upload
+        run: |
+          gpg --import PUBLIC_KEY.asc
+          gpg --verify SHA256SUMS.asc SHA256SUMS
+          sha256sum -c SHA256SUMS
+
+      - name: Upload release assets
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release upload "${{ github.event.release.tag_name }}" \
+            Prompty.php \
+            Prompty.min.php \
+            Prompty.compact.php \
+            starter.php \
+            embed.php \
+            SHA256SUMS \
+            SHA256SUMS.asc
+
+      - name: Verify uploaded assets
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mkdir -p verify
+          cd verify
+          gh release download "${{ github.event.release.tag_name }}" --repo "${{ github.repository }}"
+          gpg --verify SHA256SUMS.asc SHA256SUMS
+          sha256sum -c SHA256SUMS
