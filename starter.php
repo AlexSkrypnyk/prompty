@@ -18,8 +18,8 @@ declare(strict_types=1);
 
 // phpcs:disable
 // @embed-start
-// Run `php embed.php starter.php` to embed Prompty here
-// and ship as a single file.
+// Run `php embed.php starter.php` to embed Prompty here.
+// Use `php embed.php --compact starter.php` for a smaller output.
 require_once __DIR__ . '/Prompty.php';
 // @embed-end
 // phpcs:enable
