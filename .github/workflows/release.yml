@@ -22,6 +22,9 @@ jobs:
         with:
           php-version: '8.3'
 
+      - name: Imprint version
+        run: sed -i "s/__PROMPTY_VERSION__/${GITHUB_REF_NAME}/g" Prompty.php
+
       - name: Verify starter script
         run: |
           echo -e "test\n\n\n\n" | php starter.php

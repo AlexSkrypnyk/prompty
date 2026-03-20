@@ -25,7 +25,7 @@
 
 ## Features
 
-- 📦 [**Zero dependencies**](#zero-dependencies) — drop `Prompty.php` into your project or [embed](#embedding) into your script
+- 📦 [**Zero dependencies**](#installation) — drop `Prompty.php` into your project or [embed](#embedding) into your script
 - 🧩 [**Widgets**](#widgets) — `text`, `select`, `multiselect`, `confirm`
 - 🔀 [**Flows**](#flows) — group prompts into a wizard with intro/outro, numbering, and cancellation
 - 🌳 [**Nested flows**](#nested-flows-with-conditions) — conditional children rendered as a tree
@@ -39,49 +39,52 @@
 - 🚀 [**Starter script**](#starter-script) — [`starter.php`](starter.php) as a template for your own scripts
 - 📥 [**Embedding**](#embedding) — minify and embed the class directly into your script
 
-## Zero dependencies
+## Installation
 
-Prompty is a single PHP file with no dependencies. There are two ways to use it:
+Prompty is a single PHP file with zero dependencies.
 
-### Simple scripts — just copy the file
+### Download from releases
 
-Download `Prompty.php` and `require_once` it directly:
+Download `Prompty.php` from the
+[latest release](https://github.com/AlexSkrypnyk/prompty/releases/latest)
+assets.
 
-```bash
-curl -O https://raw.githubusercontent.com/alexskrypnyk/prompty/main/Prompty.php
-```
+Three variants are available:
 
-```php
-require_once __DIR__ . '/Prompty.php';
+| Asset                 | Description                                        |
+|-----------------------|----------------------------------------------------|
+| `Prompty.php`         | Full source with version imprinted                 |
+| `Prompty.min.php`     | Minified — comments and blank lines stripped       |
+| `Prompty.compact.php` | Compacted — single-line class, shortened internals |
 
-$name = Prompty::text('Project name');
-```
+For testing, also download `PromptyTestTrait.php` from the same release.
 
-Or [embed](#embedding) the minified class directly into your script to ship a
-single file with no external dependencies.
+See [Usage](#usage) for how to embed the class directly into your script.
 
-You may also use the [starter](#starter-script) as a template for your own scripts.
-
-### Composer projects — require as a package
-
-For larger projects with Composer:
+### Composer
 
 ```bash
 composer require alexskrypnyk/prompty
 ```
 
-Then use it like any other class — the autoloader handles the rest:
+`PromptyTestTrait` is included in the package.
+
+## Usage
+
+Require the file and use the class directly:
 
 ```php
+require_once __DIR__ . '/Prompty.php';
+
+use AlexSkrypnyk\Prompty\Prompty;
+
 $name = Prompty::text('Project name');
 ```
 
-For testing, `PromptyTestTrait` is included in the package. If you're using the
-copy approach, grab it separately:
+Or [embed](#embedding) the minified class directly into your script (using
+provided minification script) to ship a single file with no external dependencies.
 
-```bash
-curl -O https://raw.githubusercontent.com/alexskrypnyk/prompty/main/PromptyTestTrait.php
-```
+You may also use the [starter](#starter-script) as a template for your own scripts.
 
 ## Widgets
 
@@ -548,6 +551,10 @@ Copy `starter.php`, rename it, and replace the steps with your own.
 [`embed.php`](embed.php) minifies `Prompty.php` (strips comments, collapses
 blank lines) and embeds it directly into your script — so you can ship a single
 file with no `require_once` and no external dependencies.
+
+Download `embed.php` from the
+[latest release](https://github.com/AlexSkrypnyk/prompty/releases/latest)
+assets alongside `Prompty.php`.
 
 ### Setup
 
