@@ -548,6 +548,86 @@ final class EmbedScriptTest extends TestCase {
     $this->assertEmbeddedScriptWorks($target);
   }
 
+  public function testSourceFlagWithMinifiedInput(): void {
+    $target = $this->prepareTarget();
+
+    // Generate a minified Prompty.php via --stdout.
+    $min_source = $this->tmpDir . '/Prompty.min.php';
+    $embed_script = __DIR__ . '/../../../embed.php';
+    $output = [];
+    $exit_code = 0;
+    exec('php ' . escapeshellarg($embed_script) . ' --stdout ' . escapeshellarg($min_source) . ' 2>&1', $output, $exit_code);
+    $this->assertSame(0, $exit_code, 'Failed to generate minified source: ' . implode("\n", $output));
+
+    // Embed using the already-minified file as source.
+    $this->runEmbed($target, ['--source', $min_source]);
+
+    // PHP lint passes.
+    exec('php -l ' . escapeshellarg($target) . ' 2>&1', $lint_output, $lint_exit);
+    $this->assertSame(0, $lint_exit, 'PHP lint failed: ' . implode("\n", $lint_output));
+
+    $content = file_get_contents($target);
+    $this->assertIsString($content);
+    $this->assertStringContainsString('class Prompty', $content);
+    $this->assertStringContainsString('// @embed-start', $content);
+
+    // Embedded script runs correctly.
+    $this->assertEmbeddedScriptWorks($target);
+  }
+
+  public function testSourceFlagWithCompactedInput(): void {
+    $target = $this->prepareTarget();
+
+    // Generate a compacted Prompty.php via --compact --stdout.
+    $compact_source = $this->tmpDir . '/Prompty.compact.php';
+    $embed_script = __DIR__ . '/../../../embed.php';
+    $output = [];
+    $exit_code = 0;
+    exec('php ' . escapeshellarg($embed_script) . ' --compact --stdout ' . escapeshellarg($compact_source) . ' 2>&1', $output, $exit_code);
+    $this->assertSame(0, $exit_code, 'Failed to generate compacted source: ' . implode("\n", $output));
+
+    // Embed using the already-compacted file as source.
+    $this->runEmbed($target, ['--source', $compact_source]);
+
+    // PHP lint passes.
+    exec('php -l ' . escapeshellarg($target) . ' 2>&1', $lint_output, $lint_exit);
+    $this->assertSame(0, $lint_exit, 'PHP lint failed: ' . implode("\n", $lint_output));
+
+    $content = file_get_contents($target);
+    $this->assertIsString($content);
+    $this->assertStringContainsString('class Prompty', $content);
+    $this->assertStringContainsString('// @embed-start', $content);
+
+    // Embedded script runs correctly.
+    $this->assertEmbeddedScriptWorks($target);
+  }
+
+  public function testSourceFlagWithCompactedInputAndCompactFlag(): void {
+    $target = $this->prepareTarget();
+
+    // Generate a compacted Prompty.php via --compact --stdout.
+    $compact_source = $this->tmpDir . '/Prompty.compact.php';
+    $embed_script = __DIR__ . '/../../../embed.php';
+    $output = [];
+    $exit_code = 0;
+    exec('php ' . escapeshellarg($embed_script) . ' --compact --stdout ' . escapeshellarg($compact_source) . ' 2>&1', $output, $exit_code);
+    $this->assertSame(0, $exit_code, 'Failed to generate compacted source: ' . implode("\n", $output));
+
+    // Embed with --compact using an already-compacted source (double compact).
+    $this->runEmbed($target, ['--source', $compact_source, '--compact']);
+
+    // PHP lint passes.
+    exec('php -l ' . escapeshellarg($target) . ' 2>&1', $lint_output, $lint_exit);
+    $this->assertSame(0, $lint_exit, 'PHP lint failed: ' . implode("\n", $lint_output));
+
+    $content = file_get_contents($target);
+    $this->assertIsString($content);
+    $this->assertStringContainsString('class Prompty', $content);
+
+    // Embedded script runs correctly even after double compaction.
+    $this->assertEmbeddedScriptWorks($target);
+  }
+
   public function testUsageHelp(): void {
     $output = [];
     $exit_code = 0;
