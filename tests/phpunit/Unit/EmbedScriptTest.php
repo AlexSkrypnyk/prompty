@@ -417,6 +417,162 @@ final class EmbedScriptTest extends TestCase {
     $this->assertStringContainsString('no kill switch', strtolower($embed_output));
   }
 
+  public function testSourceFlag(): void {
+    $target = $this->prepareTarget();
+
+    // Copy Prompty.php to a different location.
+    $alt_source = $this->tmpDir . '/AltPrompty.php';
+    copy(__DIR__ . '/../../../Prompty.php', $alt_source);
+
+    $this->runEmbed($target, ['--source', $alt_source]);
+
+    // PHP lint passes.
+    exec('php -l ' . escapeshellarg($target) . ' 2>&1', $lint_output, $lint_exit);
+    $this->assertSame(0, $lint_exit, 'PHP lint failed: ' . implode("\n", $lint_output));
+
+    $content = file_get_contents($target);
+    $this->assertIsString($content);
+
+    // Class embedded from the alternate source.
+    $this->assertStringContainsString('// @embed-start', $content);
+    $this->assertStringContainsString('// @embed-end', $content);
+    $this->assertStringContainsString('class Prompty', $content);
+    $this->assertStringNotContainsString('require_once', $content);
+
+    // Embedded script runs correctly.
+    $this->assertEmbeddedScriptWorks($target);
+  }
+
+  public function testSourceFlagStdout(): void {
+    $output_path = $this->tmpDir . '/Prompty.source.php';
+
+    // Copy Prompty.php to a different location.
+    $alt_source = $this->tmpDir . '/AltPrompty.php';
+    copy(__DIR__ . '/../../../Prompty.php', $alt_source);
+
+    $embed_script = __DIR__ . '/../../../embed.php';
+    $cmd_output = [];
+    $exit_code = 0;
+    exec('php ' . escapeshellarg($embed_script) . ' --source ' . escapeshellarg($alt_source) . ' --stdout ' . escapeshellarg($output_path) . ' 2>&1', $cmd_output, $exit_code);
+    $this->assertSame(0, $exit_code, 'Embed --source --stdout failed: ' . implode("\n", $cmd_output));
+
+    // PHP lint passes.
+    exec('php -l ' . escapeshellarg($output_path) . ' 2>&1', $lint_output, $lint_exit);
+    $this->assertSame(0, $lint_exit, 'PHP lint failed: ' . implode("\n", $lint_output));
+
+    $content = file_get_contents($output_path);
+    $this->assertIsString($content);
+    $this->assertStringContainsString('class Prompty', $content);
+    $this->assertStringContainsString('namespace AlexSkrypnyk\Prompty', $content);
+  }
+
+  public function testReEmbedPreservesContentAndWorks(): void {
+    $target = $this->prepareTarget();
+
+    // First embed.
+    $this->runEmbed($target);
+    $first_content = file_get_contents($target);
+    $this->assertIsString($first_content);
+    $this->assertStringContainsString('class Prompty', $first_content);
+    $this->assertStringNotContainsString('require_once', $first_content);
+
+    // Verify the first embed works.
+    $this->assertEmbeddedScriptWorks($target);
+
+    // Simulate a user editing the script outside the embedded block.
+    $modified = str_replace(
+      "intro: 'Create a new project'",
+      "intro: 'Create a NEW project'",
+      $first_content,
+    );
+    $this->assertNotSame($first_content, $modified);
+    file_put_contents($target, $modified);
+
+    // Re-embed (simulating a version update).
+    $this->runEmbed($target);
+    $re_embedded = file_get_contents($target);
+    $this->assertIsString($re_embedded);
+
+    // PHP lint passes.
+    exec('php -l ' . escapeshellarg($target) . ' 2>&1', $lint_output, $lint_exit);
+    $this->assertSame(0, $lint_exit, 'PHP lint failed after re-embed: ' . implode("\n", $lint_output));
+
+    // User's edit preserved.
+    $this->assertStringContainsString("intro: 'Create a NEW project'", $re_embedded);
+
+    // Markers still present.
+    $this->assertStringContainsString('// @embed-start', $re_embedded);
+    $this->assertStringContainsString('// @embed-end', $re_embedded);
+
+    // Class still embedded.
+    $this->assertStringContainsString('class Prompty', $re_embedded);
+    $this->assertStringNotContainsString('require_once', $re_embedded);
+
+    // Kill switch not duplicated.
+    $this->assertSame(
+      1,
+      substr_count($re_embedded, "if (!getenv('SHOULD_PROCEED'))"),
+      'Kill switch should appear exactly once after re-embed.',
+    );
+
+    // Embedded script still runs correctly after re-embed.
+    $this->assertEmbeddedScriptWorks($target);
+  }
+
+  public function testReEmbedWithSourceFlag(): void {
+    $target = $this->prepareTarget();
+
+    // First embed with default source.
+    $this->runEmbed($target);
+
+    // Copy Prompty.php to simulate downloading a new version.
+    $new_version = $this->tmpDir . '/PromptyNew.php';
+    copy(__DIR__ . '/../../../Prompty.php', $new_version);
+
+    // Re-embed with --source pointing at the "new version".
+    $this->runEmbed($target, ['--source', $new_version]);
+
+    $content = file_get_contents($target);
+    $this->assertIsString($content);
+
+    // PHP lint passes.
+    exec('php -l ' . escapeshellarg($target) . ' 2>&1', $lint_output, $lint_exit);
+    $this->assertSame(0, $lint_exit, 'PHP lint failed: ' . implode("\n", $lint_output));
+
+    // Class embedded, markers preserved.
+    $this->assertStringContainsString('class Prompty', $content);
+    $this->assertStringContainsString('// @embed-start', $content);
+    $this->assertStringContainsString('// @embed-end', $content);
+
+    // Embedded script works.
+    $this->assertEmbeddedScriptWorks($target);
+  }
+
+  public function testUsageHelp(): void {
+    $output = [];
+    $exit_code = 0;
+    exec('php ' . escapeshellarg(__DIR__ . '/../../../embed.php') . ' 2>&1', $output, $exit_code);
+    $this->assertSame(1, $exit_code);
+
+    $help = implode("\n", $output);
+
+    // Usage header present.
+    $this->assertStringContainsString('Usage:', $help);
+
+    // All flags documented.
+    $this->assertStringContainsString('--source', $help);
+    $this->assertStringContainsString('--compact', $help);
+    $this->assertStringContainsString('--stdout', $help);
+    $this->assertStringContainsString('--no-killswitch', $help);
+
+    // Re-embedding documented.
+    $this->assertStringContainsString('Re-embedding', $help);
+
+    // Arguments section present.
+    $this->assertStringContainsString('Arguments:', $help);
+    $this->assertStringContainsString('Options:', $help);
+  }
+
   public function testEmbedErrors(): void {
     // Missing argument.
     $output = [];
@@ -434,6 +590,21 @@ final class EmbedScriptTest extends TestCase {
     exec('php ' . escapeshellarg(__DIR__ . '/../../../embed.php') . ' ' . escapeshellarg($target) . ' 2>&1', $output, $exit_code);
     $this->assertSame(1, $exit_code);
     $this->assertStringContainsString('marker', implode("\n", $output));
+
+    // --source without path.
+    $output = [];
+    $exit_code = 0;
+    exec('php ' . escapeshellarg(__DIR__ . '/../../../embed.php') . ' --source 2>&1', $output, $exit_code);
+    $this->assertSame(1, $exit_code);
+    $this->assertStringContainsString('--source requires a path', implode("\n", $output));
+
+    // --source with non-existent file.
+    $target = $this->prepareTarget();
+    $output = [];
+    $exit_code = 0;
+    exec('php ' . escapeshellarg(__DIR__ . '/../../../embed.php') . ' --source /nonexistent/Prompty.php ' . escapeshellarg($target) . ' 2>&1', $output, $exit_code);
+    $this->assertSame(1, $exit_code);
+    $this->assertStringContainsString('Source class not found', implode("\n", $output));
   }
 
   /**

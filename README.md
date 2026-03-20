@@ -598,10 +598,34 @@ license header comment):
 php embed.php --compact my-script.php
 ```
 
+Use `--source` to specify an alternative path to the class file to embed
+(defaults to `Prompty.php` in the same directory as `embed.php`):
+
+```bash
+php embed.php --source /path/to/Prompty.php my-script.php
+```
+
 Wrap the markers in `// phpcs:disable` / `// phpcs:enable`
 to suppress coding standard warnings on the minified code.
 
 See [`starter.php`](starter.php) for an example with markers already in place.
+
+### Re-embedding
+
+To update an already-embedded script to a newer version of Prompty, replace
+`Prompty.php` with the new version and re-run `embed.php`. The embedded region
+is replaced with the latest class content while all code outside the markers is
+preserved:
+
+```bash
+php embed.php my-script.php
+```
+
+If the new `Prompty.php` is in a different location, use `--source`:
+
+```bash
+php embed.php --source /path/to/new/Prompty.php my-script.php
+```
 
 ### Kill switch
 
