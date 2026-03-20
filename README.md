@@ -647,6 +647,64 @@ Use `--no-killswitch` to skip the injection:
 php embed.php --no-killswitch my-script.php
 ```
 
+### For AI agents
+
+<details>
+<summary>Embed into starter script</summary>
+
+```bash
+# Download Prompty.php, embed.php, and the starter template.
+curl -LO https://github.com/AlexSkrypnyk/prompty/releases/latest/download/Prompty.php
+curl -LO https://github.com/AlexSkrypnyk/prompty/releases/latest/download/embed.php
+curl -LO https://github.com/AlexSkrypnyk/prompty/releases/latest/download/starter.php
+
+# Rename the starter to your script name.
+mv starter.php my-script.php
+
+# Embed the minified class into the script.
+php embed.php my-script.php
+```
+
+</details>
+
+<details>
+<summary>Embed into custom script</summary>
+
+```bash
+# Download Prompty.php and embed.php.
+curl -LO https://github.com/AlexSkrypnyk/prompty/releases/latest/download/Prompty.php
+curl -LO https://github.com/AlexSkrypnyk/prompty/releases/latest/download/embed.php
+
+# Add markers in your script around the require_once line:
+#
+#   // phpcs:disable
+#   // @embed-start
+#   require_once __DIR__ . '/Prompty.php';
+#   // @embed-end
+#   // phpcs:enable
+
+# Embed the minified class into the script.
+php embed.php my-script.php
+```
+
+</details>
+
+<details>
+<summary>Update Prompty</summary>
+
+```bash
+# Download the new Prompty.php, overwriting the old one.
+curl -LO https://github.com/AlexSkrypnyk/prompty/releases/latest/download/Prompty.php
+
+# Re-run the embedder. Code outside the markers is preserved.
+php embed.php my-script.php
+
+# Or use --source if the new Prompty.php is in a different location.
+php embed.php --source /path/to/new/Prompty.php my-script.php
+```
+
+</details>
+
 ## Maintenance
 
 ```bash
