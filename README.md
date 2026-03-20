@@ -37,6 +37,7 @@
 - ⚙️ [**Configuration**](#configuration) — symbols, colors, spacing, labels, env prefix, truthy/falsy values
 - 🧪 [**Test harness**](#test-harness) — `PromptyTestTrait` injects keystrokes for PHPUnit testing
 - 🚀 [**Starter script**](#starter-script) — [`starter.php`](starter.php) as a template for your own scripts
+- 📥 [**Embedding**](#embedding) — minify and embed the class directly into your script
 
 ## Zero dependencies
 
@@ -58,6 +59,8 @@ $name = Prompty::text('Project name');
 
 Or [embed](#embedding) the minified class directly into your script to ship a
 single file with no external dependencies.
+
+You may also use the [starter](#starter-script) as a template for your own scripts.
 
 ### Composer projects — require as a package
 
@@ -581,19 +584,37 @@ Embed into a separate output file (source stays unchanged):
 php embed.php my-script.php dist/my-script.php
 ```
 
-Use `--compact` to apply additional size optimizations (shortens internal
-property and method names, renames local variables, reduces whitespace):
+Use `--compact` to collapse the entire class into a single line (plus the
+license header comment):
 
 ```bash
 php embed.php --compact my-script.php
 ```
 
-The script replaces everything between the markers with the minified class,
-preserving the license header. It runs `php -l` on the result to verify the
-output is valid PHP. Wrap the markers in `// phpcs:disable` / `// phpcs:enable`
+Wrap the markers in `// phpcs:disable` / `// phpcs:enable`
 to suppress coding standard warnings on the minified code.
 
 See [`starter.php`](starter.php) for an example with markers already in place.
+
+### Kill switch
+
+If your script does not already contain a kill-switch statement, `embed.php`
+will automatically inject one after the embed region. This allows tests to run
+the script without executing the real work below:
+
+```php
+// Kill switch — stop here when running under tests.
+// In production, set SHOULD_PROCEED=1 to continue past this point.
+if (!getenv('SHOULD_PROCEED')) {
+  return;
+}
+```
+
+Use `--no-killswitch` to skip the injection:
+
+```bash
+php embed.php --no-killswitch my-script.php
+```
 
 ## Maintenance
 
