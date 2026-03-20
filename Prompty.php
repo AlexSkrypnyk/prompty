@@ -253,6 +253,20 @@ class Prompty {
   }
 
   /**
+   * Get the library version.
+   *
+   * Returns 'development' when the version token has not been replaced
+   * (i.e. running from source). During release, the __PROMPTY_VERSION__
+   * token is replaced with the actual tag via sed.
+   *
+   * @return string
+   *   The version string.
+   */
+  public static function version(): string {
+    return str_starts_with('__PROMPTY_VERSION__', '__') ? 'development' : '__PROMPTY_VERSION__';
+  }
+
+  /**
    * Configure the singleton instance.
    *
    * Creates the singleton if it does not exist yet. Call before any widgets

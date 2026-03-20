@@ -359,6 +359,10 @@ final class PromptyConfigTest extends PromptyTestCase {
     $this->assertSame($original_prefix, $this->getProperty($p, 'cfgEnvPrefix'));
   }
 
+  public function testVersionReturnsDevelopment(): void {
+    $this->assertSame('development', Prompty::version());
+  }
+
   public function testSingletonCreation(): void {
     $this->setStaticProperty('instance', NULL);
 
