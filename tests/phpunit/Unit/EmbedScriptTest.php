@@ -85,6 +85,18 @@ final class EmbedScriptTest extends TestCase {
     // ANSI escape sequences preserved.
     $this->assertStringContainsString('\033[', $content);
 
+    // Namespace removed from embedded output.
+    $this->assertDoesNotMatchRegularExpression(
+      '/^namespace\s+AlexSkrypnyk\\\\Prompty\s*;/m',
+      $content,
+    );
+
+    // PHPStan ignore comment added before class declaration.
+    $this->assertMatchesRegularExpression(
+      '/\/\/ @phpstan-ignore-next-line\nclass Prompty/',
+      $content,
+    );
+
     // Embedded script runs correctly in a subprocess.
     $this->assertEmbeddedScriptWorks($target);
   }
@@ -258,6 +270,153 @@ final class EmbedScriptTest extends TestCase {
     $this->assertStringNotContainsString('renderCompleted', $content);
   }
 
+  public function testEmbedRunsRector(): void {
+    $target = $this->prepareTarget();
+
+    // Capture embed output to verify rector message.
+    $embed_output = $this->runEmbedWithOutput($target);
+    $this->assertStringContainsString('Rector', $embed_output);
+
+    $content = file_get_contents($target);
+    $this->assertIsString($content);
+    $this->assertStringContainsString('class Prompty', $content);
+
+    // Run rector --dry-run to confirm no further changes needed.
+    $rector_config = $this->createRectorConfig();
+    $output = [];
+    $exit_code = 0;
+    exec(
+      'php ' . escapeshellarg(__DIR__ . '/../../../vendor/bin/rector') . ' process --dry-run --config=' . escapeshellarg($rector_config) . ' ' . escapeshellarg($target) . ' 2>&1',
+      $output,
+      $exit_code,
+    );
+    $this->assertSame(0, $exit_code, 'Rector would make further changes: ' . implode("\n", $output));
+  }
+
+  public function testEmbedStdoutRunsRector(): void {
+    $output_path = $this->tmpDir . '/Prompty.rector.php';
+
+    $embed_script = __DIR__ . '/../../../embed.php';
+    $cmd_output = [];
+    $exit_code = 0;
+    exec('php ' . escapeshellarg($embed_script) . ' --stdout ' . escapeshellarg($output_path) . ' 2>&1', $cmd_output, $exit_code);
+    $this->assertSame(0, $exit_code, 'Embed --stdout failed: ' . implode("\n", $cmd_output));
+    $this->assertStringContainsString('Rector', implode("\n", $cmd_output));
+
+    // Run rector --dry-run to confirm no further changes needed.
+    $rector_config = $this->createRectorConfig();
+    $output = [];
+    $exit_code = 0;
+    exec(
+      'php ' . escapeshellarg(__DIR__ . '/../../../vendor/bin/rector') . ' process --dry-run --config=' . escapeshellarg($rector_config) . ' ' . escapeshellarg($output_path) . ' 2>&1',
+      $output,
+      $exit_code,
+    );
+    $this->assertSame(0, $exit_code, 'Rector would make further changes on stdout output: ' . implode("\n", $output));
+  }
+
+  public function testEmbedKillswitchAlreadyPresent(): void {
+    $target = $this->prepareTarget();
+
+    $this->runEmbed($target);
+
+    $content = file_get_contents($target);
+    $this->assertIsString($content);
+
+    // Kill switch already existed in starter.php — should not be duplicated.
+    $this->assertSame(
+      1,
+      substr_count($content, "if (!getenv('SHOULD_PROCEED'))"),
+      'Kill switch should appear exactly once.',
+    );
+  }
+
+  public function testEmbedKillswitchInjected(): void {
+    $target = $this->prepareTargetWithoutKillswitch();
+
+    $this->runEmbed($target);
+
+    $content = file_get_contents($target);
+    $this->assertIsString($content);
+
+    // Kill switch should have been injected.
+    $this->assertStringContainsString("if (!getenv('SHOULD_PROCEED'))", $content);
+
+    // Should appear after the @embed-end marker.
+    $embed_end_pos = strpos($content, '@embed-end');
+    $killswitch_pos = strpos($content, "if (!getenv('SHOULD_PROCEED'))");
+    $this->assertNotFalse($embed_end_pos);
+    $this->assertNotFalse($killswitch_pos);
+    $this->assertGreaterThan($embed_end_pos, $killswitch_pos);
+  }
+
+  public function testEmbedRunsVerification(): void {
+    $target = $this->prepareTarget();
+
+    // Run embed with simulated keystrokes for the interactive verification.
+    $keystrokes = $this->promptyKeys(
+      'my-project', self::KEY_ENTER,
+      self::KEY_DOWN, self::KEY_ENTER,
+      self::KEY_SPACE, self::KEY_ENTER,
+      self::KEY_ENTER,
+    );
+
+    $embed_script = __DIR__ . '/../../../embed.php';
+    $descriptors = [
+      0 => ['pipe', 'r'],
+      1 => ['pipe', 'w'],
+      2 => ['pipe', 'w'],
+    ];
+
+    $process = proc_open(
+      'php ' . escapeshellarg($embed_script) . ' ' . escapeshellarg($target),
+      $descriptors,
+      $pipes,
+    );
+    $this->assertIsResource($process);
+
+    fwrite($pipes[0], $keystrokes);
+    fclose($pipes[0]);
+
+    $stdout = stream_get_contents($pipes[1]);
+    fclose($pipes[1]);
+
+    $stderr = stream_get_contents($pipes[2]);
+    fclose($pipes[2]);
+
+    $exit_code = proc_close($process);
+    $this->assertSame(0, $exit_code, 'Embed with verification failed: ' . $stderr);
+
+    // Verification message should appear in output.
+    $this->assertIsString($stdout);
+    $this->assertStringContainsString('Verifying', $stdout);
+  }
+
+  public function testEmbedSkipsVerificationWithoutKillswitch(): void {
+    $target = $this->prepareTargetWithoutKillswitch();
+
+    $embed_output = $this->runEmbedWithOutput($target, ['--no-killswitch']);
+
+    // Should show yellow warning about skipping verification.
+    $this->assertStringContainsString('no kill switch', strtolower($embed_output));
+    $this->assertStringNotContainsString('Verifying', $embed_output);
+  }
+
+  public function testEmbedNoKillswitchFlag(): void {
+    $target = $this->prepareTargetWithoutKillswitch();
+
+    $embed_output = $this->runEmbedWithOutput($target, ['--no-killswitch']);
+
+    $content = file_get_contents($target);
+    $this->assertIsString($content);
+
+    // Kill switch should NOT have been injected.
+    $this->assertStringNotContainsString("if (!getenv('SHOULD_PROCEED'))", $content);
+
+    // Warning should have been shown.
+    $this->assertStringContainsString('no kill switch', strtolower($embed_output));
+  }
+
   public function testEmbedErrors(): void {
     // Missing argument.
     $output = [];
@@ -296,7 +455,16 @@ final class EmbedScriptTest extends TestCase {
    * @param list<string> $extra_args
    *   Additional CLI arguments.
    */
-  protected function runEmbed(string $target, array $extra_args = []): void {
+
+  /**
+   * Run the embed script and return its combined output.
+   *
+   * @param string $target
+   *   Path to the target file.
+   * @param list<string> $extra_args
+   *   Additional CLI arguments.
+   */
+  protected function runEmbedWithOutput(string $target, array $extra_args = []): string {
     $embed_script = __DIR__ . '/../../../embed.php';
     $cmd = 'php ' . escapeshellarg($embed_script);
     foreach ($extra_args as $extra_arg) {
@@ -306,7 +474,55 @@ final class EmbedScriptTest extends TestCase {
     $output = [];
     $exit_code = 0;
     exec($cmd . ' 2>&1', $output, $exit_code);
+    $combined = implode("\n", $output);
+    $this->assertSame(0, $exit_code, 'Embed script failed: ' . $combined);
+
+    return $combined;
+  }
+
+  protected function runEmbed(string $target, array $extra_args = []): void {
+    $embed_script = __DIR__ . '/../../../embed.php';
+    $cmd = 'php ' . escapeshellarg($embed_script);
+    foreach ($extra_args as $extra_arg) {
+      $cmd .= ' ' . escapeshellarg((string) $extra_arg);
+    }
+    $cmd .= ' ' . escapeshellarg($target);
+    $output = [];
+    $exit_code = 0;
+    exec($cmd . ' 2>&1', $output, $exit_code);
     $this->assertSame(0, $exit_code, 'Embed script failed: ' . implode("\n", $output));
+  }
+
+  /**
+   * Copy starter.php to temp dir without the kill switch block.
+   */
+  protected function prepareTargetWithoutKillswitch(): string {
+    $source = __DIR__ . '/../../../starter.php';
+    $content = file_get_contents($source);
+    $this->assertIsString($content);
+
+    // Remove the kill switch block.
+    $content = preg_replace(
+      '/\/\/ Kill switch.*?if \(!getenv\(\'SHOULD_PROCEED\'\)\) \{\s*return;\s*\}\n*/s',
+      '',
+      $content,
+    );
+    $this->assertIsString($content);
+
+    $target = $this->tmpDir . '/starter_no_ks.php';
+    file_put_contents($target, $content);
+
+    return $target;
+  }
+
+  /**
+   * Create a rector config file suitable for testing embedded output.
+   */
+  protected function createRectorConfig(): string {
+    $config_path = $this->tmpDir . '/rector.php';
+    copy(__DIR__ . '/../../../rector.php', $config_path);
+
+    return $config_path;
   }
 
   /**
@@ -325,8 +541,7 @@ final class EmbedScriptTest extends TestCase {
     file_put_contents($wrapper, "<?php\n"
       . "declare(strict_types=1);\n"
       . "require_once '{$escaped_target}';\n"
-      . ('echo json_encode(' . Prompty::class . '::results());
-')
+      . "echo json_encode(Prompty::results());\n"
     );
 
     $descriptors = [

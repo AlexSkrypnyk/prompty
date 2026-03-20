@@ -9,7 +9,8 @@
  * @see https://github.com/AlexSkrypnyk/prompty
  *
  * Usage:
- *   php embed.php [--compact] <source-script> [<output-script>]
+ *   php embed.php [--compact] [--no-killswitch] <source>
+ *                 [<output>]
  *   php embed.php [--compact] --stdout <output-file>
  *
  * The source script must contain // @embed-start and // @embed-end markers.
@@ -19,11 +20,20 @@
  * embedding is performed on the copy. Otherwise the source is modified
  * in place.
  *
+ * After embedding, if Rector is available (vendor/bin/rector), it will be
+ * run on the processed class content. A kill-switch block is injected after
+ * the embed region if one is not already present. The embedded script is
+ * then run to verify it works.
+ *
  * Options:
- *   --compact  Apply additional size optimizations: shorten internal property
- *              and method names, rename local variables, reduce whitespace.
- *   --stdout   Output the processed class as a standalone PHP file instead of
- *              embedding into a target script. Requires an output file path.
+ *   --compact        Apply additional size optimizations: shorten internal
+ *                    property and method names, rename local variables,
+ *                    reduce whitespace.
+ *   --stdout         Output the processed class as a standalone PHP file
+ *                    instead of embedding into a target script. Requires an
+ *                    output file path.
+ *   --no-killswitch  Skip injecting the kill-switch block and post-embed
+ *                    verification run.
  */
 
 declare(strict_types=1);
@@ -39,6 +49,7 @@ define('EMBED_MARKER_END', '@embed-end');
 // Argument parsing.
 $compact = FALSE;
 $stdout = FALSE;
+$no_killswitch = FALSE;
 $positional = [];
 
 for ($arg_i = 1; $arg_i < $argc; $arg_i++) {
@@ -48,13 +59,16 @@ for ($arg_i = 1; $arg_i < $argc; $arg_i++) {
   elseif ($argv[$arg_i] === '--stdout') {
     $stdout = TRUE;
   }
+  elseif ($argv[$arg_i] === '--no-killswitch') {
+    $no_killswitch = TRUE;
+  }
   else {
     $positional[] = $argv[$arg_i];
   }
 }
 
 if ($positional === []) {
-  fwrite(STDERR, "Usage: php embed.php [--compact] [--stdout] <source-script> [<output-script>]\n");
+  fwrite(STDERR, "Usage: php embed.php [--compact] [--no-killswitch] [--stdout] <source-script> [<output-script>]\n");
   exit(1);
 }
 
@@ -576,6 +590,39 @@ if (preg_match('/^\s*namespace\s+(.+?)\s*;/m', $source, $ns_match)) {
 
 $class_content = preg_replace('/^\s+|\s+$/', '', $minified) . "\n";
 
+// Add phpstan-ignore-next-line before the class declaration.
+$class_content = preg_replace('/^(class\s)/m', "// @phpstan-ignore-next-line\n$1", $class_content, 1);
+
+// Run Rector on the processed class content if available.
+$rector_bin = __DIR__ . '/vendor/bin/rector';
+$rector_config = __DIR__ . '/rector.php';
+
+if (is_file($rector_bin) && is_file($rector_config)) {
+  $rector_tmp = tempnam(sys_get_temp_dir(), 'embed_rector_');
+  rename($rector_tmp, $rector_tmp . '.php');
+  $rector_tmp .= '.php';
+
+  // Wrap class content in a valid PHP file for rector.
+  $rector_input = "<?php\n\ndeclare(strict_types=1);\n\n" . $class_content;
+  file_put_contents($rector_tmp, $rector_input);
+
+  $rector_output = [];
+  $rector_exit = 0;
+  exec('php ' . escapeshellarg($rector_bin) . ' process --no-ansi --config=' . escapeshellarg($rector_config) . ' ' . escapeshellarg($rector_tmp) . ' 2>&1', $rector_output, $rector_exit);
+
+  if ($rector_exit <= 1) {
+    // Read back the processed content and strip the PHP preamble.
+    $rector_result = file_get_contents($rector_tmp);
+    if ($rector_result !== FALSE) {
+      $rector_result = preg_replace('/^<\?php\s+declare\(strict_types\s*=\s*1\)\s*;\s*/s', '', $rector_result);
+      $class_content = preg_replace('/^\s+|\s+$/', '', (string) $rector_result) . "\n";
+    }
+  }
+
+  unlink($rector_tmp);
+  echo sprintf('Rector: processed.%s', PHP_EOL);
+}
+
 if ($stdout) {
   // --stdout mode: write a standalone PHP file.
   $standalone = "<?php\n\ndeclare(strict_types=1);\n\n";
@@ -603,9 +650,6 @@ if ($stdout) {
 
 // Build and inject the embedded block.
 $embedded = '// ' . EMBED_MARKER_START . "\n";
-if ($namespace !== '') {
-  $embedded .= "namespace {$namespace};\n\n";
-}
 $embedded .= $class_content;
 $embedded .= '// ' . EMBED_MARKER_END;
 
@@ -643,6 +687,29 @@ if ($namespace !== '') {
 }
 $result = preg_replace('/\n{3,}/', "\n\n", $result ?? '');
 
+// Inject kill switch if not present and not opted out.
+$has_killswitch = str_contains((string) $result, "if (!getenv('SHOULD_PROCEED'))");
+
+if (!$has_killswitch && !$no_killswitch) {
+  $killswitch = <<<'KILLSWITCH'
+
+// Kill switch — stop here when running under tests.
+// In production, set SHOULD_PROCEED=1 to continue past this point.
+if (!getenv('SHOULD_PROCEED')) {
+  return;
+}
+KILLSWITCH;
+
+  // Insert after the // phpcs:enable line if present, otherwise
+  // after @embed-end.
+  if (str_contains((string) $result, '// phpcs:enable')) {
+    $result = preg_replace('/(\/\/ phpcs:enable\n)/', '$1' . $killswitch, (string) $result, 1);
+  }
+  else {
+    $result = preg_replace('/(\/\/ ' . preg_quote(EMBED_MARKER_END, '/') . '[^\n]*\n)/', '$1' . $killswitch, (string) $result, 1);
+  }
+}
+
 // Write the result.
 file_put_contents($target_path, $result);
 
@@ -658,3 +725,47 @@ if ($lint_exit !== 0) {
 }
 
 echo sprintf('Embedded into %s%s', $target_path, PHP_EOL);
+
+// Check final kill switch state for warnings.
+$final_content = file_get_contents($target_path);
+$final_has_killswitch = $final_content !== FALSE && str_contains($final_content, "if (!getenv('SHOULD_PROCEED'))");
+
+if (!$final_has_killswitch) {
+  echo "\033[33mWarning: No kill switch found in the target file. Please test the embedded script manually.\033[0m" . PHP_EOL;
+}
+elseif (posix_isatty(STDIN)) {
+  // Run the embedded script to verify it works (only in interactive mode).
+  echo sprintf('Verifying embedded script (interactive input required)...%s', PHP_EOL);
+
+  $verify_exit = 0;
+  passthru('php ' . escapeshellarg($target_path), $verify_exit);
+
+  if ($verify_exit !== 0) {
+    fwrite(STDERR, sprintf("Warning: Embedded script exited with code %d.%s", $verify_exit, PHP_EOL));
+  }
+}
+else {
+  echo sprintf('Verifying embedded script...%s', PHP_EOL);
+
+  // Non-interactive mode: pipe keystrokes to simulate a quick run.
+  $descriptors = [0 => ['pipe', 'r'], 1 => ['pipe', 'w'], 2 => ['pipe', 'w']];
+  $verify_proc = proc_open('php ' . escapeshellarg($target_path), $descriptors, $verify_pipes);
+
+  if (is_resource($verify_proc)) {
+    // Send minimal input to get through the flow, then close stdin.
+    fwrite($verify_pipes[0], "\n\n\n\n");
+    fclose($verify_pipes[0]);
+
+    stream_get_contents($verify_pipes[1]);
+    fclose($verify_pipes[1]);
+
+    stream_get_contents($verify_pipes[2]);
+    fclose($verify_pipes[2]);
+
+    $verify_exit = proc_close($verify_proc);
+
+    if ($verify_exit !== 0) {
+      fwrite(STDERR, sprintf("Warning: Embedded script exited with code %d.%s", $verify_exit, PHP_EOL));
+    }
+  }
+}
