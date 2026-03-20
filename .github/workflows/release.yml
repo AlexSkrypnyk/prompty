@@ -37,7 +37,7 @@ jobs:
         run: php embed.php --compact --stdout Prompty.compact.php
 
       - name: Generate checksums
-        run: sha256sum Prompty.php Prompty.min.php Prompty.compact.php starter.php embed.php > SHA256SUMS
+        run: sha256sum Prompty.php Prompty.min.php Prompty.compact.php PromptyTestTrait.php starter.php embed.php > SHA256SUMS
 
       - name: Import GPG key
         run: echo "${{ secrets.GPG_PRIVATE_KEY }}" | gpg --batch --import
@@ -59,6 +59,7 @@ jobs:
             Prompty.php \
             Prompty.min.php \
             Prompty.compact.php \
+            PromptyTestTrait.php \
             starter.php \
             embed.php \
             SHA256SUMS \
