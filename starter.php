@@ -21,10 +21,9 @@ declare(strict_types=1);
 // Run `php embed.php starter.php` to embed Prompty here.
 // Use `php embed.php --compact starter.php` for a smaller output.
 require_once __DIR__ . '/Prompty.php';
+use AlexSkrypnyk\Prompty\Prompty;
 // @embed-end
 // phpcs:enable
-
-use AlexSkrypnyk\Prompty\Prompty;
 
 $results = Prompty::flow(fn(): array => [
   'name' => Prompty::text('Project name', placeholder: 'my-app'),

@@ -58,16 +58,14 @@ final class PromptyFlowWalkTest extends PromptyTestCase {
   }
 
   public function testFlowWalkSimple(): void {
-    $p = $this->createInstance();
-    $this->setStaticProperty('instance', $p);
+    $p = $this->createAndSetInstance();
 
     $steps = [
       'name' => $this->resolvedStep('my-app'),
       'framework' => $this->resolvedStep('vue'),
     ];
 
-    putenv('TEST_WALK_NAME=');
-    putenv('TEST_WALK_FRAMEWORK=');
+    $this->clearEnvVars(['name', 'framework'], 'TEST_WALK_');
 
     $this->captureOutput(function () use ($p, $steps): void {
       $result = $this->callProtected($p, 'flowWalk', $steps, 0, $this->defaultOptions(), '');
@@ -81,8 +79,7 @@ final class PromptyFlowWalkTest extends PromptyTestCase {
   }
 
   public function testFlowWalkConditionSkip(): void {
-    $p = $this->createInstance();
-    $this->setStaticProperty('instance', $p);
+    $p = $this->createAndSetInstance();
 
     $steps = [
       'name' => $this->resolvedStep('my-app'),
@@ -93,8 +90,7 @@ final class PromptyFlowWalkTest extends PromptyTestCase {
       ],
     ];
 
-    putenv('TEST_WALK_NAME=');
-    putenv('TEST_WALK_CONDITIONAL=');
+    $this->clearEnvVars(['name', 'conditional'], 'TEST_WALK_');
 
     $this->captureOutput(function () use ($p, $steps): void {
       $result = $this->callProtected($p, 'flowWalk', $steps, 0, $this->defaultOptions(), '');
@@ -108,8 +104,7 @@ final class PromptyFlowWalkTest extends PromptyTestCase {
   }
 
   public function testFlowWalkConditionPass(): void {
-    $p = $this->createInstance();
-    $this->setStaticProperty('instance', $p);
+    $p = $this->createAndSetInstance();
     $this->setProperty($p, 'results', ['name' => 'my-app']);
 
     $steps = [
@@ -120,7 +115,7 @@ final class PromptyFlowWalkTest extends PromptyTestCase {
       ],
     ];
 
-    putenv('TEST_WALK_CONDITIONAL=');
+    $this->clearEnvVars(['conditional'], 'TEST_WALK_');
 
     $this->captureOutput(function () use ($p, $steps): void {
       $result = $this->callProtected($p, 'flowWalk', $steps, 0, $this->defaultOptions(), '');
@@ -133,8 +128,7 @@ final class PromptyFlowWalkTest extends PromptyTestCase {
   }
 
   public function testFlowWalkChildren(): void {
-    $p = $this->createInstance();
-    $this->setStaticProperty('instance', $p);
+    $p = $this->createAndSetInstance();
 
     $steps = [
       'parent' => [
@@ -147,9 +141,7 @@ final class PromptyFlowWalkTest extends PromptyTestCase {
       ],
     ];
 
-    putenv('TEST_WALK_PARENT=');
-    putenv('TEST_WALK_CHILD1=');
-    putenv('TEST_WALK_CHILD2=');
+    $this->clearEnvVars(['parent', 'child1', 'child2'], 'TEST_WALK_');
 
     $this->captureOutput(function () use ($p, $steps): void {
       $result = $this->callProtected($p, 'flowWalk', $steps, 0, $this->defaultOptions(), '');
@@ -164,8 +156,7 @@ final class PromptyFlowWalkTest extends PromptyTestCase {
   }
 
   public function testFlowWalkChildrenCondition(): void {
-    $p = $this->createInstance();
-    $this->setStaticProperty('instance', $p);
+    $p = $this->createAndSetInstance();
 
     $steps = [
       'parent' => [
@@ -186,9 +177,7 @@ final class PromptyFlowWalkTest extends PromptyTestCase {
       ],
     ];
 
-    putenv('TEST_WALK_PARENT=');
-    putenv('TEST_WALK_VISIBLE_CHILD=');
-    putenv('TEST_WALK_HIDDEN_CHILD=');
+    $this->clearEnvVars(['parent', 'visible_child', 'hidden_child'], 'TEST_WALK_');
 
     $this->captureOutput(function () use ($p, $steps): void {
       $result = $this->callProtected($p, 'flowWalk', $steps, 0, $this->defaultOptions(), '');
@@ -202,8 +191,7 @@ final class PromptyFlowWalkTest extends PromptyTestCase {
   }
 
   public function testFlowWalkNoVisibleChildren(): void {
-    $p = $this->createInstance();
-    $this->setStaticProperty('instance', $p);
+    $p = $this->createAndSetInstance();
 
     $steps = [
       'parent' => [
@@ -219,8 +207,7 @@ final class PromptyFlowWalkTest extends PromptyTestCase {
       ],
     ];
 
-    putenv('TEST_WALK_PARENT=');
-    putenv('TEST_WALK_CHILD=');
+    $this->clearEnvVars(['parent', 'child'], 'TEST_WALK_');
 
     $this->captureOutput(function () use ($p, $steps): void {
       $result = $this->callProtected($p, 'flowWalk', $steps, 0, $this->defaultOptions(), '');
@@ -235,14 +222,13 @@ final class PromptyFlowWalkTest extends PromptyTestCase {
 
   #[DataProvider('dataProviderFlowWalkNumbering')]
   public function testFlowWalkNumbering(string $number_prefix, int $step_index, string $expected_number): void {
-    $p = $this->createInstance();
-    $this->setStaticProperty('instance', $p);
+    $p = $this->createAndSetInstance();
 
     // Build steps with the expected count.
     $steps = [];
     for ($i = 1; $i <= max($step_index, 3); $i++) {
       $steps['step' . $i] = $this->resolvedStep('val' . $i);
-      putenv('TEST_WALK_STEP' . $i . '=');
+      $this->clearEnvVars(['step' . $i], 'TEST_WALK_');
     }
 
     $this->captureOutput(function () use ($p, $steps, $number_prefix): void {
@@ -262,8 +248,7 @@ final class PromptyFlowWalkTest extends PromptyTestCase {
   }
 
   public function testFlowWalkCancellation(): void {
-    $p = $this->createInstance();
-    $this->setStaticProperty('instance', $p);
+    $p = $this->createAndSetInstance();
 
     $steps = [
       'name' => $this->resolvedStep('my-app'),
@@ -271,9 +256,7 @@ final class PromptyFlowWalkTest extends PromptyTestCase {
       'unreached' => $this->resolvedStep('should-not-run'),
     ];
 
-    putenv('TEST_WALK_NAME=');
-    putenv('TEST_WALK_CANCELLED=');
-    putenv('TEST_WALK_UNREACHED=');
+    $this->clearEnvVars(['name', 'cancelled', 'unreached'], 'TEST_WALK_');
 
     $this->captureOutput(function () use ($p, $steps): void {
       $result = $this->callProtected($p, 'flowWalk', $steps, 0, $this->defaultOptions(), '');
@@ -287,8 +270,7 @@ final class PromptyFlowWalkTest extends PromptyTestCase {
   }
 
   public function testFlowWalkSiblingDetection(): void {
-    $p = $this->createInstance();
-    $this->setStaticProperty('instance', $p);
+    $p = $this->createAndSetInstance();
 
     // Three children at depth 1. The condition on child3 always fails,
     // so child2 should be detected as the last visible child.
@@ -302,9 +284,7 @@ final class PromptyFlowWalkTest extends PromptyTestCase {
       ],
     ];
 
-    putenv('TEST_WALK_CHILD1=');
-    putenv('TEST_WALK_CHILD2=');
-    putenv('TEST_WALK_CHILD3=');
+    $this->clearEnvVars(['child1', 'child2', 'child3'], 'TEST_WALK_');
 
     $this->captureOutput(function () use ($p, $steps): void {
       $result = $this->callProtected($p, 'flowWalk', $steps, 1, $this->defaultOptions(), '');
@@ -319,8 +299,7 @@ final class PromptyFlowWalkTest extends PromptyTestCase {
   }
 
   public function testFlowWalkChildCancellation(): void {
-    $p = $this->createInstance();
-    $this->setStaticProperty('instance', $p);
+    $p = $this->createAndSetInstance();
 
     $steps = [
       'parent' => [
@@ -332,8 +311,7 @@ final class PromptyFlowWalkTest extends PromptyTestCase {
       ],
     ];
 
-    putenv('TEST_WALK_PARENT=');
-    putenv('TEST_WALK_CHILD=');
+    $this->clearEnvVars(['parent', 'child'], 'TEST_WALK_');
 
     $this->captureOutput(function () use ($p, $steps): void {
       $result = $this->callProtected($p, 'flowWalk', $steps, 0, $this->defaultOptions(), '');
@@ -347,8 +325,7 @@ final class PromptyFlowWalkTest extends PromptyTestCase {
   }
 
   public function testFlowWalkSiblingDetectionWithConditionPass(): void {
-    $p = $this->createInstance();
-    $this->setStaticProperty('instance', $p);
+    $p = $this->createAndSetInstance();
 
     // Two steps at depth 1. The second has a __condition that passes.
     // This tests the sibling condition check path (line 931-933).
@@ -361,8 +338,7 @@ final class PromptyFlowWalkTest extends PromptyTestCase {
       ],
     ];
 
-    putenv('TEST_WALK_FIRST=');
-    putenv('TEST_WALK_SECOND=');
+    $this->clearEnvVars(['first', 'second'], 'TEST_WALK_');
 
     $this->captureOutput(function () use ($p, $steps): void {
       $result = $this->callProtected($p, 'flowWalk', $steps, 1, $this->defaultOptions(), '');

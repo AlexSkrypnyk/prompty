@@ -8,9 +8,6 @@ use AlexSkrypnyk\Prompty\Prompty;
 use AlexSkrypnyk\Prompty\PromptyTestTrait;
 use PHPUnit\Framework\TestCase;
 
-require_once __DIR__ . '/../../../../Prompty.php';
-require_once __DIR__ . '/../../../../PromptyTestTrait.php';
-
 /**
  * Base test case for Prompty unit tests.
  *
@@ -20,6 +17,76 @@ require_once __DIR__ . '/../../../../PromptyTestTrait.php';
 abstract class PromptyTestCase extends TestCase {
 
   use PromptyTestTrait;
+
+  /**
+   * Environment variables set during the test.
+   *
+   * @var list<string>
+   */
+  protected array $envVarsToClean = [];
+
+  /**
+   * Default widget context array.
+   *
+   * @param array<string, mixed> $overrides
+   *   Overrides.
+   *
+   * @return array<string, mixed>
+   *   Context array.
+   */
+  protected function defaultCtx(array $overrides = []): array {
+    return array_merge([
+      'depth' => 0,
+      'is_last' => FALSE,
+      'open' => [],
+      'number' => NULL,
+      'env_value' => NULL,
+    ], $overrides);
+  }
+
+  /**
+   * Create a Prompty instance and set it as the singleton.
+   */
+  protected function createAndSetInstance(array $config = [], bool $in_flow = FALSE): Prompty {
+    $p = $this->promptyCreateInstance($config);
+    $this->promptySetStatic('instance', $p);
+
+    if ($in_flow) {
+      $this->promptySetStatic('inFlow', TRUE);
+    }
+
+    return $p;
+  }
+
+  /**
+   * Set environment variables for a test.
+   *
+   * @param array<string, string> $vars
+   *   Key-value pairs to set.
+   * @param string $prefix
+   *   Env prefix.
+   */
+  protected function setEnvVars(array $vars, string $prefix = 'PROMPTY_'): void {
+    foreach ($vars as $key => $value) {
+      $env_key = $prefix . strtoupper($key);
+      putenv($env_key . '=' . $value);
+      $this->envVarsToClean[] = $env_key;
+    }
+  }
+
+  /**
+   * Clear environment variables after a test.
+   *
+   * @param array<string> $keys
+   *   Keys to clear.
+   * @param string $prefix
+   *   Env prefix.
+   */
+  protected function clearEnvVars(array $keys, string $prefix = 'PROMPTY_'): void {
+    foreach ($keys as $key) {
+      putenv($prefix . strtoupper($key));
+    }
+  }
 
   protected function createInstance(array $config = []): Prompty {
     return $this->promptyCreateInstance($config);
@@ -75,6 +142,12 @@ abstract class PromptyTestCase extends TestCase {
   }
 
   protected function tearDown(): void {
+    // Clean up any env vars set during the test.
+    foreach ($this->envVarsToClean as $key) {
+      putenv($key);
+    }
+    $this->envVarsToClean = [];
+
     $this->promptyTearDown();
     parent::tearDown();
   }
