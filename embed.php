@@ -9,12 +9,13 @@
  * @see https://github.com/AlexSkrypnyk/prompty
  *
  * Usage:
- *   php embed.php [--compact] [--no-killswitch] <source>
- *                 [<output>]
- *   php embed.php [--compact] --stdout <output-file>
+ *   php embed.php [options] <source-script> [<output-script>]
+ *   php embed.php [options] --stdout <output-file>
  *
  * The source script must contain // @embed-start and // @embed-end markers.
- * The minified class will be inserted between these markers.
+ * The minified class will be inserted between these markers. Re-running on
+ * a previously embedded script replaces the embedded region with the latest
+ * class content while preserving all other code.
  *
  * If <output-script> is provided, the source is copied there first and the
  * embedding is performed on the copy. Otherwise the source is modified
@@ -26,6 +27,8 @@
  * then run to verify it works.
  *
  * Options:
+ *   --source <path>  Path to the PHP class file to embed. Defaults to
+ *                    Prompty.php in the same directory as this script.
  *   --compact        Apply additional size optimizations: shorten internal
  *                    property and method names, rename local variables,
  *                    reduce whitespace.
@@ -50,6 +53,7 @@ define('EMBED_MARKER_END', '@embed-end');
 $compact = FALSE;
 $stdout = FALSE;
 $no_killswitch = FALSE;
+$source_override = NULL;
 $positional = [];
 
 for ($arg_i = 1; $arg_i < $argc; $arg_i++) {
@@ -62,13 +66,49 @@ for ($arg_i = 1; $arg_i < $argc; $arg_i++) {
   elseif ($argv[$arg_i] === '--no-killswitch') {
     $no_killswitch = TRUE;
   }
+  elseif ($argv[$arg_i] === '--source') {
+    $arg_i++;
+    if ($arg_i >= $argc) {
+      fwrite(STDERR, "Error: --source requires a path argument.\n");
+      exit(1);
+    }
+    $source_override = $argv[$arg_i];
+  }
   else {
     $positional[] = $argv[$arg_i];
   }
 }
 
 if ($positional === []) {
-  fwrite(STDERR, "Usage: php embed.php [--compact] [--no-killswitch] [--stdout] <source-script> [<output-script>]\n");
+  $usage = <<<'USAGE'
+Embedder — minifies and embeds a PHP class into a target script.
+
+Usage:
+  php embed.php [options] <source-script> [<output-script>]
+  php embed.php [options] --stdout <output-file>
+
+Arguments:
+  <source-script>   Script containing // @embed-start and // @embed-end markers.
+                    Modified in place unless <output-script> is provided.
+  <output-script>   Optional output path. Source is copied here before embedding.
+
+Options:
+  --source <path>   Path to the PHP class file to embed. Defaults to Prompty.php
+                    in the same directory as this script.
+  --compact         Shorten internal property/method names, rename local
+                    variables, and reduce whitespace for a smaller output.
+  --stdout          Output the processed class as a standalone PHP file instead
+                    of embedding into a target script.
+  --no-killswitch   Skip injecting the kill-switch block and post-embed
+                    verification run.
+
+Re-embedding:
+  Running embed.php on a previously embedded script replaces the embedded region
+  with the latest class content. All code outside the markers is preserved. Use
+  --source to point at an updated Prompty.php for version updates.
+
+USAGE;
+  fwrite(STDERR, $usage);
   exit(1);
 }
 
@@ -93,16 +133,18 @@ else {
   }
 }
 
-if (!is_file(EMBED_SOURCE)) {
-  fwrite(STDERR, sprintf('Error: Source class not found: %s%s', EMBED_SOURCE, PHP_EOL));
+$embed_source = $source_override ?? EMBED_SOURCE;
+
+if (!is_file($embed_source)) {
+  fwrite(STDERR, sprintf('Error: Source class not found: %s%s', $embed_source, PHP_EOL));
   exit(1);
 }
 
 // Read and tokenize the source class.
-$source = file_get_contents(EMBED_SOURCE);
+$source = file_get_contents($embed_source);
 
 if ($source === FALSE) {
-  fwrite(STDERR, sprintf('Error: Could not read source class: %s%s', EMBED_SOURCE, PHP_EOL));
+  fwrite(STDERR, sprintf('Error: Could not read source class: %s%s', $embed_source, PHP_EOL));
   exit(1);
 }
 
