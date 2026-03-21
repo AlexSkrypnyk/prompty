@@ -722,7 +722,7 @@ if ($result === NULL) {
 }
 
 // Collapse any resulting consecutive blank lines.
-$result = preg_replace('/\n{3,}/', "\n\n", $result ?? '');
+$result = preg_replace('/\n{3,}/', "\n\n", $result);
 
 // Inject kill switch if not present and not opted out.
 $has_killswitch = str_contains((string) $result, "if (!getenv('SHOULD_PROCEED'))");

@@ -23,7 +23,7 @@ abstract class PromptyTestCase extends TestCase {
    *
    * @var list<string>
    */
-  protected array $envVarsToClean = [];
+  protected array $envKeys = [];
 
   /**
    * Default widget context array.
@@ -70,7 +70,7 @@ abstract class PromptyTestCase extends TestCase {
     foreach ($vars as $key => $value) {
       $env_key = $prefix . strtoupper($key);
       putenv($env_key . '=' . $value);
-      $this->envVarsToClean[] = $env_key;
+      $this->envKeys[] = $env_key;
     }
   }
 
@@ -143,10 +143,8 @@ abstract class PromptyTestCase extends TestCase {
 
   protected function tearDown(): void {
     // Clean up any env vars set during the test.
-    foreach ($this->envVarsToClean as $key) {
-      putenv($key);
-    }
-    $this->envVarsToClean = [];
+    array_map(putenv(...), $this->envKeys);
+    $this->envKeys = [];
 
     $this->promptyTearDown();
     parent::tearDown();
