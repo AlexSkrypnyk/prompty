@@ -721,12 +721,7 @@ if ($result === NULL) {
   exit(1);
 }
 
-// Remove 'use' statements for the embedded namespace since the class is now
-// embedded inline, then collapse any resulting consecutive blank lines.
-if ($namespace !== '') {
-  $ns_escaped = preg_quote($namespace, '/');
-  $result = preg_replace('/^use\s+' . $ns_escaped . '\\\\[^;]+;\n/m', '', $result);
-}
+// Collapse any resulting consecutive blank lines.
 $result = preg_replace('/\n{3,}/', "\n\n", $result ?? '');
 
 // Inject kill switch if not present and not opted out.
