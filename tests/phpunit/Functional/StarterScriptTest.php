@@ -24,7 +24,7 @@ final class StarterScriptTest extends FunctionalTestCase {
 
   protected function setUp(): void {
     parent::setUp();
-    $this->starterScript = $this->root . '/starter.php';
+    $this->starterScript = self::$root . '/starter.php';
   }
 
   public function testStarterFlowCompletes(): void {
@@ -33,10 +33,10 @@ final class StarterScriptTest extends FunctionalTestCase {
 
   public function testStarterSelectThirdFramework(): void {
     $keystrokes = $this->keys(
-      'app', self::KEY_ENTER,
-      self::KEY_DOWN, self::KEY_DOWN, self::KEY_ENTER,
-      self::KEY_ENTER,
-      self::KEY_ENTER,
+      'app', self::KEYS['ENTER'],
+      self::KEYS['DOWN'], self::KEYS['DOWN'], self::KEYS['ENTER'],
+      self::KEYS['ENTER'],
+      self::KEYS['ENTER'],
     );
 
     $output = $this->runScript($this->starterScript, $keystrokes);
@@ -49,10 +49,10 @@ final class StarterScriptTest extends FunctionalTestCase {
 
   public function testStarterEmptyNameUsesPlaceholder(): void {
     $keystrokes = $this->keys(
-      self::KEY_ENTER,
-      self::KEY_ENTER,
-      self::KEY_ENTER,
-      self::KEY_ENTER,
+      self::KEYS['ENTER'],
+      self::KEYS['ENTER'],
+      self::KEYS['ENTER'],
+      self::KEYS['ENTER'],
     );
 
     $output = $this->runScript($this->starterScript, $keystrokes);
@@ -63,10 +63,10 @@ final class StarterScriptTest extends FunctionalTestCase {
 
   public function testStarterDeclineInstall(): void {
     $keystrokes = $this->keys(
-      'test', self::KEY_ENTER,
-      self::KEY_ENTER,
-      self::KEY_ENTER,
-      self::KEY_LEFT, self::KEY_ENTER,
+      'test', self::KEYS['ENTER'],
+      self::KEYS['ENTER'],
+      self::KEYS['ENTER'],
+      self::KEYS['LEFT'], self::KEYS['ENTER'],
     );
 
     $output = $this->runScript($this->starterScript, $keystrokes);
@@ -77,10 +77,10 @@ final class StarterScriptTest extends FunctionalTestCase {
 
   public function testStarterOutputContainsIntroOutro(): void {
     $keystrokes = $this->keys(
-      self::KEY_ENTER,
-      self::KEY_ENTER,
-      self::KEY_ENTER,
-      self::KEY_ENTER,
+      self::KEYS['ENTER'],
+      self::KEYS['ENTER'],
+      self::KEYS['ENTER'],
+      self::KEYS['ENTER'],
     );
 
     $output = $this->runScript($this->starterScript, $keystrokes);

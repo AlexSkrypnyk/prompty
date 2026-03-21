@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace AlexSkrypnyk\Prompty\Tests\Functional;
 
+use AlexSkrypnyk\PhpunitHelpers\Traits\LocationsTrait;
+use AlexSkrypnyk\PhpunitHelpers\Traits\ProcessTrait;
+use AlexSkrypnyk\PhpunitHelpers\Traits\TuiTrait;
 use PHPUnit\Framework\Attributes\CoversNothing;
 use PHPUnit\Framework\TestCase;
 
@@ -16,47 +19,25 @@ use PHPUnit\Framework\TestCase;
 #[CoversNothing]
 abstract class FunctionalTestCase extends TestCase {
 
-  protected const KEY_ENTER = "\n";
-  protected const KEY_SPACE = ' ';
-  protected const KEY_BACKSPACE = "\x7f";
-  protected const KEY_TAB = "\t";
-  protected const KEY_ESCAPE = "\x1b";
-  protected const KEY_CTRL_C = "\x03";
-  protected const KEY_UP = "\x1b[A";
-  protected const KEY_DOWN = "\x1b[B";
-  protected const KEY_RIGHT = "\x1b[C";
-  protected const KEY_LEFT = "\x1b[D";
-
-  /**
-   * Project root directory.
-   */
-  protected string $root;
-
-  /**
-   * Temporary directory for test artifacts.
-   */
-  protected string $tmpDir;
+  use LocationsTrait;
+  use ProcessTrait;
+  use TuiTrait;
 
   protected function setUp(): void {
     parent::setUp();
-
-    $this->root = dirname(__DIR__, 3);
-
-    $short_class = (new \ReflectionClass(static::class))->getShortName();
-    $this->tmpDir = $this->root . '/.artifacts/tmp/' . $short_class . '_' . getmypid();
-    mkdir($this->tmpDir, 0755, TRUE);
+    $this->locationsInit();
   }
 
   protected function tearDown(): void {
-    if (is_dir($this->tmpDir)) {
-      $files = glob($this->tmpDir . '/*');
-      if ($files !== FALSE) {
-        array_map(unlink(...), $files);
-      }
-      rmdir($this->tmpDir);
-    }
-
+    $this->locationsTearDown();
     parent::tearDown();
+  }
+
+  /**
+   * Assertion suffix for ProcessTrait error messages.
+   */
+  protected function assertionSuffix(): string {
+    return '';
   }
 
   /**
@@ -67,22 +48,15 @@ abstract class FunctionalTestCase extends TestCase {
   }
 
   /**
-   * Assert that a PHP file passes lint checking.
-   */
-  protected function assertPhpLintPasses(string $path): void {
-    $output = [];
-    $exit_code = 0;
-    exec('php -l ' . escapeshellarg($path) . ' 2>&1', $output, $exit_code);
-    $this->assertSame(0, $exit_code, 'PHP lint failed: ' . implode("\n", $output));
-  }
-
-  /**
-   * Run a command in a subprocess with simulated keystrokes.
+   * Run a command in a subprocess with raw keystroke input.
+   *
+   * Unlike processRun() which joins inputs with newlines, this method
+   * passes raw bytes directly to stdin — required for TUI escape sequences.
    *
    * @param string $command
    *   The command to execute.
    * @param string $keystrokes
-   *   Simulated keyboard input.
+   *   Raw keystroke bytes.
    *
    * @return array{stdout: string, stderr: string, exit_code: int}
    *   Process output.
@@ -140,19 +114,16 @@ abstract class FunctionalTestCase extends TestCase {
    */
   protected function assertStarterFlowWorks(string $script_path): void {
     $keystrokes = $this->keys(
-      'my-project', self::KEY_ENTER,
-      self::KEY_DOWN, self::KEY_ENTER,
-      self::KEY_SPACE, self::KEY_ENTER,
-      self::KEY_ENTER,
+      'my-project', static::KEYS['ENTER'],
+      static::KEYS['DOWN'], static::KEYS['ENTER'],
+      static::KEYS['SPACE'], static::KEYS['ENTER'],
+      static::KEYS['ENTER'],
     );
 
     $output = $this->runScript($script_path, $keystrokes);
 
-    // Intro and outro.
     $this->assertStringContainsString('Create a new project', $output);
     $this->assertStringContainsString('Project created!', $output);
-
-    // Completed values.
     $this->assertStringContainsString('my-project', $output);
     $this->assertStringContainsString('Vue', $output);
     $this->assertStringContainsString('TypeScript', $output);
