@@ -877,7 +877,7 @@ class Prompty {
 
     // Interactive multi-selection loop.
     $focused = 0;
-    $checked = array_map(static fn($key): bool => in_array($key, $default, TRUE), $option_keys);
+    $checked = array_map(static fn(string $key): bool => in_array($key, $default, TRUE), $option_keys);
     $line_count = $p->printLines($render_active($focused, $checked));
 
     while (TRUE) {

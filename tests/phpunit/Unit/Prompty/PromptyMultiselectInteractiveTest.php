@@ -17,6 +17,20 @@ final class PromptyMultiselectInteractiveTest extends PromptyTestCase {
 
   /**
    * Run the multiselect widget with injected keystrokes.
+   *
+   * @param string $keystrokes
+   *   Raw keystroke bytes to feed.
+   * @param array<string, string> $options
+   *   Map of option key to display label.
+   * @param array<string, string> $hints
+   *   Map of option key to hint text.
+   * @param array<string, mixed> $ctx_overrides
+   *   Optional context overrides.
+   * @param list<string> $default
+   *   Option keys to pre-check.
+   *
+   * @return array{result: mixed, output: string}
+   *   The widget return value and captured output.
    */
   protected function runMultiselectWidget(string $keystrokes, array $options = [], array $hints = [], array $ctx_overrides = [], array $default = []): array {
     if ($options === []) {
