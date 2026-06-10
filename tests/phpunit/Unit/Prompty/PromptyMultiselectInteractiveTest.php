@@ -18,12 +18,12 @@ final class PromptyMultiselectInteractiveTest extends PromptyTestCase {
   /**
    * Run the multiselect widget with injected keystrokes.
    */
-  protected function runMultiselectWidget(string $keystrokes, array $options = [], array $hints = [], array $ctx_overrides = []): array {
+  protected function runMultiselectWidget(string $keystrokes, array $options = [], array $hints = [], array $ctx_overrides = [], array $default = []): array {
     if ($options === []) {
       $options = ['ts' => 'TypeScript', 'eslint' => 'ESLint', 'prettier' => 'Prettier'];
     }
 
-    return $this->promptyRun(function () use ($options, $hints, $ctx_overrides): mixed {
+    return $this->promptyRun(function () use ($options, $hints, $ctx_overrides, $default): mixed {
       $p = $this->createInstance();
       $default_ctx = [
         'depth' => 0,
@@ -33,7 +33,7 @@ final class PromptyMultiselectInteractiveTest extends PromptyTestCase {
         'env_value' => NULL,
       ];
 
-      return Prompty::multiselect('Features', options: $options, hints: $hints, ctx: array_merge($default_ctx, $ctx_overrides));
+      return Prompty::multiselect('Features', options: $options, default: $default, hints: $hints, ctx: array_merge($default_ctx, $ctx_overrides));
     }, $keystrokes);
   }
 
@@ -166,6 +166,48 @@ final class PromptyMultiselectInteractiveTest extends PromptyTestCase {
 
     $this->assertNull($r['result']);
     $this->assertStringContainsString('(cancelled)', (string) $r['output']);
+  }
+
+  public function testDefaultPreChecksOptions(): void {
+    $r = $this->runMultiselectWidget(self::KEY_ENTER, [], [], [], ['ts', 'prettier']);
+
+    $this->assertSame(['ts', 'prettier'], $r['result']);
+  }
+
+  public function testDefaultRendersPreCheckedSelection(): void {
+    $r = $this->runMultiselectWidget(self::KEY_ENTER, [], [], [], ['ts', 'eslint']);
+
+    $this->assertSame(['ts', 'eslint'], $r['result']);
+    $this->assertStringContainsString('TypeScript, ESLint', (string) $r['output']);
+  }
+
+  public function testDefaultThenToggleOffYieldsEmpty(): void {
+    $r = $this->runMultiselectWidget(self::KEY_SPACE . self::KEY_ENTER, [], [], [], ['ts']);
+
+    $this->assertSame([], $r['result']);
+  }
+
+  public function testDefaultThenCheckAnother(): void {
+    $r = $this->runMultiselectWidget(self::KEY_DOWN . self::KEY_SPACE . self::KEY_ENTER, [], [], [], ['ts']);
+
+    $this->assertSame(['ts', 'eslint'], $r['result']);
+  }
+
+  public function testDefaultUnknownKeysIgnored(): void {
+    $r = $this->runMultiselectWidget(self::KEY_ENTER, [], [], [], ['nonexistent']);
+
+    $this->assertSame([], $r['result']);
+  }
+
+  public function testDefaultThreadsThroughFlowClosure(): void {
+    $r = $this->promptyRun(function (): mixed {
+      $closure = Prompty::multiselect('Features', options: ['ts' => 'TypeScript', 'eslint' => 'ESLint'], default: ['ts']);
+      $this->assertInstanceOf(\Closure::class, $closure);
+
+      return $closure($this->defaultCtx());
+    }, self::KEY_ENTER);
+
+    $this->assertSame(['ts'], $r['result']);
   }
 
 }

@@ -42,3 +42,11 @@ $r = Prompty::select('License', options: [
   'gpl3' => "Copyleft. Derivative works must also be GPL.\nStrong open-source guarantee.",
 ]);
 echo '  Result: ' . ($r ?? 'cancelled') . "\n";
+
+echo "\n--- Select: with default (pre-focused) ---\n";
+$r = Prompty::select('Framework', options: [
+  'react' => 'React',
+  'vue' => 'Vue',
+  'svelte' => 'Svelte',
+], default: 'vue', description: 'Vue is focused by default.');
+echo '  Result: ' . ($r ?? 'cancelled') . "\n";

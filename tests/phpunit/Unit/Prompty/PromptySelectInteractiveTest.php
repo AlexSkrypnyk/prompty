@@ -18,12 +18,12 @@ final class PromptySelectInteractiveTest extends PromptyTestCase {
   /**
    * Run the select widget with injected keystrokes.
    */
-  protected function runSelectWidget(string $keystrokes, array $options = [], array $hints = [], array $ctx_overrides = []): array {
+  protected function runSelectWidget(string $keystrokes, array $options = [], array $hints = [], array $ctx_overrides = [], string $default = ''): array {
     if ($options === []) {
       $options = ['react' => 'React', 'vue' => 'Vue', 'svelte' => 'Svelte'];
     }
 
-    return $this->promptyRun(function () use ($options, $hints, $ctx_overrides): mixed {
+    return $this->promptyRun(function () use ($options, $hints, $ctx_overrides, $default): mixed {
       $p = $this->createInstance();
       $default_ctx = [
         'depth' => 0,
@@ -33,7 +33,7 @@ final class PromptySelectInteractiveTest extends PromptyTestCase {
         'env_value' => NULL,
       ];
 
-      return Prompty::select('Framework', options: $options, hints: $hints, ctx: array_merge($default_ctx, $ctx_overrides));
+      return Prompty::select('Framework', options: $options, default: $default, hints: $hints, ctx: array_merge($default_ctx, $ctx_overrides));
     }, $keystrokes);
   }
 
@@ -175,6 +175,41 @@ final class PromptySelectInteractiveTest extends PromptyTestCase {
 
     $this->assertNull($r['result']);
     $this->assertStringContainsString('(cancelled)', (string) $r['output']);
+  }
+
+  public function testDefaultFocusesOption(): void {
+    $r = $this->runSelectWidget(self::KEY_ENTER, [], [], [], 'vue');
+
+    $this->assertSame('vue', $r['result']);
+  }
+
+  public function testDefaultLastOption(): void {
+    $r = $this->runSelectWidget(self::KEY_ENTER, [], [], [], 'svelte');
+
+    $this->assertSame('svelte', $r['result']);
+  }
+
+  public function testDefaultThenNavigate(): void {
+    $r = $this->runSelectWidget(self::KEY_DOWN . self::KEY_ENTER, [], [], [], 'vue');
+
+    $this->assertSame('svelte', $r['result']);
+  }
+
+  public function testDefaultUnknownFallsBackToFirst(): void {
+    $r = $this->runSelectWidget(self::KEY_ENTER, [], [], [], 'nonexistent');
+
+    $this->assertSame('react', $r['result']);
+  }
+
+  public function testDefaultThreadsThroughFlowClosure(): void {
+    $r = $this->promptyRun(function (): mixed {
+      $closure = Prompty::select('Framework', options: ['react' => 'React', 'vue' => 'Vue'], default: 'vue');
+      $this->assertInstanceOf(\Closure::class, $closure);
+
+      return $closure($this->defaultCtx());
+    }, self::KEY_ENTER);
+
+    $this->assertSame('vue', $r['result']);
   }
 
 }

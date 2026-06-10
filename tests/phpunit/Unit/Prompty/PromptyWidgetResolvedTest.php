@@ -399,4 +399,70 @@ final class PromptyWidgetResolvedTest extends PromptyTestCase {
     $this->assertStringContainsString('(2.1)', $output);
   }
 
+  public function testTextDefaultYieldsToDiscovered(): void {
+    $this->captureOutput(function () use (&$result): void {
+      $result = Prompty::text('Name', default: 'seed', discovered: 'disc', ctx: $this->ctx());
+    });
+
+    $this->assertSame('disc', $result);
+  }
+
+  public function testTextDefaultYieldsToEnv(): void {
+    $this->captureOutput(function () use (&$result): void {
+      $result = Prompty::text('Name', default: 'seed', ctx: $this->ctx(['env_value' => 'env-val']));
+    });
+
+    $this->assertSame('env-val', $result);
+  }
+
+  public function testSelectDefaultYieldsToDiscovered(): void {
+    $this->captureOutput(function () use (&$result): void {
+      $result = Prompty::select('Framework',
+        options: ['react' => 'React', 'vue' => 'Vue'],
+        default: 'vue',
+        discovered: 'react',
+        ctx: $this->ctx(),
+      );
+    });
+
+    $this->assertSame('react', $result);
+  }
+
+  public function testSelectDefaultYieldsToEnv(): void {
+    $this->captureOutput(function () use (&$result): void {
+      $result = Prompty::select('Framework',
+        options: ['react' => 'React', 'vue' => 'Vue'],
+        default: 'vue',
+        ctx: $this->ctx(['env_value' => 'react']),
+      );
+    });
+
+    $this->assertSame('react', $result);
+  }
+
+  public function testMultiselectDefaultYieldsToDiscovered(): void {
+    $this->captureOutput(function () use (&$result): void {
+      $result = Prompty::multiselect('Features',
+        options: ['ts' => 'TypeScript', 'eslint' => 'ESLint'],
+        default: ['ts'],
+        discovered: ['eslint'],
+        ctx: $this->ctx(),
+      );
+    });
+
+    $this->assertSame(['eslint'], $result);
+  }
+
+  public function testMultiselectDefaultYieldsToEnv(): void {
+    $this->captureOutput(function () use (&$result): void {
+      $result = Prompty::multiselect('Features',
+        options: ['ts' => 'TypeScript', 'eslint' => 'ESLint'],
+        default: ['ts'],
+        ctx: $this->ctx(['env_value' => 'eslint']),
+      );
+    });
+
+    $this->assertSame(['eslint'], $result);
+  }
+
 }
