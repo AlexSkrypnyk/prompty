@@ -183,6 +183,16 @@ final class PromptyMultiselectInteractiveTest extends PromptyTestCase {
     $this->assertStringContainsString('(cancelled)', (string) $r['output']);
   }
 
+  /**
+   * Tests that pre-checked defaults seed the interactive state.
+   *
+   * @param string $keystrokes
+   *   Raw keystroke bytes to feed.
+   * @param list<string> $default
+   *   Option keys to pre-check.
+   * @param list<string> $expected
+   *   Expected selected option keys.
+   */
   #[DataProvider('dataProviderDefault')]
   public function testDefault(string $keystrokes, array $default, array $expected): void {
     $r = $this->runMultiselectWidget($keystrokes, [], [], [], $default);
