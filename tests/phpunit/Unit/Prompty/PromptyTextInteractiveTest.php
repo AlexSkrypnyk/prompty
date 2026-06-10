@@ -25,12 +25,14 @@ final class PromptyTextInteractiveTest extends PromptyTestCase {
    *   Raw keystroke bytes to feed.
    * @param array<string, mixed> $ctx_overrides
    *   Optional context overrides.
+   * @param string $default
+   *   Pre-filled, editable initial value.
    *
    * @return array{result: mixed, output: string}
    *   The widget return value and captured output.
    */
-  protected function runTextWidget(string $keystrokes, array $ctx_overrides = []): array {
-    return $this->promptyRun(function () use ($ctx_overrides): mixed {
+  protected function runTextWidget(string $keystrokes, array $ctx_overrides = [], string $default = ''): array {
+    return $this->promptyRun(function () use ($ctx_overrides, $default): mixed {
       $p = $this->createInstance();
       $default_ctx = [
         'depth' => 0,
@@ -40,7 +42,7 @@ final class PromptyTextInteractiveTest extends PromptyTestCase {
         'env_value' => NULL,
       ];
 
-      return Prompty::text('Project name', placeholder: 'my-app', description: 'Enter a name.', ctx: array_merge($default_ctx, $ctx_overrides));
+      return Prompty::text('Project name', default: $default, placeholder: 'my-app', description: 'Enter a name.', ctx: array_merge($default_ctx, $ctx_overrides));
     }, $keystrokes);
   }
 
@@ -158,6 +160,36 @@ final class PromptyTextInteractiveTest extends PromptyTestCase {
     $r = $this->runTextWidget('a b' . self::KEY_ENTER);
 
     $this->assertSame('a b', $r['result']);
+  }
+
+  #[DataProvider('dataProviderDefault')]
+  public function testDefault(string $keystrokes, string $default, string $expected): void {
+    $r = $this->runTextWidget($keystrokes, [], $default);
+
+    $this->assertSame($expected, $r['result']);
+  }
+
+  public static function dataProviderDefault(): \Iterator {
+    yield 'pre-fills value' => [self::KEY_ENTER, 'seed-name', 'seed-name'];
+    yield 'editable' => [self::KEY_BACKSPACE . 'x' . self::KEY_ENTER, 'abc', 'abx'];
+    yield 'cleared falls back to placeholder' => [self::KEY_BACKSPACE . self::KEY_BACKSPACE . self::KEY_ENTER, 'ab', 'my-app'];
+  }
+
+  public function testDefaultShownInActiveState(): void {
+    $r = $this->runTextWidget('x' . self::KEY_ENTER, [], 'preset');
+
+    $this->assertStringContainsString('preset', $r['output']);
+  }
+
+  public function testDefaultThreadsThroughFlowClosure(): void {
+    $r = $this->promptyRun(function (): mixed {
+      $closure = Prompty::text('Name', default: 'from-closure', placeholder: 'ph');
+      $this->assertInstanceOf(\Closure::class, $closure);
+
+      return $closure($this->defaultCtx());
+    }, self::KEY_ENTER);
+
+    $this->assertSame('from-closure', $r['result']);
   }
 
 }

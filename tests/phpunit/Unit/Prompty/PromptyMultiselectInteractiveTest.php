@@ -6,6 +6,7 @@ namespace AlexSkrypnyk\Prompty\Tests\Unit\Prompty;
 
 use AlexSkrypnyk\Prompty\Prompty;
 use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Group;
 
 /**
@@ -17,13 +18,27 @@ final class PromptyMultiselectInteractiveTest extends PromptyTestCase {
 
   /**
    * Run the multiselect widget with injected keystrokes.
+   *
+   * @param string $keystrokes
+   *   Raw keystroke bytes to feed.
+   * @param array<string, string> $options
+   *   Map of option key to display label.
+   * @param array<string, string> $hints
+   *   Map of option key to hint text.
+   * @param array<string, mixed> $ctx_overrides
+   *   Optional context overrides.
+   * @param list<string> $default
+   *   Option keys to pre-check.
+   *
+   * @return array{result: mixed, output: string}
+   *   The widget return value and captured output.
    */
-  protected function runMultiselectWidget(string $keystrokes, array $options = [], array $hints = [], array $ctx_overrides = []): array {
+  protected function runMultiselectWidget(string $keystrokes, array $options = [], array $hints = [], array $ctx_overrides = [], array $default = []): array {
     if ($options === []) {
       $options = ['ts' => 'TypeScript', 'eslint' => 'ESLint', 'prettier' => 'Prettier'];
     }
 
-    return $this->promptyRun(function () use ($options, $hints, $ctx_overrides): mixed {
+    return $this->promptyRun(function () use ($options, $hints, $ctx_overrides, $default): mixed {
       $p = $this->createInstance();
       $default_ctx = [
         'depth' => 0,
@@ -33,7 +48,7 @@ final class PromptyMultiselectInteractiveTest extends PromptyTestCase {
         'env_value' => NULL,
       ];
 
-      return Prompty::multiselect('Features', options: $options, hints: $hints, ctx: array_merge($default_ctx, $ctx_overrides));
+      return Prompty::multiselect('Features', options: $options, default: $default, hints: $hints, ctx: array_merge($default_ctx, $ctx_overrides));
     }, $keystrokes);
   }
 
@@ -166,6 +181,49 @@ final class PromptyMultiselectInteractiveTest extends PromptyTestCase {
 
     $this->assertNull($r['result']);
     $this->assertStringContainsString('(cancelled)', (string) $r['output']);
+  }
+
+  /**
+   * Tests that pre-checked defaults seed the interactive state.
+   *
+   * @param string $keystrokes
+   *   Raw keystroke bytes to feed.
+   * @param list<string> $default
+   *   Option keys to pre-check.
+   * @param list<string> $expected
+   *   Expected selected option keys.
+   */
+  #[DataProvider('dataProviderDefault')]
+  public function testDefault(string $keystrokes, array $default, array $expected): void {
+    $r = $this->runMultiselectWidget($keystrokes, [], [], [], $default);
+
+    $this->assertSame($expected, $r['result']);
+  }
+
+  public static function dataProviderDefault(): \Iterator {
+    yield 'pre-checks options' => [self::KEY_ENTER, ['ts', 'prettier'], ['ts', 'prettier']];
+    yield 'all pre-checked' => [self::KEY_ENTER, ['ts', 'eslint', 'prettier'], ['ts', 'eslint', 'prettier']];
+    yield 'toggle off yields empty' => [self::KEY_SPACE . self::KEY_ENTER, ['ts'], []];
+    yield 'check another after default' => [self::KEY_DOWN . self::KEY_SPACE . self::KEY_ENTER, ['ts'], ['ts', 'eslint']];
+    yield 'unknown keys ignored' => [self::KEY_ENTER, ['nonexistent'], []];
+  }
+
+  public function testDefaultRendersPreCheckedSelection(): void {
+    $r = $this->runMultiselectWidget(self::KEY_ENTER, [], [], [], ['ts', 'eslint']);
+
+    $this->assertSame(['ts', 'eslint'], $r['result']);
+    $this->assertStringContainsString('TypeScript, ESLint', (string) $r['output']);
+  }
+
+  public function testDefaultThreadsThroughFlowClosure(): void {
+    $r = $this->promptyRun(function (): mixed {
+      $closure = Prompty::multiselect('Features', options: ['ts' => 'TypeScript', 'eslint' => 'ESLint'], default: ['ts']);
+      $this->assertInstanceOf(\Closure::class, $closure);
+
+      return $closure($this->defaultCtx());
+    }, self::KEY_ENTER);
+
+    $this->assertSame(['ts'], $r['result']);
   }
 
 }

@@ -399,4 +399,56 @@ final class PromptyWidgetResolvedTest extends PromptyTestCase {
     $this->assertStringContainsString('(2.1)', $output);
   }
 
+  #[DataProvider('dataProviderTextDefaultPrecedence')]
+  public function testTextDefaultPrecedence(?string $discovered, ?string $env_value, string $expected): void {
+    $this->captureOutput(function () use ($discovered, $env_value, &$result): void {
+      $result = Prompty::text('Name', default: 'seed', discovered: $discovered, ctx: $this->ctx(['env_value' => $env_value]));
+    });
+
+    $this->assertSame($expected, $result);
+  }
+
+  public static function dataProviderTextDefaultPrecedence(): \Iterator {
+    yield 'discovered wins over default' => ['disc', NULL, 'disc'];
+    yield 'env wins over default' => [NULL, 'env-val', 'env-val'];
+  }
+
+  #[DataProvider('dataProviderSelectDefaultPrecedence')]
+  public function testSelectDefaultPrecedence(?string $discovered, ?string $env_value, string $expected): void {
+    $this->captureOutput(function () use ($discovered, $env_value, &$result): void {
+      $result = Prompty::select('Framework',
+        options: ['react' => 'React', 'vue' => 'Vue'],
+        default: 'vue',
+        discovered: $discovered,
+        ctx: $this->ctx(['env_value' => $env_value]),
+      );
+    });
+
+    $this->assertSame($expected, $result);
+  }
+
+  public static function dataProviderSelectDefaultPrecedence(): \Iterator {
+    yield 'discovered wins over default' => ['react', NULL, 'react'];
+    yield 'env wins over default' => [NULL, 'react', 'react'];
+  }
+
+  #[DataProvider('dataProviderMultiselectDefaultPrecedence')]
+  public function testMultiselectDefaultPrecedence(?array $discovered, ?string $env_value, array $expected): void {
+    $this->captureOutput(function () use ($discovered, $env_value, &$result): void {
+      $result = Prompty::multiselect('Features',
+        options: ['ts' => 'TypeScript', 'eslint' => 'ESLint'],
+        default: ['ts'],
+        discovered: $discovered,
+        ctx: $this->ctx(['env_value' => $env_value]),
+      );
+    });
+
+    $this->assertSame($expected, $result);
+  }
+
+  public static function dataProviderMultiselectDefaultPrecedence(): \Iterator {
+    yield 'discovered wins over default' => [['eslint'], NULL, ['eslint']];
+    yield 'env wins over default' => [NULL, 'eslint', ['eslint']];
+  }
+
 }

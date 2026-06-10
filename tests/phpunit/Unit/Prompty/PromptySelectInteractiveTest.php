@@ -6,6 +6,7 @@ namespace AlexSkrypnyk\Prompty\Tests\Unit\Prompty;
 
 use AlexSkrypnyk\Prompty\Prompty;
 use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Group;
 
 /**
@@ -18,12 +19,12 @@ final class PromptySelectInteractiveTest extends PromptyTestCase {
   /**
    * Run the select widget with injected keystrokes.
    */
-  protected function runSelectWidget(string $keystrokes, array $options = [], array $hints = [], array $ctx_overrides = []): array {
+  protected function runSelectWidget(string $keystrokes, array $options = [], array $hints = [], array $ctx_overrides = [], string $default = ''): array {
     if ($options === []) {
       $options = ['react' => 'React', 'vue' => 'Vue', 'svelte' => 'Svelte'];
     }
 
-    return $this->promptyRun(function () use ($options, $hints, $ctx_overrides): mixed {
+    return $this->promptyRun(function () use ($options, $hints, $ctx_overrides, $default): mixed {
       $p = $this->createInstance();
       $default_ctx = [
         'depth' => 0,
@@ -33,7 +34,7 @@ final class PromptySelectInteractiveTest extends PromptyTestCase {
         'env_value' => NULL,
       ];
 
-      return Prompty::select('Framework', options: $options, hints: $hints, ctx: array_merge($default_ctx, $ctx_overrides));
+      return Prompty::select('Framework', options: $options, default: $default, hints: $hints, ctx: array_merge($default_ctx, $ctx_overrides));
     }, $keystrokes);
   }
 
@@ -175,6 +176,31 @@ final class PromptySelectInteractiveTest extends PromptyTestCase {
 
     $this->assertNull($r['result']);
     $this->assertStringContainsString('(cancelled)', (string) $r['output']);
+  }
+
+  #[DataProvider('dataProviderDefault')]
+  public function testDefault(string $keystrokes, string $default, string $expected): void {
+    $r = $this->runSelectWidget($keystrokes, [], [], [], $default);
+
+    $this->assertSame($expected, $r['result']);
+  }
+
+  public static function dataProviderDefault(): \Iterator {
+    yield 'focuses option' => [self::KEY_ENTER, 'vue', 'vue'];
+    yield 'focuses last option' => [self::KEY_ENTER, 'svelte', 'svelte'];
+    yield 'navigable after focus' => [self::KEY_DOWN . self::KEY_ENTER, 'vue', 'svelte'];
+    yield 'unknown falls back to first' => [self::KEY_ENTER, 'nonexistent', 'react'];
+  }
+
+  public function testDefaultThreadsThroughFlowClosure(): void {
+    $r = $this->promptyRun(function (): mixed {
+      $closure = Prompty::select('Framework', options: ['react' => 'React', 'vue' => 'Vue'], default: 'vue');
+      $this->assertInstanceOf(\Closure::class, $closure);
+
+      return $closure($this->defaultCtx());
+    }, self::KEY_ENTER);
+
+    $this->assertSame('vue', $r['result']);
   }
 
 }

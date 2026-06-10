@@ -455,6 +455,8 @@ class Prompty {
    *
    * @param string $label
    *   The widget label shown to the user.
+   * @param string $default
+   *   Pre-filled, editable initial value seeded into the input buffer.
    * @param string $placeholder
    *   Placeholder text shown when the input is empty.
    * @param string $description
@@ -471,10 +473,10 @@ class Prompty {
    * @return \Closure|array<string, mixed>|string|null
    *   A closure in flow mode, or the entered string in standalone mode.
    */
-  public static function text(string $label, string $placeholder = '', string $description = '', mixed $discovered = NULL, ?callable $condition = NULL, array $children = [], ?array $ctx = NULL): \Closure|array|string|null {
+  public static function text(string $label, string $default = '', string $placeholder = '', string $description = '', mixed $discovered = NULL, ?callable $condition = NULL, array $children = [], ?array $ctx = NULL): \Closure|array|string|null {
     // Flow mode: return closure for deferred execution.
     if (static::$inFlow && $ctx === NULL) {
-      $call = fn(array $ctx): array|\Closure|string|null => static::text($label, placeholder: $placeholder, description: $description, discovered: $discovered, ctx: $ctx);
+      $call = fn(array $ctx): array|\Closure|string|null => static::text($label, default: $default, placeholder: $placeholder, description: $description, discovered: $discovered, ctx: $ctx);
       if ($condition !== NULL || $children !== []) {
         return ['__call' => $call, '__children' => $children, '__condition' => $condition];
       }
@@ -542,7 +544,7 @@ class Prompty {
     };
 
     // Interactive input loop.
-    $value = '';
+    $value = $default;
     $line_count = $p->printLines($render_active($value));
 
     while (TRUE) {
@@ -593,6 +595,8 @@ class Prompty {
    *   The widget label shown to the user.
    * @param array<string, string> $options
    *   Map of option key to display label.
+   * @param string $default
+   *   Option key to focus initially; falls back to the first option.
    * @param string $description
    *   Optional description rendered below the label.
    * @param array<string, string> $hints
@@ -609,9 +613,9 @@ class Prompty {
    * @return \Closure|array<string, mixed>|string|null
    *   A closure in flow mode, or the selected option key in standalone mode.
    */
-  public static function select(string $label, array $options = [], string $description = '', array $hints = [], mixed $discovered = NULL, ?callable $condition = NULL, array $children = [], ?array $ctx = NULL): \Closure|array|string|null {
+  public static function select(string $label, array $options = [], string $default = '', string $description = '', array $hints = [], mixed $discovered = NULL, ?callable $condition = NULL, array $children = [], ?array $ctx = NULL): \Closure|array|string|null {
     if (static::$inFlow && $ctx === NULL) {
-      $call = fn(array $ctx): array|\Closure|string|null => static::select($label, options: $options, description: $description, hints: $hints, discovered: $discovered, ctx: $ctx);
+      $call = fn(array $ctx): array|\Closure|string|null => static::select($label, options: $options, default: $default, description: $description, hints: $hints, discovered: $discovered, ctx: $ctx);
       if ($condition !== NULL || $children !== []) {
         return ['__call' => $call, '__children' => $children, '__condition' => $condition];
       }
@@ -705,6 +709,12 @@ class Prompty {
 
     // Interactive selection loop.
     $focused = 0;
+    $default_index = $default !== '' ? array_search($default, $option_keys, TRUE) : FALSE;
+
+    if ($default_index !== FALSE) {
+      $focused = (int) $default_index;
+    }
+
     $line_count = $p->printLines($render_active($focused));
 
     while (TRUE) {
@@ -748,6 +758,8 @@ class Prompty {
    *   The widget label shown to the user.
    * @param array<string, string> $options
    *   Map of option key to display label.
+   * @param list<string> $default
+   *   Option keys to pre-check when the widget is rendered interactively.
    * @param string $description
    *   Optional description rendered below the label.
    * @param array<string, string> $hints
@@ -764,9 +776,9 @@ class Prompty {
    * @return \Closure|array<string, mixed>|list<string>|null
    *   A closure in flow mode, or the array of selected keys in standalone mode.
    */
-  public static function multiselect(string $label, array $options = [], string $description = '', array $hints = [], mixed $discovered = NULL, ?callable $condition = NULL, array $children = [], ?array $ctx = NULL): \Closure|array|null {
+  public static function multiselect(string $label, array $options = [], array $default = [], string $description = '', array $hints = [], mixed $discovered = NULL, ?callable $condition = NULL, array $children = [], ?array $ctx = NULL): \Closure|array|null {
     if (static::$inFlow && $ctx === NULL) {
-      $call = fn(array $ctx): array|\Closure|null => static::multiselect($label, options: $options, description: $description, hints: $hints, discovered: $discovered, ctx: $ctx);
+      $call = fn(array $ctx): array|\Closure|null => static::multiselect($label, options: $options, default: $default, description: $description, hints: $hints, discovered: $discovered, ctx: $ctx);
       if ($condition !== NULL || $children !== []) {
         return ['__call' => $call, '__children' => $children, '__condition' => $condition];
       }
@@ -865,7 +877,7 @@ class Prompty {
 
     // Interactive multi-selection loop.
     $focused = 0;
-    $checked = array_fill(0, count($option_labels), FALSE);
+    $checked = array_map(static fn(string $key): bool => in_array($key, $default, TRUE), $option_keys);
     $line_count = $p->printLines($render_active($focused, $checked));
 
     while (TRUE) {

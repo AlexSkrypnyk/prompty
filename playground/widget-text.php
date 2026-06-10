@@ -25,3 +25,7 @@ echo '  Result: ' . ($r ?? 'cancelled') . "\n";
 echo "\n--- Text: no placeholder ---\n";
 $r = Prompty::text('Git remote URL');
 echo '  Result: ' . ($r ?? 'cancelled') . "\n";
+
+echo "\n--- Text: with editable default ---\n";
+$r = Prompty::text('Project name', default: 'my-app', description: 'Pre-filled and editable.');
+echo '  Result: ' . ($r ?? 'cancelled') . "\n";

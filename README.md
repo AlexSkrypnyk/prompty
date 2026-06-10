@@ -93,14 +93,18 @@ answer, or `null` if they cancel (Escape or Ctrl+C).
 
 ### Text
 
-Free-form text input with an optional placeholder.
+Free-form text input with an optional editable `default` and placeholder.
 
 ```php
 $name = Prompty::text('Project name',
-  placeholder: 'my-app',
+  default: 'my-app',
+  placeholder: 'e.g. my-app',
   description: "Used as the directory name\nand the package name.",
 );
 ```
+
+`default` pre-fills the input with an editable value; `placeholder` is the gray
+hint shown only while the input is empty.
 
 <table>
   <tr>
@@ -122,11 +126,13 @@ $name = Prompty::text('Project name',
 
 ### Select
 
-Single-choice from a list. Arrow keys to navigate, Enter to confirm.
+Single-choice from a list. Arrow keys to navigate, Enter to confirm. Pass
+`default` (an option key) to focus an option other than the first.
 
 ```php
 $framework = Prompty::select('Framework',
   options: ['react' => 'React', 'vue' => 'Vue', 'svelte' => 'Svelte'],
+  default: 'vue',
   description: 'The UI layer for your project.',
   hints: [
     'react' => 'Component-based library by Meta.',
@@ -156,11 +162,14 @@ $framework = Prompty::select('Framework',
 
 ### Multiselect
 
-Multiple-choice from a list. Space to toggle, Enter to confirm.
+Multiple-choice from a list. Space to toggle, Enter to confirm. Pass `default`
+(a list of option keys) to pre-check options - ideal for opt-out lists where
+every option starts selected and the user unchecks what they don't want.
 
 ```php
 $features = Prompty::multiselect('Features',
   options: ['ts' => 'TypeScript', 'eslint' => 'ESLint', 'prettier' => 'Prettier'],
+  default: ['ts', 'eslint', 'prettier'],
   description: "Space to toggle, enter to confirm.",
 );
 ```
@@ -340,6 +349,31 @@ Prompty::select('Framework',
 
 Hints support multi-line text. They appear below the option list and change
 as the user moves between options.
+
+## Default values
+
+Every interactive widget can seed its starting state with `default`, so the user
+begins from a sensible answer and adjusts from there:
+
+| Widget        | `default` type        | Effect                                     |
+|---------------|-----------------------|--------------------------------------------|
+| `text`        | `string`              | Pre-fills the editable input buffer.       |
+| `select`      | `string` (option key) | Focuses that option instead of the first.  |
+| `multiselect` | `list<string>` (keys) | Pre-checks those options.                  |
+| `confirm`     | `bool`                | Starts on Yes (`true`) or No (`false`).    |
+
+```php
+// Opt-out list: everything starts checked; the user unchecks what to drop.
+$keep = Prompty::multiselect('Tools', options: [
+  'phpcs' => 'PHPCS',
+  'phpstan' => 'PHPStan',
+  'eslint' => 'ESLint',
+], default: ['phpcs', 'phpstan', 'eslint']);
+```
+
+`default` only seeds the *interactive* starting state. A value supplied via
+`discovered` or a `PROMPTY_*` environment variable still takes precedence and
+skips the prompt entirely, so explicit input always wins over the default.
 
 ## Unicode and ASCII
 

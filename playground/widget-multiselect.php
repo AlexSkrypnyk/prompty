@@ -42,3 +42,11 @@ $r = Prompty::multiselect('Integrations', options: [
   'cdn' => 'Static asset delivery via edge network.',
 ]);
 echo '  Result: ' . ($r !== NULL ? (count($r) > 0 ? implode(', ', $r) : 'none') : 'cancelled') . "\n";
+
+echo "\n--- Multiselect: opt-out (pre-checked default) ---\n";
+$r = Prompty::multiselect('Dev tools', options: [
+  'phpcs' => 'PHPCS',
+  'phpstan' => 'PHPStan',
+  'rector' => 'Rector',
+], default: ['phpcs', 'phpstan', 'rector'], description: 'All selected; uncheck to remove.');
+echo '  Result: ' . ($r !== NULL ? (count($r) > 0 ? implode(', ', $r) : 'none') : 'cancelled') . "\n";
