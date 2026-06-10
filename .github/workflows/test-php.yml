@@ -108,7 +108,7 @@ jobs:
 
       - name: Post coverage summary as PR comment
         if: matrix.php-versions == '8.3' && matrix.deps == 'normal' && github.event_name == 'pull_request'
-        uses: marocchino/sticky-pull-request-comment@v2
+        uses: marocchino/sticky-pull-request-comment@0ea0beb66eb9baf113663a64ec522f60e49231c0 # v3.0.4
         with:
           message: |
             ```
@@ -135,7 +135,7 @@ jobs:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
       - name: Upload coverage report to Codecov
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7
         if: matrix.php-versions == '8.3' && matrix.deps == 'normal' && env.CODECOV_TOKEN != ''
         with:
           files: .logs/cobertura.xml
