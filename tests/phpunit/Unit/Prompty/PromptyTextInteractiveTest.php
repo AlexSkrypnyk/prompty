@@ -162,22 +162,17 @@ final class PromptyTextInteractiveTest extends PromptyTestCase {
     $this->assertSame('a b', $r['result']);
   }
 
-  public function testDefaultPreFillsValue(): void {
-    $r = $this->runTextWidget(self::KEY_ENTER, [], 'seed-name');
+  #[DataProvider('dataProviderDefault')]
+  public function testDefault(string $keystrokes, string $default, string $expected): void {
+    $r = $this->runTextWidget($keystrokes, [], $default);
 
-    $this->assertSame('seed-name', $r['result']);
+    $this->assertSame($expected, $r['result']);
   }
 
-  public function testDefaultIsEditable(): void {
-    $r = $this->runTextWidget(self::KEY_BACKSPACE . 'x' . self::KEY_ENTER, [], 'abc');
-
-    $this->assertSame('abx', $r['result']);
-  }
-
-  public function testDefaultClearedFallsBackToPlaceholder(): void {
-    $r = $this->runTextWidget(self::KEY_BACKSPACE . self::KEY_BACKSPACE . self::KEY_ENTER, [], 'ab');
-
-    $this->assertSame('my-app', $r['result']);
+  public static function dataProviderDefault(): \Iterator {
+    yield 'pre-fills value' => [self::KEY_ENTER, 'seed-name', 'seed-name'];
+    yield 'editable' => [self::KEY_BACKSPACE . 'x' . self::KEY_ENTER, 'abc', 'abx'];
+    yield 'cleared falls back to placeholder' => [self::KEY_BACKSPACE . self::KEY_BACKSPACE . self::KEY_ENTER, 'ab', 'my-app'];
   }
 
   public function testDefaultShownInActiveState(): void {

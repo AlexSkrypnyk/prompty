@@ -6,6 +6,7 @@ namespace AlexSkrypnyk\Prompty\Tests\Unit\Prompty;
 
 use AlexSkrypnyk\Prompty\Prompty;
 use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Group;
 
 /**
@@ -177,28 +178,18 @@ final class PromptySelectInteractiveTest extends PromptyTestCase {
     $this->assertStringContainsString('(cancelled)', (string) $r['output']);
   }
 
-  public function testDefaultFocusesOption(): void {
-    $r = $this->runSelectWidget(self::KEY_ENTER, [], [], [], 'vue');
+  #[DataProvider('dataProviderDefault')]
+  public function testDefault(string $keystrokes, string $default, string $expected): void {
+    $r = $this->runSelectWidget($keystrokes, [], [], [], $default);
 
-    $this->assertSame('vue', $r['result']);
+    $this->assertSame($expected, $r['result']);
   }
 
-  public function testDefaultLastOption(): void {
-    $r = $this->runSelectWidget(self::KEY_ENTER, [], [], [], 'svelte');
-
-    $this->assertSame('svelte', $r['result']);
-  }
-
-  public function testDefaultThenNavigate(): void {
-    $r = $this->runSelectWidget(self::KEY_DOWN . self::KEY_ENTER, [], [], [], 'vue');
-
-    $this->assertSame('svelte', $r['result']);
-  }
-
-  public function testDefaultUnknownFallsBackToFirst(): void {
-    $r = $this->runSelectWidget(self::KEY_ENTER, [], [], [], 'nonexistent');
-
-    $this->assertSame('react', $r['result']);
+  public static function dataProviderDefault(): \Iterator {
+    yield 'focuses option' => [self::KEY_ENTER, 'vue', 'vue'];
+    yield 'focuses last option' => [self::KEY_ENTER, 'svelte', 'svelte'];
+    yield 'navigable after focus' => [self::KEY_DOWN . self::KEY_ENTER, 'vue', 'svelte'];
+    yield 'unknown falls back to first' => [self::KEY_ENTER, 'nonexistent', 'react'];
   }
 
   public function testDefaultThreadsThroughFlowClosure(): void {

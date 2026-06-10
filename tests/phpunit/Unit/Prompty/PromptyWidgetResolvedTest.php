@@ -399,70 +399,56 @@ final class PromptyWidgetResolvedTest extends PromptyTestCase {
     $this->assertStringContainsString('(2.1)', $output);
   }
 
-  public function testTextDefaultYieldsToDiscovered(): void {
-    $this->captureOutput(function () use (&$result): void {
-      $result = Prompty::text('Name', default: 'seed', discovered: 'disc', ctx: $this->ctx());
+  #[DataProvider('dataProviderTextDefaultPrecedence')]
+  public function testTextDefaultPrecedence(?string $discovered, ?string $env_value, string $expected): void {
+    $this->captureOutput(function () use ($discovered, $env_value, &$result): void {
+      $result = Prompty::text('Name', default: 'seed', discovered: $discovered, ctx: $this->ctx(['env_value' => $env_value]));
     });
 
-    $this->assertSame('disc', $result);
+    $this->assertSame($expected, $result);
   }
 
-  public function testTextDefaultYieldsToEnv(): void {
-    $this->captureOutput(function () use (&$result): void {
-      $result = Prompty::text('Name', default: 'seed', ctx: $this->ctx(['env_value' => 'env-val']));
-    });
-
-    $this->assertSame('env-val', $result);
+  public static function dataProviderTextDefaultPrecedence(): \Iterator {
+    yield 'discovered wins over default' => ['disc', NULL, 'disc'];
+    yield 'env wins over default' => [NULL, 'env-val', 'env-val'];
   }
 
-  public function testSelectDefaultYieldsToDiscovered(): void {
-    $this->captureOutput(function () use (&$result): void {
+  #[DataProvider('dataProviderSelectDefaultPrecedence')]
+  public function testSelectDefaultPrecedence(?string $discovered, ?string $env_value, string $expected): void {
+    $this->captureOutput(function () use ($discovered, $env_value, &$result): void {
       $result = Prompty::select('Framework',
         options: ['react' => 'React', 'vue' => 'Vue'],
         default: 'vue',
-        discovered: 'react',
-        ctx: $this->ctx(),
+        discovered: $discovered,
+        ctx: $this->ctx(['env_value' => $env_value]),
       );
     });
 
-    $this->assertSame('react', $result);
+    $this->assertSame($expected, $result);
   }
 
-  public function testSelectDefaultYieldsToEnv(): void {
-    $this->captureOutput(function () use (&$result): void {
-      $result = Prompty::select('Framework',
-        options: ['react' => 'React', 'vue' => 'Vue'],
-        default: 'vue',
-        ctx: $this->ctx(['env_value' => 'react']),
-      );
-    });
-
-    $this->assertSame('react', $result);
+  public static function dataProviderSelectDefaultPrecedence(): \Iterator {
+    yield 'discovered wins over default' => ['react', NULL, 'react'];
+    yield 'env wins over default' => [NULL, 'react', 'react'];
   }
 
-  public function testMultiselectDefaultYieldsToDiscovered(): void {
-    $this->captureOutput(function () use (&$result): void {
+  #[DataProvider('dataProviderMultiselectDefaultPrecedence')]
+  public function testMultiselectDefaultPrecedence(?array $discovered, ?string $env_value, array $expected): void {
+    $this->captureOutput(function () use ($discovered, $env_value, &$result): void {
       $result = Prompty::multiselect('Features',
         options: ['ts' => 'TypeScript', 'eslint' => 'ESLint'],
         default: ['ts'],
-        discovered: ['eslint'],
-        ctx: $this->ctx(),
+        discovered: $discovered,
+        ctx: $this->ctx(['env_value' => $env_value]),
       );
     });
 
-    $this->assertSame(['eslint'], $result);
+    $this->assertSame($expected, $result);
   }
 
-  public function testMultiselectDefaultYieldsToEnv(): void {
-    $this->captureOutput(function () use (&$result): void {
-      $result = Prompty::multiselect('Features',
-        options: ['ts' => 'TypeScript', 'eslint' => 'ESLint'],
-        default: ['ts'],
-        ctx: $this->ctx(['env_value' => 'eslint']),
-      );
-    });
-
-    $this->assertSame(['eslint'], $result);
+  public static function dataProviderMultiselectDefaultPrecedence(): \Iterator {
+    yield 'discovered wins over default' => [['eslint'], NULL, ['eslint']];
+    yield 'env wins over default' => [NULL, 'eslint', ['eslint']];
   }
 
 }

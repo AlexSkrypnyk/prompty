@@ -6,6 +6,7 @@ namespace AlexSkrypnyk\Prompty\Tests\Unit\Prompty;
 
 use AlexSkrypnyk\Prompty\Prompty;
 use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Group;
 
 /**
@@ -182,10 +183,19 @@ final class PromptyMultiselectInteractiveTest extends PromptyTestCase {
     $this->assertStringContainsString('(cancelled)', (string) $r['output']);
   }
 
-  public function testDefaultPreChecksOptions(): void {
-    $r = $this->runMultiselectWidget(self::KEY_ENTER, [], [], [], ['ts', 'prettier']);
+  #[DataProvider('dataProviderDefault')]
+  public function testDefault(string $keystrokes, array $default, array $expected): void {
+    $r = $this->runMultiselectWidget($keystrokes, [], [], [], $default);
 
-    $this->assertSame(['ts', 'prettier'], $r['result']);
+    $this->assertSame($expected, $r['result']);
+  }
+
+  public static function dataProviderDefault(): \Iterator {
+    yield 'pre-checks options' => [self::KEY_ENTER, ['ts', 'prettier'], ['ts', 'prettier']];
+    yield 'all pre-checked' => [self::KEY_ENTER, ['ts', 'eslint', 'prettier'], ['ts', 'eslint', 'prettier']];
+    yield 'toggle off yields empty' => [self::KEY_SPACE . self::KEY_ENTER, ['ts'], []];
+    yield 'check another after default' => [self::KEY_DOWN . self::KEY_SPACE . self::KEY_ENTER, ['ts'], ['ts', 'eslint']];
+    yield 'unknown keys ignored' => [self::KEY_ENTER, ['nonexistent'], []];
   }
 
   public function testDefaultRendersPreCheckedSelection(): void {
@@ -193,24 +203,6 @@ final class PromptyMultiselectInteractiveTest extends PromptyTestCase {
 
     $this->assertSame(['ts', 'eslint'], $r['result']);
     $this->assertStringContainsString('TypeScript, ESLint', (string) $r['output']);
-  }
-
-  public function testDefaultThenToggleOffYieldsEmpty(): void {
-    $r = $this->runMultiselectWidget(self::KEY_SPACE . self::KEY_ENTER, [], [], [], ['ts']);
-
-    $this->assertSame([], $r['result']);
-  }
-
-  public function testDefaultThenCheckAnother(): void {
-    $r = $this->runMultiselectWidget(self::KEY_DOWN . self::KEY_SPACE . self::KEY_ENTER, [], [], [], ['ts']);
-
-    $this->assertSame(['ts', 'eslint'], $r['result']);
-  }
-
-  public function testDefaultUnknownKeysIgnored(): void {
-    $r = $this->runMultiselectWidget(self::KEY_ENTER, [], [], [], ['nonexistent']);
-
-    $this->assertSame([], $r['result']);
   }
 
   public function testDefaultThreadsThroughFlowClosure(): void {
