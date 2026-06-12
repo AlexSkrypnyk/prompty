@@ -226,9 +226,7 @@ final class PromptySelectInteractiveTest extends PromptyTestCase {
   }
 
   public function testCaretRendersUnicodeGlyph(): void {
-    $r = $this->promptyRun(function (): mixed {
-      return Prompty::select('Framework', options: ['react' => 'React', 'vue' => 'Vue'], ctx: $this->defaultCtx());
-    }, self::KEY_ENTER, ['unicode' => TRUE]);
+    $r = $this->promptyRun(fn(): mixed => Prompty::select('Framework', options: ['react' => 'React', 'vue' => 'Vue'], ctx: $this->defaultCtx()), self::KEY_ENTER, ['unicode' => TRUE]);
 
     $this->assertStringContainsString('❯', (string) $r['output']);
   }

@@ -257,9 +257,7 @@ final class PromptyMultiselectInteractiveTest extends PromptyTestCase {
   }
 
   public function testCaretRendersUnicodeGlyph(): void {
-    $r = $this->promptyRun(function (): mixed {
-      return Prompty::multiselect('Features', options: ['ts' => 'TypeScript', 'eslint' => 'ESLint'], ctx: $this->defaultCtx());
-    }, self::KEY_ENTER, ['unicode' => TRUE]);
+    $r = $this->promptyRun(fn(): mixed => Prompty::multiselect('Features', options: ['ts' => 'TypeScript', 'eslint' => 'ESLint'], ctx: $this->defaultCtx()), self::KEY_ENTER, ['unicode' => TRUE]);
 
     $this->assertStringContainsString('❯', (string) $r['output']);
   }
