@@ -203,4 +203,32 @@ final class PromptySelectInteractiveTest extends PromptyTestCase {
     $this->assertSame('vue', $r['result']);
   }
 
+  public function testCaretMarksFocusedOption(): void {
+    $r = $this->runSelectWidget(self::KEY_ENTER);
+
+    $this->assertStringContainsString('> (*) React', (string) $r['output']);
+  }
+
+  public function testCaretMovesWithNavigation(): void {
+    $r = $this->runSelectWidget(self::KEY_DOWN . self::KEY_ENTER);
+
+    $this->assertStringContainsString('> (*) Vue', (string) $r['output']);
+  }
+
+  public function testCaretRendersAtDepth(): void {
+    $r = $this->runSelectWidget(self::KEY_ENTER, [], [], [
+      'depth' => 1,
+      'is_last' => FALSE,
+      'open' => [1 => TRUE],
+    ]);
+
+    $this->assertStringContainsString('> (*) React', (string) $r['output']);
+  }
+
+  public function testCaretRendersUnicodeGlyph(): void {
+    $r = $this->promptyRun(fn(): mixed => Prompty::select('Framework', options: ['react' => 'React', 'vue' => 'Vue'], ctx: $this->defaultCtx()), self::KEY_ENTER, ['unicode' => TRUE]);
+
+    $this->assertStringContainsString('❯', (string) $r['output']);
+  }
+
 }

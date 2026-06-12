@@ -75,6 +75,7 @@ class Prompty {
     'active' => '◇',
     'intro' => '┌',
     'outro' => '└',
+    'pointer' => '❯',
     'radio_on' => '●',
     'radio_off' => '○',
     'check_on' => '◼',
@@ -93,6 +94,7 @@ class Prompty {
     'active' => 'o',
     'intro' => '#',
     'outro' => '#',
+    'pointer' => '>',
     'radio_on' => '(*)',
     'radio_off' => '( )',
     'check_on' => '[x]',
@@ -669,14 +671,14 @@ class Prompty {
         $lines = array_merge($lines, $description !== '' ? $p->renderDescription($description) : [$p->bar()]);
 
         foreach ($option_labels as $index => $option) {
-          if ($index === $focused) {
-            $lines[] = $p->bar() . $p->cfgSpacing['indent'] . $p->color($p->cfgSymbols['radio_on'], 'green') . ' ' . $option;
-            if (($ordered_hints[$index] ?? '') !== '') {
-              $lines = array_merge($lines, $p->renderHint($ordered_hints[$index]));
-            }
-          }
-          else {
-            $lines[] = $p->bar() . $p->cfgSpacing['indent'] . $p->color($p->cfgSymbols['radio_off'], 'dim') . ' ' . $p->color($option, 'dim');
+          $is_focused = $index === $focused;
+          $radio = $p->color($p->cfgSymbols[$is_focused ? 'radio_on' : 'radio_off'], $is_focused ? 'green' : 'dim');
+          $text = $is_focused ? $option : $p->color($option, 'dim');
+
+          $lines[] = $p->bar() . $p->cursor($is_focused) . $radio . ' ' . $text;
+
+          if ($is_focused && ($ordered_hints[$index] ?? '') !== '') {
+            $lines = array_merge($lines, $p->renderHint($ordered_hints[$index]));
           }
         }
 
@@ -691,14 +693,14 @@ class Prompty {
       $lines = array_merge($lines, $description !== '' ? $p->renderDescription($description, $depth, $open) : [$p->bar() . $body_prefix]);
 
       foreach ($option_labels as $index => $option) {
-        if ($index === $focused) {
-          $lines[] = $p->bar() . $body_prefix . $p->color($p->cfgSymbols['radio_on'], 'green') . ' ' . $option;
-          if (($ordered_hints[$index] ?? '') !== '') {
-            $lines = array_merge($lines, $p->renderHint($ordered_hints[$index], $depth, $open));
-          }
-        }
-        else {
-          $lines[] = $p->bar() . $body_prefix . $p->color($p->cfgSymbols['radio_off'], 'dim') . ' ' . $p->color($option, 'dim');
+        $is_focused = $index === $focused;
+        $radio = $p->color($p->cfgSymbols[$is_focused ? 'radio_on' : 'radio_off'], $is_focused ? 'green' : 'dim');
+        $text = $is_focused ? $option : $p->color($option, 'dim');
+
+        $lines[] = $p->bar() . $body_prefix . $p->cursor($is_focused) . $radio . ' ' . $text;
+
+        if ($is_focused && ($ordered_hints[$index] ?? '') !== '') {
+          $lines = array_merge($lines, $p->renderHint($ordered_hints[$index], $depth, $open));
         }
       }
 
@@ -834,15 +836,14 @@ class Prompty {
 
         foreach ($option_labels as $index => $option) {
           $is_checked = $checked[$index] ?? FALSE;
+          $is_focused = $index === $focused;
+          $box = $p->color($p->cfgSymbols[$is_checked ? 'check_on' : 'check_off'], $is_focused || $is_checked ? 'green' : 'dim');
+          $text = $is_focused || $is_checked ? $option : $p->color($option, 'dim');
 
-          if ($index === $focused) {
-            $lines[] = $p->bar() . $p->cfgSpacing['indent'] . $p->color($p->cfgSymbols[$is_checked ? 'check_on' : 'check_off'], 'green') . ' ' . $option;
-            if (($ordered_hints[$index] ?? '') !== '') {
-              $lines = array_merge($lines, $p->renderHint($ordered_hints[$index]));
-            }
-          }
-          else {
-            $lines[] = $p->bar() . $p->cfgSpacing['indent'] . $p->color($p->cfgSymbols[$is_checked ? 'check_on' : 'check_off'], $is_checked ? 'green' : 'dim') . ' ' . ($is_checked ? $option : $p->color($option, 'dim'));
+          $lines[] = $p->bar() . $p->cursor($is_focused) . $box . ' ' . $text;
+
+          if ($is_focused && ($ordered_hints[$index] ?? '') !== '') {
+            $lines = array_merge($lines, $p->renderHint($ordered_hints[$index]));
           }
         }
 
@@ -858,15 +859,14 @@ class Prompty {
 
       foreach ($option_labels as $index => $option) {
         $is_checked = $checked[$index] ?? FALSE;
+        $is_focused = $index === $focused;
+        $box = $p->color($p->cfgSymbols[$is_checked ? 'check_on' : 'check_off'], $is_focused || $is_checked ? 'green' : 'dim');
+        $text = $is_focused || $is_checked ? $option : $p->color($option, 'dim');
 
-        if ($index === $focused) {
-          $lines[] = $p->bar() . $body_prefix . $p->color($p->cfgSymbols[$is_checked ? 'check_on' : 'check_off'], 'green') . ' ' . $option;
-          if (($ordered_hints[$index] ?? '') !== '') {
-            $lines = array_merge($lines, $p->renderHint($ordered_hints[$index], $depth, $open));
-          }
-        }
-        else {
-          $lines[] = $p->bar() . $body_prefix . $p->color($p->cfgSymbols[$is_checked ? 'check_on' : 'check_off'], $is_checked ? 'green' : 'dim') . ' ' . ($is_checked ? $option : $p->color($option, 'dim'));
+        $lines[] = $p->bar() . $body_prefix . $p->cursor($is_focused) . $box . ' ' . $text;
+
+        if ($is_focused && ($ordered_hints[$index] ?? '') !== '') {
+          $lines = array_merge($lines, $p->renderHint($ordered_hints[$index], $depth, $open));
         }
       }
 
@@ -1108,6 +1108,23 @@ class Prompty {
    */
   protected function bar(): string {
     return $this->color($this->cfgSymbols['bar'], 'gray');
+  }
+
+  /**
+   * Returns the cursor gutter shown before an option's indicator.
+   *
+   * Marks which row the cursor is on independently of the selection state, so
+   * a focused row stays distinguishable even when it is already checked.
+   *
+   * @param bool $focused
+   *   Whether this option is the focused one.
+   *
+   * @return string
+   *   The styled caret when focused, or equal-width padding when not, followed
+   *   by a separating space.
+   */
+  protected function cursor(bool $focused): string {
+    return ($focused ? $this->color($this->cfgSymbols['pointer'], 'cyan') : ' ') . ' ';
   }
 
   /**
