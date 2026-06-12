@@ -32,7 +32,7 @@ final class PromptyConfigTest extends PromptyTestCase {
   public function testDefaultConfigSymbolKeys(): void {
     $p = $this->createInstance();
 
-    $expected_symbol_keys = ['bar', 'completed', 'active', 'intro', 'outro', 'radio_on', 'radio_off', 'check_on', 'check_off', 'hint_arrow'];
+    $expected_symbol_keys = ['bar', 'completed', 'active', 'intro', 'outro', 'pointer', 'radio_on', 'radio_off', 'check_on', 'check_off', 'hint_arrow'];
     /** @var array<string, string> $symbols_unicode */
     $symbols_unicode = $this->getProperty($p, 'cfgSymbolsUnicode');
     /** @var array<string, string> $symbols_ascii */
