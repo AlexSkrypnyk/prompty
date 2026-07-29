@@ -107,7 +107,7 @@ class Prompty {
    *
    * @var array<string, string>
    */
-  protected array $cfgSymbols = [];
+  protected array $cfgSymbols;
 
   /**
    * ANSI color escape sequences.
@@ -165,7 +165,7 @@ class Prompty {
    *
    * @var array<string, string>
    */
-  protected array $cfgColorsDefault = [];
+  protected array $cfgColorsDefault;
 
   /**
    * Environment variable prefix for auto-discovery.
