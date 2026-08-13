@@ -6,6 +6,7 @@ namespace AlexSkrypnyk\Prompty\Tests\Unit\Prompty;
 
 use AlexSkrypnyk\Prompty\Prompty;
 use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\Attributes\DoesNotPerformAssertions;
 use PHPUnit\Framework\Attributes\Group;
 
 /**
@@ -86,13 +87,13 @@ final class PromptyOutputTest extends PromptyTestCase {
     $this->assertSame("\033[?25h", $output);
   }
 
+  #[DoesNotPerformAssertions]
   public function testRestoreTty(): void {
     $p = $this->createInstance();
 
     // restoreTty calls shell_exec with stty — just verify it doesn't throw.
     // We pass a dummy value; in CI there's no TTY so stty will silently fail.
     $this->callProtected($p, 'restoreTty', 'dummy-settings');
-    $this->addToAssertionCount(1);
   }
 
   public function testSetupTtyNoTty(): void {
