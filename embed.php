@@ -69,7 +69,7 @@ for ($arg_i = 1; $arg_i < $argc; $arg_i++) {
   elseif ($argv[$arg_i] === '--source') {
     $arg_i++;
     if ($arg_i >= $argc) {
-      fwrite(STDERR, "Error: --source requires a path argument.\n");
+      fwrite(STDERR, sprintf('Error: --source requires a path argument.%s', PHP_EOL));
       exit(1);
     }
     $source_override = $argv[$arg_i];
@@ -244,10 +244,10 @@ for ($i = 0; $i < $token_count; $i++) {
 
 // Trim trailing whitespace from each line.
 $lines = explode("\n", $output);
-$lines = array_map(static fn(string $l): string => preg_replace('/\s+$/', '', $l) ?? $l, $lines);
+$lines = array_map(fn(string $line): string => preg_replace('/\s+$/', '', $line) ?? $line, $lines);
 
 // Remove all blank lines.
-$collapsed = array_values(array_filter($lines, static fn(string $line): bool => $line !== ''));
+$collapsed = array_values(array_filter($lines, fn(string $line): bool => $line !== ''));
 
 // Collapse multi-line property array declarations to single lines.
 $result_lines = [];
@@ -295,7 +295,7 @@ foreach ($result_lines as $idx => $result_line) {
 if ($class_start !== NULL) {
   $before_class = array_slice($result_lines, 0, $class_start);
   $class_lines = array_slice($result_lines, $class_start);
-  $class_single = implode(' ', array_map(static fn(string $l): string => preg_replace('/^\s+|\s+$/', '', $l) ?? $l, $class_lines));
+  $class_single = implode(' ', array_map(fn(string $line): string => preg_replace('/^\s+|\s+$/', '', $line) ?? $line, $class_lines));
   $result_lines = array_merge($before_class, [$class_single]);
 }
 
@@ -324,27 +324,27 @@ if ($compact && $class_start !== NULL) {
       continue;
     }
 
-    $tt = $ctokens[$i][0];
+    $token_type = $ctokens[$i][0];
 
-    if ($tt === T_PUBLIC) {
+    if ($token_type === T_PUBLIC) {
       $visibility = 'public';
       $is_static = FALSE;
       continue;
     }
 
-    if ($tt === T_PROTECTED || $tt === T_PRIVATE) {
+    if ($token_type === T_PROTECTED || $token_type === T_PRIVATE) {
       $visibility = 'protected';
       $is_static = FALSE;
       continue;
     }
 
-    if ($tt === T_STATIC) {
+    if ($token_type === T_STATIC) {
       $is_static = TRUE;
       continue;
     }
 
     // Property declaration.
-    if ($tt === T_VARIABLE && $visibility !== NULL) {
+    if ($token_type === T_VARIABLE && $visibility !== NULL) {
       $prop_name = substr($ctokens[$i][1], 1);
 
       // Check if next non-whitespace is '(' - that would make it a
@@ -369,7 +369,7 @@ if ($compact && $class_start !== NULL) {
     }
 
     // Method declaration.
-    if ($tt === T_FUNCTION) {
+    if ($token_type === T_FUNCTION) {
       // Find the method name.
       for ($k = $i + 1; $k < $ctokens_count; $k++) {
         if (is_array($ctokens[$k]) && $ctokens[$k][0] === T_WHITESPACE) {
@@ -411,7 +411,7 @@ if ($compact && $class_start !== NULL) {
     }
 
     // Reset visibility if we hit something unexpected.
-    if (!in_array($tt, [T_WHITESPACE, T_STRING, T_ARRAY, T_NS_SEPARATOR], TRUE) && $ctokens[$i][1] !== '?') {
+    if (!in_array($token_type, [T_WHITESPACE, T_STRING, T_ARRAY, T_NS_SEPARATOR], TRUE) && $ctokens[$i][1] !== '?') {
       $visibility = NULL;
       $is_static = FALSE;
     }
@@ -488,12 +488,12 @@ if ($compact && $class_start !== NULL) {
       continue;
     }
 
-    $tt = $ctokens[$i][0];
-    $tv = $ctokens[$i][1];
+    $token_type = $ctokens[$i][0];
+    $token_value = $ctokens[$i][1];
 
     // Rename variables.
-    if ($tt === T_VARIABLE) {
-      $var_name = substr($tv, 1);
+    if ($token_type === T_VARIABLE) {
+      $var_name = substr($token_value, 1);
 
       // Property reference after -> : the variable itself stays, the
       // property name is handled as T_STRING after T_OBJECT_OPERATOR.
@@ -508,12 +508,12 @@ if ($compact && $class_start !== NULL) {
         continue;
       }
 
-      $compact_output .= $tv;
+      $compact_output .= $token_value;
       continue;
     }
 
     // Rename property/method access after -> or ::.
-    if ($tt === T_STRING) {
+    if ($token_type === T_STRING) {
       // Check if preceded by -> (object operator).
       $prev = NULL;
       for ($k = $i - 1; $k >= 0; $k--) {
@@ -535,19 +535,19 @@ if ($compact && $class_start !== NULL) {
           break;
         }
 
-        if ($next === '(' && isset($method_map[$tv])) {
-          $compact_output .= $method_map[$tv];
+        if ($next === '(' && isset($method_map[$token_value])) {
+          $compact_output .= $method_map[$token_value];
           continue;
         }
 
-        if ($next !== '(' && isset($prop_map[$tv])) {
-          $compact_output .= $prop_map[$tv];
+        if ($next !== '(' && isset($prop_map[$token_value])) {
+          $compact_output .= $prop_map[$token_value];
           continue;
         }
       }
 
       // Static method call: static::methodName(.
-      if ($prev === T_DOUBLE_COLON && isset($method_map[$tv])) {
+      if ($prev === T_DOUBLE_COLON && isset($method_map[$token_value])) {
         $next = NULL;
         for ($k = $i + 1; $k < $ctokens_count; $k++) {
           if (is_array($ctokens[$k]) && $ctokens[$k][0] === T_WHITESPACE) {
@@ -557,22 +557,22 @@ if ($compact && $class_start !== NULL) {
           break;
         }
         if ($next === '(') {
-          $compact_output .= $method_map[$tv];
+          $compact_output .= $method_map[$token_value];
           continue;
         }
       }
 
       // Method declaration: function methodName.
-      if ($prev === T_FUNCTION && isset($method_map[$tv])) {
-        $compact_output .= $method_map[$tv];
+      if ($prev === T_FUNCTION && isset($method_map[$token_value])) {
+        $compact_output .= $method_map[$token_value];
         continue;
       }
 
-      $compact_output .= $tv;
+      $compact_output .= $token_value;
       continue;
     }
 
-    $compact_output .= $tv;
+    $compact_output .= $token_value;
   }
 
   // --- Step 4: Reduce whitespace. ---
@@ -588,11 +588,11 @@ if ($compact && $class_start !== NULL) {
       continue;
     }
 
-    $tt = $ws_tokens[$i][0];
-    $tv = $ws_tokens[$i][1];
+    $token_type = $ws_tokens[$i][0];
+    $token_value = $ws_tokens[$i][1];
 
     // Collapse whitespace to a single space, then check if it can be removed.
-    if ($tt === T_WHITESPACE) {
+    if ($token_type === T_WHITESPACE) {
       // Check what comes before and after.
       $before = is_array($ws_tokens[$i - 1]) ? $ws_tokens[$i - 1][1] : $ws_tokens[$i - 1];
       $after = '';
@@ -615,7 +615,7 @@ if ($compact && $class_start !== NULL) {
       continue;
     }
 
-    $ws_output .= $tv;
+    $ws_output .= $token_value;
   }
 
   // Replace the class line in result_lines.
@@ -640,7 +640,11 @@ $rector_bin = __DIR__ . '/vendor/bin/rector';
 $rector_config = __DIR__ . '/rector.php';
 
 if (is_file($rector_bin) && is_file($rector_config)) {
-  $rector_tmp = tempnam(sys_get_temp_dir(), 'embed_rector_');
+  $tmp_dir = __DIR__ . '/.artifacts/tmp';
+  if (!is_dir($tmp_dir)) {
+    mkdir($tmp_dir, 0755, TRUE);
+  }
+  $rector_tmp = tempnam($tmp_dir, 'embed_rector_');
   rename($rector_tmp, $rector_tmp . '.php');
   $rector_tmp .= '.php';
 
@@ -681,8 +685,8 @@ if ($stdout) {
   exec('php -l ' . escapeshellarg($stdout_path) . ' 2>&1', $lint_output, $lint_exit);
 
   if ($lint_exit !== 0) {
-    fwrite(STDERR, "Error: PHP lint failed:\n");
-    fwrite(STDERR, implode("\n", $lint_output) . "\n");
+    fwrite(STDERR, sprintf('Error: PHP lint failed:%s', PHP_EOL));
+    fwrite(STDERR, implode(PHP_EOL, $lint_output) . PHP_EOL);
     exit(1);
   }
 
@@ -717,7 +721,7 @@ if (!preg_match($pattern, $target)) {
 $result = preg_replace($pattern, str_replace(['\\', '$'], ['\\\\', '\\$'], $embedded), $target, 1);
 
 if ($result === NULL) {
-  fwrite(STDERR, "Error: Failed to replace marker region.\n");
+  fwrite(STDERR, sprintf('Error: Failed to replace marker region.%s', PHP_EOL));
   exit(1);
 }
 
@@ -756,8 +760,8 @@ $lint_exit = 0;
 exec('php -l ' . escapeshellarg($target_path) . ' 2>&1', $lint_output, $lint_exit);
 
 if ($lint_exit !== 0) {
-  fwrite(STDERR, "Error: PHP lint failed after embedding:\n");
-  fwrite(STDERR, implode("\n", $lint_output) . "\n");
+  fwrite(STDERR, sprintf('Error: PHP lint failed after embedding:%s', PHP_EOL));
+  fwrite(STDERR, implode(PHP_EOL, $lint_output) . PHP_EOL);
   exit(1);
 }
 
@@ -778,7 +782,7 @@ elseif (posix_isatty(STDIN)) {
   passthru('php ' . escapeshellarg($target_path), $verify_exit);
 
   if ($verify_exit !== 0) {
-    fwrite(STDERR, sprintf("Warning: Embedded script exited with code %d.%s", $verify_exit, PHP_EOL));
+    fwrite(STDERR, sprintf('Warning: Embedded script exited with code %d.%s', $verify_exit, PHP_EOL));
   }
 }
 else {
@@ -802,7 +806,7 @@ else {
     $verify_exit = proc_close($verify_proc);
 
     if ($verify_exit !== 0) {
-      fwrite(STDERR, sprintf("Warning: Embedded script exited with code %d.%s", $verify_exit, PHP_EOL));
+      fwrite(STDERR, sprintf('Warning: Embedded script exited with code %d.%s', $verify_exit, PHP_EOL));
     }
   }
 }
