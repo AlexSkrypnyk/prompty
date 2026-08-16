@@ -88,7 +88,7 @@ function getJobs(string $project_dir): array {
     }
   }
 
-  // Static screenshots — capture a single frame showing the widget.
+  // Static screenshots - capture a single frame showing the widget.
   $static_bases = [
     'widget-text' => [
       'script' => $project_dir . '/playground/widget-text.php',
@@ -133,7 +133,7 @@ function getJobs(string $project_dir): array {
 }
 
 /**
- * Main functionality — orchestrator mode.
+ * Main functionality - orchestrator mode.
  *
  * Launches all recordings as parallel worker processes.
  */
@@ -142,7 +142,7 @@ function main(): void {
   $project_dir = dirname($script_dir);
   $assets_dir = $script_dir . '/assets';
 
-  info('Prompty — Asset Generator');
+  info('Prompty - Asset Generator');
   info('========================');
   info('');
 
@@ -222,7 +222,7 @@ function main(): void {
     }
   }
 
-  // Reset terminal — workers may leave it in raw mode.
+  // Reset terminal - workers may leave it in raw mode.
   shell_exec('stty sane 2>/dev/null');
 
   // Cleanup.
@@ -244,7 +244,7 @@ function main(): void {
 }
 
 /**
- * Worker mode — process a single recording.
+ * Worker mode - process a single recording.
  *
  * @param string $name
  *   The job name to process.
@@ -423,11 +423,11 @@ function convertToSvg(string $cast_file, string $svg_file, string $util_dir, ?in
  * Create an expect script for the widgets.php playground.
  *
  * Interaction sequence:
- * 1. Text "Project name" — type "my-project", press enter.
- * 2. Select "Framework" — arrow down (to Vue), press enter.
- * 3. Multiselect "Features" — down, space (ESLint), down, space (Prettier),
+ * 1. Text "Project name" - type "my-project", press enter.
+ * 2. Select "Framework" - arrow down (to Vue), press enter.
+ * 3. Multiselect "Features" - down, space (ESLint), down, space (Prettier),
  *    press enter.
- * 4. Confirm "Install dependencies?" — type "y", press enter.
+ * 4. Confirm "Install dependencies?" - type "y", press enter.
  *
  * @param string $script_path
  *   Path to write the expect script.
@@ -470,21 +470,21 @@ proc toggle_space {} {
 
 spawn php {$playground_script}
 
-# Text: Project name — type "my-project" and press enter.
+# Text: Project name - type "my-project" and press enter.
 expect "Project name" {
     sleep {$delay}
     type_text "my-project"
     wait_and_enter
 }
 
-# Select: Framework — arrow down to Vue, press enter.
+# Select: Framework - arrow down to Vue, press enter.
 expect "Framework" {
     sleep {$delay}
     arrow_down
     wait_and_enter
 }
 
-# Multiselect: Features — select ESLint and Prettier.
+# Multiselect: Features - select ESLint and Prettier.
 expect "Features" {
     sleep {$delay}
     arrow_down
@@ -494,7 +494,7 @@ expect "Features" {
     wait_and_enter
 }
 
-# Confirm: Install dependencies — type "y".
+# Confirm: Install dependencies - type "y".
 expect "Install dependencies" {
     sleep {$delay}
     type_text "y"
@@ -512,11 +512,11 @@ EXPECT;
  * Create an expect script for the flow.php playground.
  *
  * Interaction sequence:
- * 1. Text "Project name" — type "my-project", press enter.
- * 2. Select "Framework" (4 options) — arrow down (to Vue), press enter.
- * 3. Multiselect "Features" (5 options) — down, space (ESLint), down, down,
+ * 1. Text "Project name" - type "my-project", press enter.
+ * 2. Select "Framework" (4 options) - arrow down (to Vue), press enter.
+ * 3. Multiselect "Features" (5 options) - down, space (ESLint), down, down,
  *    space (Vitest), press enter.
- * 4. Confirm "Install dependencies?" — type "y", press enter.
+ * 4. Confirm "Install dependencies?" - type "y", press enter.
  *
  * @param string $script_path
  *   Path to write the expect script.
@@ -559,21 +559,21 @@ proc toggle_space {} {
 
 spawn php {$playground_script}
 
-# Text: Project name — type "my-project" and press enter.
+# Text: Project name - type "my-project" and press enter.
 expect "Project name" {
     sleep {$delay}
     type_text "my-project"
     wait_and_enter
 }
 
-# Select: Framework — arrow down to Vue, press enter.
+# Select: Framework - arrow down to Vue, press enter.
 expect "Framework" {
     sleep {$delay}
     arrow_down
     wait_and_enter
 }
 
-# Multiselect: Features — select ESLint and Vitest.
+# Multiselect: Features - select ESLint and Vitest.
 expect "Features" {
     sleep {$delay}
     arrow_down
@@ -584,7 +584,7 @@ expect "Features" {
     wait_and_enter
 }
 
-# Confirm: Install dependencies — type "y".
+# Confirm: Install dependencies - type "y".
 expect "Install dependencies" {
     sleep {$delay}
     type_text "y"
@@ -602,19 +602,19 @@ EXPECT;
  * Create an expect script for the flow-nested.php playground.
  *
  * Interaction sequence (choosing the "Application" path):
- * 1. Select "Project type" — press enter (Application, first option).
- * 2. Select "App framework" — press enter (Next.js, first option).
- * 3. Select "SSR mode" — press enter (Server-side, first option).
- * 4. Confirm "Use edge runtime?" — type "y", press enter.
- * 5. Confirm "Include API routes?" — type "y", press enter.
- * 6. Multiselect "Code quality" — space (TypeScript), down, space (ESLint),
+ * 1. Select "Project type" - press enter (Application, first option).
+ * 2. Select "App framework" - press enter (Next.js, first option).
+ * 3. Select "SSR mode" - press enter (Server-side, first option).
+ * 4. Confirm "Use edge runtime?" - type "y", press enter.
+ * 5. Confirm "Include API routes?" - type "y", press enter.
+ * 6. Multiselect "Code quality" - space (TypeScript), down, space (ESLint),
  *    press enter.
- * 7. Confirm "Strict TypeScript?" — type "y", press enter.
- * 8. Select "ESLint config" — down (Strict), press enter.
- * 9. Multiselect "Testing" — space (Unit tests), down, space (E2E tests),
+ * 7. Confirm "Strict TypeScript?" - type "y", press enter.
+ * 8. Select "ESLint config" - down (Strict), press enter.
+ * 9. Multiselect "Testing" - space (Unit tests), down, space (E2E tests),
  *    press enter.
- * 10. Select "Unit test runner" — press enter (Vitest, first option).
- * 11. Select "E2E framework" — press enter (Playwright, first option).
+ * 10. Select "Unit test runner" - press enter (Vitest, first option).
+ * 11. Select "E2E framework" - press enter (Playwright, first option).
  *
  * @param string $script_path
  *   Path to write the expect script.
@@ -657,36 +657,36 @@ proc toggle_space {} {
 
 spawn php {$playground_script}
 
-# Select: Project type — press enter (Application).
+# Select: Project type - press enter (Application).
 expect "Project type" {
     wait_and_enter
 }
 
-# Select: App framework — press enter (Next.js).
+# Select: App framework - press enter (Next.js).
 expect "App framework" {
     wait_and_enter
 }
 
-# Select: SSR mode — press enter (Server-side).
+# Select: SSR mode - press enter (Server-side).
 expect "SSR mode" {
     wait_and_enter
 }
 
-# Confirm: Use edge runtime — type "y".
+# Confirm: Use edge runtime - type "y".
 expect "edge runtime" {
     sleep {$delay}
     type_text "y"
     wait_and_enter
 }
 
-# Confirm: Include API routes — type "y".
+# Confirm: Include API routes - type "y".
 expect "API routes" {
     sleep {$delay}
     type_text "y"
     wait_and_enter
 }
 
-# Multiselect: Code quality — select TypeScript and ESLint.
+# Multiselect: Code quality - select TypeScript and ESLint.
 expect "Code quality" {
     sleep {$delay}
     toggle_space
@@ -695,21 +695,21 @@ expect "Code quality" {
     wait_and_enter
 }
 
-# Confirm: Strict TypeScript — type "y".
+# Confirm: Strict TypeScript - type "y".
 expect "Strict TypeScript" {
     sleep {$delay}
     type_text "y"
     wait_and_enter
 }
 
-# Select: ESLint config — down to Strict, press enter.
+# Select: ESLint config - down to Strict, press enter.
 expect "ESLint config" {
     sleep {$delay}
     arrow_down
     wait_and_enter
 }
 
-# Multiselect: Testing — select Unit tests and E2E tests.
+# Multiselect: Testing - select Unit tests and E2E tests.
 expect "Testing" {
     sleep {$delay}
     toggle_space
@@ -718,12 +718,12 @@ expect "Testing" {
     wait_and_enter
 }
 
-# Select: Unit test runner — press enter (Vitest).
+# Select: Unit test runner - press enter (Vitest).
 expect "Unit test runner" {
     wait_and_enter
 }
 
-# Select: E2E framework — press enter (Playwright).
+# Select: E2E framework - press enter (Playwright).
 expect "E2E framework" {
     wait_and_enter
 }
@@ -771,21 +771,21 @@ proc type_text {text} {
 
 spawn php {$playground_script}
 
-# Text: Project name — type name and press enter.
+# Text: Project name - type name and press enter.
 expect "Project name" {
     sleep {$delay}
     type_text "my-project"
     wait_and_enter
 }
 
-# Text: Author name — type name and press enter.
+# Text: Author name - type name and press enter.
 expect "Author name" {
     sleep {$delay}
     type_text "Jane Doe"
     wait_and_enter
 }
 
-# Text: Git remote URL — type URL and press enter.
+# Text: Git remote URL - type URL and press enter.
 expect "Git remote" {
     sleep {$delay}
     type_text "git@github.com:user/repo.git"
@@ -835,17 +835,17 @@ proc arrow_down {} {
 
 spawn php {$playground_script}
 
-# Select: Framework — press enter (React).
+# Select: Framework - press enter (React).
 expect "Framework" {
     wait_and_enter
 }
 
-# Select: Package manager — press enter (npm).
+# Select: Package manager - press enter (npm).
 expect "Package manager" {
     wait_and_enter
 }
 
-# Select: License — press enter (MIT).
+# Select: License - press enter (MIT).
 expect "License" {
     wait_and_enter
 }
@@ -898,21 +898,21 @@ proc arrow_down {} {
 
 spawn php {$playground_script}
 
-# Multiselect: Features — select first, press enter.
+# Multiselect: Features - select first, press enter.
 expect "Features" {
     sleep {$delay}
     toggle_space
     wait_and_enter
 }
 
-# Multiselect: CI checks — select first, press enter.
+# Multiselect: CI checks - select first, press enter.
 expect "CI checks" {
     sleep {$delay}
     toggle_space
     wait_and_enter
 }
 
-# Multiselect: Integrations — select first, press enter.
+# Multiselect: Integrations - select first, press enter.
 expect "Integrations" {
     sleep {$delay}
     toggle_space
@@ -962,21 +962,21 @@ proc type_text {text} {
 
 spawn php {$playground_script}
 
-# Confirm: Install dependencies — type "y".
+# Confirm: Install dependencies - type "y".
 expect "Install dependencies" {
     sleep {$delay}
     type_text "y"
     wait_and_enter
 }
 
-# Confirm: Enable telemetry — type "n".
+# Confirm: Enable telemetry - type "n".
 expect "telemetry" {
     sleep {$delay}
     type_text "n"
     wait_and_enter
 }
 
-# Confirm: Run migrations — type "y".
+# Confirm: Run migrations - type "y".
 expect "migrations" {
     sleep {$delay}
     type_text "y"

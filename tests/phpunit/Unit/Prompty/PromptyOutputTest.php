@@ -91,7 +91,7 @@ final class PromptyOutputTest extends PromptyTestCase {
   public function testRestoreTty(): void {
     $p = $this->createInstance();
 
-    // restoreTty calls shell_exec with stty — just verify it doesn't throw.
+    // restoreTty calls shell_exec with stty - just verify it doesn't throw.
     // We pass a dummy value; in CI there's no TTY so stty will silently fail.
     $this->callProtected($p, 'restoreTty', 'dummy-settings');
   }
@@ -107,7 +107,7 @@ final class PromptyOutputTest extends PromptyTestCase {
 
     // prevTty should be set (or NULL if no TTY).
     $prev = $this->getProperty($p, 'prevTty');
-    // Either it's NULL (no TTY) or a string (has TTY) — both are fine.
+    // Either it's NULL (no TTY) or a string (has TTY) - both are fine.
     $this->assertTrue($prev === NULL || is_string($prev));
   }
 
@@ -143,7 +143,7 @@ final class PromptyOutputTest extends PromptyTestCase {
 
     $stream = fopen('php://memory', 'r+');
     $this->assertNotFalse($stream);
-    // Write nothing — stream is at EOF.
+    // Write nothing - stream is at EOF.
     $this->setProperty($p, 'input', $stream);
 
     /** @var string $key */

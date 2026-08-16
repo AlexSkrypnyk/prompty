@@ -2,7 +2,7 @@
 
 /**
  * @file
- * Embedder — minifies and embeds a PHP class into a target script.
+ * Embedder - minifies and embeds a PHP class into a target script.
  *
  * Part of the Prompty project.
  *
@@ -41,7 +41,7 @@
 
 declare(strict_types=1);
 
-// Configuration — adjust these when reusing for a different project.
+// Configuration - adjust these when reusing for a different project.
 // Path to the PHP class file to embed (relative to this script).
 define('EMBED_SOURCE', __DIR__ . '/Prompty.php');
 
@@ -81,7 +81,7 @@ for ($arg_i = 1; $arg_i < $argc; $arg_i++) {
 
 if ($positional === []) {
   $usage = <<<'USAGE'
-Embedder — minifies and embeds a PHP class into a target script.
+Embedder - minifies and embeds a PHP class into a target script.
 
 Usage:
   php embed.php [options] <source-script> [<output-script>]
@@ -347,7 +347,7 @@ if ($compact && $class_start !== NULL) {
     if ($tt === T_VARIABLE && $visibility !== NULL) {
       $prop_name = substr($ctokens[$i][1], 1);
 
-      // Check if next non-whitespace is '(' — that would make it a
+      // Check if next non-whitespace is '(' - that would make it a
       // method parameter, not a property.
       $is_property = TRUE;
       for ($k = $i - 1; $k >= 0; $k--) {
@@ -577,7 +577,7 @@ if ($compact && $class_start !== NULL) {
 
   // --- Step 4: Reduce whitespace. ---
   // Remove spaces around operators where PHP allows it.
-  // Be careful not to modify string contents — work on tokens.
+  // Be careful not to modify string contents - work on tokens.
   $ws_tokens = token_get_all('<?php ' . $compact_output);
   $ws_count = count($ws_tokens);
   $ws_output = '';
@@ -730,7 +730,7 @@ $has_killswitch = str_contains((string) $result, "if (!getenv('SHOULD_PROCEED'))
 if (!$has_killswitch && !$no_killswitch) {
   $killswitch = <<<'KILLSWITCH'
 
-// Kill switch — stop here when running under tests.
+// Kill switch - stop here when running under tests.
 // In production, set SHOULD_PROCEED=1 to continue past this point.
 if (!getenv('SHOULD_PROCEED')) {
   return;

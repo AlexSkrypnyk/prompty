@@ -2,7 +2,7 @@
 
 /**
  * @file
- * Playground — multiple flows in the same script.
+ * Playground - multiple flows in the same script.
  *
  * Demonstrates that the singleton is reused across flows. Each flow()
  * call resets results but preserves the instance and its configuration.

@@ -2,7 +2,7 @@
 
 /**
  * @file
- * Playground — nested flow with conditionals, 3 levels deep, 3 items per level.
+ * Playground - nested flow with conditionals, 3 levels deep, 3 items per level.
  */
 
 declare(strict_types=1);

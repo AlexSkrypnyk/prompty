@@ -2,7 +2,7 @@
 
 /**
  * @file
- * Playground — multiselect widget standalone.
+ * Playground - multiselect widget standalone.
  */
 
 declare(strict_types=1);

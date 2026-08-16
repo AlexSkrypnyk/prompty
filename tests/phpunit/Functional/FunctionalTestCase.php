@@ -51,7 +51,7 @@ abstract class FunctionalTestCase extends TestCase {
    * Run a command in a subprocess with raw keystroke input.
    *
    * Unlike processRun() which joins inputs with newlines, this method
-   * passes raw bytes directly to stdin — required for TUI escape sequences.
+   * passes raw bytes directly to stdin - required for TUI escape sequences.
    *
    * @param string $command
    *   The command to execute.

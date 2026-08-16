@@ -2,7 +2,7 @@
 
 /**
  * @file
- * Playground — text widget standalone.
+ * Playground - text widget standalone.
  */
 
 declare(strict_types=1);

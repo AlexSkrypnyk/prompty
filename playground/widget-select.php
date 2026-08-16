@@ -2,7 +2,7 @@
 
 /**
  * @file
- * Playground — select widget standalone.
+ * Playground - select widget standalone.
  */
 
 declare(strict_types=1);

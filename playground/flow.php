@@ -2,7 +2,7 @@
 
 /**
  * @file
- * Playground — simple linear flow, no nesting.
+ * Playground - simple linear flow, no nesting.
  *
  * phpcs:disable Drupal.Arrays.Array.LongLineDeclaration
  */

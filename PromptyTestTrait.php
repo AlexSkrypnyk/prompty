@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace AlexSkrypnyk\Prompty;
 
 /**
- * PromptyTestTrait — testing helper for Prompty interactive prompts.
+ * PromptyTestTrait - testing helper for Prompty interactive prompts.
  *
  * Ships alongside Prompty.php. Include in your PHPUnit test case to simulate
  * keystrokes, capture output, and assert on results without a real TTY.

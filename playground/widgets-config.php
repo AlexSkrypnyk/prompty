@@ -2,7 +2,7 @@
 
 /**
  * @file
- * Playground — standalone widgets with custom configuration.
+ * Playground - standalone widgets with custom configuration.
  *
  * Demonstrates Prompty::configure() to set options before using widgets
  * outside of a flow. This is useful when you want custom symbols, colors,
