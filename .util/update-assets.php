@@ -138,7 +138,7 @@ function getJobs(string $project_dir): array {
  * Launches all recordings as parallel worker processes.
  */
 function main(): void {
-  $script_dir = dirname(__FILE__);
+  $script_dir = __DIR__;
   $project_dir = dirname($script_dir);
   $assets_dir = $script_dir . '/assets';
 
@@ -250,7 +250,7 @@ function main(): void {
  *   The job name to process.
  */
 function processOne(string $name): void {
-  $script_dir = dirname(__FILE__);
+  $script_dir = __DIR__;
   $project_dir = dirname($script_dir);
   $assets_dir = $script_dir . '/assets';
   $tmp_dir = $project_dir . '/.artifacts/tmp/asciinema';
@@ -281,7 +281,8 @@ function checkDependencies(): void {
   $missing = [];
 
   foreach ($deps as $dep) {
-    if (empty(shell_exec('which ' . escapeshellarg($dep) . ' 2>/dev/null'))) {
+    $cmd = sprintf('which %s 2>/dev/null', escapeshellarg($dep));
+    if (empty(shell_exec($cmd))) {
       $missing[] = $dep;
     }
   }
@@ -296,20 +297,20 @@ function checkDependencies(): void {
 /**
  * Install Node.js dependencies for svg-term rendering.
  *
- * @param string $util_dir
+ * @param string $script_dir
  *   Path to the .util directory containing svg-term-render.js.
  */
-function installNodeDependencies(string $util_dir): void {
+function installNodeDependencies(string $script_dir): void {
   info('Installing svg-term Node.js dependency...');
 
-  $node_modules = $util_dir . '/node_modules';
+  $node_modules = $script_dir . '/node_modules';
   if (is_dir($node_modules . '/svg-term')) {
     info('svg-term already installed.');
 
     return;
   }
 
-  $cmd = sprintf('npm install --prefix %s svg-term@1.3.1 2>&1', escapeshellarg($util_dir));
+  $cmd = sprintf('npm install --prefix %s svg-term@1.3.1 2>&1', escapeshellarg($script_dir));
   $output = shell_exec($cmd);
   if (!is_dir($node_modules . '/svg-term')) {
     throw new \RuntimeException('Failed to install svg-term: ' . ($output ?? 'unknown error'));
@@ -327,6 +328,8 @@ function installNodeDependencies(string $util_dir): void {
  *   Path to the expect script for automation.
  * @param int $rows
  *   Number of terminal rows.
+ * @param int $cols
+ *   Number of terminal columns.
  */
 function recordSession(string $cast_file, string $expect_script, int $rows = TERMINAL_ROWS, int $cols = TERMINAL_COLS): void {
   $cmd = sprintf(
@@ -395,18 +398,18 @@ function postProcessCast(string $cast_file): void {
  *   Path to the input cast file.
  * @param string $svg_file
  *   Path to the output SVG file.
- * @param string $util_dir
+ * @param string $script_dir
  *   Path to the .util directory containing svg-term-render.js.
  * @param int|null $at
  *   Optional timestamp in ms to capture a static frame.
  */
-function convertToSvg(string $cast_file, string $svg_file, string $util_dir, ?int $at = NULL): void {
-  $renderer = $util_dir . '/svg-term-render.js';
+function convertToSvg(string $cast_file, string $svg_file, string $script_dir, ?int $at = NULL): void {
+  $renderer_script = $script_dir . '/svg-term-render.js';
 
   $at_flag = $at !== NULL ? sprintf(' --at %d', $at) : '';
   $cmd = sprintf(
     'node %s %s %s --line-height 1.1%s 2>&1',
-    escapeshellarg($renderer),
+    escapeshellarg($renderer_script),
     escapeshellarg($cast_file),
     escapeshellarg($svg_file),
     $at_flag
@@ -429,12 +432,12 @@ function convertToSvg(string $cast_file, string $svg_file, string $util_dir, ?in
  *    press enter.
  * 4. Confirm "Install dependencies?" - type "y", press enter.
  *
- * @param string $script_path
+ * @param string $expect_script
  *   Path to write the expect script.
  * @param string $playground_script
  *   Path to the playground PHP script.
  */
-function createWidgetsExpectScript(string $script_path, string $playground_script): void {
+function createWidgetsExpectScript(string $expect_script, string $playground_script): void {
   $delay = PROMPT_DELAY;
   $content = <<<EXPECT
 #!/usr/bin/env expect
@@ -504,8 +507,8 @@ expect "Install dependencies" {
 expect eof
 EXPECT;
 
-  file_put_contents($script_path, $content);
-  chmod($script_path, 0755);
+  file_put_contents($expect_script, $content);
+  chmod($expect_script, 0755);
 }
 
 /**
@@ -518,12 +521,12 @@ EXPECT;
  *    space (Vitest), press enter.
  * 4. Confirm "Install dependencies?" - type "y", press enter.
  *
- * @param string $script_path
+ * @param string $expect_script
  *   Path to write the expect script.
  * @param string $playground_script
  *   Path to the playground PHP script.
  */
-function createFlowExpectScript(string $script_path, string $playground_script): void {
+function createFlowExpectScript(string $expect_script, string $playground_script): void {
   $delay = PROMPT_DELAY;
   $content = <<<EXPECT
 #!/usr/bin/env expect
@@ -594,8 +597,8 @@ expect "Install dependencies" {
 expect eof
 EXPECT;
 
-  file_put_contents($script_path, $content);
-  chmod($script_path, 0755);
+  file_put_contents($expect_script, $content);
+  chmod($expect_script, 0755);
 }
 
 /**
@@ -616,12 +619,12 @@ EXPECT;
  * 10. Select "Unit test runner" - press enter (Vitest, first option).
  * 11. Select "E2E framework" - press enter (Playwright, first option).
  *
- * @param string $script_path
+ * @param string $expect_script
  *   Path to write the expect script.
  * @param string $playground_script
  *   Path to the playground PHP script.
  */
-function createFlowNestedExpectScript(string $script_path, string $playground_script): void {
+function createFlowNestedExpectScript(string $expect_script, string $playground_script): void {
   $delay = PROMPT_DELAY;
   $content = <<<EXPECT
 #!/usr/bin/env expect
@@ -731,8 +734,8 @@ expect "E2E framework" {
 expect eof
 EXPECT;
 
-  file_put_contents($script_path, $content);
-  chmod($script_path, 0755);
+  file_put_contents($expect_script, $content);
+  chmod($expect_script, 0755);
 }
 
 /**
@@ -740,12 +743,12 @@ EXPECT;
  *
  * Records all 3 text prompts. Static screenshot is captured at the first.
  *
- * @param string $script_path
+ * @param string $expect_script
  *   Path to write the expect script.
  * @param string $playground_script
  *   Path to the playground PHP script.
  */
-function createWidgetTextExpectScript(string $script_path, string $playground_script): void {
+function createWidgetTextExpectScript(string $expect_script, string $playground_script): void {
   $delay = PROMPT_DELAY;
   $content = <<<EXPECT
 #!/usr/bin/env expect
@@ -795,8 +798,8 @@ expect "Git remote" {
 expect eof
 EXPECT;
 
-  file_put_contents($script_path, $content);
-  chmod($script_path, 0755);
+  file_put_contents($expect_script, $content);
+  chmod($expect_script, 0755);
 }
 
 /**
@@ -804,12 +807,12 @@ EXPECT;
  *
  * Records all 3 select prompts. Static screenshot is captured at the first.
  *
- * @param string $script_path
+ * @param string $expect_script
  *   Path to write the expect script.
  * @param string $playground_script
  *   Path to the playground PHP script.
  */
-function createWidgetSelectExpectScript(string $script_path, string $playground_script): void {
+function createWidgetSelectExpectScript(string $expect_script, string $playground_script): void {
   $delay = PROMPT_DELAY;
   $content = <<<EXPECT
 #!/usr/bin/env expect
@@ -826,11 +829,6 @@ proc safe_send {s} {
 proc wait_and_enter {} {
     sleep {$delay}
     safe_send "\\r"
-}
-
-proc arrow_down {} {
-    sleep 0.3
-    safe_send "\\033\[B"
 }
 
 spawn php {$playground_script}
@@ -853,8 +851,8 @@ expect "License" {
 expect eof
 EXPECT;
 
-  file_put_contents($script_path, $content);
-  chmod($script_path, 0755);
+  file_put_contents($expect_script, $content);
+  chmod($expect_script, 0755);
 }
 
 /**
@@ -862,12 +860,12 @@ EXPECT;
  *
  * Records all 3 multiselect prompts. Static screenshot captured at the first.
  *
- * @param string $script_path
+ * @param string $expect_script
  *   Path to write the expect script.
  * @param string $playground_script
  *   Path to the playground PHP script.
  */
-function createWidgetMultiselectExpectScript(string $script_path, string $playground_script): void {
+function createWidgetMultiselectExpectScript(string $expect_script, string $playground_script): void {
   $delay = PROMPT_DELAY;
   $content = <<<EXPECT
 #!/usr/bin/env expect
@@ -889,11 +887,6 @@ proc wait_and_enter {} {
 proc toggle_space {} {
     sleep 0.3
     safe_send " "
-}
-
-proc arrow_down {} {
-    sleep 0.3
-    safe_send "\\033\[B"
 }
 
 spawn php {$playground_script}
@@ -922,8 +915,8 @@ expect "Integrations" {
 expect eof
 EXPECT;
 
-  file_put_contents($script_path, $content);
-  chmod($script_path, 0755);
+  file_put_contents($expect_script, $content);
+  chmod($expect_script, 0755);
 }
 
 /**
@@ -931,12 +924,12 @@ EXPECT;
  *
  * Records all 3 confirm prompts. Static screenshot is captured at the first.
  *
- * @param string $script_path
+ * @param string $expect_script
  *   Path to write the expect script.
  * @param string $playground_script
  *   Path to the playground PHP script.
  */
-function createWidgetConfirmExpectScript(string $script_path, string $playground_script): void {
+function createWidgetConfirmExpectScript(string $expect_script, string $playground_script): void {
   $delay = PROMPT_DELAY;
   $content = <<<EXPECT
 #!/usr/bin/env expect
@@ -986,8 +979,8 @@ expect "migrations" {
 expect eof
 EXPECT;
 
-  file_put_contents($script_path, $content);
-  chmod($script_path, 0755);
+  file_put_contents($expect_script, $content);
+  chmod($expect_script, 0755);
 }
 
 /**
