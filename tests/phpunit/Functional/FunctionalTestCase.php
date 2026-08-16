@@ -114,10 +114,10 @@ abstract class FunctionalTestCase extends TestCase {
    */
   protected function assertStarterFlowWorks(string $script_path): void {
     $keystrokes = $this->keys(
-      'my-project', static::KEYS['ENTER'],
-      static::KEYS['DOWN'], static::KEYS['ENTER'],
-      static::KEYS['SPACE'], static::KEYS['ENTER'],
-      static::KEYS['ENTER'],
+      'my-project', self::KEYS['ENTER'],
+      self::KEYS['DOWN'], self::KEYS['ENTER'],
+      self::KEYS['SPACE'], self::KEYS['ENTER'],
+      self::KEYS['ENTER'],
     );
 
     $output = $this->runScript($script_path, $keystrokes);
