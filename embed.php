@@ -654,7 +654,11 @@ if (is_file($rector_bin) && is_file($rector_config)) {
 
   $rector_output = [];
   $rector_exit = 0;
-  exec('php ' . escapeshellarg($rector_bin) . ' process --no-ansi --config=' . escapeshellarg($rector_config) . ' ' . escapeshellarg($rector_tmp) . ' 2>&1', $rector_output, $rector_exit);
+  exec(
+    'php ' . escapeshellarg($rector_bin) . ' process --no-ansi --config=' . escapeshellarg($rector_config) . ' ' . escapeshellarg($rector_tmp) . ' 2>&1',
+    $rector_output,
+    $rector_exit,
+  );
 
   if ($rector_exit <= 1) {
     // Read back the processed content and strip the PHP preamble.

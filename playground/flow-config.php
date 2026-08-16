@@ -21,10 +21,7 @@ Prompty::configure(unicode: FALSE, env_prefix: 'SETUP_');
 // The flow can add further config on top.
 $results = Prompty::flow(fn(): array => [
   'name' => Prompty::text('Project name', placeholder: 'my-app'),
-  'framework' => Prompty::select('Framework', options: [
-    'next' => 'Next.js',
-    'nuxt' => 'Nuxt',
-  ]),
+  'framework' => Prompty::select('Framework', options: ['next' => 'Next.js', 'nuxt' => 'Nuxt']),
   'install' => Prompty::confirm('Install dependencies?'),
 ],
   intro: 'Project setup',

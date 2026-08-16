@@ -30,9 +30,7 @@ final class PromptyWidgetFlowModeTest extends PromptyTestCase {
   public function testTextFlowModeWithChildren(): void {
     $child = Prompty::text('Child question');
 
-    $result = Prompty::text('Project name',
-      children: ['child_key' => $child],
-    );
+    $result = Prompty::text('Project name', children: ['child_key' => $child]);
 
     $this->assertIsArray($result);
     $this->assertArrayHasKey('__call', $result);
@@ -55,9 +53,7 @@ final class PromptyWidgetFlowModeTest extends PromptyTestCase {
   }
 
   public function testSelectFlowMode(): void {
-    $result = Prompty::select('Framework',
-      options: ['react' => 'React', 'vue' => 'Vue'],
-    );
+    $result = Prompty::select('Framework', options: ['react' => 'React', 'vue' => 'Vue']);
 
     $this->assertInstanceOf(\Closure::class, $result);
   }
@@ -65,10 +61,7 @@ final class PromptyWidgetFlowModeTest extends PromptyTestCase {
   public function testSelectFlowModeWithCondition(): void {
     $condition = fn($r): bool => ($r['type'] ?? '') === 'app';
 
-    $result = Prompty::select('Framework',
-      options: ['react' => 'React'],
-      condition: $condition,
-    );
+    $result = Prompty::select('Framework', options: ['react' => 'React'], condition: $condition);
 
     $this->assertIsArray($result);
     $this->assertArrayHasKey('__call', $result);
@@ -78,10 +71,7 @@ final class PromptyWidgetFlowModeTest extends PromptyTestCase {
   public function testSelectFlowModeWithChildren(): void {
     $child = Prompty::confirm('Use SSR?');
 
-    $result = Prompty::select('Framework',
-      options: ['react' => 'React'],
-      children: ['ssr' => $child],
-    );
+    $result = Prompty::select('Framework', options: ['react' => 'React'], children: ['ssr' => $child]);
 
     $this->assertIsArray($result);
     $this->assertArrayHasKey('__call', $result);
@@ -90,9 +80,7 @@ final class PromptyWidgetFlowModeTest extends PromptyTestCase {
   }
 
   public function testMultiselectFlowMode(): void {
-    $result = Prompty::multiselect('Features',
-      options: ['ts' => 'TypeScript', 'eslint' => 'ESLint'],
-    );
+    $result = Prompty::multiselect('Features', options: ['ts' => 'TypeScript', 'eslint' => 'ESLint']);
 
     $this->assertInstanceOf(\Closure::class, $result);
   }
@@ -119,9 +107,7 @@ final class PromptyWidgetFlowModeTest extends PromptyTestCase {
   }
 
   public function testConfirmFlowModeWithChildren(): void {
-    $result = Prompty::confirm('Enable testing?',
-      children: ['runner' => Prompty::select('Runner', options: ['jest' => 'Jest'])],
-    );
+    $result = Prompty::confirm('Enable testing?', children: ['runner' => Prompty::select('Runner', options: ['jest' => 'Jest'])]);
 
     $this->assertIsArray($result);
     $this->assertArrayHasKey('__call', $result);

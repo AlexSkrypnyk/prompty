@@ -29,9 +29,7 @@ $r = Prompty::text('Project name', placeholder: 'my-app');
 echo '  Result: ' . ($r ?? 'cancelled') . "\n";
 
 echo "\n--- Select (custom labels) ---\n";
-$r = Prompty::select('Framework',
-  options: ['next' => 'Next.js', 'nuxt' => 'Nuxt', 'sveltekit' => 'SvelteKit'],
-);
+$r = Prompty::select('Framework', options: ['next' => 'Next.js', 'nuxt' => 'Nuxt', 'sveltekit' => 'SvelteKit']);
 echo '  Result: ' . ($r ?? 'cancelled') . "\n";
 
 echo "\n--- Confirm (Yep/Nope labels) ---\n";

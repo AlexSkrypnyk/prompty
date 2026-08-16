@@ -295,7 +295,18 @@ class Prompty {
    * @param list<string>|null $falsy
    *   Values treated as FALSE.
    */
-  public static function configure(?array $symbols_unicode = NULL, ?array $symbols_ascii = NULL, ?array $colors = NULL, ?array $spacing = NULL, ?array $labels = NULL, ?bool $unicode = NULL, ?bool $ansi = NULL, ?string $env_prefix = NULL, ?array $truthy = NULL, ?array $falsy = NULL): void {
+  public static function configure(
+    ?array $symbols_unicode = NULL,
+    ?array $symbols_ascii = NULL,
+    ?array $colors = NULL,
+    ?array $spacing = NULL,
+    ?array $labels = NULL,
+    ?bool $unicode = NULL,
+    ?bool $ansi = NULL,
+    ?string $env_prefix = NULL,
+    ?array $truthy = NULL,
+    ?array $falsy = NULL,
+  ): void {
     $p = static::instance();
     if ($symbols_unicode !== NULL) {
       $p->cfgSymbolsUnicode = array_replace($p->cfgSymbolsUnicode, $symbols_unicode);
@@ -373,9 +384,34 @@ class Prompty {
    * @return array<string, string|bool|int|array<string,string>>|null
    *   Collected results or NULL if cancelled.
    */
-  public static function flow(callable $steps, string|callable|null $intro = NULL, string|callable|null $outro = NULL, string|callable|null $cancelled = NULL, bool $numbering = FALSE, ?array $symbols_unicode = NULL, ?array $symbols_ascii = NULL, ?array $colors = NULL, ?array $spacing = NULL, ?array $labels = NULL, ?bool $unicode = NULL, ?bool $ansi = NULL, ?string $env_prefix = NULL, ?array $truthy = NULL, ?array $falsy = NULL): ?array {
+  public static function flow(
+    callable $steps,
+    string|callable|null $intro = NULL,
+    string|callable|null $outro = NULL,
+    string|callable|null $cancelled = NULL,
+    bool $numbering = FALSE,
+    ?array $symbols_unicode = NULL,
+    ?array $symbols_ascii = NULL,
+    ?array $colors = NULL,
+    ?array $spacing = NULL,
+    ?array $labels = NULL,
+    ?bool $unicode = NULL,
+    ?bool $ansi = NULL,
+    ?string $env_prefix = NULL,
+    ?array $truthy = NULL,
+    ?array $falsy = NULL,
+  ): ?array {
     // Apply config overrides if any are provided.
-    if ($symbols_unicode !== NULL || $symbols_ascii !== NULL || $colors !== NULL || $spacing !== NULL || $labels !== NULL || $unicode !== NULL || $ansi !== NULL || $env_prefix !== NULL || $truthy !== NULL || $falsy !== NULL) {
+    if ($symbols_unicode !== NULL
+      || $symbols_ascii !== NULL
+      || $colors !== NULL
+      || $spacing !== NULL
+      || $labels !== NULL
+      || $unicode !== NULL
+      || $ansi !== NULL
+      || $env_prefix !== NULL
+      || $truthy !== NULL
+      || $falsy !== NULL) {
       static::configure($symbols_unicode, $symbols_ascii, $colors, $spacing, $labels, $unicode, $ansi, $env_prefix, $truthy, $falsy);
     }
     $p = static::instance();
@@ -474,10 +510,26 @@ class Prompty {
    * @return \Closure|array<string, mixed>|string|null
    *   A closure in flow mode, or the entered string in standalone mode.
    */
-  public static function text(string $label, string $default = '', string $placeholder = '', string $description = '', mixed $discovered = NULL, ?callable $condition = NULL, array $children = [], ?array $ctx = NULL): \Closure|array|string|null {
+  public static function text(
+    string $label,
+    string $default = '',
+    string $placeholder = '',
+    string $description = '',
+    mixed $discovered = NULL,
+    ?callable $condition = NULL,
+    array $children = [],
+    ?array $ctx = NULL,
+  ): \Closure|array|string|null {
     // Flow mode: return closure for deferred execution.
     if (static::$inFlow && $ctx === NULL) {
-      $call = fn(array $ctx): array|\Closure|string|null => static::text($label, default: $default, placeholder: $placeholder, description: $description, discovered: $discovered, ctx: $ctx);
+      $call = fn(array $ctx): array|\Closure|string|null => static::text(
+        $label,
+        default: $default,
+        placeholder: $placeholder,
+        description: $description,
+        discovered: $discovered,
+        ctx: $ctx,
+      );
       if ($condition !== NULL || $children !== []) {
         return ['__call' => $call, '__children' => $children, '__condition' => $condition];
       }
@@ -612,9 +664,27 @@ class Prompty {
    * @return \Closure|array<string, mixed>|string|null
    *   A closure in flow mode, or the selected option key in standalone mode.
    */
-  public static function select(string $label, array $options = [], string $default = '', string $description = '', array $hints = [], mixed $discovered = NULL, ?callable $condition = NULL, array $children = [], ?array $ctx = NULL): \Closure|array|string|null {
+  public static function select(
+    string $label,
+    array $options = [],
+    string $default = '',
+    string $description = '',
+    array $hints = [],
+    mixed $discovered = NULL,
+    ?callable $condition = NULL,
+    array $children = [],
+    ?array $ctx = NULL,
+  ): \Closure|array|string|null {
     if (static::$inFlow && $ctx === NULL) {
-      $call = fn(array $ctx): array|\Closure|string|null => static::select($label, options: $options, default: $default, description: $description, hints: $hints, discovered: $discovered, ctx: $ctx);
+      $call = fn(array $ctx): array|\Closure|string|null => static::select(
+        $label,
+        options: $options,
+        default: $default,
+        description: $description,
+        hints: $hints,
+        discovered: $discovered,
+        ctx: $ctx,
+      );
       if ($condition !== NULL || $children !== []) {
         return ['__call' => $call, '__children' => $children, '__condition' => $condition];
       }
@@ -773,9 +843,27 @@ class Prompty {
    * @return \Closure|array<string, mixed>|list<string>|null
    *   A closure in flow mode, or the array of selected keys in standalone mode.
    */
-  public static function multiselect(string $label, array $options = [], array $default = [], string $description = '', array $hints = [], mixed $discovered = NULL, ?callable $condition = NULL, array $children = [], ?array $ctx = NULL): \Closure|array|null {
+  public static function multiselect(
+    string $label,
+    array $options = [],
+    array $default = [],
+    string $description = '',
+    array $hints = [],
+    mixed $discovered = NULL,
+    ?callable $condition = NULL,
+    array $children = [],
+    ?array $ctx = NULL,
+  ): \Closure|array|null {
     if (static::$inFlow && $ctx === NULL) {
-      $call = fn(array $ctx): array|\Closure|null => static::multiselect($label, options: $options, default: $default, description: $description, hints: $hints, discovered: $discovered, ctx: $ctx);
+      $call = fn(array $ctx): array|\Closure|null => static::multiselect(
+        $label,
+        options: $options,
+        default: $default,
+        description: $description,
+        hints: $hints,
+        discovered: $discovered,
+        ctx: $ctx,
+      );
       if ($condition !== NULL || $children !== []) {
         return ['__call' => $call, '__children' => $children, '__condition' => $condition];
       }
@@ -811,7 +899,9 @@ class Prompty {
 
     if ($resolved !== NULL) {
       $resolved_array = is_array($resolved) ? $resolved : [$resolved];
-      $display = $resolved_array !== [] ? implode(', ', array_map(fn(mixed $key) => $options[is_string($key) ? $key : ''] ?? (is_string($key) ? $key : ''), $resolved_array)) : $p->cfgLabels['none'];
+      $display = $resolved_array !== []
+        ? implode(', ', array_map(fn(mixed $key) => $options[is_string($key) ? $key : ''] ?? (is_string($key) ? $key : ''), $resolved_array))
+        : $p->cfgLabels['none'];
       $p->printLines($p->renderCompleted($label, $display, $depth, $open));
       if ($standalone) {
         // @codeCoverageIgnoreStart
@@ -941,9 +1031,23 @@ class Prompty {
    * @return \Closure|array<string, mixed>|bool|null
    *   A closure in flow mode, or the boolean result in standalone mode.
    */
-  public static function confirm(string $label, bool $default = TRUE, string $description = '', mixed $discovered = NULL, ?callable $condition = NULL, array $children = [], ?array $ctx = NULL): \Closure|array|bool|null {
+  public static function confirm(
+    string $label,
+    bool $default = TRUE,
+    string $description = '',
+    mixed $discovered = NULL,
+    ?callable $condition = NULL,
+    array $children = [],
+    ?array $ctx = NULL,
+  ): \Closure|array|bool|null {
     if (static::$inFlow && $ctx === NULL) {
-      $call = fn(array $ctx): array|bool|\Closure|null => static::confirm($label, default: $default, description: $description, discovered: $discovered, ctx: $ctx);
+      $call = fn(array $ctx): array|bool|\Closure|null => static::confirm(
+        $label,
+        default: $default,
+        description: $description,
+        discovered: $discovered,
+        ctx: $ctx,
+      );
       if ($condition !== NULL || $children !== []) {
         return ['__call' => $call, '__children' => $children, '__condition' => $condition];
       }
@@ -998,8 +1102,10 @@ class Prompty {
     // Render the active confirm state for the current yes/no focus.
     $render_active = function (bool $focused_yes) use ($p, $label, $description, $depth, $open): array {
       $options_display = $focused_yes
-        ? $p->color($p->cfgSymbols['radio_on'], 'green') . ' ' . $p->cfgLabels['yes'] . ' ' . $p->color($p->cfgLabels['separator'], 'dim') . ' ' . $p->color($p->cfgSymbols['radio_off'], 'dim') . ' ' . $p->color($p->cfgLabels['no'], 'dim')
-        : $p->color($p->cfgSymbols['radio_off'], 'dim') . ' ' . $p->color($p->cfgLabels['yes'], 'dim') . ' ' . $p->color($p->cfgLabels['separator'], 'dim') . ' ' . $p->color($p->cfgSymbols['radio_on'], 'green') . ' ' . $p->cfgLabels['no'];
+        ? $p->color($p->cfgSymbols['radio_on'], 'green') . ' ' . $p->cfgLabels['yes'] . ' ' . $p->color($p->cfgLabels['separator'], 'dim')
+          . ' ' . $p->color($p->cfgSymbols['radio_off'], 'dim') . ' ' . $p->color($p->cfgLabels['no'], 'dim')
+        : $p->color($p->cfgSymbols['radio_off'], 'dim') . ' ' . $p->color($p->cfgLabels['yes'], 'dim') . ' ' . $p->color($p->cfgLabels['separator'], 'dim')
+          . ' ' . $p->color($p->cfgSymbols['radio_on'], 'green') . ' ' . $p->cfgLabels['no'];
 
       if ($depth === 0) {
         $lines = [$p->color($p->cfgSymbols['active'], 'cyan') . $p->cfgSpacing['indent'] . $label];

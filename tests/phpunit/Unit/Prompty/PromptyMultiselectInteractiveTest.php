@@ -38,7 +38,12 @@ final class PromptyMultiselectInteractiveTest extends PromptyTestCase {
       $options = ['ts' => 'TypeScript', 'eslint' => 'ESLint', 'prettier' => 'Prettier'];
     }
 
-    return $this->promptyRun(fn(): mixed => Prompty::multiselect('Features', options: $options, default: $default, hints: $hints, ctx: array_merge($this->defaultCtx(), $ctx_overrides)), $keystrokes);
+    return $this->promptyRun(fn(): mixed => Prompty::multiselect('Features',
+      options: $options,
+      default: $default,
+      hints: $hints,
+      ctx: array_merge($this->defaultCtx(), $ctx_overrides),
+    ), $keystrokes);
   }
 
   public function testSubmitNoneSelected(): void {
@@ -105,33 +110,21 @@ final class PromptyMultiselectInteractiveTest extends PromptyTestCase {
   }
 
   public function testInteractiveAtDepth(): void {
-    $r = $this->runMultiselectWidget(self::KEY_SPACE . self::KEY_ENTER, [], [], [
-      'depth' => 1,
-      'is_last' => FALSE,
-      'open' => [1 => TRUE],
-    ]);
+    $r = $this->runMultiselectWidget(self::KEY_SPACE . self::KEY_ENTER, [], [], ['depth' => 1, 'is_last' => FALSE, 'open' => [1 => TRUE]]);
 
     $this->assertSame(['ts'], $r['result']);
     $this->assertStringContainsString('Features', $r['output']);
   }
 
   public function testHintAtDepth(): void {
-    $r = $this->runMultiselectWidget(self::KEY_SPACE . self::KEY_ENTER, [], ['ts' => 'Typed JS'], [
-      'depth' => 1,
-      'is_last' => FALSE,
-      'open' => [1 => TRUE],
-    ]);
+    $r = $this->runMultiselectWidget(self::KEY_SPACE . self::KEY_ENTER, [], ['ts' => 'Typed JS'], ['depth' => 1, 'is_last' => FALSE, 'open' => [1 => TRUE]]);
 
     $this->assertSame(['ts'], $r['result']);
     $this->assertStringContainsString('Typed JS', $r['output']);
   }
 
   public function testInteractiveAtDepthCancelled(): void {
-    $r = $this->runMultiselectWidget(self::KEY_CTRL_C, [], [], [
-      'depth' => 1,
-      'is_last' => TRUE,
-      'open' => [],
-    ]);
+    $r = $this->runMultiselectWidget(self::KEY_CTRL_C, [], [], ['depth' => 1, 'is_last' => TRUE, 'open' => []]);
 
     $this->assertNull($r['result']);
     $this->assertStringContainsString('(cancelled)', $r['output']);
@@ -192,17 +185,16 @@ final class PromptyMultiselectInteractiveTest extends PromptyTestCase {
   }
 
   public function testPointerRendersAtDepth(): void {
-    $r = $this->runMultiselectWidget(self::KEY_ENTER, [], [], [
-      'depth' => 1,
-      'is_last' => FALSE,
-      'open' => [1 => TRUE],
-    ]);
+    $r = $this->runMultiselectWidget(self::KEY_ENTER, [], [], ['depth' => 1, 'is_last' => FALSE, 'open' => [1 => TRUE]]);
 
     $this->assertStringContainsString('> [ ] TypeScript', $r['output']);
   }
 
   public function testPointerRendersUnicodeGlyph(): void {
-    $r = $this->promptyRun(fn(): mixed => Prompty::multiselect('Features', options: ['ts' => 'TypeScript', 'eslint' => 'ESLint'], ctx: $this->defaultCtx()), self::KEY_ENTER, ['unicode' => TRUE]);
+    $r = $this->promptyRun(fn(): mixed => Prompty::multiselect('Features',
+      options: ['ts' => 'TypeScript', 'eslint' => 'ESLint'],
+      ctx: $this->defaultCtx(),
+    ), self::KEY_ENTER, ['unicode' => TRUE]);
 
     $this->assertStringContainsString('❯', $r['output']);
   }

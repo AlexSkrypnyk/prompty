@@ -142,22 +142,14 @@ final class PromptyConfirmInteractiveTest extends PromptyTestCase {
   }
 
   public function testInteractiveAtDepth(): void {
-    $r = $this->runConfirmWidget(self::KEY_ENTER, [
-      'depth' => 1,
-      'is_last' => FALSE,
-      'open' => [1 => TRUE],
-    ]);
+    $r = $this->runConfirmWidget(self::KEY_ENTER, ['depth' => 1, 'is_last' => FALSE, 'open' => [1 => TRUE]]);
 
     $this->assertTrue($r['result']);
     $this->assertStringContainsString('Install?', $r['output']);
   }
 
   public function testInteractiveAtDepthCancelled(): void {
-    $r = $this->runConfirmWidget(self::KEY_CTRL_C, [
-      'depth' => 1,
-      'is_last' => TRUE,
-      'open' => [],
-    ]);
+    $r = $this->runConfirmWidget(self::KEY_CTRL_C, ['depth' => 1, 'is_last' => TRUE, 'open' => []]);
 
     $this->assertNull($r['result']);
     $this->assertStringContainsString('(cancelled)', $r['output']);

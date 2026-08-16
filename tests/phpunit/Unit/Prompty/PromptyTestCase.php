@@ -35,13 +35,7 @@ abstract class PromptyTestCase extends TestCase {
    *   Context array.
    */
   protected function defaultCtx(array $overrides = []): array {
-    return array_merge([
-      'depth' => 0,
-      'is_last' => FALSE,
-      'open' => [],
-      'number' => NULL,
-      'env_value' => NULL,
-    ], $overrides);
+    return array_merge(['depth' => 0, 'is_last' => FALSE, 'open' => [], 'number' => NULL, 'env_value' => NULL], $overrides);
   }
 
   /**

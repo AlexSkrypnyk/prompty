@@ -32,7 +32,12 @@ final class PromptyTextInteractiveTest extends PromptyTestCase {
    *   The widget return value and captured output.
    */
   protected function runTextWidget(string $keystrokes, array $ctx_overrides = [], string $default = ''): array {
-    return $this->promptyRun(fn(): mixed => Prompty::text('Project name', default: $default, placeholder: 'my-app', description: 'Enter a name.', ctx: array_merge($this->defaultCtx(), $ctx_overrides)), $keystrokes);
+    return $this->promptyRun(fn(): mixed => Prompty::text('Project name',
+      default: $default,
+      placeholder: 'my-app',
+      description: 'Enter a name.',
+      ctx: array_merge($this->defaultCtx(), $ctx_overrides),
+    ), $keystrokes);
   }
 
   #[DataProvider('dataProviderTypeAndSubmit')]
@@ -118,22 +123,14 @@ final class PromptyTextInteractiveTest extends PromptyTestCase {
   }
 
   public function testInteractiveAtDepth(): void {
-    $r = $this->runTextWidget('val' . self::KEY_ENTER, [
-      'depth' => 1,
-      'is_last' => FALSE,
-      'open' => [1 => TRUE],
-    ]);
+    $r = $this->runTextWidget('val' . self::KEY_ENTER, ['depth' => 1, 'is_last' => FALSE, 'open' => [1 => TRUE]]);
 
     $this->assertSame('val', $r['result']);
     $this->assertStringContainsString('Project name', $r['output']);
   }
 
   public function testInteractiveAtDepthCancelled(): void {
-    $r = $this->runTextWidget('x' . self::KEY_CTRL_C, [
-      'depth' => 1,
-      'is_last' => TRUE,
-      'open' => [],
-    ]);
+    $r = $this->runTextWidget('x' . self::KEY_CTRL_C, ['depth' => 1, 'is_last' => TRUE, 'open' => []]);
 
     $this->assertNull($r['result']);
     $this->assertStringContainsString('(cancelled)', $r['output']);

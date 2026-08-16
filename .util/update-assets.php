@@ -50,29 +50,12 @@ define('END_PAUSE', 10);
  */
 function getJobs(string $project_dir): array {
   // Flag variants for animated recordings.
-  $variants = [
-    '' => '',
-    '-ascii' => ' --no-unicode',
-    '-no-ansi' => ' --no-ansi',
-    '-ascii-no-ansi' => ' --no-unicode --no-ansi',
-  ];
+  $variants = ['' => '', '-ascii' => ' --no-unicode', '-no-ansi' => ' --no-ansi', '-ascii-no-ansi' => ' --no-unicode --no-ansi'];
 
   $animated_bases = [
-    'widgets' => [
-      'script' => $project_dir . '/playground/widgets.php',
-      'expect_fn' => 'createWidgetsExpectScript',
-      'rows' => 18,
-    ],
-    'flow' => [
-      'script' => $project_dir . '/playground/flow.php',
-      'expect_fn' => 'createFlowExpectScript',
-      'rows' => 20,
-    ],
-    'flow-nested' => [
-      'script' => $project_dir . '/playground/flow-nested.php',
-      'expect_fn' => 'createFlowNestedExpectScript',
-      'rows' => 20,
-    ],
+    'widgets' => ['script' => $project_dir . '/playground/widgets.php', 'expect_fn' => 'createWidgetsExpectScript', 'rows' => 18],
+    'flow' => ['script' => $project_dir . '/playground/flow.php', 'expect_fn' => 'createFlowExpectScript', 'rows' => 20],
+    'flow-nested' => ['script' => $project_dir . '/playground/flow-nested.php', 'expect_fn' => 'createFlowNestedExpectScript', 'rows' => 20],
   ];
 
   $jobs = [];
@@ -80,11 +63,7 @@ function getJobs(string $project_dir): array {
   // Generate 4 variants per animated script.
   foreach ($animated_bases as $base_name => $base_job) {
     foreach ($variants as $suffix => $flags) {
-      $jobs[$base_name . $suffix] = [
-        'script' => $base_job['script'] . $flags,
-        'expect_fn' => $base_job['expect_fn'],
-        'rows' => $base_job['rows'],
-      ];
+      $jobs[$base_name . $suffix] = ['script' => $base_job['script'] . $flags, 'expect_fn' => $base_job['expect_fn'], 'rows' => $base_job['rows']];
     }
   }
 
@@ -123,9 +102,7 @@ function getJobs(string $project_dir): array {
   // Generate 4 variants per static screenshot.
   foreach ($static_bases as $base_name => $base_job) {
     foreach ($variants as $suffix => $flags) {
-      $jobs[$base_name . $suffix] = array_merge($base_job, [
-        'script' => $base_job['script'] . $flags,
-      ]);
+      $jobs[$base_name . $suffix] = array_merge($base_job, ['script' => $base_job['script'] . $flags]);
     }
   }
 
@@ -171,17 +148,9 @@ function main(): void {
   info('');
 
   foreach ($jobs as $name => $job) {
-    $cmd = sprintf(
-      'php %s --record %s',
-      escapeshellarg($script_path),
-      escapeshellarg($name)
-    );
+    $cmd = sprintf('php %s --record %s', escapeshellarg($script_path), escapeshellarg($name));
 
-    $descriptors = [
-      0 => ['pipe', 'r'],
-      1 => ['pipe', 'w'],
-      2 => ['pipe', 'w'],
-    ];
+    $descriptors = [0 => ['pipe', 'r'], 1 => ['pipe', 'w'], 2 => ['pipe', 'w']];
 
     $pipes = [];
     $process = proc_open($cmd, $descriptors, $pipes, $project_dir);
@@ -407,13 +376,7 @@ function convertToSvg(string $cast_file, string $svg_file, string $script_dir, ?
   $renderer_script = $script_dir . '/svg-term-render.js';
 
   $at_flag = $at !== NULL ? sprintf(' --at %d', $at) : '';
-  $cmd = sprintf(
-    'node %s %s %s --line-height 1.1%s 2>&1',
-    escapeshellarg($renderer_script),
-    escapeshellarg($cast_file),
-    escapeshellarg($svg_file),
-    $at_flag
-  );
+  $cmd = sprintf('node %s %s %s --line-height 1.1%s 2>&1', escapeshellarg($renderer_script), escapeshellarg($cast_file), escapeshellarg($svg_file), $at_flag);
 
   $output = shell_exec($cmd);
 

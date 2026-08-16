@@ -35,10 +35,7 @@ final class PromptyWidgetResolvedTest extends PromptyTestCase {
    *   Context array.
    */
   protected function ctx(array $overrides = []): array {
-    return $this->defaultCtx(array_merge([
-      'truthy' => ['1', 'true', 'yes'],
-      'falsy' => ['0', 'false', 'no'],
-    ], $overrides));
+    return $this->defaultCtx(array_merge(['truthy' => ['1', 'true', 'yes'], 'falsy' => ['0', 'false', 'no']], $overrides));
   }
 
   #[DataProvider('dataProviderTextResolved')]
@@ -91,10 +88,7 @@ final class PromptyWidgetResolvedTest extends PromptyTestCase {
 
   public function testSelectEnvResolved(): void {
     $this->captureOutput(function () use (&$result): void {
-      $result = Prompty::select('Framework',
-        options: ['react' => 'React', 'vue' => 'Vue'],
-        ctx: $this->ctx(['env_value' => 'vue']),
-      );
+      $result = Prompty::select('Framework', options: ['react' => 'React', 'vue' => 'Vue'], ctx: $this->ctx(['env_value' => 'vue']));
     });
 
     $this->assertSame('vue', $result);
@@ -102,11 +96,7 @@ final class PromptyWidgetResolvedTest extends PromptyTestCase {
 
   public function testSelectRendersCompletedLabel(): void {
     $output = $this->captureOutput(function (): void {
-      Prompty::select('Framework',
-        options: ['react' => 'React', 'vue' => 'Vue'],
-        discovered: 'vue',
-        ctx: $this->ctx(),
-      );
+      Prompty::select('Framework', options: ['react' => 'React', 'vue' => 'Vue'], discovered: 'vue', ctx: $this->ctx());
     });
 
     $this->assertStringContainsString('Framework', $output);
@@ -134,11 +124,7 @@ final class PromptyWidgetResolvedTest extends PromptyTestCase {
 
   public function testMultiselectEmpty(): void {
     $this->captureOutput(function () use (&$result): void {
-      $result = Prompty::multiselect('Features',
-        options: ['ts' => 'TypeScript'],
-        discovered: [],
-        ctx: $this->ctx(),
-      );
+      $result = Prompty::multiselect('Features', options: ['ts' => 'TypeScript'], discovered: [], ctx: $this->ctx());
     });
 
     $this->assertSame([], $result);
@@ -146,11 +132,7 @@ final class PromptyWidgetResolvedTest extends PromptyTestCase {
 
   public function testMultiselectRendersNoneForEmpty(): void {
     $output = $this->captureOutput(function (): void {
-      Prompty::multiselect('Features',
-        options: ['ts' => 'TypeScript'],
-        discovered: [],
-        ctx: $this->ctx(),
-      );
+      Prompty::multiselect('Features', options: ['ts' => 'TypeScript'], discovered: [], ctx: $this->ctx());
     });
 
     $this->assertStringContainsString('None', $output);
@@ -199,11 +181,7 @@ final class PromptyWidgetResolvedTest extends PromptyTestCase {
 
   public function testTextResolvedAtDepth(): void {
     $output = $this->captureOutput(function () use (&$result): void {
-      $result = Prompty::text('Child name', discovered: 'child-val', ctx: $this->ctx([
-        'depth' => 1,
-        'is_last' => FALSE,
-        'open' => [1 => TRUE],
-      ]));
+      $result = Prompty::text('Child name', discovered: 'child-val', ctx: $this->ctx(['depth' => 1, 'is_last' => FALSE, 'open' => [1 => TRUE]]));
     });
 
     $this->assertSame('child-val', $result);
@@ -216,11 +194,7 @@ final class PromptyWidgetResolvedTest extends PromptyTestCase {
       $result = Prompty::select('Framework',
         options: ['react' => 'React', 'vue' => 'Vue'],
         discovered: 'react',
-        ctx: $this->ctx([
-          'depth' => 1,
-          'is_last' => TRUE,
-          'open' => [],
-        ]),
+        ctx: $this->ctx(['depth' => 1, 'is_last' => TRUE, 'open' => []]),
       );
     });
 
@@ -232,12 +206,7 @@ final class PromptyWidgetResolvedTest extends PromptyTestCase {
     $output = $this->captureOutput(function () use (&$result): void {
       $result = Prompty::multiselect('Features',
         options: ['ts' => 'TypeScript', 'eslint' => 'ESLint'],
-        ctx: $this->ctx([
-          'depth' => 2,
-          'is_last' => FALSE,
-          'open' => [1 => TRUE, 2 => TRUE],
-          'env_value' => 'ts,eslint',
-        ]),
+        ctx: $this->ctx(['depth' => 2, 'is_last' => FALSE, 'open' => [1 => TRUE, 2 => TRUE], 'env_value' => 'ts,eslint']),
       );
     });
 
@@ -247,14 +216,7 @@ final class PromptyWidgetResolvedTest extends PromptyTestCase {
 
   public function testConfirmResolvedAtDepth(): void {
     $output = $this->captureOutput(function () use (&$result): void {
-      $result = Prompty::confirm('Enable?',
-        discovered: TRUE,
-        ctx: $this->ctx([
-          'depth' => 1,
-          'is_last' => TRUE,
-          'open' => [],
-        ]),
-      );
+      $result = Prompty::confirm('Enable?', discovered: TRUE, ctx: $this->ctx(['depth' => 1, 'is_last' => TRUE, 'open' => []]));
     });
 
     $this->assertTrue($result);
@@ -278,10 +240,7 @@ final class PromptyWidgetResolvedTest extends PromptyTestCase {
     $this->createAndSetInstance();
 
     $output = $this->captureOutput(function () use (&$result): void {
-      $result = Prompty::select('Pick',
-        options: ['a' => 'Alpha', 'b' => 'Beta'],
-        discovered: 'b',
-      );
+      $result = Prompty::select('Pick', options: ['a' => 'Alpha', 'b' => 'Beta'], discovered: 'b');
     });
 
     $this->assertSame('b', $result);
@@ -293,10 +252,7 @@ final class PromptyWidgetResolvedTest extends PromptyTestCase {
     $this->createAndSetInstance();
 
     $output = $this->captureOutput(function () use (&$result): void {
-      $result = Prompty::multiselect('Pick',
-        options: ['a' => 'Alpha', 'b' => 'Beta'],
-        discovered: ['a', 'b'],
-      );
+      $result = Prompty::multiselect('Pick', options: ['a' => 'Alpha', 'b' => 'Beta'], discovered: ['a', 'b']);
     });
 
     $this->assertSame(['a', 'b'], $result);
@@ -317,12 +273,7 @@ final class PromptyWidgetResolvedTest extends PromptyTestCase {
 
   public function testSelectWithDescription(): void {
     $output = $this->captureOutput(function () use (&$result): void {
-      $result = Prompty::select('Framework',
-        options: ['react' => 'React'],
-        description: 'Pick your framework.',
-        discovered: 'react',
-        ctx: $this->ctx(),
-      );
+      $result = Prompty::select('Framework', options: ['react' => 'React'], description: 'Pick your framework.', discovered: 'react', ctx: $this->ctx());
     });
 
     $this->assertSame('react', $result);
@@ -345,11 +296,7 @@ final class PromptyWidgetResolvedTest extends PromptyTestCase {
 
   public function testConfirmWithDescription(): void {
     $output = $this->captureOutput(function () use (&$result): void {
-      $result = Prompty::confirm('Install?',
-        description: 'Runs npm install.',
-        discovered: TRUE,
-        ctx: $this->ctx(),
-      );
+      $result = Prompty::confirm('Install?', description: 'Runs npm install.', discovered: TRUE, ctx: $this->ctx());
     });
 
     $this->assertTrue($result);
@@ -358,11 +305,7 @@ final class PromptyWidgetResolvedTest extends PromptyTestCase {
 
   public function testTextWithDescription(): void {
     $output = $this->captureOutput(function () use (&$result): void {
-      $result = Prompty::text('Project name',
-        description: 'Used as the directory name.',
-        discovered: 'my-app',
-        ctx: $this->ctx(),
-      );
+      $result = Prompty::text('Project name', description: 'Used as the directory name.', discovered: 'my-app', ctx: $this->ctx());
     });
 
     $this->assertSame('my-app', $result);
@@ -371,11 +314,7 @@ final class PromptyWidgetResolvedTest extends PromptyTestCase {
 
   public function testSelectUnknownKeyFallback(): void {
     $output = $this->captureOutput(function () use (&$result): void {
-      $result = Prompty::select('Pick',
-        options: ['a' => 'Alpha'],
-        discovered: 'unknown',
-        ctx: $this->ctx(),
-      );
+      $result = Prompty::select('Pick', options: ['a' => 'Alpha'], discovered: 'unknown', ctx: $this->ctx());
     });
 
     $this->assertSame('unknown', $result);

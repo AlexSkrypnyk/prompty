@@ -38,7 +38,12 @@ final class PromptySelectInteractiveTest extends PromptyTestCase {
       $options = ['react' => 'React', 'vue' => 'Vue', 'svelte' => 'Svelte'];
     }
 
-    return $this->promptyRun(fn(): mixed => Prompty::select('Framework', options: $options, default: $default, hints: $hints, ctx: $this->defaultCtx($ctx_overrides)), $keystrokes);
+    return $this->promptyRun(fn(): mixed => Prompty::select('Framework',
+      options: $options,
+      default: $default,
+      hints: $hints,
+      ctx: $this->defaultCtx($ctx_overrides),
+    ), $keystrokes);
   }
 
   #[DataProvider('dataProviderNavigation')]
@@ -95,7 +100,11 @@ final class PromptySelectInteractiveTest extends PromptyTestCase {
   }
 
   public function testActiveStateShowsDescription(): void {
-    $r = $this->promptyRun(fn(): mixed => Prompty::select('Framework', options: ['react' => 'React', 'vue' => 'Vue'], description: 'Pick one.', ctx: $this->defaultCtx()), self::KEY_ENTER);
+    $r = $this->promptyRun(fn(): mixed => Prompty::select('Framework',
+      options: ['react' => 'React', 'vue' => 'Vue'],
+      description: 'Pick one.',
+      ctx: $this->defaultCtx(),
+    ), self::KEY_ENTER);
 
     $this->assertStringContainsString('Pick one.', $r['output']);
   }
@@ -107,39 +116,30 @@ final class PromptySelectInteractiveTest extends PromptyTestCase {
   }
 
   public function testHintChangesOnNavigation(): void {
-    $r = $this->runSelectWidget(self::KEY_DOWN . self::KEY_ENTER, ['react' => 'React', 'vue' => 'Vue'], ['react' => 'Meta library', 'vue' => 'Progressive framework']);
+    $r = $this->runSelectWidget(self::KEY_DOWN . self::KEY_ENTER,
+      ['react' => 'React', 'vue' => 'Vue'],
+      ['react' => 'Meta library', 'vue' => 'Progressive framework'],
+    );
 
     $this->assertStringContainsString('Progressive framework', $r['output']);
   }
 
   public function testInteractiveAtDepth(): void {
-    $r = $this->runSelectWidget(self::KEY_DOWN . self::KEY_ENTER, [], [], [
-      'depth' => 1,
-      'is_last' => FALSE,
-      'open' => [1 => TRUE],
-    ]);
+    $r = $this->runSelectWidget(self::KEY_DOWN . self::KEY_ENTER, [], [], ['depth' => 1, 'is_last' => FALSE, 'open' => [1 => TRUE]]);
 
     $this->assertSame('vue', $r['result']);
     $this->assertStringContainsString('Framework', $r['output']);
   }
 
   public function testHintAtDepth(): void {
-    $r = $this->runSelectWidget(self::KEY_ENTER, [], ['react' => 'Meta library'], [
-      'depth' => 1,
-      'is_last' => FALSE,
-      'open' => [1 => TRUE],
-    ]);
+    $r = $this->runSelectWidget(self::KEY_ENTER, [], ['react' => 'Meta library'], ['depth' => 1, 'is_last' => FALSE, 'open' => [1 => TRUE]]);
 
     $this->assertSame('react', $r['result']);
     $this->assertStringContainsString('Meta library', $r['output']);
   }
 
   public function testInteractiveAtDepthCancelled(): void {
-    $r = $this->runSelectWidget(self::KEY_CTRL_C, [], [], [
-      'depth' => 1,
-      'is_last' => TRUE,
-      'open' => [],
-    ]);
+    $r = $this->runSelectWidget(self::KEY_CTRL_C, [], [], ['depth' => 1, 'is_last' => TRUE, 'open' => []]);
 
     $this->assertNull($r['result']);
     $this->assertStringContainsString('(cancelled)', $r['output']);
@@ -183,17 +183,16 @@ final class PromptySelectInteractiveTest extends PromptyTestCase {
   }
 
   public function testPointerRendersAtDepth(): void {
-    $r = $this->runSelectWidget(self::KEY_ENTER, [], [], [
-      'depth' => 1,
-      'is_last' => FALSE,
-      'open' => [1 => TRUE],
-    ]);
+    $r = $this->runSelectWidget(self::KEY_ENTER, [], [], ['depth' => 1, 'is_last' => FALSE, 'open' => [1 => TRUE]]);
 
     $this->assertStringContainsString('> (*) React', $r['output']);
   }
 
   public function testPointerRendersUnicodeGlyph(): void {
-    $r = $this->promptyRun(fn(): mixed => Prompty::select('Framework', options: ['react' => 'React', 'vue' => 'Vue'], ctx: $this->defaultCtx()), self::KEY_ENTER, ['unicode' => TRUE]);
+    $r = $this->promptyRun(fn(): mixed => Prompty::select('Framework',
+      options: ['react' => 'React', 'vue' => 'Vue'],
+      ctx: $this->defaultCtx(),
+    ), self::KEY_ENTER, ['unicode' => TRUE]);
 
     $this->assertStringContainsString('❯', $r['output']);
   }

@@ -62,11 +62,7 @@ abstract class FunctionalTestCase extends TestCase {
    *   Process output.
    */
   protected function runWithKeystrokes(string $command, string $keystrokes): array {
-    $descriptors = [
-      0 => ['pipe', 'r'],
-      1 => ['pipe', 'w'],
-      2 => ['pipe', 'w'],
-    ];
+    $descriptors = [0 => ['pipe', 'r'], 1 => ['pipe', 'w'], 2 => ['pipe', 'w']];
 
     $process = proc_open($command, $descriptors, $pipes);
     $this->assertIsResource($process);
@@ -82,11 +78,7 @@ abstract class FunctionalTestCase extends TestCase {
 
     $exit_code = proc_close($process);
 
-    return [
-      'stdout' => $stdout ?: '',
-      'stderr' => $stderr ?: '',
-      'exit_code' => $exit_code,
-    ];
+    return ['stdout' => $stdout ?: '', 'stderr' => $stderr ?: '', 'exit_code' => $exit_code];
   }
 
   /**

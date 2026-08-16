@@ -26,12 +26,7 @@ final class PromptyWalkFlowTest extends PromptyTestCase {
    *   Options array.
    */
   protected function defaultOptions(array $overrides = []): array {
-    return array_merge([
-      'numbering' => FALSE,
-      'env_prefix' => 'TEST_WALK_',
-      'truthy' => ['1', 'true', 'yes'],
-      'falsy' => ['0', 'false', 'no'],
-    ], $overrides);
+    return array_merge(['numbering' => FALSE, 'env_prefix' => 'TEST_WALK_', 'truthy' => ['1', 'true', 'yes'], 'falsy' => ['0', 'false', 'no']], $overrides);
   }
 
   /**
@@ -60,10 +55,7 @@ final class PromptyWalkFlowTest extends PromptyTestCase {
   public function testWalkFlowSimple(): void {
     $p = $this->createAndSetInstance();
 
-    $steps = [
-      'name' => $this->resolvedStep('my-app'),
-      'framework' => $this->resolvedStep('vue'),
-    ];
+    $steps = ['name' => $this->resolvedStep('my-app'), 'framework' => $this->resolvedStep('vue')];
 
     $this->clearEnvVars(['name', 'framework'], 'TEST_WALK_');
 
@@ -250,11 +242,7 @@ final class PromptyWalkFlowTest extends PromptyTestCase {
   public function testWalkFlowCancellation(): void {
     $p = $this->createAndSetInstance();
 
-    $steps = [
-      'name' => $this->resolvedStep('my-app'),
-      'cancelled' => $this->cancelledStep(),
-      'unreached' => $this->resolvedStep('should-not-run'),
-    ];
+    $steps = ['name' => $this->resolvedStep('my-app'), 'cancelled' => $this->cancelledStep(), 'unreached' => $this->resolvedStep('should-not-run')];
 
     $this->clearEnvVars(['name', 'cancelled', 'unreached'], 'TEST_WALK_');
 
@@ -301,15 +289,7 @@ final class PromptyWalkFlowTest extends PromptyTestCase {
   public function testWalkFlowChildCancellation(): void {
     $p = $this->createAndSetInstance();
 
-    $steps = [
-      'parent' => [
-        '__call' => $this->resolvedStep('parent-val'),
-        '__children' => [
-          'child' => $this->cancelledStep(),
-        ],
-        '__condition' => NULL,
-      ],
-    ];
+    $steps = ['parent' => ['__call' => $this->resolvedStep('parent-val'), '__children' => ['child' => $this->cancelledStep()], '__condition' => NULL]];
 
     $this->clearEnvVars(['parent', 'child'], 'TEST_WALK_');
 

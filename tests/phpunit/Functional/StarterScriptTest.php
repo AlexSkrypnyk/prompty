@@ -48,12 +48,7 @@ final class StarterScriptTest extends FunctionalTestCase {
   }
 
   public function testStarterEmptyNameUsesPlaceholder(): void {
-    $keystrokes = $this->keys(
-      self::KEYS['ENTER'],
-      self::KEYS['ENTER'],
-      self::KEYS['ENTER'],
-      self::KEYS['ENTER'],
-    );
+    $keystrokes = $this->keys(self::KEYS['ENTER'], self::KEYS['ENTER'], self::KEYS['ENTER'], self::KEYS['ENTER']);
 
     $output = $this->runScript($this->starterScript, $keystrokes);
 
@@ -62,12 +57,7 @@ final class StarterScriptTest extends FunctionalTestCase {
   }
 
   public function testStarterDeclineInstall(): void {
-    $keystrokes = $this->keys(
-      'test', self::KEYS['ENTER'],
-      self::KEYS['ENTER'],
-      self::KEYS['ENTER'],
-      self::KEYS['LEFT'], self::KEYS['ENTER'],
-    );
+    $keystrokes = $this->keys('test', self::KEYS['ENTER'], self::KEYS['ENTER'], self::KEYS['ENTER'], self::KEYS['LEFT'], self::KEYS['ENTER']);
 
     $output = $this->runScript($this->starterScript, $keystrokes);
 
@@ -76,12 +66,7 @@ final class StarterScriptTest extends FunctionalTestCase {
   }
 
   public function testStarterOutputContainsIntroOutro(): void {
-    $keystrokes = $this->keys(
-      self::KEYS['ENTER'],
-      self::KEYS['ENTER'],
-      self::KEYS['ENTER'],
-      self::KEYS['ENTER'],
-    );
+    $keystrokes = $this->keys(self::KEYS['ENTER'], self::KEYS['ENTER'], self::KEYS['ENTER'], self::KEYS['ENTER']);
 
     $output = $this->runScript($this->starterScript, $keystrokes);
 

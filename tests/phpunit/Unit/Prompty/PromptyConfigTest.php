@@ -49,17 +49,9 @@ final class PromptyConfigTest extends PromptyTestCase {
   }
 
   public static function dataProviderConfigOverrides(): \Iterator {
-    yield 'custom env_prefix' => [
-      ['env_prefix' => 'MY_APP_'],
-      'cfgEnvPrefix',
-      'MY_APP_',
-    ];
+    yield 'custom env_prefix' => [['env_prefix' => 'MY_APP_'], 'cfgEnvPrefix', 'MY_APP_'];
 
-    yield 'custom truthy values' => [
-      ['truthy' => ['y', 'on', 'yep']],
-      'cfgTruthy',
-      ['y', 'on', 'yep'],
-    ];
+    yield 'custom truthy values' => [['truthy' => ['y', 'on', 'yep']], 'cfgTruthy', ['y', 'on', 'yep']];
 
     yield 'custom labels' => [
       ['labels' => ['yes' => 'Yep', 'no' => 'Nope', 'cancelled' => '(nah)', 'none' => 'Zilch', 'separator' => '|']],
@@ -137,35 +129,15 @@ final class PromptyConfigTest extends PromptyTestCase {
   }
 
   public static function dataProviderConfigure(): \Iterator {
-    yield 'env_prefix' => [
-      ['env_prefix' => 'MYAPP_'],
-      'cfgEnvPrefix',
-      'MYAPP_',
-    ];
+    yield 'env_prefix' => [['env_prefix' => 'MYAPP_'], 'cfgEnvPrefix', 'MYAPP_'];
 
-    yield 'truthy' => [
-      ['truthy' => ['y', 'on']],
-      'cfgTruthy',
-      ['y', 'on'],
-    ];
+    yield 'truthy' => [['truthy' => ['y', 'on']], 'cfgTruthy', ['y', 'on']];
 
-    yield 'falsy' => [
-      ['falsy' => ['n', 'off']],
-      'cfgFalsy',
-      ['n', 'off'],
-    ];
+    yield 'falsy' => [['falsy' => ['n', 'off']], 'cfgFalsy', ['n', 'off']];
 
-    yield 'unicode true' => [
-      ['unicode' => TRUE],
-      'cfgUnicode',
-      TRUE,
-    ];
+    yield 'unicode true' => [['unicode' => TRUE], 'cfgUnicode', TRUE];
 
-    yield 'unicode false' => [
-      ['unicode' => FALSE],
-      'cfgUnicode',
-      FALSE,
-    ];
+    yield 'unicode false' => [['unicode' => FALSE], 'cfgUnicode', FALSE];
   }
 
   public function testConfigurePartialArrayMerge(): void {

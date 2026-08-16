@@ -52,16 +52,10 @@ final class EmbedScriptTest extends FunctionalTestCase {
     $this->assertStringContainsString('\033[', $content);
 
     // Namespace removed from embedded output.
-    $this->assertDoesNotMatchRegularExpression(
-      '/^namespace\s+AlexSkrypnyk\\\\Prompty\s*;/m',
-      $content,
-    );
+    $this->assertDoesNotMatchRegularExpression('/^namespace\s+AlexSkrypnyk\\\\Prompty\s*;/m', $content);
 
     // PHPStan ignore comment added before class declaration.
-    $this->assertMatchesRegularExpression(
-      '/\/\/ @phpstan-ignore-next-line\nclass Prompty/',
-      $content,
-    );
+    $this->assertMatchesRegularExpression('/\/\/ @phpstan-ignore-next-line\nclass Prompty/', $content);
 
     // Embedded script runs correctly.
     $this->assertStarterFlowWorks($target);
@@ -138,11 +132,7 @@ final class EmbedScriptTest extends FunctionalTestCase {
     $this->assertStarterFlowWorks($target);
 
     // Simulate a user editing the script outside the embedded block.
-    $modified = str_replace(
-      "intro: 'Create a new project'",
-      "intro: 'Create a NEW project'",
-      $first_content,
-    );
+    $modified = str_replace("intro: 'Create a new project'", "intro: 'Create a NEW project'", $first_content);
     $this->assertNotSame($first_content, $modified);
     file_put_contents($target, $modified);
 
@@ -165,11 +155,7 @@ final class EmbedScriptTest extends FunctionalTestCase {
     $this->assertStringNotContainsString('require_once', $re_embedded);
 
     // Kill switch not duplicated.
-    $this->assertSame(
-      1,
-      substr_count($re_embedded, "if (!getenv('SHOULD_PROCEED'))"),
-      'Kill switch should appear exactly once after re-embed.',
-    );
+    $this->assertSame(1, substr_count($re_embedded, "if (!getenv('SHOULD_PROCEED'))"), 'Kill switch should appear exactly once after re-embed.');
   }
 
   public function testStdout(): void {
@@ -191,10 +177,7 @@ final class EmbedScriptTest extends FunctionalTestCase {
     $this->assertStringContainsString('\033[', $content);
 
     // Smaller than original.
-    $this->assertLessThan(
-      filesize(self::$root . '/Prompty.php'),
-      filesize($output_path),
-    );
+    $this->assertLessThan(filesize(self::$root . '/Prompty.php'), filesize($output_path));
   }
 
   public function testStdoutCompact(): void {
@@ -244,11 +227,7 @@ final class EmbedScriptTest extends FunctionalTestCase {
     $content = file_get_contents($target);
     $this->assertIsString($content);
 
-    $this->assertSame(
-      1,
-      substr_count($content, "if (!getenv('SHOULD_PROCEED'))"),
-      'Kill switch should appear exactly once.',
-    );
+    $this->assertSame(1, substr_count($content, "if (!getenv('SHOULD_PROCEED'))"), 'Kill switch should appear exactly once.');
   }
 
   public function testEmbedKillswitchInjected(): void {
@@ -401,16 +380,7 @@ final class EmbedScriptTest extends FunctionalTestCase {
     $this->processRun('php', [self::$root . '/embed.php']);
     $this->assertProcessFailed();
 
-    $this->assertProcessAnyOutputContains([
-      'Usage:',
-      '--source',
-      '--compact',
-      '--stdout',
-      '--no-killswitch',
-      'Re-embedding',
-      'Arguments:',
-      'Options:',
-    ]);
+    $this->assertProcessAnyOutputContains(['Usage:', '--source', '--compact', '--stdout', '--no-killswitch', 'Re-embedding', 'Arguments:', 'Options:']);
   }
 
   public function testEmbedErrors(): void {
@@ -450,19 +420,10 @@ final class EmbedScriptTest extends FunctionalTestCase {
     $content = str_replace('__PROMPTY_VERSION__', '1.2.3', $content);
 
     // Inject version output before the kill switch.
-    $content = str_replace(
-      "if (!getenv('SHOULD_PROCEED'))",
-      "echo 'VERSION:' . Prompty::version() . PHP_EOL;\nif (!getenv('SHOULD_PROCEED'))",
-      $content,
-    );
+    $content = str_replace("if (!getenv('SHOULD_PROCEED'))", "echo 'VERSION:' . Prompty::version() . PHP_EOL;\nif (!getenv('SHOULD_PROCEED'))", $content);
     file_put_contents($target, $content);
 
-    $keystrokes = $this->keys(
-      'test', self::KEYS['ENTER'],
-      self::KEYS['ENTER'],
-      self::KEYS['ENTER'],
-      self::KEYS['ENTER'],
-    );
+    $keystrokes = $this->keys('test', self::KEYS['ENTER'], self::KEYS['ENTER'], self::KEYS['ENTER'], self::KEYS['ENTER']);
 
     $r = $this->runWithKeystrokes('php ' . escapeshellarg($target), $keystrokes);
     $this->assertSame(0, $r['exit_code'], 'Script failed: ' . $r['stderr']);
@@ -486,11 +447,7 @@ final class EmbedScriptTest extends FunctionalTestCase {
     $content = file_get_contents(self::$root . '/starter.php');
     $this->assertIsString($content);
 
-    $content = preg_replace(
-      '/\/\/ Kill switch.*?if \(!getenv\(\'SHOULD_PROCEED\'\)\) \{\s*return;\s*\}\n*/s',
-      '',
-      $content,
-    );
+    $content = preg_replace('/\/\/ Kill switch.*?if \(!getenv\(\'SHOULD_PROCEED\'\)\) \{\s*return;\s*\}\n*/s', '', $content);
     $this->assertIsString($content);
 
     $target = self::$tmp . '/starter_no_ks.php';
@@ -572,13 +529,7 @@ final class EmbedScriptTest extends FunctionalTestCase {
    */
   protected function assertRectorClean(string $target): void {
     $rector_config = $this->createRectorConfig();
-    $this->processRun('php', [
-      self::$root . '/vendor/bin/rector',
-      'process',
-      '--dry-run',
-      '--config=' . $rector_config,
-      $target,
-    ]);
+    $this->processRun('php', [self::$root . '/vendor/bin/rector', 'process', '--dry-run', '--config=' . $rector_config, $target]);
     $this->assertProcessSuccessful('Rector would make further changes');
   }
 

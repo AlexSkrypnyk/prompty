@@ -27,35 +27,15 @@ final class PromptyLabelTest extends PromptyTestCase {
   }
 
   public static function dataProviderNumberLabel(): \Iterator {
-    yield 'simple number' => [
-      'Project name',
-      ['number' => '1'],
-      'Project name (1)',
-    ];
+    yield 'simple number' => ['Project name', ['number' => '1'], 'Project name (1)'];
 
-    yield 'nested number' => [
-      'Framework',
-      ['number' => '1.2'],
-      'Framework (1.2)',
-    ];
+    yield 'nested number' => ['Framework', ['number' => '1.2'], 'Framework (1.2)'];
 
-    yield 'deeply nested number' => [
-      'SSR mode',
-      ['number' => '1.1.3'],
-      'SSR mode (1.1.3)',
-    ];
+    yield 'deeply nested number' => ['SSR mode', ['number' => '1.1.3'], 'SSR mode (1.1.3)'];
 
-    yield 'no number in ctx' => [
-      'Project name',
-      [],
-      'Project name',
-    ];
+    yield 'no number in ctx' => ['Project name', [], 'Project name'];
 
-    yield 'null number in ctx' => [
-      'Project name',
-      ['number' => NULL],
-      'Project name',
-    ];
+    yield 'null number in ctx' => ['Project name', ['number' => NULL], 'Project name'];
   }
 
   public function testNumberLabelHasDimColor(): void {
