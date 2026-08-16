@@ -17,7 +17,7 @@ use PHPUnit\Framework\Attributes\Group;
 final class PromptyOutputTest extends PromptyTestCase {
 
   public function testIntro(): void {
-    $this->setStaticProperty('instance', $this->createInstance());
+    $this->createAndSetInstance();
 
     $output = $this->captureOutput(function (): void {
       Prompty::intro('Welcome');
@@ -27,7 +27,7 @@ final class PromptyOutputTest extends PromptyTestCase {
   }
 
   public function testOutro(): void {
-    $this->setStaticProperty('instance', $this->createInstance());
+    $this->createAndSetInstance();
 
     $output = $this->captureOutput(function (): void {
       Prompty::outro('Goodbye');
@@ -37,7 +37,7 @@ final class PromptyOutputTest extends PromptyTestCase {
   }
 
   public function testOutput(): void {
-    $this->setStaticProperty('instance', $this->createInstance());
+    $this->createAndSetInstance();
 
     $output = $this->captureOutput(function (): void {
       $count = Prompty::output(['line 1', 'line 2', 'line 3']);
@@ -156,7 +156,6 @@ final class PromptyOutputTest extends PromptyTestCase {
     // Write nothing - stream is at EOF.
     $this->setProperty($p, 'input', $stream);
 
-    /** @var string $key */
     $key = $this->callProtected($p, 'readKey');
 
     $this->assertSame('', $key);

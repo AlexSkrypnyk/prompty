@@ -19,6 +19,12 @@ use PHPUnit\Framework\Attributes\Group;
 #[Group('unit')]
 final class PromptyWidgetResolvedTest extends PromptyTestCase {
 
+  protected function setUp(): void {
+    parent::setUp();
+    // Ensure the singleton uses ASCII mode for all tests.
+    $this->createAndSetInstance();
+  }
+
   /**
    * Build a default context array for widget execution.
    *
@@ -29,17 +35,10 @@ final class PromptyWidgetResolvedTest extends PromptyTestCase {
    *   Context array.
    */
   protected function ctx(array $overrides = []): array {
-    $this->createInstance();
-
-    return array_merge([
-      'depth' => 0,
-      'is_last' => FALSE,
-      'open' => [],
-      'number' => NULL,
-      'env_value' => NULL,
+    return $this->defaultCtx(array_merge([
       'truthy' => ['1', 'true', 'yes'],
       'falsy' => ['0', 'false', 'no'],
-    ], $overrides);
+    ], $overrides));
   }
 
   #[DataProvider('dataProviderTextResolved')]
@@ -74,12 +73,12 @@ final class PromptyWidgetResolvedTest extends PromptyTestCase {
   }
 
   #[DataProvider('dataProviderSelectResolved')]
-  public function testSelectResolved(string $discovered, array $options, string $expected_return): void {
+  public function testSelectResolved(string $discovered, array $options, string $expected): void {
     $this->captureOutput(function () use ($discovered, $options, &$result): void {
       $result = Prompty::select('Framework', options: $options, discovered: $discovered, ctx: $this->ctx());
     });
 
-    $this->assertSame($expected_return, $result);
+    $this->assertSame($expected, $result);
   }
 
   public static function dataProviderSelectResolved(): \Iterator {
@@ -198,12 +197,6 @@ final class PromptyWidgetResolvedTest extends PromptyTestCase {
     $this->assertStringContainsString('No', $output_no);
   }
 
-  protected function setUp(): void {
-    parent::setUp();
-    // Ensure the singleton uses ASCII mode for all tests.
-    $this->setStaticProperty('instance', $this->createInstance());
-  }
-
   public function testTextResolvedAtDepth(): void {
     $output = $this->captureOutput(function () use (&$result): void {
       $result = Prompty::text('Child name', discovered: 'child-val', ctx: $this->ctx([
@@ -270,7 +263,7 @@ final class PromptyWidgetResolvedTest extends PromptyTestCase {
 
   public function testTextStandaloneWithDiscovered(): void {
     $this->setStaticProperty('inFlow', FALSE);
-    $this->setStaticProperty('instance', $this->createInstance());
+    $this->createAndSetInstance();
 
     $output = $this->captureOutput(function () use (&$result): void {
       $result = Prompty::text('Name', discovered: 'standalone-val');
@@ -282,7 +275,7 @@ final class PromptyWidgetResolvedTest extends PromptyTestCase {
 
   public function testSelectStandaloneWithDiscovered(): void {
     $this->setStaticProperty('inFlow', FALSE);
-    $this->setStaticProperty('instance', $this->createInstance());
+    $this->createAndSetInstance();
 
     $output = $this->captureOutput(function () use (&$result): void {
       $result = Prompty::select('Pick',
@@ -297,7 +290,7 @@ final class PromptyWidgetResolvedTest extends PromptyTestCase {
 
   public function testMultiselectStandaloneWithDiscovered(): void {
     $this->setStaticProperty('inFlow', FALSE);
-    $this->setStaticProperty('instance', $this->createInstance());
+    $this->createAndSetInstance();
 
     $output = $this->captureOutput(function () use (&$result): void {
       $result = Prompty::multiselect('Pick',
@@ -312,7 +305,7 @@ final class PromptyWidgetResolvedTest extends PromptyTestCase {
 
   public function testConfirmStandaloneWithDiscovered(): void {
     $this->setStaticProperty('inFlow', FALSE);
-    $this->setStaticProperty('instance', $this->createInstance());
+    $this->createAndSetInstance();
 
     $output = $this->captureOutput(function () use (&$result): void {
       $result = Prompty::confirm('OK?', discovered: FALSE);

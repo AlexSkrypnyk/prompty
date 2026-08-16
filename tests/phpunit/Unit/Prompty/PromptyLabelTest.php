@@ -17,13 +17,13 @@ use PHPUnit\Framework\Attributes\Group;
 final class PromptyLabelTest extends PromptyTestCase {
 
   #[DataProvider('dataProviderNumberLabel')]
-  public function testNumberLabel(string $label, array $ctx, string $expected_stripped): void {
+  public function testNumberLabel(string $label, array $ctx, string $expected): void {
     $p = $this->createInstance();
 
     $result = $this->callProtected($p, 'numberLabel', $label, $ctx);
 
     $this->assertIsString($result);
-    $this->assertSame($expected_stripped, $this->stripAnsi($result));
+    $this->assertSame($expected, $this->stripAnsi($result));
   }
 
   public static function dataProviderNumberLabel(): \Iterator {
@@ -63,8 +63,9 @@ final class PromptyLabelTest extends PromptyTestCase {
 
     $result = $this->callProtected($p, 'numberLabel', 'Label', ['number' => '1']);
 
+    $this->assertIsString($result);
     // The (1) portion should be wrapped in dim color.
-    $this->assertStringContainsString("\033[2m(1)\033[0m", is_string($result) ? $result : '');
+    $this->assertStringContainsString("\033[2m(1)\033[0m", $result);
   }
 
 }

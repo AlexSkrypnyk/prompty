@@ -18,117 +18,84 @@ final class PromptySelectInteractiveTest extends PromptyTestCase {
 
   /**
    * Run the select widget with injected keystrokes.
+   *
+   * @param string $keystrokes
+   *   Raw keystroke bytes to feed.
+   * @param array<string, string> $options
+   *   Map of option key to display label.
+   * @param array<string, string> $hints
+   *   Map of option key to hint text.
+   * @param array<string, mixed> $ctx_overrides
+   *   Optional context overrides.
+   * @param string $default
+   *   Option key to pre-focus.
+   *
+   * @return array{result: mixed, output: string}
+   *   The widget return value and captured output.
    */
   protected function runSelectWidget(string $keystrokes, array $options = [], array $hints = [], array $ctx_overrides = [], string $default = ''): array {
     if ($options === []) {
       $options = ['react' => 'React', 'vue' => 'Vue', 'svelte' => 'Svelte'];
     }
 
-    return $this->promptyRun(function () use ($options, $hints, $ctx_overrides, $default): mixed {
-      $p = $this->createInstance();
-      $default_ctx = [
-        'depth' => 0,
-        'is_last' => FALSE,
-        'open' => [],
-        'number' => NULL,
-        'env_value' => NULL,
-      ];
-
-      return Prompty::select('Framework', options: $options, default: $default, hints: $hints, ctx: array_merge($default_ctx, $ctx_overrides));
-    }, $keystrokes);
+    return $this->promptyRun(fn(): mixed => Prompty::select('Framework', options: $options, default: $default, hints: $hints, ctx: $this->defaultCtx($ctx_overrides)), $keystrokes);
   }
 
-  public function testSelectFirstOption(): void {
-    $r = $this->runSelectWidget(self::KEY_ENTER);
+  #[DataProvider('dataProviderNavigation')]
+  public function testNavigation(string $keystrokes, string $expected): void {
+    $r = $this->runSelectWidget($keystrokes);
 
-    $this->assertSame('react', $r['result']);
+    $this->assertSame($expected, $r['result']);
   }
 
-  public function testSelectSecondOptionWithDown(): void {
-    $r = $this->runSelectWidget(self::KEY_DOWN . self::KEY_ENTER);
-
-    $this->assertSame('vue', $r['result']);
-  }
-
-  public function testSelectThirdOptionWithTwoDowns(): void {
-    $r = $this->runSelectWidget(self::KEY_DOWN . self::KEY_DOWN . self::KEY_ENTER);
-
-    $this->assertSame('svelte', $r['result']);
-  }
-
-  public function testUpFromFirstWrapsToLast(): void {
-    $r = $this->runSelectWidget(self::KEY_UP . self::KEY_ENTER);
-
-    $this->assertSame('svelte', $r['result']);
-  }
-
-  public function testDownFromLastWrapsToFirst(): void {
-    $r = $this->runSelectWidget(self::KEY_DOWN . self::KEY_DOWN . self::KEY_DOWN . self::KEY_ENTER);
-
-    $this->assertSame('react', $r['result']);
-  }
-
-  public function testLeftActsAsUp(): void {
-    $r = $this->runSelectWidget(self::KEY_LEFT . self::KEY_ENTER);
-
-    $this->assertSame('svelte', $r['result']);
-  }
-
-  public function testRightActsAsDown(): void {
-    $r = $this->runSelectWidget(self::KEY_RIGHT . self::KEY_ENTER);
-
-    $this->assertSame('vue', $r['result']);
+  public static function dataProviderNavigation(): \Iterator {
+    yield 'select first option' => [self::KEY_ENTER, 'react'];
+    yield 'select second option with down' => [self::KEY_DOWN . self::KEY_ENTER, 'vue'];
+    yield 'select third option with two downs' => [self::KEY_DOWN . self::KEY_DOWN . self::KEY_ENTER, 'svelte'];
+    yield 'up from first wraps to last' => [self::KEY_UP . self::KEY_ENTER, 'svelte'];
+    yield 'down from last wraps to first' => [self::KEY_DOWN . self::KEY_DOWN . self::KEY_DOWN . self::KEY_ENTER, 'react'];
+    yield 'left acts as up' => [self::KEY_LEFT . self::KEY_ENTER, 'svelte'];
+    yield 'right acts as down' => [self::KEY_RIGHT . self::KEY_ENTER, 'vue'];
   }
 
   public function testCancelWithCtrlC(): void {
     $r = $this->runSelectWidget(self::KEY_DOWN . self::KEY_CTRL_C);
 
     $this->assertNull($r['result']);
-    $this->assertStringContainsString('(cancelled)', (string) $r['output']);
+    $this->assertStringContainsString('(cancelled)', $r['output']);
   }
 
   public function testCancelWithEscape(): void {
     $r = $this->runSelectWidget(self::KEY_ESCAPE);
 
     $this->assertNull($r['result']);
-    $this->assertStringContainsString('(cancelled)', (string) $r['output']);
+    $this->assertStringContainsString('(cancelled)', $r['output']);
   }
 
   public function testActiveStateShowsOptions(): void {
     $r = $this->runSelectWidget(self::KEY_ENTER);
 
-    $this->assertStringContainsString('React', (string) $r['output']);
-    $this->assertStringContainsString('Vue', (string) $r['output']);
-    $this->assertStringContainsString('Svelte', (string) $r['output']);
+    $this->assertStringContainsString('React', $r['output']);
+    $this->assertStringContainsString('Vue', $r['output']);
+    $this->assertStringContainsString('Svelte', $r['output']);
   }
 
   public function testCompletedStateShowsLabel(): void {
     $r = $this->runSelectWidget(self::KEY_DOWN . self::KEY_ENTER);
 
-    $this->assertStringContainsString('Framework', (string) $r['output']);
-    $this->assertStringContainsString('Vue', (string) $r['output']);
+    $this->assertStringContainsString('Framework', $r['output']);
+    $this->assertStringContainsString('Vue', $r['output']);
   }
 
   public function testCancelledStateShowsFocusedOption(): void {
     $r = $this->runSelectWidget(self::KEY_DOWN . self::KEY_CTRL_C);
 
-    $this->assertStringContainsString('Vue', (string) $r['output']);
-    $this->assertStringContainsString('(cancelled)', (string) $r['output']);
+    $this->assertStringContainsString('Vue', $r['output']);
+    $this->assertStringContainsString('(cancelled)', $r['output']);
   }
 
   public function testActiveStateShowsDescription(): void {
-    $r = $this->promptyRun(function (): mixed {
-      $p = $this->createInstance();
-      $ctx = [
-        'depth' => 0,
-        'is_last' => FALSE,
-        'open' => [],
-        'number' => NULL,
-        'env_value' => NULL,
-      ];
-
-      return Prompty::select('Framework', options: ['react' => 'React', 'vue' => 'Vue'], description: 'Pick one.', ctx: $ctx);
-    }, self::KEY_ENTER);
+    $r = $this->promptyRun(fn(): mixed => Prompty::select('Framework', options: ['react' => 'React', 'vue' => 'Vue'], description: 'Pick one.', ctx: $this->defaultCtx()), self::KEY_ENTER);
 
     $this->assertStringContainsString('Pick one.', $r['output']);
   }
@@ -136,13 +103,13 @@ final class PromptySelectInteractiveTest extends PromptyTestCase {
   public function testHintShownForFocusedOption(): void {
     $r = $this->runSelectWidget(self::KEY_ENTER, ['react' => 'React', 'vue' => 'Vue'], ['react' => 'Meta library', 'vue' => 'Progressive framework']);
 
-    $this->assertStringContainsString('Meta library', (string) $r['output']);
+    $this->assertStringContainsString('Meta library', $r['output']);
   }
 
   public function testHintChangesOnNavigation(): void {
     $r = $this->runSelectWidget(self::KEY_DOWN . self::KEY_ENTER, ['react' => 'React', 'vue' => 'Vue'], ['react' => 'Meta library', 'vue' => 'Progressive framework']);
 
-    $this->assertStringContainsString('Progressive framework', (string) $r['output']);
+    $this->assertStringContainsString('Progressive framework', $r['output']);
   }
 
   public function testInteractiveAtDepth(): void {
@@ -153,7 +120,7 @@ final class PromptySelectInteractiveTest extends PromptyTestCase {
     ]);
 
     $this->assertSame('vue', $r['result']);
-    $this->assertStringContainsString('Framework', (string) $r['output']);
+    $this->assertStringContainsString('Framework', $r['output']);
   }
 
   public function testHintAtDepth(): void {
@@ -164,7 +131,7 @@ final class PromptySelectInteractiveTest extends PromptyTestCase {
     ]);
 
     $this->assertSame('react', $r['result']);
-    $this->assertStringContainsString('Meta library', (string) $r['output']);
+    $this->assertStringContainsString('Meta library', $r['output']);
   }
 
   public function testInteractiveAtDepthCancelled(): void {
@@ -175,7 +142,7 @@ final class PromptySelectInteractiveTest extends PromptyTestCase {
     ]);
 
     $this->assertNull($r['result']);
-    $this->assertStringContainsString('(cancelled)', (string) $r['output']);
+    $this->assertStringContainsString('(cancelled)', $r['output']);
   }
 
   #[DataProvider('dataProviderDefault')]
@@ -206,13 +173,13 @@ final class PromptySelectInteractiveTest extends PromptyTestCase {
   public function testPointerMarksFocusedOption(): void {
     $r = $this->runSelectWidget(self::KEY_ENTER);
 
-    $this->assertStringContainsString('> (*) React', (string) $r['output']);
+    $this->assertStringContainsString('> (*) React', $r['output']);
   }
 
   public function testPointerMovesWithNavigation(): void {
     $r = $this->runSelectWidget(self::KEY_DOWN . self::KEY_ENTER);
 
-    $this->assertStringContainsString('> (*) Vue', (string) $r['output']);
+    $this->assertStringContainsString('> (*) Vue', $r['output']);
   }
 
   public function testPointerRendersAtDepth(): void {
@@ -222,13 +189,13 @@ final class PromptySelectInteractiveTest extends PromptyTestCase {
       'open' => [1 => TRUE],
     ]);
 
-    $this->assertStringContainsString('> (*) React', (string) $r['output']);
+    $this->assertStringContainsString('> (*) React', $r['output']);
   }
 
   public function testPointerRendersUnicodeGlyph(): void {
     $r = $this->promptyRun(fn(): mixed => Prompty::select('Framework', options: ['react' => 'React', 'vue' => 'Vue'], ctx: $this->defaultCtx()), self::KEY_ENTER, ['unicode' => TRUE]);
 
-    $this->assertStringContainsString('❯', (string) $r['output']);
+    $this->assertStringContainsString('❯', $r['output']);
   }
 
 }

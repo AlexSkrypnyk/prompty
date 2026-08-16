@@ -18,158 +18,149 @@ final class PromptyConfirmInteractiveTest extends PromptyTestCase {
 
   /**
    * Run the confirm widget with injected keystrokes.
+   *
+   * @param string $keystrokes
+   *   Raw keystroke bytes to feed.
+   * @param array<string, mixed> $ctx_overrides
+   *   Optional context overrides.
+   * @param bool $default
+   *   The default selection (TRUE for yes, FALSE for no).
+   *
+   * @return array{result: mixed, output: string}
+   *   The widget return value and captured output.
    */
-  protected function runConfirmWidget(string $keystrokes, bool $default = TRUE, array $ctx_overrides = []): array {
+  protected function runConfirmWidget(string $keystrokes, array $ctx_overrides = [], bool $default = TRUE): array {
     return $this->promptyRun(function () use ($default, $ctx_overrides): mixed {
-      $p = $this->createInstance();
-      $default_ctx = [
-        'depth' => 0,
-        'is_last' => FALSE,
-        'open' => [],
-        'number' => NULL,
-        'env_value' => NULL,
-        'truthy' => ['1', 'true', 'yes'],
-        'falsy' => ['0', 'false', 'no'],
-      ];
+      $default_ctx = $this->defaultCtx(['truthy' => ['1', 'true', 'yes'], 'falsy' => ['0', 'false', 'no']]);
 
       return Prompty::confirm('Install?', default: $default, description: 'Install dependencies.', ctx: array_merge($default_ctx, $ctx_overrides));
     }, $keystrokes);
   }
 
   public function testSubmitDefaultYes(): void {
-    $r = $this->runConfirmWidget(self::KEY_ENTER, TRUE);
+    $r = $this->runConfirmWidget(self::KEY_ENTER);
 
     $this->assertTrue($r['result']);
-    $this->assertStringContainsString('Yes', (string) $r['output']);
+    $this->assertStringContainsString('Yes', $r['output']);
   }
 
   public function testSubmitDefaultNo(): void {
-    $r = $this->runConfirmWidget(self::KEY_ENTER, FALSE);
+    $r = $this->runConfirmWidget(self::KEY_ENTER, [], FALSE);
 
     $this->assertFalse($r['result']);
-    $this->assertStringContainsString('No', (string) $r['output']);
+    $this->assertStringContainsString('No', $r['output']);
   }
 
   #[DataProvider('dataProviderToggleFromYesToNo')]
-  public function testToggleFromYesToNo(string $key): void {
-    $r = $this->runConfirmWidget($key . self::KEY_ENTER, TRUE);
+  public function testToggleFromYesToNo(string $keystrokes): void {
+    $r = $this->runConfirmWidget($keystrokes . self::KEY_ENTER);
 
     $this->assertFalse($r['result']);
-  }
-
-  #[DataProvider('dataProviderToggleFromNoToYes')]
-  public function testToggleFromNoToYes(string $key): void {
-    $r = $this->runConfirmWidget($key . self::KEY_ENTER, FALSE);
-
-    $this->assertTrue($r['result']);
   }
 
   public static function dataProviderToggleFromYesToNo(): \Iterator {
-    yield 'left' => ["\x1b[D"];
-    yield 'right' => ["\x1b[C"];
-    yield 'up' => ["\x1b[A"];
-    yield 'down' => ["\x1b[B"];
-    yield 'tab' => ["\t"];
+    yield 'left' => [self::KEY_LEFT];
+    yield 'right' => [self::KEY_RIGHT];
+    yield 'up' => [self::KEY_UP];
+    yield 'down' => [self::KEY_DOWN];
+    yield 'tab' => [self::KEY_TAB];
+  }
+
+  #[DataProvider('dataProviderToggleFromNoToYes')]
+  public function testToggleFromNoToYes(string $keystrokes): void {
+    $r = $this->runConfirmWidget($keystrokes . self::KEY_ENTER, [], FALSE);
+
+    $this->assertTrue($r['result']);
   }
 
   public static function dataProviderToggleFromNoToYes(): \Iterator {
-    yield 'left' => ["\x1b[D"];
-    yield 'right' => ["\x1b[C"];
-    yield 'up' => ["\x1b[A"];
-    yield 'down' => ["\x1b[B"];
-    yield 'tab' => ["\t"];
+    yield 'left' => [self::KEY_LEFT];
+    yield 'right' => [self::KEY_RIGHT];
+    yield 'up' => [self::KEY_UP];
+    yield 'down' => [self::KEY_DOWN];
+    yield 'tab' => [self::KEY_TAB];
   }
 
   public function testDoubleToggleReturnsToOriginal(): void {
-    $r = $this->runConfirmWidget(self::KEY_LEFT . self::KEY_LEFT . self::KEY_ENTER, TRUE);
+    $r = $this->runConfirmWidget(self::KEY_LEFT . self::KEY_LEFT . self::KEY_ENTER);
 
     $this->assertTrue($r['result']);
   }
 
-  public function testYkeySelectsYes(): void {
-    $r = $this->runConfirmWidget('y' . self::KEY_ENTER, FALSE);
+  #[DataProvider('dataProviderYesNoKeys')]
+  public function testYesNoKeys(string $keystrokes, bool $default, bool $expected): void {
+    $r = $this->runConfirmWidget($keystrokes . self::KEY_ENTER, [], $default);
 
-    $this->assertTrue($r['result']);
+    $this->assertSame($expected, $r['result']);
   }
 
-  public function testUpperYkeySelectsYes(): void {
-    $r = $this->runConfirmWidget('Y' . self::KEY_ENTER, FALSE);
-
-    $this->assertTrue($r['result']);
-  }
-
-  public function testNkeySelectsNo(): void {
-    $r = $this->runConfirmWidget('n' . self::KEY_ENTER, TRUE);
-
-    $this->assertFalse($r['result']);
-  }
-
-  public function testUpperNkeySelectsNo(): void {
-    $r = $this->runConfirmWidget('N' . self::KEY_ENTER, TRUE);
-
-    $this->assertFalse($r['result']);
+  public static function dataProviderYesNoKeys(): \Iterator {
+    yield 'lowercase y' => ['y', FALSE, TRUE];
+    yield 'uppercase Y' => ['Y', FALSE, TRUE];
+    yield 'lowercase n' => ['n', TRUE, FALSE];
+    yield 'uppercase N' => ['N', TRUE, FALSE];
   }
 
   public function testCancelWithCtrlC(): void {
     $r = $this->runConfirmWidget(self::KEY_CTRL_C);
 
     $this->assertNull($r['result']);
-    $this->assertStringContainsString('(cancelled)', (string) $r['output']);
+    $this->assertStringContainsString('(cancelled)', $r['output']);
   }
 
   public function testCancelWithEscape(): void {
     $r = $this->runConfirmWidget(self::KEY_ESCAPE);
 
     $this->assertNull($r['result']);
-    $this->assertStringContainsString('(cancelled)', (string) $r['output']);
+    $this->assertStringContainsString('(cancelled)', $r['output']);
   }
 
   public function testActiveStateShowsYesNo(): void {
     $r = $this->runConfirmWidget(self::KEY_ENTER);
 
-    $this->assertStringContainsString('Yes', (string) $r['output']);
-    $this->assertStringContainsString('No', (string) $r['output']);
+    $this->assertStringContainsString('Yes', $r['output']);
+    $this->assertStringContainsString('No', $r['output']);
   }
 
   public function testActiveStateShowsDescription(): void {
     $r = $this->runConfirmWidget(self::KEY_ENTER);
 
-    $this->assertStringContainsString('Install dependencies.', (string) $r['output']);
+    $this->assertStringContainsString('Install dependencies.', $r['output']);
   }
 
   public function testCompletedStateShowsLabel(): void {
     $r = $this->runConfirmWidget(self::KEY_ENTER);
 
-    $this->assertStringContainsString('Install?', (string) $r['output']);
+    $this->assertStringContainsString('Install?', $r['output']);
   }
 
-  public function testCancelledShowsFocusedValue(): void {
-    $r = $this->runConfirmWidget(self::KEY_LEFT . self::KEY_CTRL_C, TRUE);
+  public function testCancelledStateShowsFocusedValue(): void {
+    $r = $this->runConfirmWidget(self::KEY_LEFT . self::KEY_CTRL_C);
 
-    $this->assertStringContainsString('No', (string) $r['output']);
-    $this->assertStringContainsString('(cancelled)', (string) $r['output']);
+    $this->assertStringContainsString('No', $r['output']);
+    $this->assertStringContainsString('(cancelled)', $r['output']);
   }
 
   public function testInteractiveAtDepth(): void {
-    $r = $this->runConfirmWidget(self::KEY_ENTER, TRUE, [
+    $r = $this->runConfirmWidget(self::KEY_ENTER, [
       'depth' => 1,
       'is_last' => FALSE,
       'open' => [1 => TRUE],
     ]);
 
     $this->assertTrue($r['result']);
-    $this->assertStringContainsString('Install?', (string) $r['output']);
+    $this->assertStringContainsString('Install?', $r['output']);
   }
 
   public function testInteractiveAtDepthCancelled(): void {
-    $r = $this->runConfirmWidget(self::KEY_CTRL_C, TRUE, [
+    $r = $this->runConfirmWidget(self::KEY_CTRL_C, [
       'depth' => 1,
       'is_last' => TRUE,
       'open' => [],
     ]);
 
     $this->assertNull($r['result']);
-    $this->assertStringContainsString('(cancelled)', (string) $r['output']);
+    $this->assertStringContainsString('(cancelled)', $r['output']);
   }
 
 }

@@ -38,116 +38,70 @@ final class PromptyMultiselectInteractiveTest extends PromptyTestCase {
       $options = ['ts' => 'TypeScript', 'eslint' => 'ESLint', 'prettier' => 'Prettier'];
     }
 
-    return $this->promptyRun(function () use ($options, $hints, $ctx_overrides, $default): mixed {
-      $p = $this->createInstance();
-      $default_ctx = [
-        'depth' => 0,
-        'is_last' => FALSE,
-        'open' => [],
-        'number' => NULL,
-        'env_value' => NULL,
-      ];
-
-      return Prompty::multiselect('Features', options: $options, default: $default, hints: $hints, ctx: array_merge($default_ctx, $ctx_overrides));
-    }, $keystrokes);
+    return $this->promptyRun(fn(): mixed => Prompty::multiselect('Features', options: $options, default: $default, hints: $hints, ctx: array_merge($this->defaultCtx(), $ctx_overrides)), $keystrokes);
   }
 
   public function testSubmitNoneSelected(): void {
     $r = $this->runMultiselectWidget(self::KEY_ENTER);
 
     $this->assertSame([], $r['result']);
-    $this->assertStringContainsString('None', (string) $r['output']);
+    $this->assertStringContainsString('None', $r['output']);
   }
 
-  public function testSelectSingleOption(): void {
-    $r = $this->runMultiselectWidget(self::KEY_SPACE . self::KEY_ENTER);
+  #[DataProvider('dataProviderToggleAndNavigation')]
+  public function testToggleAndNavigation(string $keystrokes, array $expected): void {
+    $r = $this->runMultiselectWidget($keystrokes);
 
-    $this->assertSame(['ts'], $r['result']);
+    $this->assertSame($expected, $r['result']);
   }
 
-  public function testSelectMultipleOptions(): void {
-    $r = $this->runMultiselectWidget(self::KEY_SPACE . self::KEY_DOWN . self::KEY_SPACE . self::KEY_ENTER);
-
-    $this->assertSame(['ts', 'eslint'], $r['result']);
-  }
-
-  public function testSelectAllOptions(): void {
-    $keys = self::KEY_SPACE . self::KEY_DOWN . self::KEY_SPACE . self::KEY_DOWN . self::KEY_SPACE . self::KEY_ENTER;
-    $r = $this->runMultiselectWidget($keys);
-
-    $this->assertSame(['ts', 'eslint', 'prettier'], $r['result']);
-  }
-
-  public function testToggleOffOption(): void {
-    $keys = self::KEY_SPACE . self::KEY_SPACE . self::KEY_ENTER;
-    $r = $this->runMultiselectWidget($keys);
-
-    $this->assertSame([], $r['result']);
-  }
-
-  public function testNavigateDownAndSelect(): void {
-    $r = $this->runMultiselectWidget(self::KEY_DOWN . self::KEY_DOWN . self::KEY_SPACE . self::KEY_ENTER);
-
-    $this->assertSame(['prettier'], $r['result']);
-  }
-
-  public function testUpFromFirstWrapsToLast(): void {
-    $r = $this->runMultiselectWidget(self::KEY_UP . self::KEY_SPACE . self::KEY_ENTER);
-
-    $this->assertSame(['prettier'], $r['result']);
-  }
-
-  public function testDownFromLastWrapsToFirst(): void {
-    $keys = self::KEY_DOWN . self::KEY_DOWN . self::KEY_DOWN . self::KEY_SPACE . self::KEY_ENTER;
-    $r = $this->runMultiselectWidget($keys);
-
-    $this->assertSame(['ts'], $r['result']);
-  }
-
-  public function testLeftActsAsUp(): void {
-    $r = $this->runMultiselectWidget(self::KEY_LEFT . self::KEY_SPACE . self::KEY_ENTER);
-
-    $this->assertSame(['prettier'], $r['result']);
-  }
-
-  public function testRightActsAsDown(): void {
-    $r = $this->runMultiselectWidget(self::KEY_RIGHT . self::KEY_SPACE . self::KEY_ENTER);
-
-    $this->assertSame(['eslint'], $r['result']);
+  public static function dataProviderToggleAndNavigation(): \Iterator {
+    yield 'select single option' => [self::KEY_SPACE . self::KEY_ENTER, ['ts']];
+    yield 'select multiple options' => [self::KEY_SPACE . self::KEY_DOWN . self::KEY_SPACE . self::KEY_ENTER, ['ts', 'eslint']];
+    yield 'select all options' => [
+      self::KEY_SPACE . self::KEY_DOWN . self::KEY_SPACE . self::KEY_DOWN . self::KEY_SPACE . self::KEY_ENTER,
+      ['ts', 'eslint', 'prettier'],
+    ];
+    yield 'toggle off option' => [self::KEY_SPACE . self::KEY_SPACE . self::KEY_ENTER, []];
+    yield 'navigate down and select' => [self::KEY_DOWN . self::KEY_DOWN . self::KEY_SPACE . self::KEY_ENTER, ['prettier']];
+    yield 'up from first wraps to last' => [self::KEY_UP . self::KEY_SPACE . self::KEY_ENTER, ['prettier']];
+    yield 'down from last wraps to first' => [self::KEY_DOWN . self::KEY_DOWN . self::KEY_DOWN . self::KEY_SPACE . self::KEY_ENTER, ['ts']];
+    yield 'left acts as up' => [self::KEY_LEFT . self::KEY_SPACE . self::KEY_ENTER, ['prettier']];
+    yield 'right acts as down' => [self::KEY_RIGHT . self::KEY_SPACE . self::KEY_ENTER, ['eslint']];
   }
 
   public function testCancelWithCtrlC(): void {
     $r = $this->runMultiselectWidget(self::KEY_SPACE . self::KEY_CTRL_C);
 
     $this->assertNull($r['result']);
-    $this->assertStringContainsString('(cancelled)', (string) $r['output']);
+    $this->assertStringContainsString('(cancelled)', $r['output']);
   }
 
   public function testCancelWithEscape(): void {
     $r = $this->runMultiselectWidget(self::KEY_ESCAPE);
 
     $this->assertNull($r['result']);
-    $this->assertStringContainsString('(cancelled)', (string) $r['output']);
+    $this->assertStringContainsString('(cancelled)', $r['output']);
   }
 
   public function testActiveStateShowsOptions(): void {
     $r = $this->runMultiselectWidget(self::KEY_ENTER);
 
-    $this->assertStringContainsString('TypeScript', (string) $r['output']);
-    $this->assertStringContainsString('ESLint', (string) $r['output']);
-    $this->assertStringContainsString('Prettier', (string) $r['output']);
+    $this->assertStringContainsString('TypeScript', $r['output']);
+    $this->assertStringContainsString('ESLint', $r['output']);
+    $this->assertStringContainsString('Prettier', $r['output']);
   }
 
   public function testCompletedStateShowsSelectedLabels(): void {
     $r = $this->runMultiselectWidget(self::KEY_SPACE . self::KEY_DOWN . self::KEY_SPACE . self::KEY_ENTER);
 
-    $this->assertStringContainsString('TypeScript, ESLint', (string) $r['output']);
+    $this->assertStringContainsString('TypeScript, ESLint', $r['output']);
   }
 
   public function testHintShownForFocusedOption(): void {
     $r = $this->runMultiselectWidget(self::KEY_ENTER, ['ts' => 'TypeScript', 'eslint' => 'ESLint'], ['ts' => 'Strict typing', 'eslint' => 'Code linter']);
 
-    $this->assertStringContainsString('Strict typing', (string) $r['output']);
+    $this->assertStringContainsString('Strict typing', $r['output']);
   }
 
   public function testInteractiveAtDepth(): void {
@@ -158,7 +112,7 @@ final class PromptyMultiselectInteractiveTest extends PromptyTestCase {
     ]);
 
     $this->assertSame(['ts'], $r['result']);
-    $this->assertStringContainsString('Features', (string) $r['output']);
+    $this->assertStringContainsString('Features', $r['output']);
   }
 
   public function testHintAtDepth(): void {
@@ -169,7 +123,7 @@ final class PromptyMultiselectInteractiveTest extends PromptyTestCase {
     ]);
 
     $this->assertSame(['ts'], $r['result']);
-    $this->assertStringContainsString('Typed JS', (string) $r['output']);
+    $this->assertStringContainsString('Typed JS', $r['output']);
   }
 
   public function testInteractiveAtDepthCancelled(): void {
@@ -180,21 +134,12 @@ final class PromptyMultiselectInteractiveTest extends PromptyTestCase {
     ]);
 
     $this->assertNull($r['result']);
-    $this->assertStringContainsString('(cancelled)', (string) $r['output']);
+    $this->assertStringContainsString('(cancelled)', $r['output']);
   }
 
-  /**
-   * Tests that pre-checked defaults seed the interactive state.
-   *
-   * @param string $keystrokes
-   *   Raw keystroke bytes to feed.
-   * @param list<string> $default
-   *   Option keys to pre-check.
-   * @param list<string> $expected
-   *   Expected selected option keys.
-   */
   #[DataProvider('dataProviderDefault')]
   public function testDefault(string $keystrokes, array $default, array $expected): void {
+    /** @var list<string> $default */
     $r = $this->runMultiselectWidget($keystrokes, [], [], [], $default);
 
     $this->assertSame($expected, $r['result']);
@@ -212,7 +157,7 @@ final class PromptyMultiselectInteractiveTest extends PromptyTestCase {
     $r = $this->runMultiselectWidget(self::KEY_ENTER, [], [], [], ['ts', 'eslint']);
 
     $this->assertSame(['ts', 'eslint'], $r['result']);
-    $this->assertStringContainsString('TypeScript, ESLint', (string) $r['output']);
+    $this->assertStringContainsString('TypeScript, ESLint', $r['output']);
   }
 
   public function testDefaultThreadsThroughFlowClosure(): void {
@@ -229,12 +174,12 @@ final class PromptyMultiselectInteractiveTest extends PromptyTestCase {
   public function testPointerMarksFocusedOption(): void {
     $r = $this->runMultiselectWidget(self::KEY_ENTER);
 
-    $this->assertStringContainsString('> [ ] TypeScript', (string) $r['output']);
+    $this->assertStringContainsString('> [ ] TypeScript', $r['output']);
   }
 
   public function testPointerStaysVisibleOnCheckedFocusedOption(): void {
     $r = $this->runMultiselectWidget(self::KEY_ENTER, [], [], [], ['ts', 'eslint']);
-    $output = (string) $r['output'];
+    $output = $r['output'];
 
     $this->assertStringContainsString('> [x] TypeScript', $output);
     $this->assertStringNotContainsString('> [x] ESLint', $output);
@@ -243,7 +188,7 @@ final class PromptyMultiselectInteractiveTest extends PromptyTestCase {
   public function testPointerMovesWithNavigation(): void {
     $r = $this->runMultiselectWidget(self::KEY_DOWN . self::KEY_ENTER);
 
-    $this->assertStringContainsString('> [ ] ESLint', (string) $r['output']);
+    $this->assertStringContainsString('> [ ] ESLint', $r['output']);
   }
 
   public function testPointerRendersAtDepth(): void {
@@ -253,13 +198,13 @@ final class PromptyMultiselectInteractiveTest extends PromptyTestCase {
       'open' => [1 => TRUE],
     ]);
 
-    $this->assertStringContainsString('> [ ] TypeScript', (string) $r['output']);
+    $this->assertStringContainsString('> [ ] TypeScript', $r['output']);
   }
 
   public function testPointerRendersUnicodeGlyph(): void {
     $r = $this->promptyRun(fn(): mixed => Prompty::multiselect('Features', options: ['ts' => 'TypeScript', 'eslint' => 'ESLint'], ctx: $this->defaultCtx()), self::KEY_ENTER, ['unicode' => TRUE]);
 
-    $this->assertStringContainsString('❯', (string) $r['output']);
+    $this->assertStringContainsString('❯', $r['output']);
   }
 
 }

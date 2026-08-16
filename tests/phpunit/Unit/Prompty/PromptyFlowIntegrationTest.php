@@ -37,7 +37,6 @@ final class PromptyFlowIntegrationTest extends PromptyTestCase {
     $this->assertSame('my-app', $result['name']);
     $this->assertSame('vue', $result['framework']);
     $this->assertTrue($result['install']);
-
   }
 
   public function testFlowLinearRenderedOutput(): void {
@@ -57,7 +56,6 @@ final class PromptyFlowIntegrationTest extends PromptyTestCase {
     $this->assertStringContainsString('my-app', $output);
     $this->assertStringContainsString('+  Framework', $output);
     $this->assertStringContainsString('React', $output);
-
   }
 
   public function testFlowNested(): void {
@@ -92,7 +90,6 @@ final class PromptyFlowIntegrationTest extends PromptyTestCase {
     $this->assertSame('next', $result['app_framework']);
     $this->assertArrayNotHasKey('lib_format', $result);
     $this->assertTrue($result['api_routes']);
-
   }
 
   public function testFlowIntroOutroStrings(): void {
@@ -110,7 +107,6 @@ final class PromptyFlowIntegrationTest extends PromptyTestCase {
 
     $this->assertStringContainsString('#  Welcome', $output);
     $this->assertStringContainsString('#  Done!', $output);
-
   }
 
   public function testFlowIntroOutroCallable(): void {
@@ -139,7 +135,6 @@ final class PromptyFlowIntegrationTest extends PromptyTestCase {
     $this->assertTrue($outro_called);
     $this->assertStringContainsString('Custom intro', $output);
     $this->assertStringContainsString('Custom outro: test', $output);
-
   }
 
   public function testFlowConfig(): void {
@@ -168,7 +163,6 @@ final class PromptyFlowIntegrationTest extends PromptyTestCase {
 
     $this->assertStringContainsString('(1)', $output);
     $this->assertStringContainsString('(2)', $output);
-
   }
 
   public function testFlowNumberingNested(): void {
@@ -187,7 +181,6 @@ final class PromptyFlowIntegrationTest extends PromptyTestCase {
 
     $this->assertStringContainsString('(1)', $output);
     $this->assertStringContainsString('(1.1)', $output);
-
   }
 
   public function testFlowMultiselectWithEnv(): void {
@@ -204,7 +197,6 @@ final class PromptyFlowIntegrationTest extends PromptyTestCase {
 
     $this->assertNotNull($result);
     $this->assertSame(['ts', 'eslint'], $result['features']);
-
   }
 
   public function testFlowEmptyReturnsEmptyArray(): void {
@@ -226,7 +218,6 @@ final class PromptyFlowIntegrationTest extends PromptyTestCase {
     });
 
     $this->assertStringContainsString('Yep', $output);
-
   }
 
   public function testFlowConfigTruthy(): void {
@@ -241,7 +232,6 @@ final class PromptyFlowIntegrationTest extends PromptyTestCase {
 
     $this->assertNotNull($result);
     $this->assertTrue($result['install']);
-
   }
 
   public function testFlowConfigFalsy(): void {
@@ -256,7 +246,6 @@ final class PromptyFlowIntegrationTest extends PromptyTestCase {
 
     $this->assertNotNull($result);
     $this->assertFalse($result['install']);
-
   }
 
   public function testFlowConfigSymbolsAscii(): void {
@@ -269,7 +258,6 @@ final class PromptyFlowIntegrationTest extends PromptyTestCase {
     });
 
     $this->assertStringContainsString('*', $output);
-
   }
 
   public function testFlowConfigNoOverrides(): void {
@@ -284,7 +272,6 @@ final class PromptyFlowIntegrationTest extends PromptyTestCase {
 
     $this->assertNotNull($result);
     $this->assertSame('test', $result['name']);
-
   }
 
   public function testFlowCancelledWithString(): void {

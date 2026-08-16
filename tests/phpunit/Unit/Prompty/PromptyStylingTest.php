@@ -54,13 +54,13 @@ final class PromptyStylingTest extends PromptyTestCase {
   }
 
   #[DataProvider('dataProviderBar')]
-  public function testBar(bool $unicode, string $expected_stripped): void {
+  public function testBar(bool $unicode, string $expected): void {
     $p = $this->createInstance(['unicode' => $unicode]);
 
     $result = $this->callProtected($p, 'bar');
 
     $this->assertIsString($result);
-    $this->assertSame($expected_stripped, $this->stripAnsi($result));
+    $this->assertSame($expected, $this->stripAnsi($result));
   }
 
   public static function dataProviderBar(): \Iterator {

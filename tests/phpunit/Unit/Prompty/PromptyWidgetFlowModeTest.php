@@ -18,9 +18,7 @@ final class PromptyWidgetFlowModeTest extends PromptyTestCase {
   protected function setUp(): void {
     parent::setUp();
     // Put Prompty in flow mode so widgets return deferred closures.
-    $this->setStaticProperty('inFlow', TRUE);
-    // Ensure a singleton instance exists.
-    $this->setStaticProperty('instance', $this->createInstance());
+    $this->createAndSetInstance([], TRUE);
   }
 
   public function testTextFlowMode(): void {
@@ -138,13 +136,7 @@ final class PromptyWidgetFlowModeTest extends PromptyTestCase {
 
     // When the flow walker calls the closure with ctx, it should execute
     // and return the discovered value.
-    $ctx = [
-      'depth' => 0,
-      'is_last' => FALSE,
-      'open' => [],
-      'number' => NULL,
-      'env_value' => NULL,
-    ];
+    $ctx = $this->defaultCtx();
 
     ob_start();
     $value = $result($ctx);
