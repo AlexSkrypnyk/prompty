@@ -120,8 +120,6 @@ final class PromptyWidgetFlowModeTest extends PromptyTestCase {
 
     $this->assertInstanceOf(\Closure::class, $result);
 
-    // When the flow walker calls the closure with ctx, it should execute
-    // and return the discovered value.
     $ctx = $this->defaultCtx();
 
     ob_start();

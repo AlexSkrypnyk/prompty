@@ -53,11 +53,9 @@ final class PromptyOutputTest extends PromptyTestCase {
     $p = $this->createInstance();
 
     $output = $this->captureOutput(function () use ($p): void {
-      // First print some lines.
       $count = $this->callProtected($p, 'printLines', ['old line 1', 'old line 2']);
       $this->assertSame(2, $count);
 
-      // Then redraw with new lines.
       $new_count = $this->callProtected($p, 'redraw', 2, ['new line 1', 'new line 2', 'new line 3']);
       $this->assertSame(3, $new_count);
     });
@@ -102,7 +100,8 @@ final class PromptyOutputTest extends PromptyTestCase {
     $p = $this->createInstance();
 
     // restoreTty calls shell_exec with stty - just verify it doesn't throw.
-    // We pass a dummy value; in CI there's no TTY so stty will silently fail.
+    // The test passes a dummy value; in CI there's no TTY so stty fails
+    // silently.
     $this->callProtected($p, 'restoreTty', 'dummy-settings');
   }
 
@@ -110,14 +109,11 @@ final class PromptyOutputTest extends PromptyTestCase {
     $p = $this->createInstance();
 
     // In test environment, stty -g may return NULL (no TTY).
-    // setupTty should handle this gracefully.
     ob_start();
     $this->callProtected($p, 'setupTty');
     ob_get_clean();
 
-    // prevTty should be set (or NULL if no TTY).
     $prev = $this->getProperty($p, 'prevTty');
-    // Either it's NULL (no TTY) or a string (has TTY) - both are fine.
     $this->assertTrue($prev === NULL || is_string($prev));
   }
 
@@ -125,7 +121,6 @@ final class PromptyOutputTest extends PromptyTestCase {
     $p = $this->createInstance();
     $this->setProperty($p, 'prevTty', NULL);
 
-    // Should do nothing when prevTty is NULL.
     ob_start();
     $this->callProtected($p, 'teardownTty');
     $output = ob_get_clean();
@@ -136,14 +131,12 @@ final class PromptyOutputTest extends PromptyTestCase {
 
   public function testTeardownTtyWhenSet(): void {
     $p = $this->createInstance();
-    // Simulate having saved TTY settings.
     $this->setProperty($p, 'prevTty', 'dummy-tty-settings');
 
     ob_start();
     $this->callProtected($p, 'teardownTty');
     $output = ob_get_clean();
 
-    // Should show cursor and reset prevTty to NULL.
     $this->assertStringContainsString("\033[?25h", (string) $output);
     $this->assertNull($this->getProperty($p, 'prevTty'));
   }

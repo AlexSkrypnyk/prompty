@@ -41,7 +41,6 @@ final class EmbedScriptTest extends FunctionalTestCase {
     // require_once replaced by embedded class.
     $this->assertStringNotContainsString('require_once', $content);
 
-    // 'use' statement for Prompty namespace removed.
     $this->assertStringNotContainsString('use AlexSkrypnyk\Prompty\Prompty', $content);
 
     // Entire class is on a single line.
@@ -57,7 +56,6 @@ final class EmbedScriptTest extends FunctionalTestCase {
     // PHPStan ignore comment added before class declaration.
     $this->assertMatchesRegularExpression('/\/\/ @phpstan-ignore-next-line\nclass Prompty/', $content);
 
-    // Embedded script runs correctly.
     $this->assertStarterFlowWorks($target);
   }
 
@@ -92,7 +90,6 @@ final class EmbedScriptTest extends FunctionalTestCase {
     $this->runEmbed($normal_target);
     $this->assertLessThan(filesize($normal_target), filesize($target));
 
-    // Embedded script runs correctly.
     $this->assertStarterFlowWorks($target);
   }
 
@@ -107,7 +104,6 @@ final class EmbedScriptTest extends FunctionalTestCase {
     $this->assertIsString($source_content);
     $this->assertStringContainsString('require_once', $source_content);
 
-    // Output has embedded class and passes lint.
     $this->assertFileExists($output_path);
     $output_content = file_get_contents($output_path);
     $this->assertIsString($output_content);
@@ -121,14 +117,12 @@ final class EmbedScriptTest extends FunctionalTestCase {
   public function testReEmbed(): void {
     $target = $this->prepareTarget();
 
-    // First embed.
     $this->runEmbed($target);
     $first_content = file_get_contents($target);
     $this->assertIsString($first_content);
     $this->assertStringContainsString('class Prompty', $first_content);
     $this->assertStringNotContainsString('require_once', $first_content);
 
-    // Verify the first embed works.
     $this->assertStarterFlowWorks($target);
 
     // Simulate a user editing the script outside the embedded block.
@@ -136,7 +130,6 @@ final class EmbedScriptTest extends FunctionalTestCase {
     $this->assertNotSame($first_content, $modified);
     file_put_contents($target, $modified);
 
-    // Re-embed (simulating a version update).
     $this->runEmbed($target);
     $re_embedded = file_get_contents($target);
     $this->assertIsString($re_embedded);
@@ -154,7 +147,6 @@ final class EmbedScriptTest extends FunctionalTestCase {
     $this->assertStringContainsString('class Prompty', $re_embedded);
     $this->assertStringNotContainsString('require_once', $re_embedded);
 
-    // Kill switch not duplicated.
     $this->assertSame(1, substr_count($re_embedded, "if (!getenv('SHOULD_PROCEED'))"), 'Kill switch should appear exactly once after re-embed.');
   }
 
@@ -186,7 +178,7 @@ final class EmbedScriptTest extends FunctionalTestCase {
 
     $this->assertPhpLintPasses($compact_path);
 
-    // Compact is smaller than minimized.
+    // Compact is smaller than minified.
     $this->assertLessThan(filesize($min_path), filesize($compact_path));
 
     // Public API preserved in compact.
@@ -240,7 +232,7 @@ final class EmbedScriptTest extends FunctionalTestCase {
 
     $this->assertStringContainsString("if (!getenv('SHOULD_PROCEED'))", $content);
 
-    // Should appear after the @embed-end marker.
+    // The kill switch appears after the @embed-end marker.
     $embed_end_pos = strpos($content, '@embed-end');
     $killswitch_pos = strpos($content, "if (!getenv('SHOULD_PROCEED'))");
     $this->assertNotFalse($embed_end_pos);

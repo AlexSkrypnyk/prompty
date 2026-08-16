@@ -216,7 +216,6 @@ final class PromptyWalkFlowTest extends PromptyTestCase {
   public function testWalkFlowNumbering(string $number_prefix, int $step_index, string $expected_number): void {
     $p = $this->createAndSetInstance();
 
-    // Build steps with the expected count.
     $steps = [];
     for ($i = 1; $i <= max($step_index, 3); $i++) {
       $steps['step' . $i] = $this->resolvedStep('val' . $i);

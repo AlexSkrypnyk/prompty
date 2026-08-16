@@ -44,7 +44,6 @@ final class PromptyLabelTest extends PromptyTestCase {
     $result = $this->callProtected($p, 'numberLabel', 'Label', ['number' => '1']);
 
     $this->assertIsString($result);
-    // The (1) portion should be wrapped in dim color.
     $this->assertStringContainsString("\033[2m(1)\033[0m", $result);
   }
 

@@ -15,10 +15,8 @@ require __DIR__ . '/../Prompty.php';
 
 use AlexSkrypnyk\Prompty\Prompty;
 
-// Pre-configure: force ASCII and set a custom env prefix.
 Prompty::configure(unicode: FALSE, env_prefix: 'SETUP_');
 
-// The flow can add further config on top.
 $results = Prompty::flow(fn(): array => [
   'name' => Prompty::text('Project name', placeholder: 'my-app'),
   'framework' => Prompty::select('Framework', options: ['next' => 'Next.js', 'nuxt' => 'Nuxt']),

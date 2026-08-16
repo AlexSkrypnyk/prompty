@@ -25,7 +25,6 @@
 
 declare(strict_types=1);
 
-// Terminal dimensions for recordings.
 define('TERMINAL_COLS', 80);
 define('TERMINAL_ROWS', 24);
 
@@ -60,7 +59,6 @@ function getJobs(string $project_dir): array {
 
   $jobs = [];
 
-  // Generate 4 variants per animated script.
   foreach ($animated_bases as $base_name => $base_job) {
     foreach ($variants as $suffix => $flags) {
       $jobs[$base_name . $suffix] = ['script' => $base_job['script'] . $flags, 'expect_fn' => $base_job['expect_fn'], 'rows' => $base_job['rows']];
@@ -99,7 +97,6 @@ function getJobs(string $project_dir): array {
     ],
   ];
 
-  // Generate 4 variants per static screenshot.
   foreach ($static_bases as $base_name => $base_job) {
     foreach ($variants as $suffix => $flags) {
       $jobs[$base_name . $suffix] = array_merge($base_job, ['script' => $base_job['script'] . $flags]);
@@ -132,14 +129,12 @@ function main(): void {
     mkdir($tmp_dir, 0755, TRUE);
   }
 
-  // Create all expect scripts upfront.
   foreach ($jobs as $name => $job) {
     $expect_script = $tmp_dir . '/' . $name . '.exp';
     $create_fn = $job['expect_fn'];
     $create_fn($expect_script, $job['script']);
   }
 
-  // Launch all workers in parallel.
   $script_path = __FILE__;
   $processes = [];
   $pipes_list = [];
@@ -171,8 +166,6 @@ function main(): void {
 
   info('');
 
-  // Wait for all workers to complete and reset terminal state.
-  // Workers run asciinema/expect which can leave the terminal in raw mode.
   $failed = [];
   foreach ($processes as $name => $process) {
     $stdout = stream_get_contents($pipes_list[$name][1]);
@@ -194,7 +187,6 @@ function main(): void {
   // Reset terminal - workers may leave it in raw mode.
   shell_exec('stty sane 2>/dev/null');
 
-  // Cleanup.
   info('');
   info('Cleaning up: ' . $tmp_dir);
   removeDir($tmp_dir);
@@ -331,7 +323,6 @@ function postProcessCast(string $cast_file): void {
     return;
   }
 
-  // Remove the spawn command line from the recording.
   $lines = explode("\n", $content);
   $filtered = [$lines[0]];
   for ($i = 1; $i < count($lines); $i++) {
@@ -343,12 +334,11 @@ function postProcessCast(string $cast_file): void {
 
   // Add a pause at the end of the recording before the animation loops.
   // In asciicast v3, timestamps are relative (delta from previous event),
-  // so we add an empty output event with the pause duration.
+  // so the pause is added as an empty output event with that duration.
   $filtered[] = json_encode([END_PAUSE, 'o', ' ']);
 
   $content = implode("\n", $filtered);
 
-  // Sanitize home directory paths.
   $home = getenv('HOME');
   if ($home !== FALSE && $home !== '') {
     $content = str_replace($home, '/home/user', $content);
@@ -387,13 +377,6 @@ function convertToSvg(string $cast_file, string $svg_file, string $script_dir, ?
 
 /**
  * Create an expect script for the widgets.php playground.
- *
- * Interaction sequence:
- * 1. Text "Project name" - type "my-project", press enter.
- * 2. Select "Framework" - arrow down (to Vue), press enter.
- * 3. Multiselect "Features" - down, space (ESLint), down, space (Prettier),
- *    press enter.
- * 4. Confirm "Install dependencies?" - type "y", press enter.
  *
  * @param string $expect_script
  *   Path to write the expect script.
@@ -477,13 +460,6 @@ EXPECT;
 /**
  * Create an expect script for the flow.php playground.
  *
- * Interaction sequence:
- * 1. Text "Project name" - type "my-project", press enter.
- * 2. Select "Framework" (4 options) - arrow down (to Vue), press enter.
- * 3. Multiselect "Features" (5 options) - down, space (ESLint), down, down,
- *    space (Vitest), press enter.
- * 4. Confirm "Install dependencies?" - type "y", press enter.
- *
  * @param string $expect_script
  *   Path to write the expect script.
  * @param string $playground_script
@@ -566,21 +542,6 @@ EXPECT;
 
 /**
  * Create an expect script for the flow-nested.php playground.
- *
- * Interaction sequence (choosing the "Application" path):
- * 1. Select "Project type" - press enter (Application, first option).
- * 2. Select "App framework" - press enter (Next.js, first option).
- * 3. Select "SSR mode" - press enter (Server-side, first option).
- * 4. Confirm "Use edge runtime?" - type "y", press enter.
- * 5. Confirm "Include API routes?" - type "y", press enter.
- * 6. Multiselect "Code quality" - space (TypeScript), down, space (ESLint),
- *    press enter.
- * 7. Confirm "Strict TypeScript?" - type "y", press enter.
- * 8. Select "ESLint config" - down (Strict), press enter.
- * 9. Multiselect "Testing" - space (Unit tests), down, space (E2E tests),
- *    press enter.
- * 10. Select "Unit test runner" - press enter (Vitest, first option).
- * 11. Select "E2E framework" - press enter (Playwright, first option).
  *
  * @param string $expect_script
  *   Path to write the expect script.
@@ -704,8 +665,6 @@ EXPECT;
 /**
  * Create an expect script for the widget-text.php playground.
  *
- * Records all 3 text prompts. Static screenshot is captured at the first.
- *
  * @param string $expect_script
  *   Path to write the expect script.
  * @param string $playground_script
@@ -768,8 +727,6 @@ EXPECT;
 /**
  * Create an expect script for the widget-select.php playground.
  *
- * Records all 3 select prompts. Static screenshot is captured at the first.
- *
  * @param string $expect_script
  *   Path to write the expect script.
  * @param string $playground_script
@@ -820,8 +777,6 @@ EXPECT;
 
 /**
  * Create an expect script for the widget-multiselect.php playground.
- *
- * Records all 3 multiselect prompts. Static screenshot captured at the first.
  *
  * @param string $expect_script
  *   Path to write the expect script.
@@ -884,8 +839,6 @@ EXPECT;
 
 /**
  * Create an expect script for the widget-confirm.php playground.
- *
- * Records all 3 confirm prompts. Static screenshot is captured at the first.
  *
  * @param string $expect_script
  *   Path to write the expect script.
@@ -974,7 +927,6 @@ function info(string $message): void {
   print $message . PHP_EOL;
 }
 
-// Entrypoint.
 ini_set('display_errors', '1');
 
 if (PHP_SAPI !== 'cli' || !empty($_SERVER['REMOTE_ADDR'])) {
@@ -989,13 +941,11 @@ set_error_handler(function (int $severity, string $message, string $file, int $l
 });
 
 try {
-  // Worker mode: process a single recording.
   $record_index = array_search('--record', $argv);
   if ($record_index !== FALSE && isset($argv[$record_index + 1])) {
     processOne($argv[$record_index + 1]);
   }
   else {
-    // Orchestrator mode: launch all in parallel.
     main();
   }
 }

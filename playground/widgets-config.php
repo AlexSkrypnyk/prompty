@@ -5,8 +5,8 @@
  * Playground - standalone widgets with custom configuration.
  *
  * Demonstrates Prompty::configure() to set options before using widgets
- * outside of a flow. This is useful when you want custom symbols, colors,
- * env prefix, or truthy/falsy values without wrapping everything in a flow.
+ * outside of a flow. Useful when custom symbols, colors, env prefix, or
+ * truthy/falsy values are needed without wrapping everything in a flow.
  */
 
 declare(strict_types=1);
@@ -15,7 +15,6 @@ require __DIR__ . '/../Prompty.php';
 
 use AlexSkrypnyk\Prompty\Prompty;
 
-// Configure before any widget calls.
 $opts = getopt('', ['no-unicode', 'no-ansi']);
 Prompty::configure(
   labels: ['yes' => 'Yep', 'no' => 'Nope', 'cancelled' => '(aborted)', 'none' => 'Nothing selected'],

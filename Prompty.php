@@ -190,7 +190,6 @@ class Prompty {
    * Constructs a Prompty instance.
    */
   protected function __construct() {
-    // Resolve Unicode: TRUE/FALSE to force, NULL to auto-detect from locale.
     if ($this->cfgUnicode === NULL) {
       $lang = getenv('LANG') ?: getenv('LC_ALL') ?: getenv('LC_CTYPE') ?: setlocale(LC_CTYPE, '0') ?: '';
       $this->cfgUnicode = stripos($lang, 'utf') !== FALSE;
@@ -198,7 +197,6 @@ class Prompty {
 
     $this->cfgSymbols = $this->cfgUnicode ? $this->cfgSymbolsUnicode : $this->cfgSymbolsAscii;
 
-    // Resolve ANSI: TRUE/FALSE to force, NULL to auto-detect.
     $this->cfgColorsDefault = $this->cfgColors;
     if ($this->cfgAnsi === NULL) {
       $no_color = getenv('NO_COLOR');
@@ -401,7 +399,6 @@ class Prompty {
     ?array $truthy = NULL,
     ?array $falsy = NULL,
   ): ?array {
-    // Apply config overrides if any are provided.
     if ($symbols_unicode !== NULL
       || $symbols_ascii !== NULL
       || $colors !== NULL
@@ -425,10 +422,9 @@ class Prompty {
       'numbering' => $numbering,
     ];
 
-    // Save current TTY settings and enable raw mode for keypress reading.
-    // Returns NULL when no TTY exists (e.g., piped input), allowing the flow
-    // to run with env/discovered values without terminal control.
-    // Skip TTY setup when an input stream is injected (test mode).
+    // $prev_tty is NULL when no TTY exists (e.g., piped input), and the flow
+    // then runs with env/discovered values without terminal control. An
+    // injected input stream (test mode) also skips TTY setup.
     $prev_tty = $p->input === NULL ? (shell_exec('stty -g 2>/dev/null') ?: NULL) : NULL;
 
     if ($prev_tty !== NULL) {
@@ -437,7 +433,7 @@ class Prompty {
       // is available immediately without waiting for Enter.
       shell_exec('stty -echo -icanon min 1 time 0 2>/dev/null');
 
-      // Safety net: restore terminal even on fatal errors or exceptions.
+      // Restore the terminal even on fatal errors or exceptions.
       register_shutdown_function(function () use ($p, $prev_tty): void {
         // @codeCoverageIgnoreStart
         $p->restoreTty($prev_tty);
@@ -452,10 +448,8 @@ class Prompty {
       is_callable($intro) ? $intro($p->results) : $p->printLines($p->renderIntro($intro));
     }
 
-    // Walk all steps recursively, starting at depth 0 with no number prefix.
     $outcome = $p->walkFlow($steps, 0, $options, '');
 
-    // A widget returning NULL means the user cancelled (ctrl-c / escape).
     if ($outcome === FALSE) {
       if ($cancelled !== NULL) {
         is_callable($cancelled) ? $cancelled($p->results) : $p->printLines($p->renderOutro($cancelled));
@@ -520,7 +514,6 @@ class Prompty {
     array $children = [],
     ?array $ctx = NULL,
   ): \Closure|array|string|null {
-    // Flow mode: return closure for deferred execution.
     if (static::$inFlow && $ctx === NULL) {
       $call = fn(array $ctx): array|\Closure|string|null => static::text(
         $label,
@@ -536,7 +529,6 @@ class Prompty {
       return $call;
     }
 
-    // Execution mode.
     $p = static::instance();
     $ctx ??= [
       'depth' => 0,
@@ -555,7 +547,6 @@ class Prompty {
     $open = $ctx['open'] ?? [];
     $label = $p->numberLabel($label, $ctx);
 
-    // Skip interactive prompt if a value was provided directly or via env var.
     $resolved = $discovered ?? $ctx['env_value'] ?? NULL;
 
     if ($resolved !== NULL) {
@@ -570,7 +561,6 @@ class Prompty {
       return $display;
     }
 
-    // Render the active text input state for the current value.
     $render_active = function (string $value) use ($p, $label, $placeholder, $description, $depth, $open): array {
       $cursor = $p->color('█', 'cyan');
       $display = $value === '' ? $p->color($placeholder, 'gray') . $cursor : $p->color($value, 'white') . $cursor;
@@ -594,7 +584,6 @@ class Prompty {
       return $lines;
     };
 
-    // Interactive input loop.
     $value = $default;
     $line_count = $p->printLines($render_active($value));
 
@@ -713,7 +702,6 @@ class Prompty {
     $option_labels = array_values($options);
     $ordered_hints = array_map(fn(int|string $key) => $hints[$key] ?? '', $option_keys);
 
-    // Resolve discovered or environment value.
     $resolved = $discovered ?? $ctx['env_value'] ?? NULL;
 
     if ($resolved !== NULL) {
@@ -729,7 +717,6 @@ class Prompty {
       return $resolved_str;
     }
 
-    // Render the active select state for the current focused index.
     $render_active = function (int $focused) use ($p, $label, $option_labels, $description, $ordered_hints, $depth, $open): array {
       if ($depth === 0) {
         $lines = [$p->color($p->cfgSymbols['active'], 'cyan') . $p->cfgSpacing['indent'] . $label];
@@ -774,7 +761,6 @@ class Prompty {
       return $lines;
     };
 
-    // Interactive selection loop.
     $focused = 0;
     $default_index = $default !== '' ? array_search($default, $option_keys, TRUE) : FALSE;
 
@@ -911,7 +897,6 @@ class Prompty {
       return $resolved_array;
     }
 
-    // Render the active multiselect state for focused index and checked items.
     $render_active = function (int $focused, array $checked) use ($p, $label, $option_labels, $description, $ordered_hints, $depth, $open): array {
       if ($depth === 0) {
         $lines = [$p->color($p->cfgSymbols['active'], 'cyan') . $p->cfgSpacing['indent'] . $label];
@@ -958,7 +943,6 @@ class Prompty {
       return $lines;
     };
 
-    // Interactive multi-selection loop.
     $focused = 0;
     $checked = array_map(fn(string $key): bool => in_array($key, $default, TRUE), $option_keys);
     $line_count = $p->printLines($render_active($focused, $checked));
@@ -1099,7 +1083,6 @@ class Prompty {
       return (bool) $discovered;
     }
 
-    // Render the active confirm state for the current yes/no focus.
     $render_active = function (bool $focused_yes) use ($p, $label, $description, $depth, $open): array {
       $options_display = $focused_yes
         ? $p->color($p->cfgSymbols['radio_on'], 'green') . ' ' . $p->cfgLabels['yes'] . ' ' . $p->color($p->cfgLabels['separator'], 'dim')
@@ -1126,7 +1109,6 @@ class Prompty {
       return $lines;
     };
 
-    // Interactive confirm loop.
     $yes = $default;
     $line_count = $p->printLines($render_active($yes));
 
@@ -1616,7 +1598,7 @@ class Prompty {
 
       $is_last = $depth > 0 && !$has_next_sibling;
 
-      // Update tree connector state BEFORE creating ctx so the widget sees
+      // Update tree connector state before creating ctx so the widget sees
       // the correct open/closed state for its depth level.
       if ($depth > 0) {
         if ($is_last) {

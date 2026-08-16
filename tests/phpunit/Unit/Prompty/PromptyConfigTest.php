@@ -62,7 +62,6 @@ final class PromptyConfigTest extends PromptyTestCase {
 
   #[DataProvider('dataProviderUnicodeDetection')]
   public function testUnicodeDetection(string $env_var, string $env_value, bool $expected): void {
-    // Clear all locale env vars first.
     $saved = [];
     foreach (['LANG', 'LC_ALL', 'LC_CTYPE'] as $var) {
       $saved[$var] = getenv($var);
@@ -75,7 +74,6 @@ final class PromptyConfigTest extends PromptyTestCase {
 
     $this->assertSame($expected, $this->getProperty($p, 'cfgUnicode'));
 
-    // Restore env vars.
     foreach ($saved as $var => $value) {
       $value !== FALSE ? putenv($var . '=' . $value) : putenv($var);
     }
