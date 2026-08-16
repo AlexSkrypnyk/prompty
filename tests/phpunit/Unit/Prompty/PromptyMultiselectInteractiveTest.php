@@ -226,13 +226,13 @@ final class PromptyMultiselectInteractiveTest extends PromptyTestCase {
     $this->assertSame(['ts'], $r['result']);
   }
 
-  public function testCaretMarksFocusedOption(): void {
+  public function testPointerMarksFocusedOption(): void {
     $r = $this->runMultiselectWidget(self::KEY_ENTER);
 
     $this->assertStringContainsString('> [ ] TypeScript', (string) $r['output']);
   }
 
-  public function testCaretStaysVisibleOnCheckedFocusedOption(): void {
+  public function testPointerStaysVisibleOnCheckedFocusedOption(): void {
     $r = $this->runMultiselectWidget(self::KEY_ENTER, [], [], [], ['ts', 'eslint']);
     $output = (string) $r['output'];
 
@@ -240,13 +240,13 @@ final class PromptyMultiselectInteractiveTest extends PromptyTestCase {
     $this->assertStringNotContainsString('> [x] ESLint', $output);
   }
 
-  public function testCaretMovesWithNavigation(): void {
+  public function testPointerMovesWithNavigation(): void {
     $r = $this->runMultiselectWidget(self::KEY_DOWN . self::KEY_ENTER);
 
     $this->assertStringContainsString('> [ ] ESLint', (string) $r['output']);
   }
 
-  public function testCaretRendersAtDepth(): void {
+  public function testPointerRendersAtDepth(): void {
     $r = $this->runMultiselectWidget(self::KEY_ENTER, [], [], [
       'depth' => 1,
       'is_last' => FALSE,
@@ -256,7 +256,7 @@ final class PromptyMultiselectInteractiveTest extends PromptyTestCase {
     $this->assertStringContainsString('> [ ] TypeScript', (string) $r['output']);
   }
 
-  public function testCaretRendersUnicodeGlyph(): void {
+  public function testPointerRendersUnicodeGlyph(): void {
     $r = $this->promptyRun(fn(): mixed => Prompty::multiselect('Features', options: ['ts' => 'TypeScript', 'eslint' => 'ESLint'], ctx: $this->defaultCtx()), self::KEY_ENTER, ['unicode' => TRUE]);
 
     $this->assertStringContainsString('❯', (string) $r['output']);

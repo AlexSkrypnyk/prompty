@@ -87,6 +87,16 @@ final class PromptyOutputTest extends PromptyTestCase {
     $this->assertSame("\033[?25h", $output);
   }
 
+  public function testHideCursor(): void {
+    $p = $this->createInstance();
+
+    ob_start();
+    $this->callProtected($p, 'hideCursor');
+    $output = ob_get_clean();
+
+    $this->assertSame("\033[?25l", $output);
+  }
+
   #[DoesNotPerformAssertions]
   public function testRestoreTty(): void {
     $p = $this->createInstance();

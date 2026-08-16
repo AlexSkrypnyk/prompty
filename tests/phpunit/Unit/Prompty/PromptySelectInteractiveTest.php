@@ -203,19 +203,19 @@ final class PromptySelectInteractiveTest extends PromptyTestCase {
     $this->assertSame('vue', $r['result']);
   }
 
-  public function testCaretMarksFocusedOption(): void {
+  public function testPointerMarksFocusedOption(): void {
     $r = $this->runSelectWidget(self::KEY_ENTER);
 
     $this->assertStringContainsString('> (*) React', (string) $r['output']);
   }
 
-  public function testCaretMovesWithNavigation(): void {
+  public function testPointerMovesWithNavigation(): void {
     $r = $this->runSelectWidget(self::KEY_DOWN . self::KEY_ENTER);
 
     $this->assertStringContainsString('> (*) Vue', (string) $r['output']);
   }
 
-  public function testCaretRendersAtDepth(): void {
+  public function testPointerRendersAtDepth(): void {
     $r = $this->runSelectWidget(self::KEY_ENTER, [], [], [
       'depth' => 1,
       'is_last' => FALSE,
@@ -225,7 +225,7 @@ final class PromptySelectInteractiveTest extends PromptyTestCase {
     $this->assertStringContainsString('> (*) React', (string) $r['output']);
   }
 
-  public function testCaretRendersUnicodeGlyph(): void {
+  public function testPointerRendersUnicodeGlyph(): void {
     $r = $this->promptyRun(fn(): mixed => Prompty::select('Framework', options: ['react' => 'React', 'vue' => 'Vue'], ctx: $this->defaultCtx()), self::KEY_ENTER, ['unicode' => TRUE]);
 
     $this->assertStringContainsString('❯', (string) $r['output']);
