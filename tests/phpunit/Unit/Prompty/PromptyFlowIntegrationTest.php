@@ -11,7 +11,11 @@ use PHPUnit\Framework\Attributes\Group;
 /**
  * Tests for the full Prompty::flow() method with env-resolved values.
  *
- * Output is captured and ANSI-stripped for heredoc assertions.
+ * Rendered output is captured, ANSI-stripped, and compared whole against a
+ * heredoc, or against an escaped string where trailing whitespace is
+ * significant. The cancellation tests that assert output use substrings,
+ * because their output carries redraw sequences that depend on keystroke
+ * timing.
  */
 #[CoversClass(Prompty::class)]
 #[Group('unit')]
@@ -45,10 +49,16 @@ final class PromptyFlowIntegrationTest extends PromptyTestCase {
       ], unicode: FALSE);
     });
 
-    $this->assertStringContainsString('+  Project name', $output);
-    $this->assertStringContainsString('my-app', $output);
-    $this->assertStringContainsString('+  Framework', $output);
-    $this->assertStringContainsString('React', $output);
+    $expected = <<<'EXPECTED'
+    +  Project name
+    |  my-app
+    |
+    +  Framework
+    |  React
+    |
+    EXPECTED;
+
+    $this->assertSame($expected . "\n", $output);
   }
 
   public function testFlowNested(): void {
@@ -88,8 +98,19 @@ final class PromptyFlowIntegrationTest extends PromptyTestCase {
       Prompty::flow(fn(): array => ['name' => Prompty::text('Name')], intro: 'Welcome', outro: 'Done!', unicode: FALSE);
     });
 
-    $this->assertStringContainsString('#  Welcome', $output);
-    $this->assertStringContainsString('#  Done!', $output);
+    $expected = <<<'EXPECTED'
+
+    #  Welcome
+    |
+    +  Name
+    |  test
+    |
+    |
+    #  Done!
+
+    EXPECTED;
+
+    $this->assertSame($expected . "\n", $output);
   }
 
   public function testFlowIntroOutroCallable(): void {
@@ -116,8 +137,15 @@ final class PromptyFlowIntegrationTest extends PromptyTestCase {
 
     $this->assertTrue($intro_called);
     $this->assertTrue($outro_called);
-    $this->assertStringContainsString('Custom intro', $output);
-    $this->assertStringContainsString('Custom outro: test', $output);
+    $expected = <<<'EXPECTED'
+    Custom intro
+    +  Name
+    |  test
+    |
+    Custom outro: test
+    EXPECTED;
+
+    $this->assertSame($expected . "\n", $output);
   }
 
   public function testFlowConfig(): void {
@@ -142,8 +170,16 @@ final class PromptyFlowIntegrationTest extends PromptyTestCase {
       ], numbering: TRUE, unicode: FALSE);
     });
 
-    $this->assertStringContainsString('(1)', $output);
-    $this->assertStringContainsString('(2)', $output);
+    $expected = <<<'EXPECTED'
+    +  Name (1)
+    |  test
+    |
+    +  Framework (2)
+    |  React
+    |
+    EXPECTED;
+
+    $this->assertSame($expected . "\n", $output);
   }
 
   public function testFlowNumberingNested(): void {
@@ -160,8 +196,11 @@ final class PromptyFlowIntegrationTest extends PromptyTestCase {
       ], numbering: TRUE, unicode: FALSE);
     });
 
-    $this->assertStringContainsString('(1)', $output);
-    $this->assertStringContainsString('(1.1)', $output);
+    // Double-quoted because the final line carries significant trailing
+    // whitespace, which .editorconfig would strip from a nowdoc.
+    $expected = "+  Type (1)\n|  App\n|\n|  |\n|  +  Child (1.1)\n|     val\n|     \n";
+
+    $this->assertSame($expected, $output);
   }
 
   public function testFlowMultiselectWithEnv(): void {
@@ -196,7 +235,13 @@ final class PromptyFlowIntegrationTest extends PromptyTestCase {
       Prompty::flow(fn(): array => ['install' => Prompty::confirm('Install?')], labels: ['yes' => 'Yep', 'no' => 'Nope'], unicode: FALSE);
     });
 
-    $this->assertStringContainsString('Yep', $output);
+    $expected = <<<'EXPECTED'
+    +  Install?
+    |  Yep
+    |
+    EXPECTED;
+
+    $this->assertSame($expected . "\n", $output);
   }
 
   public function testFlowConfigTruthy(): void {
@@ -230,7 +275,13 @@ final class PromptyFlowIntegrationTest extends PromptyTestCase {
       Prompty::flow(fn(): array => ['name' => Prompty::text('Name')], symbols_ascii: ['completed' => '*'], unicode: FALSE);
     });
 
-    $this->assertStringContainsString('*', $output);
+    $expected = <<<'EXPECTED'
+    *  Name
+    |  test
+    |
+    EXPECTED;
+
+    $this->assertSame($expected . "\n", $output);
   }
 
   public function testFlowConfigNoOverrides(): void {
