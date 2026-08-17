@@ -421,32 +421,32 @@ proc toggle_space {} {
 
 spawn php {$playground_script}
 
-# Text: Project name - type "my-project" and press enter.
-expect "Project name" {
+# Text: Dish name - type "apple crumble" and press enter.
+expect "Dish name" {
     sleep {$delay}
-    type_text "my-project"
+    type_text "apple crumble"
     wait_and_enter
 }
 
-# Select: Framework - arrow down to Vue, press enter.
-expect "Framework" {
+# Select: Course - arrow down to Main, press enter.
+expect "Course" {
     sleep {$delay}
     arrow_down
     wait_and_enter
 }
 
-# Multiselect: Features - select ESLint and Prettier.
-expect "Features" {
+# Multiselect: Extras - select Olives and Herbs.
+expect "Extras" {
     sleep {$delay}
-    arrow_down
-    toggle_space
     arrow_down
     toggle_space
+    arrow_down
+    toggle_space
     wait_and_enter
 }
 
-# Confirm: Install dependencies - type "y".
-expect "Install dependencies" {
+# Confirm: Send order - type "y".
+expect "Send order" {
     sleep {$delay}
     type_text "y"
     wait_and_enter
@@ -503,22 +503,22 @@ proc toggle_space {} {
 
 spawn php {$playground_script}
 
-# Text: Project name - type "my-project" and press enter.
-expect "Project name" {
+# Text: Dish name - type "plum compote" and press enter.
+expect "Dish name" {
     sleep {$delay}
-    type_text "my-project"
+    type_text "plum compote"
     wait_and_enter
 }
 
-# Select: Framework - arrow down to Vue, press enter.
-expect "Framework" {
+# Select: Course - arrow down to Main, press enter.
+expect "Course" {
     sleep {$delay}
     arrow_down
     wait_and_enter
 }
 
-# Multiselect: Features - select ESLint and Vitest.
-expect "Features" {
+# Multiselect: Extras - select Olives and Lemon.
+expect "Extras" {
     sleep {$delay}
     arrow_down
     toggle_space
@@ -528,8 +528,8 @@ expect "Features" {
     wait_and_enter
 }
 
-# Confirm: Install dependencies - type "y".
-expect "Install dependencies" {
+# Confirm: Send order - type "y".
+expect "Send order" {
     sleep {$delay}
     type_text "y"
     wait_and_enter
@@ -586,37 +586,41 @@ proc toggle_space {} {
 
 spawn php {$playground_script}
 
-# Select: Project type - press enter (Application).
-expect "Project type" {
+# Select: Course - arrow down to Main, press enter.
+expect "Course" {
+    sleep {$delay}
+    arrow_down
     wait_and_enter
 }
 
-# Select: App framework - press enter (Next.js).
-expect "App framework" {
+# Select: Method - press enter (Baked).
+expect "Method" {
     wait_and_enter
 }
 
-# Select: SSR mode - press enter (Server-side).
-expect "SSR mode" {
+# Select: Temperature - arrow down to Moderate, press enter.
+expect "Temperature" {
+    sleep {$delay}
+    arrow_down
     wait_and_enter
 }
 
-# Confirm: Use edge runtime - type "y".
-expect "edge runtime" {
+# Confirm: Rest before serving - type "y".
+expect "Rest before serving" {
     sleep {$delay}
     type_text "y"
     wait_and_enter
 }
 
-# Confirm: Include API routes - type "y".
-expect "API routes" {
+# Confirm: Sauce on the side - type "y".
+expect "Sauce on the side" {
     sleep {$delay}
     type_text "y"
     wait_and_enter
 }
 
-# Multiselect: Code quality - select TypeScript and ESLint.
-expect "Code quality" {
+# Multiselect: Extras - select Bread and Olives.
+expect "Extras" {
     sleep {$delay}
     toggle_space
     arrow_down
@@ -624,22 +628,22 @@ expect "Code quality" {
     wait_and_enter
 }
 
-# Confirm: Strict TypeScript - type "y".
-expect "Strict TypeScript" {
+# Confirm: Toast the bread - type "y".
+expect "Toast the bread" {
     sleep {$delay}
     type_text "y"
     wait_and_enter
 }
 
-# Select: ESLint config - down to Strict, press enter.
-expect "ESLint config" {
+# Select: Marinade - down to Chilli, press enter.
+expect "Marinade" {
     sleep {$delay}
     arrow_down
     wait_and_enter
 }
 
-# Multiselect: Testing - select Unit tests and E2E tests.
-expect "Testing" {
+# Multiselect: Drinks - select Tea and Coffee.
+expect "Drinks" {
     sleep {$delay}
     toggle_space
     arrow_down
@@ -647,13 +651,13 @@ expect "Testing" {
     wait_and_enter
 }
 
-# Select: Unit test runner - press enter (Vitest).
-expect "Unit test runner" {
+# Select: Brew - press enter (Black).
+expect "Brew" {
     wait_and_enter
 }
 
-# Select: E2E framework - press enter (Playwright).
-expect "E2E framework" {
+# Select: Roast - press enter (Light).
+expect "Roast" {
     wait_and_enter
 }
 
@@ -698,24 +702,24 @@ proc type_text {text} {
 
 spawn php {$playground_script}
 
-# Text: Project name - type name and press enter.
-expect "Project name" {
+# Text: Dish name - type dish and press enter.
+expect "Dish name" {
     sleep {$delay}
-    type_text "my-project"
+    type_text "onion soup"
     wait_and_enter
 }
 
-# Text: Author name - type name and press enter.
-expect "Author name" {
+# Text: Guest name - type name and press enter.
+expect "Guest name" {
     sleep {$delay}
     type_text "Jane Doe"
     wait_and_enter
 }
 
-# Text: Git remote URL - type URL and press enter.
-expect "Git remote" {
+# Text: Allergy note - type note and press enter.
+expect "Allergy note" {
     sleep {$delay}
-    type_text "git@github.com:user/repo.git"
+    type_text "no nuts"
     wait_and_enter
 }
 
@@ -755,18 +759,18 @@ proc wait_and_enter {} {
 
 spawn php {$playground_script}
 
-# Select: Framework - press enter (React).
-expect "Framework" {
+# Select: Course - press enter (Starter).
+expect "Course" {
     wait_and_enter
 }
 
-# Select: Package manager - press enter (npm).
-expect "Package manager" {
+# Select: Dish - press enter (Pear Tart).
+expect "Dish" {
     wait_and_enter
 }
 
-# Select: License - press enter (MIT).
-expect "License" {
+# Select: Method - press enter (Baked).
+expect "Method" {
     wait_and_enter
 }
 
@@ -811,22 +815,22 @@ proc toggle_space {} {
 
 spawn php {$playground_script}
 
-# Multiselect: Features - select first, press enter.
-expect "Features" {
+# Multiselect: Extras - select first, press enter.
+expect "Extras" {
     sleep {$delay}
     toggle_space
     wait_and_enter
 }
 
-# Multiselect: CI checks - select first, press enter.
-expect "CI checks" {
+# Multiselect: Drinks - select first, press enter.
+expect "Drinks" {
     sleep {$delay}
     toggle_space
     wait_and_enter
 }
 
-# Multiselect: Integrations - select first, press enter.
-expect "Integrations" {
+# Multiselect: Finishes - select first, press enter.
+expect "Finishes" {
     sleep {$delay}
     toggle_space
     wait_and_enter
@@ -873,22 +877,22 @@ proc type_text {text} {
 
 spawn php {$playground_script}
 
-# Confirm: Install dependencies - type "y".
-expect "Install dependencies" {
+# Confirm: Send order - type "y".
+expect "Send order" {
     sleep {$delay}
     type_text "y"
     wait_and_enter
 }
 
-# Confirm: Enable telemetry - type "n".
-expect "telemetry" {
+# Confirm: Add garnish - type "n".
+expect "garnish" {
     sleep {$delay}
     type_text "n"
     wait_and_enter
 }
 
-# Confirm: Run migrations - type "y".
-expect "migrations" {
+# Confirm: Fire the mains - type "y".
+expect "Fire the mains" {
     sleep {$delay}
     type_text "y"
     wait_and_enter
