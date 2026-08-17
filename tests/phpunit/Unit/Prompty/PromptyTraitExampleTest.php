@@ -20,11 +20,11 @@ final class PromptyTraitExampleTest extends PromptyTestCase {
 
   public function testDocumentedExample(): void {
     $r = $this->promptyRun(fn(): mixed => Prompty::flow(fn(): array => [
-      'framework' => Prompty::select('Framework', options: ['react' => 'React', 'vue' => 'Vue']),
+      'course' => Prompty::select('Course', options: ['starter' => 'Starter', 'main' => 'Main']),
     ]), self::KEY_DOWN . self::KEY_ENTER);
 
     $this->assertIsArray($r['result']);
-    $this->assertSame('vue', $r['result']['framework']);
+    $this->assertSame('main', $r['result']['course']);
   }
 
 }
