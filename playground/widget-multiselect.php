@@ -16,14 +16,16 @@ Prompty::configure(unicode: !isset($opts['no-unicode']), ansi: !isset($opts['no-
 
 echo "\n--- Multiselect: basic ---\n";
 $r = Prompty::multiselect('Extras', options: ['bread' => 'Bread', 'olives' => 'Olives', 'herbs' => 'Herbs']);
-echo '  Result: ' . ($r !== NULL ? (count($r) > 0 ? implode(', ', $r) : 'none') : 'cancelled') . "\n";
+$selection = is_array($r) ? array_filter($r, is_string(...)) : NULL;
+echo '  Result: ' . ($selection === NULL ? 'cancelled' : ($selection === [] ? 'none' : implode(', ', $selection))) . "\n";
 
 echo "\n--- Multiselect: with description ---\n";
 $r = Prompty::multiselect('Drinks',
   options: ['tea' => 'Tea', 'coffee' => 'Coffee', 'juice' => 'Juice'],
   description: "Poured at the table.\nSpace to toggle, enter to confirm.",
 );
-echo '  Result: ' . ($r !== NULL ? (count($r) > 0 ? implode(', ', $r) : 'none') : 'cancelled') . "\n";
+$selection = is_array($r) ? array_filter($r, is_string(...)) : NULL;
+echo '  Result: ' . ($selection === NULL ? 'cancelled' : ($selection === [] ? 'none' : implode(', ', $selection))) . "\n";
 
 echo "\n--- Multiselect: with hints ---\n";
 $r = Prompty::multiselect('Finishes',
@@ -34,7 +36,8 @@ $r = Prompty::multiselect('Finishes',
     'piped' => 'Cream rosettes around the edge.',
   ],
 );
-echo '  Result: ' . ($r !== NULL ? (count($r) > 0 ? implode(', ', $r) : 'none') : 'cancelled') . "\n";
+$selection = is_array($r) ? array_filter($r, is_string(...)) : NULL;
+echo '  Result: ' . ($selection === NULL ? 'cancelled' : ($selection === [] ? 'none' : implode(', ', $selection))) . "\n";
 
 echo "\n--- Multiselect: opt-out (pre-checked default) ---\n";
 $r = Prompty::multiselect('Extras',
@@ -42,4 +45,5 @@ $r = Prompty::multiselect('Extras',
   default: ['bread', 'olives', 'herbs'],
   description: 'All selected; uncheck to remove.',
 );
-echo '  Result: ' . ($r !== NULL ? (count($r) > 0 ? implode(', ', $r) : 'none') : 'cancelled') . "\n";
+$selection = is_array($r) ? array_filter($r, is_string(...)) : NULL;
+echo '  Result: ' . ($selection === NULL ? 'cancelled' : ($selection === [] ? 'none' : implode(', ', $selection))) . "\n";

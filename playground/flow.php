@@ -17,6 +17,21 @@ $opts = getopt('', ['no-unicode', 'no-ansi']);
 $unicode = !isset($opts['no-unicode']);
 $ansi = !isset($opts['no-ansi']);
 
+/**
+ * Prints the collected answers once the flow completes.
+ *
+ * @param array<string, string|bool|int|array<string, string>> $results
+ *   Values collected by the flow, keyed by step name.
+ */
+function print_order_summary(array $results): void {
+  Prompty::outro('Order sent!');
+  echo "\nCollected answers:\n";
+  foreach ($results as $key => $value) {
+    $display = is_array($value) ? (count($value) > 0 ? implode(', ', $value) : 'none') : (is_bool($value) ? ($value ? 'yes' : 'no') : $value);
+    echo sprintf('  %s: %s%s', $key, $display, PHP_EOL);
+  }
+}
+
 $results = Prompty::flow(fn(): array => [
   'dish' => Prompty::text('Dish name', placeholder: 'pear tart', description: "Written on the order ticket and under\n\"Specials\" on the board."),
   'course' => Prompty::select('Course',
@@ -42,14 +57,7 @@ $results = Prompty::flow(fn(): array => [
   'send' => Prompty::confirm('Send order?', description: 'Passes the order to the kitchen.'),
 ],
   intro: 'Compose an order',
-  outro: function (array $results): void {
-    Prompty::outro('Order sent!');
-    echo "\nCollected answers:\n";
-    foreach ($results as $key => $value) {
-      $display = is_array($value) ? (count($value) > 0 ? implode(', ', $value) : 'none') : (is_bool($value) ? ($value ? 'yes' : 'no') : $value);
-      echo sprintf('  %s: %s%s', $key, $display, PHP_EOL);
-    }
-  },
+  outro: print_order_summary(...),
   cancelled: 'Order cancelled.',
   numbering: TRUE,
   unicode: $unicode,
