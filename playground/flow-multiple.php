@@ -19,12 +19,12 @@ require __DIR__ . '/../Prompty.php';
 use AlexSkrypnyk\Prompty\Prompty;
 
 $basics = Prompty::flow(fn(): array => [
-  'name' => Prompty::text('Project name', placeholder: 'my-app'),
-  'framework' => Prompty::select('Framework', options: ['react' => 'React', 'vue' => 'Vue', 'svelte' => 'Svelte']),
+  'dish' => Prompty::text('Dish name', placeholder: 'pear tart'),
+  'course' => Prompty::select('Course', options: ['starter' => 'Starter', 'main' => 'Main', 'dessert' => 'Dessert']),
 ],
-  intro: 'Step 1: Project basics',
-  outro: 'Basics collected.',
-  cancelled: 'Setup cancelled.',
+  intro: 'Step 1: The dish',
+  outro: 'Dish noted.',
+  cancelled: 'Dish selection cancelled.',
   unicode: FALSE,
 );
 
@@ -32,23 +32,23 @@ if ($basics === NULL) {
   exit(0);
 }
 
-echo "\nBasics: " . $basics['name'] . ' + ' . $basics['framework'] . "\n\n";
+echo "\nOrder: " . $basics['dish'] . ' + ' . $basics['course'] . "\n\n";
 
-$extra = Prompty::text('Add a tagline?', placeholder: 'A cool project');
-echo 'Tagline: ' . ($extra ?? 'skipped') . "\n\n";
+$extra = Prompty::text('Kitchen note', placeholder: 'no onions');
+echo 'Note: ' . ($extra ?? 'cancelled') . "\n\n";
 
 $options = Prompty::flow(fn(): array => [
-  'features' => Prompty::multiselect('Features', options: ['ts' => 'TypeScript', 'eslint' => 'ESLint', 'prettier' => 'Prettier']),
-  'install' => Prompty::confirm('Install dependencies?'),
+  'extras' => Prompty::multiselect('Extras', options: ['bread' => 'Bread', 'olives' => 'Olives', 'herbs' => 'Herbs']),
+  'send' => Prompty::confirm('Send order?'),
 ],
-  intro: 'Step 2: Features',
-  outro: 'All done!',
-  cancelled: 'Feature selection cancelled.',
+  intro: 'Step 2: Extras',
+  outro: 'Order sent!',
+  cancelled: 'Extras selection cancelled.',
 );
 
 if ($options === NULL) {
   exit(0);
 }
 
-echo "\nFeatures: " . (count($options['features']) > 0 ? implode(', ', $options['features']) : 'none') . "\n";
-echo 'Install: ' . ($options['install'] ? 'yes' : 'no') . "\n";
+echo "\nExtras: " . (count($options['extras']) > 0 ? implode(', ', $options['extras']) : 'none') . "\n";
+echo 'Send: ' . ($options['send'] ? 'yes' : 'no') . "\n";
