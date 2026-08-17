@@ -12,8 +12,10 @@ use PHPUnit\Framework\Attributes\Group;
  * Tests for the full Prompty::flow() method with env-resolved values.
  *
  * Rendered output is captured, ANSI-stripped, and compared whole against a
- * heredoc. The cancellation tests assert substrings instead, because their
- * output carries redraw sequences that depend on keystroke timing.
+ * heredoc, or against an escaped string where trailing whitespace is
+ * significant. The cancellation tests that assert output use substrings,
+ * because their output carries redraw sequences that depend on keystroke
+ * timing.
  */
 #[CoversClass(Prompty::class)]
 #[Group('unit')]
