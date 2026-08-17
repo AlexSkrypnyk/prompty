@@ -214,7 +214,7 @@ for ($i = 0; $i < $token_count; $i++) {
 }
 
 $lines = explode("\n", $output);
-$lines = array_map(fn(string $line): string => rtrim($line), $lines);
+$lines = array_map(rtrim(...), $lines);
 
 $collapsed = array_values(array_filter($lines, fn(string $line): bool => $line !== ''));
 
@@ -263,7 +263,7 @@ foreach ($result_lines as $idx => $result_line) {
 if ($class_start !== NULL) {
   $before_class = array_slice($result_lines, 0, $class_start);
   $class_lines = array_slice($result_lines, $class_start);
-  $class_single = implode(' ', array_map(fn(string $line): string => trim($line), $class_lines));
+  $class_single = implode(' ', array_map(trim(...), $class_lines));
   $result_lines = array_merge($before_class, [$class_single]);
 }
 
