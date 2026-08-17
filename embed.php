@@ -716,7 +716,7 @@ $final_content = file_get_contents($target_path);
 $final_has_killswitch = $final_content !== FALSE && str_contains($final_content, "if (!getenv('SHOULD_PROCEED'))");
 
 if (!$final_has_killswitch) {
-  echo "\033[33mWarning: No kill switch found in the target file. Please test the embedded script manually.\033[0m" . PHP_EOL;
+  fwrite(STDERR, sprintf('Warning: No kill switch found in the target file. Please test the embedded script manually.%s', PHP_EOL));
 }
 elseif (posix_isatty(STDIN)) {
   echo sprintf('Verifying embedded script (interactive input required)...%s', PHP_EOL);
