@@ -619,7 +619,9 @@ class Prompty {
       elseif ($key === 'space') {
         $value .= ' ';
       }
-      // Only accept printable ASCII characters (ord >= 32).
+      // Reject control bytes (ord < 32); accept printable ASCII and bytes
+      // 0x80-0xFF, so UTF-8 characters delivered one byte per readKey()
+      // call accumulate in the buffer.
       elseif (mb_strlen($key) === 1 && ord($key) >= 32) {
         $value .= $key;
       }
@@ -1541,7 +1543,8 @@ class Prompty {
    * @param int $depth
    *   The current nesting depth.
    * @param array<string, mixed> $options
-   *   Flow options (numbering, env_prefix, truthy, falsy).
+   *   Flow options; only the 'numbering' key is read. Env prefix, truthy
+   *   and falsy values come from the cfg* properties.
    * @param string $number_prefix
    *   Dot-separated prefix for hierarchical step numbering.
    *

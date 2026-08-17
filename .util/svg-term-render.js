@@ -11,7 +11,8 @@
  * Options:
  *   --at <ms>          Timestamp of frame to render
  *   --line-height <n>  Line height multiplier (default: 1.0)
- *   --font-family <s>  Font family (default: Consolas, monospace)
+ *   --font-family <s>  Font family (default: Consolas, "Courier New",
+ *                      Courier, "Liberation Mono", monospace)
  */
 
 const fs = require('fs');
@@ -25,7 +26,7 @@ if (args.length < 2 || args.includes('--help')) {
   console.log('Options:');
   console.log('  --at <ms>          Timestamp of frame to render');
   console.log('  --line-height <n>  Line height multiplier (default: 1.0)');
-  console.log('  --font-family <s>  Font family (default: Consolas, monospace)');
+  console.log('  --font-family <s>  Font family (default: Consolas, "Courier New", Courier, "Liberation Mono", monospace)');
   process.exit(args.includes('--help') ? 0 : 1);
 }
 
@@ -97,7 +98,7 @@ if (lines.length > 0) {
   }
 }
 
-// Define custom theme with lineHeight set to 1.0.
+// Define custom theme with lineHeight from the --line-height option.
 // Based on Atom One Dark theme colors.
 // Note: svg-term 1.3.1 expects RGB arrays, not hex strings.
 const theme = {

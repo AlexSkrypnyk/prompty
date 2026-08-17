@@ -3,10 +3,12 @@
 
 /**
  * @file
- * Generate animated SVG assets from asciinema recordings.
+ * Generate SVG assets from asciinema recordings.
  *
- * Records terminal sessions for playground scripts (widgets, flow, flow-nested),
- * then converts the recordings to animated SVGs for use in README.md.
+ * Records terminal sessions for seven playground scripts in four flag
+ * variants each. The widgets, flow and flow-nested recordings render as
+ * animated SVGs; the widget-* recordings render as static single-frame
+ * SVGs. README.md references all of them except the widgets*.svg files.
  *
  * Supports parallel execution: when run without arguments, launches all
  * recordings as parallel worker processes for faster generation.
@@ -45,10 +47,10 @@ define('END_PAUSE', 10);
  *
  * @return array<string, array<string, mixed>>
  *   Keyed by job name, each containing script, expect_fn, rows, and
- *   optionally at (for static screenshots).
+ *   optionally at and cols (for static screenshots).
  */
 function getJobs(string $project_dir): array {
-  // Flag variants for animated recordings.
+  // Flag variants applied to both the animated and static bases.
   $variants = ['' => '', '-ascii' => ' --no-unicode', '-no-ansi' => ' --no-ansi', '-ascii-no-ansi' => ' --no-unicode --no-ansi'];
 
   $animated_bases = [
@@ -312,7 +314,8 @@ function recordSession(string $cast_file, string $expect_script, int $rows = TER
 /**
  * Post-process a cast file.
  *
- * Removes the spawn command line and sanitizes paths.
+ * Removes the spawn command line, appends an END_PAUSE event so the
+ * animation pauses before looping, and sanitizes paths.
  *
  * @param string $cast_file
  *   Path to the cast file.
