@@ -319,7 +319,6 @@ final class PromptyWalkFlowTest extends PromptyTestCase {
     $p = $this->createAndSetInstance();
 
     // Two steps at depth 1. The second has a __condition that passes.
-    // This tests the sibling condition check path (line 931-933).
     $steps = [
       'first' => $this->resolvedStep('val1'),
       'second' => [

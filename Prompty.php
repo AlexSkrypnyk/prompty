@@ -216,6 +216,7 @@ class Prompty {
       // @phpstan-ignore new.static
       static::$instance = new static();
     }
+
     return static::$instance;
   }
 
@@ -227,6 +228,7 @@ class Prompty {
    */
   public static function config(): array {
     $p = static::instance();
+
     return [
       'symbols_unicode' => $p->cfgSymbolsUnicode,
       'symbols_ascii' => $p->cfgSymbolsAscii,
@@ -257,7 +259,7 @@ class Prompty {
    *
    * Returns 'development' when the version token has not been replaced
    * (i.e. running from source). During release, the __PROMPTY_VERSION__
-   * token is replaced with the actual tag via sed.
+   * token is replaced with the actual tag.
    *
    * @return string
    *   The version string.
@@ -509,6 +511,7 @@ class Prompty {
       if ($condition !== NULL || $children !== []) {
         return ['__call' => $call, '__children' => $children, '__condition' => $condition];
       }
+
       return $call;
     }
 
@@ -541,6 +544,7 @@ class Prompty {
         $p->teardownTty();
         // @codeCoverageIgnoreEnd
       }
+
       return $display;
     }
 
@@ -580,6 +584,7 @@ class Prompty {
           $p->teardownTty();
           // @codeCoverageIgnoreEnd
         }
+
         return NULL;
       }
 
@@ -591,6 +596,7 @@ class Prompty {
           $p->teardownTty();
           // @codeCoverageIgnoreEnd
         }
+
         return $display;
       }
 
@@ -662,6 +668,7 @@ class Prompty {
       if ($condition !== NULL || $children !== []) {
         return ['__call' => $call, '__children' => $children, '__condition' => $condition];
       }
+
       return $call;
     }
 
@@ -699,6 +706,7 @@ class Prompty {
         $p->teardownTty();
         // @codeCoverageIgnoreEnd
       }
+
       return $resolved_str;
     }
 
@@ -765,6 +773,7 @@ class Prompty {
           $p->teardownTty();
           // @codeCoverageIgnoreEnd
         }
+
         return NULL;
       }
 
@@ -775,6 +784,7 @@ class Prompty {
           $p->teardownTty();
           // @codeCoverageIgnoreEnd
         }
+
         return $option_keys[$focused];
       }
 
@@ -838,6 +848,7 @@ class Prompty {
       if ($condition !== NULL || $children !== []) {
         return ['__call' => $call, '__children' => $children, '__condition' => $condition];
       }
+
       return $call;
     }
 
@@ -879,6 +890,7 @@ class Prompty {
         $p->teardownTty();
         // @codeCoverageIgnoreEnd
       }
+
       return $resolved_array;
     }
 
@@ -942,6 +954,7 @@ class Prompty {
           $p->teardownTty();
           // @codeCoverageIgnoreEnd
         }
+
         return NULL;
       }
 
@@ -962,6 +975,7 @@ class Prompty {
           $p->teardownTty();
           // @codeCoverageIgnoreEnd
         }
+
         return $selected_keys;
       }
 
@@ -1020,6 +1034,7 @@ class Prompty {
       if ($condition !== NULL || $children !== []) {
         return ['__call' => $call, '__children' => $children, '__condition' => $condition];
       }
+
       return $call;
     }
 
@@ -1065,6 +1080,7 @@ class Prompty {
         $p->teardownTty();
         // @codeCoverageIgnoreEnd
       }
+
       return (bool) $discovered;
     }
 
@@ -1107,6 +1123,7 @@ class Prompty {
           $p->teardownTty();
           // @codeCoverageIgnoreEnd
         }
+
         return NULL;
       }
 
@@ -1117,6 +1134,7 @@ class Prompty {
           $p->teardownTty();
           // @codeCoverageIgnoreEnd
         }
+
         return $yes;
       }
 
@@ -1298,6 +1316,7 @@ class Prompty {
     if ($prev_line_count > 0) {
       echo "\033[{$prev_line_count}A\r\033[J";
     }
+
     return $this->printLines($lines);
   }
 
@@ -1360,6 +1379,7 @@ class Prompty {
       $number = $ctx['number'];
       return $label . ' ' . $this->color('(' . $number . ')', 'dim');
     }
+
     return $label;
   }
 

@@ -1,5 +1,5 @@
 <p align="center">
-  <a href="" rel="noopener">
+  <a href="https://github.com/AlexSkrypnyk/prompty" rel="noopener">
   <img height=200px src="logo.png" alt="Prompty logo"></a>
 </p>
 
@@ -41,13 +41,11 @@
 
 ## Installation
 
-Prompty is a single PHP file with zero dependencies.
+Prompty is a single PHP file with zero dependencies. It requires PHP 8.2 or newer.
 
 ### Download from releases
 
-Download `Prompty.php` from the
-[latest release](https://github.com/AlexSkrypnyk/prompty/releases/latest)
-assets.
+Download `Prompty.php` from the [latest release](https://github.com/AlexSkrypnyk/prompty/releases/latest) assets.
 
 Three variants are available:
 
@@ -60,6 +58,33 @@ Three variants are available:
 For testing, also download `PromptyTestTrait.php` from the same release.
 
 See [Usage](#usage) for how to embed the class directly into your script.
+
+### Verifying a download
+
+Every release ships a `SHA256SUMS` file covering all assets, signed with the maintainer's GPG key as `SHA256SUMS.asc`. The matching public key is [`PUBLIC_KEY.asc`](PUBLIC_KEY.asc) in this repository, with this fingerprint:
+
+```text
+755E 824E 80F8 4913 5F5F  4043 E71E DB25 C4F6 D89D
+```
+
+```bash
+BASE=https://github.com/AlexSkrypnyk/prompty/releases/latest/download
+RAW=https://raw.githubusercontent.com/AlexSkrypnyk/prompty/main
+
+curl -LO $BASE/Prompty.php
+curl -LO $BASE/SHA256SUMS
+curl -LO $BASE/SHA256SUMS.asc
+curl -LO $RAW/PUBLIC_KEY.asc
+
+# Check the fingerprint against the one above before trusting the key.
+gpg --show-keys --with-fingerprint PUBLIC_KEY.asc
+
+gpg --import PUBLIC_KEY.asc
+gpg --verify SHA256SUMS.asc SHA256SUMS
+sha256sum --ignore-missing -c SHA256SUMS
+```
+
+`--ignore-missing` lets the checksum check pass when only some assets were downloaded. See [`SECURITY.md`](SECURITY.md) for what this verification does and does not prove.
 
 ### Composer
 
@@ -81,15 +106,13 @@ use AlexSkrypnyk\Prompty\Prompty;
 $dish = Prompty::text('Dish name');
 ```
 
-Or [embed](#embedding) the minified class directly into your script (using
-provided minification script) to ship a single file with no external dependencies.
+Or [embed](#embedding) the minified class directly into your script (using the provided minification script) to ship a single file with no external dependencies.
 
 You may also use the [starter](#starter-script) as a template for your own scripts.
 
 ## Widgets
 
-Four widget types cover the most common prompt patterns. Each returns the user's
-answer, or `null` if they cancel (Escape or Ctrl+C).
+Four widget types cover the most common prompt patterns. Each returns the user's answer, or `null` if they cancel (Escape or Ctrl+C).
 
 ### Text
 
@@ -99,12 +122,14 @@ Free-form text input with an optional editable `default` and placeholder.
 $dish = Prompty::text('Dish name',
   default: 'pear tart',
   placeholder: 'e.g. pear tart',
-  description: "Written on the order ticket and under\n\"Specials\" on the board.",
+  description: "Written on the order ticket and under\n"
+    . '"Specials" on the board.',
 );
 ```
 
-`default` pre-fills the input with an editable value; `placeholder` is the gray
-hint shown only while the input is empty.
+`default` pre-fills the input with an editable value; `placeholder` is the gray hint shown only while the input is empty.
+
+Submitting an empty input returns the `placeholder` string as the answer, so a placeholder doubles as a non-editable fallback value. Leave `placeholder` unset if an empty answer should stay empty.
 
 <table>
   <tr>
@@ -126,12 +151,15 @@ hint shown only while the input is empty.
 
 ### Select
 
-Single-choice from a list. Arrow keys to navigate, Enter to confirm. Pass
-`default` (an option key) to focus an option other than the first.
+Single-choice from a list. Arrow keys to navigate, Enter to confirm. Pass `default` (an option key) to focus an option other than the first.
 
 ```php
 $course = Prompty::select('Course',
-  options: ['starter' => 'Starter', 'main' => 'Main', 'dessert' => 'Dessert'],
+  options: [
+    'starter' => 'Starter',
+    'main' => 'Main',
+    'dessert' => 'Dessert',
+  ],
   default: 'main',
   description: 'Where the dish sits in the meal.',
   hints: [
@@ -162,15 +190,18 @@ $course = Prompty::select('Course',
 
 ### Multiselect
 
-Multiple-choice from a list. Space to toggle, Enter to confirm. Pass `default`
-(a list of option keys) to pre-check options - ideal for opt-out lists where
-every option starts selected and the user unchecks what they don't want.
+Multiple-choice from a list. Space to toggle, Enter to confirm. Pass `default` (a list of option keys) to pre-check options - ideal for opt-out lists where every option starts selected and the user unchecks what they don't want.
 
 ```php
 $extras = Prompty::multiselect('Extras',
-  options: ['bread' => 'Bread', 'olives' => 'Olives', 'herbs' => 'Herbs'],
+  options: [
+    'bread' => 'Bread',
+    'olives' => 'Olives',
+    'herbs' => 'Herbs',
+  ],
   default: ['bread', 'olives', 'herbs'],
-  description: "Anything served alongside.\nSpace to toggle, enter to confirm.",
+  description: "Anything served alongside.\n"
+    . 'Space to toggle, enter to confirm.',
 );
 ```
 
@@ -241,6 +272,8 @@ $results = Prompty::flow(fn(): array => [
 ], intro: 'Compose an order', outro: 'Order sent!');
 ```
 
+`flow()` returns the collected answers keyed by step name, or `null` if the user cancels any step.
+
 Flows support intro, outro, and cancellation messages — as strings or callables:
 
 ```php
@@ -256,9 +289,7 @@ $results = Prompty::flow(fn(): array => [ /* ... */ ],
 
 ### Nested flows with conditions
 
-Widgets accept `children` and `condition` to build tree-structured flows.
-Children render as an indented tree with bar connectors. Conditions receive
-the collected results so far and skip the step when they return `false`.
+Widgets accept `children` and `condition` to build tree-structured flows. Children render as an indented tree with bar connectors. Conditions receive the collected results so far and skip the step when they return `false`.
 
 ```php
 $results = Prompty::flow(fn(): array => [
@@ -266,11 +297,19 @@ $results = Prompty::flow(fn(): array => [
     options: ['main' => 'Main', 'dessert' => 'Dessert'],
     children: [
       'method' => Prompty::select('Method',
-        options: ['baked' => 'Baked', 'poached' => 'Poached', 'grilled' => 'Grilled'],
+        options: [
+          'baked' => 'Baked',
+          'poached' => 'Poached',
+          'grilled' => 'Grilled',
+        ],
         condition: fn($r): bool => ($r['course'] ?? '') === 'main',
       ),
       'finishes' => Prompty::multiselect('Finishes',
-        options: ['glazed' => 'Glazed', 'dusted' => 'Dusted', 'piped' => 'Piped'],
+        options: [
+          'glazed' => 'Glazed',
+          'dusted' => 'Dusted',
+          'piped' => 'Piped',
+        ],
         condition: fn($r): bool => ($r['course'] ?? '') === 'dessert',
       ),
     ],
@@ -280,14 +319,18 @@ $results = Prompty::flow(fn(): array => [
 
 ## Standalone mode
 
-Widgets work outside of flows too. Call any widget directly and it handles
-TTY setup/teardown internally, returning the answer immediately:
+Widgets work outside of flows too. Call any widget directly and it handles TTY setup/teardown internally, returning the answer immediately:
 
 ```php
 require_once 'Prompty.php';
 
+use AlexSkrypnyk\Prompty\Prompty;
+
 $dish = Prompty::text('Dish name');
-$course = Prompty::select('Course', options: ['starter' => 'Starter', 'main' => 'Main']);
+$course = Prompty::select('Course', options: [
+  'starter' => 'Starter',
+  'main' => 'Main',
+]);
 $send = Prompty::confirm('Send order?');
 
 echo "Sending $dish for the $course course...\n";
@@ -296,32 +339,32 @@ echo "Sending $dish for the $course course...\n";
 You can mix standalone widgets with flows in the same script:
 
 ```php
+// Standalone widgets can sit between flows.
 $dish = Prompty::flow(fn(): array => [/* step 1 */], intro: 'Step 1: The dish');
-$note = Prompty::text('Kitchen note'); // standalone between flows
+$note = Prompty::text('Kitchen note');
 $extras = Prompty::flow(fn(): array => [/* step 2 */], intro: 'Step 2: Extras');
 ```
 
 ## Environment variable discovery
 
-Flows auto-discover answers from environment variables. The key name is
-uppercased and prefixed with `PROMPTY_` (configurable):
+Flows auto-discover answers from environment variables. The key name is uppercased and prefixed with `PROMPTY_` (configurable):
 
 ```bash
 PROMPTY_DISH='pear tart' PROMPTY_COURSE=main php your-script.php
 ```
 
-This pre-fills `dish` and `course` without prompting the user. The flow
-renders the discovered values as completed steps and moves on.
+This pre-fills `dish` and `course` without prompting the user. The flow renders the discovered values as completed steps and moves on.
 
 Configure the prefix per-flow or globally:
 
 ```php
-$results = Prompty::flow(fn(): array => [/* ... */], env_prefix: 'KITCHEN_');
 // Reads KITCHEN_DISH, KITCHEN_COURSE, etc.
+$results = Prompty::flow(fn(): array => [/* ... */], env_prefix: 'KITCHEN_');
 ```
 
-For confirm widgets, env values are interpreted using configurable truthy/falsy
-lists (default: `1`/`true`/`yes` and `0`/`false`/`no`).
+Multiselect values are read as a comma-separated list, so `PROMPTY_EXTRAS=bread,olives` selects both options.
+
+For confirm widgets, env values are interpreted using configurable truthy/falsy lists (default: `1`/`true`/`yes` and `0`/`false`/`no`).
 
 ## Descriptions and hints
 
@@ -329,31 +372,34 @@ Every widget accepts a `description` — multi-line text rendered below the labe
 
 ```php
 Prompty::text('Dish name',
-  description: "Written on the order ticket and under\n\"Specials\" on the board.",
+  description: "Written on the order ticket and under\n"
+    . '"Specials" on the board.',
 );
 ```
 
-Select and multiselect widgets also accept `hints` — per-option text that
-updates as the user navigates:
+Select and multiselect widgets also accept `hints` — per-option text that updates as the user navigates:
 
 ```php
 Prompty::select('Method',
-  options: ['baked' => 'Baked', 'poached' => 'Poached', 'grilled' => 'Grilled'],
+  options: [
+    'baked' => 'Baked',
+    'poached' => 'Poached',
+    'grilled' => 'Grilled',
+  ],
   hints: [
     'baked' => 'Dry heat, all the way through.',
-    'poached' => "Gently, in barely moving liquid.\nKeeps delicate things whole.",
+    'poached' => "Gently, in barely moving liquid.\n"
+      . 'Keeps delicate things whole.',
     'grilled' => 'Over the flame for colour. Fast, hot, and unforgiving.',
   ],
 );
 ```
 
-Hints support multi-line text. They appear below the option list and change
-as the user moves between options.
+Hints support multi-line text. They appear below the option list and change as the user moves between options.
 
 ## Default values
 
-Every interactive widget can seed its starting state with `default`, so the user
-begins from a sensible answer and adjusts from there:
+Every interactive widget can seed its starting state with `default`, so the user begins from a sensible answer and adjusts from there:
 
 | Widget        | `default` type        | Effect                                     |
 |---------------|-----------------------|--------------------------------------------|
@@ -371,15 +417,11 @@ $extras = Prompty::multiselect('Extras', options: [
 ], default: ['bread', 'olives', 'herbs']);
 ```
 
-`default` only seeds the *interactive* starting state. A value supplied via
-`discovered` or a `PROMPTY_*` environment variable still takes precedence and
-skips the prompt entirely, so explicit input always wins over the default.
+`default` only seeds the *interactive* starting state. A value supplied via `discovered` or a `PROMPTY_*` environment variable still takes precedence and skips the prompt entirely, so explicit input always wins over the default.
 
 ## Unicode and ASCII
 
-Prompty auto-detects Unicode support from the terminal locale (`LANG`,
-`LC_ALL`, `LC_CTYPE`). When Unicode is available, it uses symbols like `◆`,
-`◇`, `│`, `●`. Otherwise, it falls back to ASCII: `+`, `o`, `|`, `(*)`.
+Prompty auto-detects Unicode support from the terminal locale (`LANG`, `LC_ALL`, `LC_CTYPE`). When Unicode is available, it uses symbols like `◆`, `◇`, `│`, `●`. Otherwise, it falls back to ASCII: `+`, `o`, `|`, `(*)`.
 
 Force a mode:
 
@@ -396,8 +438,7 @@ $results = Prompty::flow(fn(): array => [/* ... */], unicode: FALSE);
 
 ## ANSI colors
 
-Prompty auto-detects ANSI color support. It respects the
-[`NO_COLOR`](https://no-color.org/) environment variable and `TERM=dumb`.
+Prompty auto-detects ANSI color support. It respects the [`NO_COLOR`](https://no-color.org/) environment variable and `TERM=dumb`.
 
 Force colors on or off:
 
@@ -414,8 +455,7 @@ $results = Prompty::flow(fn(): array => [/* ... */], ansi: FALSE);
 
 ### Display modes
 
-Combine `unicode` and `ansi` to control the output style. Here is how a flat
-flow looks in each combination:
+Combine `unicode` and `ansi` to control the output style. Here is how a flat flow looks in each combination:
 
 <table align="center">
   <tr>
@@ -457,9 +497,7 @@ And a nested flow:
 
 ## Configuration
 
-Configure globally with `Prompty::configure()` or per-flow via named arguments
-on `Prompty::flow()`. All parameters are optional — pass only what you want to
-override. Per-flow config merges on top of global.
+Configure globally with `Prompty::configure()` or per-flow via named arguments on `Prompty::flow()`. All parameters are optional — pass only what you want to override. Per-flow config merges on top of global.
 
 ```php
 // Global.
@@ -492,7 +530,18 @@ $results = Prompty::flow(fn(): array => [/* ... */],
 | `colors`          | `array<string, string>` | ANSI color escape overrides                              |
 | `spacing`         | `array<string, string>` | Indentation strings                                      |
 
-### Reading results
+### Other methods
+
+Besides the four widgets and `flow()`, the class exposes:
+
+| Method                    | Returns  | Description                                                     |
+|---------------------------|----------|-----------------------------------------------------------------|
+| `Prompty::results()`      | `array`  | The answers collected by the last flow.                         |
+| `Prompty::config()`       | `array`  | The resolved configuration, including auto-detected values.     |
+| `Prompty::version()`      | `string` | The release version, or `development` when running from source. |
+| `Prompty::intro($text)`   | `void`   | Prints an intro banner outside of `flow()`.                     |
+| `Prompty::outro($text)`   | `void`   | Prints an outro banner outside of `flow()`.                     |
+| `Prompty::output($lines)` | `int`    | Prints an array of lines in Prompty's style; returns the count. |
 
 ```php
 // flow() returns the collected answers.
@@ -501,22 +550,26 @@ $results = Prompty::flow(fn(): array => [/* ... */]);
 // Or read them later.
 $results = Prompty::results();
 
-// Read the full config.
-$config = Prompty::config();
+// Print a banner yourself. Passing a callable as flow()'s outro suppresses
+// the built-in one, so call this from inside it to keep the banner.
+Prompty::outro('Order sent to the kitchen!');
 ```
 
 ## Test harness
 
-Prompty ships with `PromptyTestTrait` for PHPUnit. It injects keystrokes into
-a memory stream and captures terminal output — no real TTY needed.
+Prompty ships with `PromptyTestTrait` for PHPUnit. It injects keystrokes into a memory stream and captures terminal output — no real TTY needed.
+
+Use `promptyRun()` when the flow's return value is what you want to assert on:
 
 ```php
+use AlexSkrypnyk\Prompty\Prompty;
+use AlexSkrypnyk\Prompty\PromptyTestTrait;
 use PHPUnit\Framework\TestCase;
 
 require_once 'Prompty.php';
 require_once 'PromptyTestTrait.php';
 
-class MyTest extends TestCase {
+class MyFlowTest extends TestCase {
   use PromptyTestTrait;
 
   protected function tearDown(): void {
@@ -528,20 +581,43 @@ class MyTest extends TestCase {
     $keystrokes = $this->promptyKeys(
       'plum compote', self::KEY_ENTER,  // type dish + submit
       self::KEY_DOWN, self::KEY_ENTER,  // select second option
-      self::KEY_SPACE, self::KEY_ENTER, // toggle first + submit
-      self::KEY_ENTER,                  // confirm default
     );
 
-    $this->promptyRunScript(function (): void {
-      require 'my-script.php';
-    }, $keystrokes);
+    $run = $this->promptyRun(fn(): mixed => Prompty::flow(fn(): array => [
+      'dish' => Prompty::text('Dish name'),
+      'course' => Prompty::select('Course', options: [
+        'starter' => 'Starter',
+        'main' => 'Main',
+      ]),
+    ]), $keystrokes);
 
-    $results = \Prompty::results();
-    $this->assertSame('plum compote', $results['dish']);
-    $this->assertSame('main', $results['course']);
+    $this->assertSame('plum compote', $run['result']['dish']);
+    $this->assertSame('main', $run['result']['course']);
+    $this->assertStringContainsString('Dish name', $run['output']);
   }
 }
 ```
+
+Use `promptyRunScript()` to drive a consumer script instead. Leave the script's [kill switch](#starter-script) variable unset so it stops before doing real work, then read the answers from `Prompty::results()`:
+
+```php
+public function testMyScript(): void {
+  $keystrokes = $this->promptyKeys(
+    'plum compote', self::KEY_ENTER,
+    self::KEY_DOWN, self::KEY_ENTER,
+  );
+
+  $this->promptyRunScript(function (): void {
+    require 'my-script.php';
+  }, $keystrokes);
+
+  $results = Prompty::results();
+  $this->assertSame('plum compote', $results['dish']);
+  $this->assertSame('main', $results['course']);
+}
+```
+
+Both helpers return an array with an ANSI-stripped `output` key; `promptyRun()` adds a `result` key holding the callback's return value.
 
 ### Available key constants
 
@@ -560,9 +636,7 @@ class MyTest extends TestCase {
 
 ## Starter script
 
-[`starter.php`](starter.php) is a ready-to-use template for your own scripts.
-It demonstrates the recommended "kill switch" pattern for testable flows — the
-script collects answers, then checks an env var before doing real work:
+[`starter.php`](starter.php) is a ready-to-use template for your own scripts. It demonstrates the recommended "kill switch" pattern for testable flows — the script collects answers, then checks an env var before doing real work:
 
 ```php
 $results = Prompty::flow(fn(): array => [
@@ -582,18 +656,13 @@ Copy `starter.php`, rename it, and replace the steps with your own.
 
 ## Embedding
 
-[`embed.php`](embed.php) minifies `Prompty.php` (strips comments, collapses
-blank lines) and embeds it directly into your script — so you can ship a single
-file with no `require_once` and no external dependencies.
+[`embed.php`](embed.php) minifies `Prompty.php` (strips comments, collapses blank lines) and embeds it directly into your script — so you can ship a single file with no `require_once` and no external dependencies.
 
-Download `embed.php` from the
-[latest release](https://github.com/AlexSkrypnyk/prompty/releases/latest)
-assets alongside `Prompty.php`.
+Download `embed.php` from the [latest release](https://github.com/AlexSkrypnyk/prompty/releases/latest) assets alongside `Prompty.php`.
 
 ### Setup
 
-Add `// @embed-start` and `// @embed-end` markers in your script around the
-`require_once` line:
+Add `// @embed-start` and `// @embed-end` markers in your script around the `require_once` line:
 
 ```php
 <?php
@@ -625,31 +694,30 @@ Embed into a separate output file (source stays unchanged):
 php embed.php my-script.php dist/my-script.php
 ```
 
-Use `--compact` to collapse the entire class into a single line (plus the
-license header comment):
-
-```bash
-php embed.php --compact my-script.php
-```
-
-Use `--source` to specify an alternative path to the class file to embed
-(defaults to `Prompty.php` in the same directory as `embed.php`):
-
-```bash
-php embed.php --source /path/to/Prompty.php my-script.php
-```
-
-Wrap the markers in `// phpcs:disable` / `// phpcs:enable`
-to suppress coding standard warnings on the minified code.
+Wrap the markers in `// phpcs:disable` / `// phpcs:enable` to suppress coding standard warnings on the minified code.
 
 See [`starter.php`](starter.php) for an example with markers already in place.
 
+### Options
+
+| Option            | Description                                                                              |
+|-------------------|------------------------------------------------------------------------------------------|
+| `--source <path>` | Path to the class file to embed. Defaults to `Prompty.php` beside `embed.php`.            |
+| `--compact`       | Collapse the class onto a single line and shorten internal names, for a smaller output.   |
+| `--stdout`        | Write the processed class as a standalone PHP file instead of embedding into a script.    |
+| `--no-killswitch` | Skip injecting the kill switch block and the post-embed verification run.                 |
+
+```bash
+php embed.php --compact my-script.php
+php embed.php --source /path/to/Prompty.php my-script.php
+php embed.php --stdout Prompty.min.php
+```
+
+`--stdout` takes an output path rather than a target script, and is how the release workflow builds the `Prompty.min.php` and `Prompty.compact.php` assets.
+
 ### Re-embedding
 
-To update an already-embedded script to a newer version of Prompty, replace
-`Prompty.php` with the new version and re-run `embed.php`. The embedded region
-is replaced with the latest class content while all code outside the markers is
-preserved:
+To update an already-embedded script to a newer version of Prompty, replace `Prompty.php` with the new version and re-run `embed.php`. The embedded region is replaced with the latest class content while all code outside the markers is preserved:
 
 ```bash
 php embed.php my-script.php
@@ -663,9 +731,7 @@ php embed.php --source /path/to/new/Prompty.php my-script.php
 
 ### Kill switch
 
-If your script does not already contain a kill-switch statement, `embed.php`
-will automatically inject one after the embed region. This allows tests to run
-the script without executing the real work below:
+If your script does not already contain a kill-switch statement, `embed.php` will automatically inject one after the embed region. This allows tests to run the script without executing the real work below:
 
 ```php
 // Kill switch — stop here when running under tests.
@@ -687,10 +753,12 @@ php embed.php --no-killswitch my-script.php
 <summary>Embed into starter script</summary>
 
 ```bash
+BASE=https://github.com/AlexSkrypnyk/prompty/releases/latest/download
+
 # Download Prompty.php, embed.php, and the starter template.
-curl -LO https://github.com/AlexSkrypnyk/prompty/releases/latest/download/Prompty.php
-curl -LO https://github.com/AlexSkrypnyk/prompty/releases/latest/download/embed.php
-curl -LO https://github.com/AlexSkrypnyk/prompty/releases/latest/download/starter.php
+curl -LO $BASE/Prompty.php
+curl -LO $BASE/embed.php
+curl -LO $BASE/starter.php
 
 # Rename the starter to your script name.
 mv starter.php my-script.php
@@ -705,9 +773,11 @@ php embed.php my-script.php
 <summary>Embed into custom script</summary>
 
 ```bash
+BASE=https://github.com/AlexSkrypnyk/prompty/releases/latest/download
+
 # Download Prompty.php and embed.php.
-curl -LO https://github.com/AlexSkrypnyk/prompty/releases/latest/download/Prompty.php
-curl -LO https://github.com/AlexSkrypnyk/prompty/releases/latest/download/embed.php
+curl -LO $BASE/Prompty.php
+curl -LO $BASE/embed.php
 
 # Add markers in your script around the require_once line:
 #
@@ -727,8 +797,10 @@ php embed.php my-script.php
 <summary>Update Prompty</summary>
 
 ```bash
+BASE=https://github.com/AlexSkrypnyk/prompty/releases/latest/download
+
 # Download the new Prompty.php, overwriting the old one.
-curl -LO https://github.com/AlexSkrypnyk/prompty/releases/latest/download/Prompty.php
+curl -LO $BASE/Prompty.php
 
 # Re-run the embedder. Code outside the markers is preserved.
 php embed.php my-script.php
@@ -739,13 +811,13 @@ php embed.php --source /path/to/new/Prompty.php my-script.php
 
 </details>
 
-## Maintenance
+## Contributing
 
-```bash
-composer install
-composer lint
-composer test
-```
+See [`CONTRIBUTING.md`](CONTRIBUTING.md) for local development setup, the linting and testing commands, the playground scripts, and the release process.
+
+## Security
+
+See [`SECURITY.md`](SECURITY.md) for how to report a vulnerability and how to verify a downloaded release.
 
 ---
 _This repository was created using the [Scaffold](https://getscaffold.dev/) project template_

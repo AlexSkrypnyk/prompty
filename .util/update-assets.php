@@ -910,8 +910,9 @@ EXPECT;
  *
  * Both pipes are polled together rather than read one after the other, so a
  * worker that fills one pipe buffer cannot block while this waits on the
- * other. Returns only once the worker has closed both ends, which is what
- * makes the captured output complete enough to diagnose a failure.
+ * other. Returns once the worker has closed both ends, so the captured output
+ * is complete enough to diagnose a failure. A stream_select() failure ends the
+ * loop early and returns whatever was read up to that point.
  *
  * @param resource $stdout_pipe
  *   The worker's stdout pipe.

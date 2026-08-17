@@ -561,7 +561,6 @@ if ($compact && $class_start !== NULL) {
       $after_is_word = preg_match('/[a-zA-Z0-9_$\\\\]/', $after_first);
 
       if ($before_is_word && $after_is_word) {
-        // Space is needed between two word characters.
         $whitespace_output .= ' ';
       }
       continue;
