@@ -10,23 +10,37 @@ namespace AlexSkrypnyk\Prompty;
  * Ships alongside Prompty.php. Include in a PHPUnit test case to simulate
  * keystrokes, capture output, and assert on results without a real TTY.
  *
- * Usage:
+ * Use promptyRun() when the callback returns the value under test:
  * @code
+ *   use AlexSkrypnyk\Prompty\Prompty;
+ *   use AlexSkrypnyk\Prompty\PromptyTestTrait;
  *   use PHPUnit\Framework\TestCase;
- *   require_once __DIR__ . '/PromptyTestTrait.php';
  *
  *   class MyTest extends TestCase {
  *     use PromptyTestTrait;
  *
  *     public function testMyFlow(): void {
- *       $r = $this->promptyRun(function (): void {
- *         putenv('PROMPTY_STOP=1');
- *         require 'my-installer.php';
- *       }, self::KEY_DOWN . self::KEY_ENTER);
+ *       $r = $this->promptyRun(fn(): mixed => Prompty::flow(fn(): array => [
+ *         'framework' => Prompty::select('Framework', options: [
+ *           'react' => 'React',
+ *           'vue' => 'Vue',
+ *         ]),
+ *       ]), self::KEY_DOWN . self::KEY_ENTER);
  *
  *       $this->assertSame('vue', $r['result']['framework']);
  *     }
  *   }
+ * @endcode
+ *
+ * Use promptyRunScript() to drive a consumer script. Leave the script's kill
+ * switch variable unset so it stops before doing real work, then read the
+ * answers from Prompty::results():
+ * @code
+ *   $this->promptyRunScript(function (): void {
+ *     require 'my-installer.php';
+ *   }, self::KEY_DOWN . self::KEY_ENTER);
+ *
+ *   $this->assertSame('vue', Prompty::results()['framework']);
  * @endcode
  */
 trait PromptyTestTrait {
@@ -101,11 +115,10 @@ trait PromptyTestTrait {
   /**
    * Run a consumer script with simulated keystrokes.
    *
-   * Unlike promptyRun(), this does NOT pre-set the singleton or $inFlow.
-   * The script's own Prompty::flow() call handles all setup. This method
-   * only injects the keystroke stream and captures output.
-   *
-   * After calling this, use Prompty::results() to read collected answers.
+   * Installs a singleton carrying the keystroke stream, which the script's
+   * own Prompty::flow() call then reuses. Unlike promptyRun(), $inFlow is
+   * left FALSE and the singleton survives the call, so Prompty::results()
+   * still reads the collected answers afterwards.
    *
    * @param callable $callback
    *   Typically: function () { require 'my-script.php'; }.
