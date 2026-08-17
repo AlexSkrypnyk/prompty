@@ -25,11 +25,11 @@ Prompty::configure(
 
 echo "\n--- Text: with env prefix ---\n";
 $r = Prompty::text('Dish name', placeholder: 'pear tart');
-echo '  Result: ' . ($r ?? 'cancelled') . "\n";
+echo '  Result: ' . (is_string($r) ? $r : 'cancelled') . "\n";
 
 echo "\n--- Select: with custom labels ---\n";
 $r = Prompty::select('Course', options: ['starter' => 'Starter', 'main' => 'Main', 'dessert' => 'Dessert']);
-echo '  Result: ' . ($r ?? 'cancelled') . "\n";
+echo '  Result: ' . (is_string($r) ? $r : 'cancelled') . "\n";
 
 echo "\n--- Confirm: with custom labels ---\n";
 $r = Prompty::confirm('Send order?');

@@ -142,7 +142,7 @@ $results = Prompty::flow(fn(): array => [
     Prompty::outro('Order sent to the kitchen!');
     echo "\nCollected answers:\n";
     foreach ($results as $key => $value) {
-      $display = is_array($value) ? (count($value) > 0 ? implode(', ', $value) : 'none') : (is_bool($value) ? ($value ? 'yes' : 'no') : $value);
+      $display = is_array($value) ? (count($value) > 0 ? implode(', ', array_filter($value, is_string(...))) : 'none') : (is_bool($value) ? ($value ? 'yes' : 'no') : $value);
       echo sprintf('  %s: %s%s', $key, $display, PHP_EOL);
     }
   },

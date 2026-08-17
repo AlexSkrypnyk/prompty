@@ -19,7 +19,7 @@ Prompty::configure(unicode: !isset($opts['no-unicode']), ansi: !isset($opts['no-
 
 echo "\n--- Text: with description ---\n";
 $r = Prompty::text('Dish name', placeholder: 'pear tart', description: "Written on the order ticket and under\n\"Specials\" on the board.");
-echo '  Result: ' . ($r ?? 'cancelled') . "\n";
+echo '  Result: ' . (is_string($r) ? $r : 'cancelled') . "\n";
 
 echo "\n--- Select: with hints ---\n";
 $r = Prompty::select('Course',
@@ -31,7 +31,7 @@ $r = Prompty::select('Course',
     'dessert' => 'Sweet, served last.',
   ],
 );
-echo '  Result: ' . ($r ?? 'cancelled') . "\n";
+echo '  Result: ' . (is_string($r) ? $r : 'cancelled') . "\n";
 
 echo "\n--- Multiselect: with hints ---\n";
 $r = Prompty::multiselect('Extras',
@@ -44,7 +44,8 @@ $r = Prompty::multiselect('Extras',
     'lemon' => 'Sharpens rich dishes.',
   ],
 );
-echo '  Result: ' . ($r !== NULL ? (count($r) > 0 ? implode(', ', $r) : 'none') : 'cancelled') . "\n";
+$selection = is_array($r) ? array_filter($r, is_string(...)) : NULL;
+echo '  Result: ' . ($selection === NULL ? 'cancelled' : ($selection === [] ? 'none' : implode(', ', $selection))) . "\n";
 
 echo "\n--- Confirm: with description ---\n";
 $r = Prompty::confirm('Send order?', description: 'Passes the order to the kitchen.');

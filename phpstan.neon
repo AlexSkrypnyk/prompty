@@ -9,6 +9,7 @@ parameters:
   paths:
     - Prompty.php
     - PromptyTestTrait.php
+    - playground
     - embed.php
     - starter.php
     - tests/phpunit

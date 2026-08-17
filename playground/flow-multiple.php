@@ -32,10 +32,12 @@ if ($basics === NULL) {
   exit(0);
 }
 
-echo "\nOrder: " . $basics['dish'] . ' + ' . $basics['course'] . "\n\n";
+$dish = is_string($basics['dish']) ? $basics['dish'] : '';
+$course = is_string($basics['course']) ? $basics['course'] : '';
+echo "\nOrder: " . $dish . ' + ' . $course . "\n\n";
 
 $extra = Prompty::text('Kitchen note', placeholder: 'no onions');
-echo 'Note: ' . ($extra ?? 'cancelled') . "\n\n";
+echo 'Note: ' . (is_string($extra) ? $extra : 'cancelled') . "\n\n";
 
 $options = Prompty::flow(fn(): array => [
   'extras' => Prompty::multiselect('Extras', options: ['bread' => 'Bread', 'olives' => 'Olives', 'herbs' => 'Herbs']),
@@ -50,5 +52,6 @@ if ($options === NULL) {
   exit(0);
 }
 
-echo "\nExtras: " . (count($options['extras']) > 0 ? implode(', ', $options['extras']) : 'none') . "\n";
+$extras = is_array($options['extras']) ? $options['extras'] : [];
+echo "\nExtras: " . ($extras === [] ? 'none' : implode(', ', $extras)) . "\n";
 echo 'Send: ' . ($options['send'] ? 'yes' : 'no') . "\n";
