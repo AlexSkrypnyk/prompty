@@ -8,22 +8,34 @@ Namespace: `AlexSkrypnyk\Prompty`. Key files: `Prompty.php` (library),
 
 ## Architecture
 
-- **Singleton** — `static::$instance`, never `new Prompty()`.
-- **Dual-mode widgets** — `text`, `select`, `multiselect`, `confirm` return
+- **Singleton** - `static::$instance`, never `new Prompty()`.
+- **Dual-mode widgets** - `text`, `select`, `multiselect`, `confirm` return
   closures in flow mode, values in standalone mode.
-- **Typed config properties** — `cfgUnicode`, `cfgSymbols`, `cfgColors`,
+- **Typed config properties** - `cfgUnicode`, `cfgSymbols`, `cfgColors`,
   `cfgSpacing`, `cfgLabels`, `cfgEnvPrefix`, `cfgTruthy`, `cfgFalsy`, etc.
   Configured via `Prompty::configure(...)` named arguments.
-- **Flow definition** — `flow()` takes a callable (not array) so `$inFlow`
+- **Flow definition** - `flow()` takes a callable (not array) so `$inFlow`
   is set before widget evaluation.
-- **Tree rendering** — nested children use bar connectors; `open` array
+- **Tree rendering** - nested children use bar connectors; `open` array
   tracks continuing siblings.
+- **Widget signatures** - all four widgets share one parameter order, and any
+  new widget follows it:
+
+  ```
+  label, [options], default, [placeholder], [description], [hints],
+  discovered, condition, children, ctx
+  ```
+
+  Bracketed parameters appear only where they apply: `options` and `hints` on
+  `select`/`multiselect`, `placeholder` on `text`. The trailing four are
+  common to every widget. Callers pass `label` positionally and everything
+  else by name, so the order matters to the signature, not to call sites.
 
 ### Playground
 
-- `playground/widgets.php` — standalone widget demos.
-- `playground/flow.php` — linear flow.
-- `playground/flow-nested.php` — nested flow with conditionals.
+- `playground/widgets.php` - standalone widget demos.
+- `playground/flow.php` - linear flow.
+- `playground/flow-nested.php` - nested flow with conditionals.
 
 ## Commands
 
@@ -37,9 +49,9 @@ composer reset         # rm vendor/, reinstall
 
 ## Code Quality
 
-1. **PHPCS** — Drupal standard + strict types (`phpcs.xml`)
-2. **PHPStan** — Level 9 (`phpstan.neon`)
-3. **Rector** — PHP 8.2/8.3 modernization (`rector.php`)
+1. **PHPCS** - Drupal standard + strict types (`phpcs.xml`)
+2. **PHPStan** - Level 9 (`phpstan.neon`)
+3. **Rector** - PHP 8.2/8.3 modernization (`rector.php`)
 
 ## Conventions
 
@@ -52,6 +64,7 @@ composer reset         # rm vendor/, reinstall
 - Namespace: `AlexSkrypnyk\Prompty\Tests\Unit\Prompty`
 - Base class: `PromptyTestCase` (uses `PromptyTestTrait`)
 - PHPUnit 11: `#[CoversClass()]`, `#[DataProvider()]`
-- Tests in `tests/phpunit/Unit/Prompty/`
-- `StarterScriptTest` in `tests/phpunit/Unit/`
+- Unit tests in `tests/phpunit/Unit/Prompty/`
+- Functional tests in `tests/phpunit/Functional/` - these run `embed.php` and
+  `starter.php` in real subprocesses
 - Autoload: classmap (no PSR-4)
