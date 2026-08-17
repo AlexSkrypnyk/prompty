@@ -17,35 +17,35 @@ use AlexSkrypnyk\Prompty\Prompty;
 $opts = getopt('', ['no-unicode', 'no-ansi']);
 Prompty::configure(unicode: !isset($opts['no-unicode']), ansi: !isset($opts['no-ansi']));
 
-echo "\n--- Text ---\n";
-$r = Prompty::text('Project name', placeholder: 'my-app', description: "Used as the directory name and the \"name\" field\nin package.json.");
+echo "\n--- Text: with description ---\n";
+$r = Prompty::text('Dish name', placeholder: 'pear tart', description: "Written on the order ticket and under\n\"Specials\" on the board.");
 echo '  Result: ' . ($r ?? 'cancelled') . "\n";
 
-echo "\n--- Select ---\n";
-$r = Prompty::select('Framework',
-  options: ['react' => 'React', 'vue' => 'Vue', 'svelte' => 'Svelte'],
-  description: 'The UI layer for your project.',
+echo "\n--- Select: with hints ---\n";
+$r = Prompty::select('Course',
+  options: ['starter' => 'Starter', 'main' => 'Main', 'dessert' => 'Dessert'],
+  description: 'Where the dish sits in the meal.',
   hints: [
-    'react' => 'Component-based library by Meta with the largest ecosystem.',
-    'vue' => "Gentle learning curve with excellent documentation.\nStrong ecosystem and single-file components.",
-    'svelte' => "Compile-time framework — no virtual DOM.\nSmaller bundles, less runtime overhead.",
+    'starter' => 'Served first, in a small portion.',
+    'main' => 'The centre of the meal.',
+    'dessert' => 'Sweet, served last.',
   ],
 );
 echo '  Result: ' . ($r ?? 'cancelled') . "\n";
 
-echo "\n--- Multiselect ---\n";
-$r = Prompty::multiselect('Features',
-  options: ['typescript' => 'TypeScript', 'eslint' => 'ESLint', 'prettier' => 'Prettier', 'vitest' => 'Vitest'],
-  description: "Select features to include.\nSpace to toggle, enter to confirm.",
+echo "\n--- Multiselect: with hints ---\n";
+$r = Prompty::multiselect('Extras',
+  options: ['bread' => 'Bread', 'olives' => 'Olives', 'herbs' => 'Herbs', 'lemon' => 'Lemon'],
+  description: "Anything served alongside.\nSpace to toggle, enter to confirm.",
   hints: [
-    'typescript' => 'Adds type safety with static type checking.',
-    'eslint' => 'Catches common code issues and enforces style rules.',
-    'prettier' => "Automatic code formatting on save.\nKeeps your codebase consistent.",
-    'vitest' => 'Fast unit testing framework powered by Vite.',
+    'bread' => 'Warm, cut at the table.',
+    'olives' => 'Marinated, served in oil.',
+    'herbs' => 'Picked the same morning.',
+    'lemon' => 'Sharpens rich dishes.',
   ],
 );
 echo '  Result: ' . ($r !== NULL ? (count($r) > 0 ? implode(', ', $r) : 'none') : 'cancelled') . "\n";
 
-echo "\n--- Confirm ---\n";
-$r = Prompty::confirm('Install dependencies?', description: 'Runs npm install after scaffolding.');
+echo "\n--- Confirm: with description ---\n";
+$r = Prompty::confirm('Send order?', description: 'Passes the order to the kitchen.');
 echo '  Result: ' . ($r !== NULL ? ($r ? 'yes' : 'no') : 'cancelled') . "\n";

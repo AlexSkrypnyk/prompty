@@ -15,17 +15,17 @@ $opts = getopt('', ['no-unicode', 'no-ansi']);
 Prompty::configure(unicode: !isset($opts['no-unicode']), ansi: !isset($opts['no-ansi']));
 
 echo "\n--- Text: basic ---\n";
-$r = Prompty::text('Project name', placeholder: 'my-app');
+$r = Prompty::text('Dish name', placeholder: 'pear tart');
 echo '  Result: ' . ($r ?? 'cancelled') . "\n";
 
 echo "\n--- Text: with description ---\n";
-$r = Prompty::text('Author name', placeholder: 'Jane Doe', description: "Used in package.json and LICENSE.\nLeave blank for default.");
+$r = Prompty::text('Guest name', placeholder: 'Jane Doe', description: "Printed on the order ticket.\nLeave blank for takeaway.");
 echo '  Result: ' . ($r ?? 'cancelled') . "\n";
 
 echo "\n--- Text: no placeholder ---\n";
-$r = Prompty::text('Git remote URL');
+$r = Prompty::text('Allergy note');
 echo '  Result: ' . ($r ?? 'cancelled') . "\n";
 
 echo "\n--- Text: with editable default ---\n";
-$r = Prompty::text('Project name', default: 'my-app', description: 'Pre-filled and editable.');
+$r = Prompty::text('Dish name', default: 'pear tart', description: 'Pre-filled and editable.');
 echo '  Result: ' . ($r ?? 'cancelled') . "\n";
