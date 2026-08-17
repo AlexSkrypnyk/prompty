@@ -171,10 +171,13 @@ final class PromptyWalkFlowTest extends PromptyTestCase {
 
     $this->clearEnvVars(['parent', 'visible_child', 'hidden_child'], 'TEST_WALK_');
 
-    $this->captureOutput(function () use ($p, $steps): void {
+    $output = $this->captureOutput(function () use ($p, $steps): void {
       $result = $this->callProtected($p, 'walkFlow', $steps, 0, $this->defaultOptions(), '');
       $this->assertTrue($result);
     });
+
+    // A visible child draws a separator line between parent and child.
+    $this->assertSame("|  |\n", $output);
 
     /** @var array<string, mixed> $results */
     $results = $this->getProperty($p, 'results');
@@ -201,12 +204,14 @@ final class PromptyWalkFlowTest extends PromptyTestCase {
 
     $this->clearEnvVars(['parent', 'child'], 'TEST_WALK_');
 
-    $this->captureOutput(function () use ($p, $steps): void {
+    $output = $this->captureOutput(function () use ($p, $steps): void {
       $result = $this->callProtected($p, 'walkFlow', $steps, 0, $this->defaultOptions(), '');
       $this->assertTrue($result);
     });
 
-    // No separator line should appear (no "  |" after parent).
+    // With every child hidden, no separator line is drawn at all.
+    $this->assertSame('', $output);
+
     /** @var array<string, mixed> $results */
     $results = $this->getProperty($p, 'results');
     $this->assertArrayNotHasKey('child', $results);
