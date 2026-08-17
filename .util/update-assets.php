@@ -170,15 +170,14 @@ function main(): void {
 
   $failed = [];
   foreach ($processes as $name => $process) {
-    $stdout = stream_get_contents($pipes_list[$name][1]);
-    $stderr = stream_get_contents($pipes_list[$name][2]);
+    [$stdout, $stderr] = drainPipes($pipes_list[$name][1], $pipes_list[$name][2]);
     fclose($pipes_list[$name][1]);
     fclose($pipes_list[$name][2]);
 
     $exit_code = proc_close($process);
 
     if ($exit_code !== 0) {
-      $failed[$name] = trim(($stdout ?: '') . ($stderr ?: ''));
+      $failed[$name] = trim($stdout . $stderr);
       info('  FAILED: ' . $name);
     }
     else {
@@ -900,6 +899,59 @@ EXPECT;
 
   file_put_contents($expect_script, $content);
   chmod($expect_script, 0700);
+}
+
+/**
+ * Read a worker's stdout and stderr until both reach EOF.
+ *
+ * Both pipes are polled together rather than read one after the other, so a
+ * worker that fills one pipe buffer cannot block while this waits on the
+ * other. Returns only once the worker has closed both ends, which is what
+ * makes the captured output complete enough to diagnose a failure.
+ *
+ * @param resource $stdout_pipe
+ *   The worker's stdout pipe.
+ * @param resource $stderr_pipe
+ *   The worker's stderr pipe.
+ *
+ * @return array{0: string, 1: string}
+ *   The captured stdout and stderr.
+ */
+function drainPipes($stdout_pipe, $stderr_pipe): array {
+  $stdout = '';
+  $stderr = '';
+  $open = [$stdout_pipe, $stderr_pipe];
+
+  while ($open !== []) {
+    $read = $open;
+    $write = NULL;
+    $except = NULL;
+
+    if (stream_select($read, $write, $except, NULL) === FALSE) {
+      break;
+    }
+
+    foreach ($read as $stream) {
+      $chunk = fread($stream, 8192);
+
+      if ($chunk === FALSE || $chunk === '') {
+        if (feof($stream)) {
+          $open = array_values(array_filter($open, fn($candidate): bool => $candidate !== $stream));
+        }
+
+        continue;
+      }
+
+      if ($stream === $stdout_pipe) {
+        $stdout .= $chunk;
+      }
+      else {
+        $stderr .= $chunk;
+      }
+    }
+  }
+
+  return [$stdout, $stderr];
 }
 
 /**
