@@ -44,6 +44,11 @@ $results = Prompty::flow(fn(): array => [
       'method' => Prompty::select('Method',
         options: ['baked' => 'Baked', 'poached' => 'Poached', 'grilled' => 'Grilled'],
         description: 'How the dish is cooked.',
+        hints: [
+          'baked' => 'Dry heat, all the way through.',
+          'poached' => "Gently, in barely moving liquid.\nKeeps delicate things whole.",
+          'grilled' => "Over the flame for colour.\nFast, hot, and unforgiving.",
+        ],
         condition: fn($r): bool => ($r['course'] ?? '') === 'main',
         children: [
           'temperature' => Prompty::select('Temperature',
@@ -61,6 +66,11 @@ $results = Prompty::flow(fn(): array => [
       'finishes' => Prompty::multiselect('Finishes',
         options: ['glazed' => 'Glazed', 'dusted' => 'Dusted', 'piped' => 'Piped'],
         description: 'Applied just before serving.',
+        hints: [
+          'glazed' => 'Brushed with syrup for shine.',
+          'dusted' => "Icing sugar through a fine sieve.\nDone at the last moment.",
+          'piped' => 'Cream rosettes around the edge.',
+        ],
         condition: fn($r): bool => ($r['course'] ?? '') === 'dessert',
         children: [
           'accompaniment' => Prompty::select('Accompaniment',

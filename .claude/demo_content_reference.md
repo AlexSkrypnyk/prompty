@@ -227,7 +227,7 @@ Use these exact labels, keys, values and hints. Keys are lowercase single words 
 
 `flow-nested.php` asks Course, Extras and Drinks in turn. Course branches one way per option; Extras and Drinks reveal a child per selected option:
 
-```
+```text
 Course
 ├── Starter  -> Serving  -> Portion, Include bread?, Dressing
 ├── Main     -> Method   -> Temperature, Rest before serving?, Sauce on the side?
@@ -274,7 +274,7 @@ Intro, outro and cancelled lines stay order-themed and specific to their demo:
 
 | Demo | Intro | Outro | Cancelled |
 | --- | --- | --- | --- |
-| `starter.php` | `Compose an order` | `Order sent!` | (library default) |
+| `starter.php` | `Compose an order` | `Order sent!` | `Order cancelled.` |
 | `flow.php` | `Compose an order` | `Order sent!` | `Order cancelled.` |
 | `flow-nested.php` | `Kitchen order` | `Order sent to the kitchen!` | `Kitchen order cancelled.` |
 | `flow-config.php` | `Order setup` | `All done!` | `Order setup cancelled.` |

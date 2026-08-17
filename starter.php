@@ -30,7 +30,7 @@ $results = Prompty::flow(fn(): array => [
   'course' => Prompty::select('Course', options: ['starter' => 'Starter', 'main' => 'Main', 'dessert' => 'Dessert']),
   'extras' => Prompty::multiselect('Extras', options: ['bread' => 'Bread', 'olives' => 'Olives', 'herbs' => 'Herbs']),
   'send' => Prompty::confirm('Send order?'),
-], intro: 'Compose an order', outro: 'Order sent!');
+], intro: 'Compose an order', outro: 'Order sent!', cancelled: 'Order cancelled.');
 
 // Kill switch - stop here when running under tests.
 // In production, set SHOULD_PROCEED=1 to continue past this point.
