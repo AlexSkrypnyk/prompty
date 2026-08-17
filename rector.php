@@ -27,9 +27,18 @@ use Rector\PHPUnit\Set\PHPUnitSetList;
 use Rector\TypeDeclaration\Rector\StmtsAwareInterface\DeclareStrictTypesRector;
 
 return RectorConfig::configure()
-  ->withPaths([
-    __DIR__ . '/**',
-  ])
+  // Filtered by existence because the embed tests copy this config into a
+  // workspace holding only the file under test, and Rector aborts when a
+  // configured path is missing.
+  ->withPaths(array_filter([
+    __DIR__ . '/Prompty.php',
+    __DIR__ . '/PromptyTestTrait.php',
+    __DIR__ . '/playground',
+    __DIR__ . '/embed.php',
+    __DIR__ . '/starter.php',
+    __DIR__ . '/tests/phpunit',
+    __DIR__ . '/rector.php',
+  ], file_exists(...)))
   ->withPhpSets(php82: TRUE)
   ->withPreparedSets(
     deadCode: TRUE,
