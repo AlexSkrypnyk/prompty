@@ -428,13 +428,13 @@ class Prompty {
     $p->setupTty();
 
     if ($p->prevTty !== NULL) {
+      // @codeCoverageIgnoreStart
       // Restore the terminal even on fatal errors or exceptions. teardownTty()
       // clears prevTty, so this is a no-op once a normal exit path has run.
       register_shutdown_function(function () use ($p): void {
-        // @codeCoverageIgnoreStart
         $p->teardownTty();
-        // @codeCoverageIgnoreEnd
       });
+      // @codeCoverageIgnoreEnd
     }
 
     if ($intro !== NULL) {
