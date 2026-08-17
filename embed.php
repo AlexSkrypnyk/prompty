@@ -21,8 +21,8 @@
  * embedding is performed on the copy. Otherwise the source is modified
  * in place.
  *
- * After embedding, if Rector is available (vendor/bin/rector), it will be
- * run on the processed class content. A kill-switch block is injected after
+ * Before embedding, if Rector is available (vendor/bin/rector), it is run
+ * on the processed class content. A kill-switch block is injected after
  * the embed region if one is not already present. The embedded script is
  * then run to verify it works.
  *
@@ -205,7 +205,8 @@ for ($i = 0; $i < $token_count; $i++) {
     continue;
   }
 
-  // Skip the namespace declaration (re-added in the embedded output).
+  // Skip the namespace declaration; --stdout mode re-adds it, embedding
+  // inserts the class without one.
   if ($token_type === T_NAMESPACE) {
     while ($i < $token_count) {
       $i++;
@@ -332,8 +333,8 @@ if ($compact && $class_start !== NULL) {
     if ($token_type === T_VARIABLE && $visibility !== NULL) {
       $prop_name = substr($ctokens[$i][1], 1);
 
-      // Check if next non-whitespace is '(' - that would make it a
-      // method parameter, not a property.
+      // Treat as a property unless the preceding non-whitespace token is
+      // T_FUNCTION.
       $is_property = TRUE;
       for ($k = $i - 1; $k >= 0; $k--) {
         if (is_array($ctokens[$k]) && $ctokens[$k][0] === T_WHITESPACE) {
@@ -432,7 +433,8 @@ if ($compact && $class_start !== NULL) {
       continue;
     }
 
-    // Skip property declarations and references (after -> or ::$).
+    // Skip names in the property map: declarations, static::$name
+    // references and same-named locals are renamed via $prop_map instead.
     if (isset($prop_map[$var_name])) {
       continue;
     }
@@ -479,7 +481,7 @@ if ($compact && $class_start !== NULL) {
         continue;
       }
 
-      // Static property reference: static::$propName.
+      // Property declaration or static::$propName reference.
       if (isset($prop_map[$var_name])) {
         $compact_output .= '$' . $prop_map[$var_name];
         continue;
@@ -570,7 +572,7 @@ if ($compact && $class_start !== NULL) {
         $after = is_array($ws_tokens[$i + 1]) ? $ws_tokens[$i + 1][1] : $ws_tokens[$i + 1];
       }
 
-      // Remove space if surrounded by non-alphanumeric/non-$ on both sides.
+      // Remove the space when either neighbour is a non-word character.
       $before_last = $before !== '' ? $before[strlen($before) - 1] : '';
       $after_first = $after !== '' ? $after[0] : '';
 
