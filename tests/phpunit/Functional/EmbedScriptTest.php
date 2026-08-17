@@ -389,6 +389,17 @@ final class EmbedScriptTest extends FunctionalTestCase {
     $this->assertProcessFailed();
     $this->assertProcessAnyOutputContains('marker');
 
+    // Target script does not exist.
+    $this->processRun('php', [self::$root . '/embed.php', self::$tmp . '/missing.php']);
+    $this->assertProcessFailed();
+    $this->assertProcessAnyOutputContains('Target script not found');
+
+    // Output path inside a directory that does not exist.
+    $target = $this->prepareTarget();
+    $this->processRun('php', [self::$root . '/embed.php', $target, self::$tmp . '/no-such-dir/output.php']);
+    $this->assertProcessFailed();
+    $this->assertProcessAnyOutputContains('Could not copy target script to output');
+
     // --source without path.
     $this->processRun('php', [self::$root . '/embed.php', '--source']);
     $this->assertProcessFailed();

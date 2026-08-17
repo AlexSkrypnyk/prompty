@@ -8,35 +8,15 @@
  *
  * @see https://github.com/AlexSkrypnyk/prompty
  *
- * Usage:
- *   php embed.php [options] <source-script> [<output-script>]
- *   php embed.php [options] --stdout <output-file>
+ * Run the script without arguments to see the usage, arguments and options.
  *
- * The source script must contain // @embed-start and // @embed-end markers.
- * The minified class will be inserted between these markers. Re-running on
- * a previously embedded script replaces the embedded region with the latest
- * class content while preserving all other code.
- *
- * If <output-script> is provided, the source is copied there first and the
- * embedding is performed on the copy. Otherwise the source is modified
- * in place.
+ * The target script must contain // @embed-start and // @embed-end markers.
+ * The minified class will be inserted between these markers.
  *
  * Before embedding, if Rector is available (vendor/bin/rector), it is run
- * on the processed class content. A kill-switch block is injected after
+ * on the processed class content. A kill switch block is injected after
  * the embed region if one is not already present. The embedded script is
  * then run to verify it works.
- *
- * Options:
- *   --source <path>  Path to the PHP class file to embed. Defaults to
- *                    Prompty.php in the same directory as this script.
- *   --compact        Apply additional size optimizations: shorten internal
- *                    property and method names, rename local variables,
- *                    reduce whitespace.
- *   --stdout         Output the processed class as a standalone PHP file
- *                    instead of embedding into a target script. Requires an
- *                    output file path.
- *   --no-killswitch  Skip injecting the kill-switch block and post-embed
- *                    verification run.
  */
 
 declare(strict_types=1);
@@ -82,13 +62,14 @@ if ($positional === []) {
 Embedder - minifies and embeds a PHP class into a target script.
 
 Usage:
-  php embed.php [options] <source-script> [<output-script>]
+  php embed.php [options] <target-script> [<output-script>]
   php embed.php [options] --stdout <output-file>
 
 Arguments:
-  <source-script>   Script containing // @embed-start and // @embed-end markers.
+  <target-script>   Script containing // @embed-start and // @embed-end markers.
                     Modified in place unless <output-script> is provided.
-  <output-script>   Optional output path. Source is copied here before embedding.
+  <output-script>   Optional output path. The target script is copied here
+                    before embedding.
 
 Options:
   --source <path>   Path to the PHP class file to embed. Defaults to Prompty.php
@@ -97,7 +78,7 @@ Options:
                     variables, and reduce whitespace for a smaller output.
   --stdout          Output the processed class as a standalone PHP file instead
                     of embedding into a target script.
-  --no-killswitch   Skip injecting the kill-switch block and post-embed
+  --no-killswitch   Skip injecting the kill switch block and post-embed
                     verification run.
 
 Re-embedding:
@@ -111,21 +92,21 @@ USAGE;
 }
 
 if ($stdout) {
-  // --stdout mode: no source script needed, just an output file.
+  // --stdout mode: no target script needed, just an output file.
   $stdout_path = $positional[0];
 }
 else {
   $input_path = $positional[0];
 
   if (!is_file($input_path)) {
-    fwrite(STDERR, sprintf('Error: Source file not found: %s%s', $input_path, PHP_EOL));
+    fwrite(STDERR, sprintf('Error: Target script not found: %s%s', $input_path, PHP_EOL));
     exit(1);
   }
 
   $target_path = $positional[1] ?? $input_path;
 
   if (isset($positional[1]) && !copy($input_path, $target_path)) {
-    fwrite(STDERR, sprintf('Error: Could not copy source to output: %s%s', $target_path, PHP_EOL));
+    fwrite(STDERR, sprintf('Error: Could not copy target script to output: %s%s', $target_path, PHP_EOL));
     exit(1);
   }
 }
