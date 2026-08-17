@@ -422,26 +422,19 @@ class Prompty {
       'numbering' => $numbering,
     ];
 
-    // $prev_tty is NULL when no TTY exists (e.g., piped input), and the flow
-    // then runs with env/discovered values without terminal control. An
-    // injected input stream (test mode) also skips TTY setup.
-    $prev_tty = $p->input === NULL ? (shell_exec('stty -g 2>/dev/null') ?: NULL) : NULL;
+    // No TTY exists when input is piped, and the flow then runs with
+    // env/discovered values without terminal control. An injected input
+    // stream (test mode) also skips TTY setup.
+    $p->setupTty();
 
-    if ($prev_tty !== NULL) {
-      $prev_tty = trim($prev_tty);
-      // Disable echo (-echo) and line buffering (-icanon) so each keypress
-      // is available immediately without waiting for Enter.
-      shell_exec('stty -echo -icanon min 1 time 0 2>/dev/null');
-
-      // Restore the terminal even on fatal errors or exceptions.
-      register_shutdown_function(function () use ($p, $prev_tty): void {
+    if ($p->prevTty !== NULL) {
+      // Restore the terminal even on fatal errors or exceptions. teardownTty()
+      // clears prevTty, so this is a no-op once a normal exit path has run.
+      register_shutdown_function(function () use ($p): void {
         // @codeCoverageIgnoreStart
-        $p->restoreTty($prev_tty);
-        $p->showCursor();
+        $p->teardownTty();
         // @codeCoverageIgnoreEnd
       });
-
-      $p->hideCursor();
     }
 
     if ($intro !== NULL) {
@@ -455,12 +448,7 @@ class Prompty {
         is_callable($cancelled) ? $cancelled($p->results) : $p->printLines($p->renderOutro($cancelled));
       }
 
-      if ($prev_tty !== NULL) {
-        // @codeCoverageIgnoreStart
-        $p->restoreTty($prev_tty);
-        $p->showCursor();
-        // @codeCoverageIgnoreEnd
-      }
+      $p->teardownTty();
 
       static::$inFlow = FALSE;
       return NULL;
@@ -470,12 +458,7 @@ class Prompty {
       is_callable($outro) ? $outro($p->results) : $p->printLines($p->renderOutro($outro));
     }
 
-    if ($prev_tty !== NULL) {
-      // @codeCoverageIgnoreStart
-      $p->restoreTty($prev_tty);
-      $p->showCursor();
-      // @codeCoverageIgnoreEnd
-    }
+    $p->teardownTty();
 
     static::$inFlow = FALSE;
     return $p->results;
