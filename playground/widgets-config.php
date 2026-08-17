@@ -5,8 +5,8 @@
  * Playground - standalone widgets with custom configuration.
  *
  * Demonstrates Prompty::configure() to set options before using widgets
- * outside of a flow. Useful when custom symbols, colors, env prefix, or
- * truthy/falsy values are needed without wrapping everything in a flow.
+ * outside of a flow. Useful when custom labels, unicode/ANSI output, or an
+ * env prefix are needed without wrapping everything in a flow.
  */
 
 declare(strict_types=1);

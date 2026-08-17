@@ -217,8 +217,14 @@ final class PromptyWalkFlowTest extends PromptyTestCase {
     $p = $this->createAndSetInstance();
 
     $steps = [];
+    $numbers = [];
     for ($i = 1; $i <= max($step_index, 3); $i++) {
-      $steps['step' . $i] = $this->resolvedStep('val' . $i);
+      $resolved = $this->resolvedStep('val' . $i);
+      $steps['step' . $i] = function (array $ctx) use (&$numbers, $resolved): string {
+        $numbers[] = $ctx['number'];
+
+        return $resolved($ctx);
+      };
       $this->clearEnvVars(['step' . $i], 'TEST_WALK_');
     }
 
@@ -226,7 +232,8 @@ final class PromptyWalkFlowTest extends PromptyTestCase {
       $this->callProtected($p, 'walkFlow', $steps, 0, $this->defaultOptions(['numbering' => TRUE]), $number_prefix);
     });
 
-    // Verify the step_number counter worked by checking results are populated.
+    $this->assertSame($expected_number, $numbers[$step_index - 1]);
+
     /** @var array<string, mixed> $results */
     $results = $this->getProperty($p, 'results');
     $this->assertCount(count($steps), $results);

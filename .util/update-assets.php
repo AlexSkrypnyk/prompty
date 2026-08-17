@@ -126,7 +126,7 @@ function main(): void {
   $jobs = getJobs($project_dir);
   $tmp_dir = $project_dir . '/.artifacts/tmp/asciinema';
   if (!is_dir($tmp_dir)) {
-    mkdir($tmp_dir, 0755, TRUE);
+    mkdir($tmp_dir, 0700, TRUE);
   }
 
   foreach ($jobs as $name => $job) {
@@ -454,7 +454,7 @@ expect eof
 EXPECT;
 
   file_put_contents($expect_script, $content);
-  chmod($expect_script, 0755);
+  chmod($expect_script, 0700);
 }
 
 /**
@@ -537,7 +537,7 @@ expect eof
 EXPECT;
 
   file_put_contents($expect_script, $content);
-  chmod($expect_script, 0755);
+  chmod($expect_script, 0700);
 }
 
 /**
@@ -659,7 +659,7 @@ expect eof
 EXPECT;
 
   file_put_contents($expect_script, $content);
-  chmod($expect_script, 0755);
+  chmod($expect_script, 0700);
 }
 
 /**
@@ -721,7 +721,7 @@ expect eof
 EXPECT;
 
   file_put_contents($expect_script, $content);
-  chmod($expect_script, 0755);
+  chmod($expect_script, 0700);
 }
 
 /**
@@ -772,7 +772,7 @@ expect eof
 EXPECT;
 
   file_put_contents($expect_script, $content);
-  chmod($expect_script, 0755);
+  chmod($expect_script, 0700);
 }
 
 /**
@@ -834,7 +834,7 @@ expect eof
 EXPECT;
 
   file_put_contents($expect_script, $content);
-  chmod($expect_script, 0755);
+  chmod($expect_script, 0700);
 }
 
 /**
@@ -896,7 +896,7 @@ expect eof
 EXPECT;
 
   file_put_contents($expect_script, $content);
-  chmod($expect_script, 0755);
+  chmod($expect_script, 0700);
 }
 
 /**
