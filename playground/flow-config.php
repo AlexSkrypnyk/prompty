@@ -15,22 +15,23 @@ require __DIR__ . '/../Prompty.php';
 
 use AlexSkrypnyk\Prompty\Prompty;
 
-Prompty::configure(unicode: FALSE, env_prefix: 'SETUP_');
+Prompty::configure(unicode: FALSE, env_prefix: 'ORDER_');
 
 $results = Prompty::flow(fn(): array => [
-  'name' => Prompty::text('Project name', placeholder: 'my-app'),
-  'framework' => Prompty::select('Framework', options: ['next' => 'Next.js', 'nuxt' => 'Nuxt']),
-  'install' => Prompty::confirm('Install dependencies?'),
+  'dish' => Prompty::text('Dish name', placeholder: 'pear tart'),
+  'course' => Prompty::select('Course', options: ['starter' => 'Starter', 'main' => 'Main', 'dessert' => 'Dessert']),
+  'send' => Prompty::confirm('Send order?'),
 ],
-  intro: 'Project setup',
+  intro: 'Order setup',
   outro: 'All done!',
+  cancelled: 'Order setup cancelled.',
   labels: ['yes' => 'Yep', 'no' => 'Nope'],
 );
 
 if ($results !== NULL) {
-  echo "\nCollected:\n";
+  echo "\nCollected answers:\n";
   foreach ($results as $key => $value) {
-    $display = is_bool($value) ? ($value ? 'true' : 'false') : (is_array($value) ? implode(', ', $value) : $value);
+    $display = is_bool($value) ? ($value ? 'yes' : 'no') : (is_array($value) ? implode(', ', $value) : $value);
     echo sprintf('  %s: %s%s', $key, $display, PHP_EOL);
   }
 }

@@ -37,6 +37,14 @@ Namespace: `AlexSkrypnyk\Prompty`. Key files: `Prompty.php` (library),
 - `playground/flow.php` - linear flow.
 - `playground/flow-nested.php` - nested flow with conditionals.
 
+## Demo content
+
+All example content - playground demos, `starter.php`, README snippets, recorded
+assets - uses the kitchen-order theme defined in
+`.claude/demo_content_reference.md`, and contains no software, product or
+technology references. Take vocabulary from that file rather than inventing it;
+if a demo needs a concept it does not cover, add it there first.
+
 ## Commands
 
 ```bash

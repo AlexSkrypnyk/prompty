@@ -78,7 +78,7 @@ require_once __DIR__ . '/Prompty.php';
 
 use AlexSkrypnyk\Prompty\Prompty;
 
-$name = Prompty::text('Project name');
+$dish = Prompty::text('Dish name');
 ```
 
 Or [embed](#embedding) the minified class directly into your script (using
@@ -96,10 +96,10 @@ answer, or `null` if they cancel (Escape or Ctrl+C).
 Free-form text input with an optional editable `default` and placeholder.
 
 ```php
-$name = Prompty::text('Project name',
-  default: 'my-app',
-  placeholder: 'e.g. my-app',
-  description: "Used as the directory name\nand the package name.",
+$dish = Prompty::text('Dish name',
+  default: 'pear tart',
+  placeholder: 'e.g. pear tart',
+  description: "Written on the order ticket and under\n\"Specials\" on the board.",
 );
 ```
 
@@ -130,14 +130,14 @@ Single-choice from a list. Arrow keys to navigate, Enter to confirm. Pass
 `default` (an option key) to focus an option other than the first.
 
 ```php
-$framework = Prompty::select('Framework',
-  options: ['react' => 'React', 'vue' => 'Vue', 'svelte' => 'Svelte'],
-  default: 'vue',
-  description: 'The UI layer for your project.',
+$course = Prompty::select('Course',
+  options: ['starter' => 'Starter', 'main' => 'Main', 'dessert' => 'Dessert'],
+  default: 'main',
+  description: 'Where the dish sits in the meal.',
   hints: [
-    'react' => 'Component-based library by Meta.',
-    'vue' => "Gentle learning curve.\nSingle-file components.",
-    'svelte' => 'Compile-time framework — no virtual DOM.',
+    'starter' => 'Served first, in a small portion.',
+    'main' => 'The centre of the meal.',
+    'dessert' => 'Sweet, served last.',
   ],
 );
 ```
@@ -167,10 +167,10 @@ Multiple-choice from a list. Space to toggle, Enter to confirm. Pass `default`
 every option starts selected and the user unchecks what they don't want.
 
 ```php
-$features = Prompty::multiselect('Features',
-  options: ['ts' => 'TypeScript', 'eslint' => 'ESLint', 'prettier' => 'Prettier'],
-  default: ['ts', 'eslint', 'prettier'],
-  description: "Space to toggle, enter to confirm.",
+$extras = Prompty::multiselect('Extras',
+  options: ['bread' => 'Bread', 'olives' => 'Olives', 'herbs' => 'Herbs'],
+  default: ['bread', 'olives', 'herbs'],
+  description: "Anything served alongside.\nSpace to toggle, enter to confirm.",
 );
 ```
 
@@ -197,8 +197,8 @@ $features = Prompty::multiselect('Features',
 Yes/No toggle. Arrow keys or `y`/`n` to switch, Enter to confirm.
 
 ```php
-$install = Prompty::confirm('Install dependencies?',
-  description: 'Runs npm install after scaffolding.',
+$send = Prompty::confirm('Send order?',
+  description: 'Passes the order to the kitchen.',
 );
 ```
 
@@ -226,30 +226,30 @@ Group widgets into a step-by-step wizard.
 
 ```php
 $results = Prompty::flow(fn(): array => [
-  'name' => Prompty::text('Project name', placeholder: 'my-app'),
-  'framework' => Prompty::select('Framework', options: [
-    'react' => 'React',
-    'vue' => 'Vue',
-    'svelte' => 'Svelte',
+  'dish' => Prompty::text('Dish name', placeholder: 'pear tart'),
+  'course' => Prompty::select('Course', options: [
+    'starter' => 'Starter',
+    'main' => 'Main',
+    'dessert' => 'Dessert',
   ]),
-  'features' => Prompty::multiselect('Features', options: [
-    'ts' => 'TypeScript',
-    'eslint' => 'ESLint',
-    'prettier' => 'Prettier',
+  'extras' => Prompty::multiselect('Extras', options: [
+    'bread' => 'Bread',
+    'olives' => 'Olives',
+    'herbs' => 'Herbs',
   ]),
-  'install' => Prompty::confirm('Install dependencies?'),
-], intro: 'Create a new project', outro: 'Project created!');
+  'send' => Prompty::confirm('Send order?'),
+], intro: 'Compose an order', outro: 'Order sent!');
 ```
 
 Flows support intro, outro, and cancellation messages — as strings or callables:
 
 ```php
 $results = Prompty::flow(fn(): array => [ /* ... */ ],
-  intro: 'Welcome',
+  intro: 'Compose an order',
   outro: function (array $results): void {
-    echo 'Created: ' . $results['name'] . "\n";
+    echo 'Dish: ' . $results['dish'] . "\n";
   },
-  cancelled: 'Cancelled.',
+  cancelled: 'Order cancelled.',
   numbering: TRUE, // Renders (1), (2), nested as (1.1), (1.2), etc.
 );
 ```
@@ -262,16 +262,16 @@ the collected results so far and skip the step when they return `false`.
 
 ```php
 $results = Prompty::flow(fn(): array => [
-  'type' => Prompty::select('Project type',
-    options: ['app' => 'Application', 'lib' => 'Library'],
+  'course' => Prompty::select('Course',
+    options: ['main' => 'Main', 'dessert' => 'Dessert'],
     children: [
-      'framework' => Prompty::select('Framework',
-        options: ['next' => 'Next.js', 'nuxt' => 'Nuxt'],
-        condition: fn($r): bool => ($r['type'] ?? '') === 'app',
+      'method' => Prompty::select('Method',
+        options: ['baked' => 'Baked', 'poached' => 'Poached', 'grilled' => 'Grilled'],
+        condition: fn($r): bool => ($r['course'] ?? '') === 'main',
       ),
-      'format' => Prompty::multiselect('Output formats',
-        options: ['esm' => 'ESM', 'cjs' => 'CommonJS'],
-        condition: fn($r): bool => ($r['type'] ?? '') === 'lib',
+      'finishes' => Prompty::multiselect('Finishes',
+        options: ['glazed' => 'Glazed', 'dusted' => 'Dusted', 'piped' => 'Piped'],
+        condition: fn($r): bool => ($r['course'] ?? '') === 'dessert',
       ),
     ],
   ),
@@ -286,19 +286,19 @@ TTY setup/teardown internally, returning the answer immediately:
 ```php
 require_once 'Prompty.php';
 
-$name = Prompty::text('Project name');
-$framework = Prompty::select('Framework', options: ['react' => 'React', 'vue' => 'Vue']);
-$install = Prompty::confirm('Install?');
+$dish = Prompty::text('Dish name');
+$course = Prompty::select('Course', options: ['starter' => 'Starter', 'main' => 'Main']);
+$send = Prompty::confirm('Send order?');
 
-echo "Setting up $name with $framework...\n";
+echo "Sending $dish for the $course course...\n";
 ```
 
 You can mix standalone widgets with flows in the same script:
 
 ```php
-$basics = Prompty::flow(fn(): array => [/* step 1 */], intro: 'Step 1');
-$tagline = Prompty::text('Add a tagline?'); // standalone between flows
-$options = Prompty::flow(fn(): array => [/* step 2 */], intro: 'Step 2');
+$dish = Prompty::flow(fn(): array => [/* step 1 */], intro: 'Step 1: The dish');
+$note = Prompty::text('Kitchen note'); // standalone between flows
+$extras = Prompty::flow(fn(): array => [/* step 2 */], intro: 'Step 2: Extras');
 ```
 
 ## Environment variable discovery
@@ -307,17 +307,17 @@ Flows auto-discover answers from environment variables. The key name is
 uppercased and prefixed with `PROMPTY_` (configurable):
 
 ```bash
-PROMPTY_NAME=my-app PROMPTY_FRAMEWORK=vue php your-script.php
+PROMPTY_DISH='pear tart' PROMPTY_COURSE=main php your-script.php
 ```
 
-This pre-fills `name` and `framework` without prompting the user. The flow
+This pre-fills `dish` and `course` without prompting the user. The flow
 renders the discovered values as completed steps and moves on.
 
 Configure the prefix per-flow or globally:
 
 ```php
-$results = Prompty::flow(fn(): array => [/* ... */], env_prefix: 'MYAPP_');
-// Reads MYAPP_NAME, MYAPP_FRAMEWORK, etc.
+$results = Prompty::flow(fn(): array => [/* ... */], env_prefix: 'KITCHEN_');
+// Reads KITCHEN_DISH, KITCHEN_COURSE, etc.
 ```
 
 For confirm widgets, env values are interpreted using configurable truthy/falsy
@@ -328,8 +328,8 @@ lists (default: `1`/`true`/`yes` and `0`/`false`/`no`).
 Every widget accepts a `description` — multi-line text rendered below the label:
 
 ```php
-Prompty::text('Project name',
-  description: "Used as the directory name\nand the package name.",
+Prompty::text('Dish name',
+  description: "Written on the order ticket and under\n\"Specials\" on the board.",
 );
 ```
 
@@ -337,12 +337,12 @@ Select and multiselect widgets also accept `hints` — per-option text that
 updates as the user navigates:
 
 ```php
-Prompty::select('Framework',
-  options: ['react' => 'React', 'vue' => 'Vue', 'svelte' => 'Svelte'],
+Prompty::select('Method',
+  options: ['baked' => 'Baked', 'poached' => 'Poached', 'grilled' => 'Grilled'],
   hints: [
-    'react' => 'Component-based library by Meta.',
-    'vue' => "Gentle learning curve.\nSingle-file components.",
-    'svelte' => 'Compile-time framework — no virtual DOM.',
+    'baked' => 'Dry heat, all the way through.',
+    'poached' => "Gently, in barely moving liquid.\nKeeps delicate things whole.",
+    'grilled' => 'Over the flame for colour. Fast, hot, and unforgiving.',
   ],
 );
 ```
@@ -364,11 +364,11 @@ begins from a sensible answer and adjusts from there:
 
 ```php
 // Opt-out list: everything starts checked; the user unchecks what to drop.
-$keep = Prompty::multiselect('Tools', options: [
-  'phpcs' => 'PHPCS',
-  'phpstan' => 'PHPStan',
-  'eslint' => 'ESLint',
-], default: ['phpcs', 'phpstan', 'eslint']);
+$extras = Prompty::multiselect('Extras', options: [
+  'bread' => 'Bread',
+  'olives' => 'Olives',
+  'herbs' => 'Herbs',
+], default: ['bread', 'olives', 'herbs']);
 ```
 
 `default` only seeds the *interactive* starting state. A value supplied via
@@ -465,13 +465,13 @@ override. Per-flow config merges on top of global.
 // Global.
 Prompty::configure(
   unicode: FALSE,
-  env_prefix: 'MYAPP_',
+  env_prefix: 'KITCHEN_',
   labels: ['yes' => 'Yep', 'no' => 'Nope'],
 );
 
 // Per-flow (merges on top).
 $results = Prompty::flow(fn(): array => [/* ... */],
-  env_prefix: 'SETUP_',
+  env_prefix: 'ORDER_',
   truthy: ['1', 'true', 'yes', 'on'],
   falsy: ['0', 'false', 'no', 'off'],
 );
@@ -526,19 +526,19 @@ class MyTest extends TestCase {
 
   public function testMyFlow(): void {
     $keystrokes = $this->promptyKeys(
-      'my-project', self::KEY_ENTER,   // type name + submit
+      'plum compote', self::KEY_ENTER,  // type dish + submit
       self::KEY_DOWN, self::KEY_ENTER,  // select second option
       self::KEY_SPACE, self::KEY_ENTER, // toggle first + submit
       self::KEY_ENTER,                  // confirm default
     );
 
     $this->promptyRunScript(function (): void {
-      require 'my-installer.php';
+      require 'my-script.php';
     }, $keystrokes);
 
     $results = \Prompty::results();
-    $this->assertSame('my-project', $results['name']);
-    $this->assertSame('vue', $results['framework']);
+    $this->assertSame('plum compote', $results['dish']);
+    $this->assertSame('main', $results['course']);
   }
 }
 ```
@@ -566,16 +566,16 @@ script collects answers, then checks an env var before doing real work:
 
 ```php
 $results = Prompty::flow(fn(): array => [
-  'name' => Prompty::text('Project name', placeholder: 'my-app'),
+  'dish' => Prompty::text('Dish name', placeholder: 'pear tart'),
   // ...
-], intro: 'Setup');
+], intro: 'Compose an order');
 
 if (!getenv('SHOULD_PROCEED')) {
   return; // Tests stop here.
 }
 
-// Real work below — only runs in production.
-echo 'Creating ' . $results['name'] . "\n";
+// Real work below - only runs in production.
+echo 'Dish: ' . $results['dish'] . "\n";
 ```
 
 Copy `starter.php`, rename it, and replace the steps with your own.
@@ -608,7 +608,7 @@ require_once __DIR__ . '/Prompty.php';
 
 use AlexSkrypnyk\Prompty\Prompty;
 
-$name = Prompty::text('Project name');
+$dish = Prompty::text('Dish name');
 ```
 
 ### Usage

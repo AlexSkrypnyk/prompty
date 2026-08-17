@@ -20,17 +20,17 @@ Prompty::configure(
   labels: ['yes' => 'Yep', 'no' => 'Nope', 'cancelled' => '(aborted)', 'none' => 'Nothing selected'],
   unicode: !isset($opts['no-unicode']),
   ansi: !isset($opts['no-ansi']),
-  env_prefix: 'MYAPP_',
+  env_prefix: 'KITCHEN_',
 );
 
-echo "\n--- Text (ASCII mode, MYAPP_ prefix) ---\n";
-$r = Prompty::text('Project name', placeholder: 'my-app');
+echo "\n--- Text: with env prefix ---\n";
+$r = Prompty::text('Dish name', placeholder: 'pear tart');
 echo '  Result: ' . ($r ?? 'cancelled') . "\n";
 
-echo "\n--- Select (custom labels) ---\n";
-$r = Prompty::select('Framework', options: ['next' => 'Next.js', 'nuxt' => 'Nuxt', 'sveltekit' => 'SvelteKit']);
+echo "\n--- Select: with custom labels ---\n";
+$r = Prompty::select('Course', options: ['starter' => 'Starter', 'main' => 'Main', 'dessert' => 'Dessert']);
 echo '  Result: ' . ($r ?? 'cancelled') . "\n";
 
-echo "\n--- Confirm (Yep/Nope labels) ---\n";
-$r = Prompty::confirm('Continue?');
+echo "\n--- Confirm: with custom labels ---\n";
+$r = Prompty::confirm('Send order?');
 echo '  Result: ' . ($r !== NULL ? ($r ? 'yes' : 'no') : 'cancelled') . "\n";

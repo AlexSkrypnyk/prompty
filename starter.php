@@ -26,19 +26,11 @@ use AlexSkrypnyk\Prompty\Prompty;
 // phpcs:enable
 
 $results = Prompty::flow(fn(): array => [
-  'name' => Prompty::text('Project name', placeholder: 'my-app'),
-  'framework' => Prompty::select('Framework', options: [
-    'react' => 'React',
-    'vue' => 'Vue',
-    'svelte' => 'Svelte',
-  ]),
-  'features' => Prompty::multiselect('Features', options: [
-    'ts' => 'TypeScript',
-    'eslint' => 'ESLint',
-    'prettier' => 'Prettier',
-  ]),
-  'install' => Prompty::confirm('Install dependencies?'),
-], intro: 'Create a new project', outro: 'Project created!');
+  'dish' => Prompty::text('Dish name', placeholder: 'pear tart'),
+  'course' => Prompty::select('Course', options: ['starter' => 'Starter', 'main' => 'Main', 'dessert' => 'Dessert']),
+  'extras' => Prompty::multiselect('Extras', options: ['bread' => 'Bread', 'olives' => 'Olives', 'herbs' => 'Herbs']),
+  'send' => Prompty::confirm('Send order?'),
+], intro: 'Compose an order', outro: 'Order sent!', cancelled: 'Order cancelled.');
 
 // Kill switch - stop here when running under tests.
 // In production, set SHOULD_PROCEED=1 to continue past this point.
@@ -47,8 +39,8 @@ if (!getenv('SHOULD_PROCEED')) {
 }
 
 // === Real work below - only runs when SHOULD_PROCEED=1 ===
-/** @var array{name: string, framework: string, features: list<string>, install: bool}|null $results */
-echo 'Creating project: ' . ($results['name'] ?? '') . PHP_EOL;
-echo 'Framework: ' . ($results['framework'] ?? '') . PHP_EOL;
-echo 'Features: ' . implode(', ', $results['features'] ?? []) . PHP_EOL;
-echo 'Install: ' . (($results['install'] ?? FALSE) ? 'yes' : 'no') . PHP_EOL;
+/** @var array{dish: string, course: string, extras: list<string>, send: bool}|null $results */
+echo 'Dish: ' . ($results['dish'] ?? '') . PHP_EOL;
+echo 'Course: ' . ($results['course'] ?? '') . PHP_EOL;
+echo 'Extras: ' . implode(', ', $results['extras'] ?? []) . PHP_EOL;
+echo 'Send: ' . (($results['send'] ?? FALSE) ? 'yes' : 'no') . PHP_EOL;

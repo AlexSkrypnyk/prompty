@@ -15,31 +15,31 @@ $opts = getopt('', ['no-unicode', 'no-ansi']);
 Prompty::configure(unicode: !isset($opts['no-unicode']), ansi: !isset($opts['no-ansi']));
 
 echo "\n--- Select: basic ---\n";
-$r = Prompty::select('Framework', options: ['react' => 'React', 'vue' => 'Vue', 'svelte' => 'Svelte']);
+$r = Prompty::select('Course', options: ['starter' => 'Starter', 'main' => 'Main', 'dessert' => 'Dessert']);
 echo '  Result: ' . ($r ?? 'cancelled') . "\n";
 
 echo "\n--- Select: with description ---\n";
-$r = Prompty::select('Package manager',
-  options: ['npm' => 'npm', 'yarn' => 'Yarn', 'pnpm' => 'pnpm', 'bun' => 'Bun'],
-  description: 'Used for installing dependencies.',
+$r = Prompty::select('Dish',
+  options: ['tart' => 'Pear Tart', 'soup' => 'Onion Soup', 'stew' => 'Lentil Stew', 'omelette' => 'Herb Omelette'],
+  description: 'Chosen from the specials board.',
 );
 echo '  Result: ' . ($r ?? 'cancelled') . "\n";
 
 echo "\n--- Select: with hints ---\n";
-$r = Prompty::select('License',
-  options: ['mit' => 'MIT', 'apache2' => 'Apache 2.0', 'gpl3' => 'GPL 3.0'],
+$r = Prompty::select('Method',
+  options: ['baked' => 'Baked', 'poached' => 'Poached', 'grilled' => 'Grilled'],
   hints: [
-    'mit' => 'Permissive. Do whatever you want.',
-    'apache2' => "Permissive with patent protection.\nGood for enterprise use.",
-    'gpl3' => "Copyleft. Derivative works must also be GPL.\nStrong open-source guarantee.",
+    'baked' => 'Dry heat, all the way through.',
+    'poached' => "Gently, in barely moving liquid.\nKeeps delicate things whole.",
+    'grilled' => "Over the flame for colour.\nFast, hot, and unforgiving.",
   ],
 );
 echo '  Result: ' . ($r ?? 'cancelled') . "\n";
 
 echo "\n--- Select: with default (pre-focused) ---\n";
-$r = Prompty::select('Framework',
-  options: ['react' => 'React', 'vue' => 'Vue', 'svelte' => 'Svelte'],
-  default: 'vue',
-  description: 'Vue is focused by default.',
+$r = Prompty::select('Course',
+  options: ['starter' => 'Starter', 'main' => 'Main', 'dessert' => 'Dessert'],
+  default: 'main',
+  description: 'Main is focused by default.',
 );
 echo '  Result: ' . ($r ?? 'cancelled') . "\n";

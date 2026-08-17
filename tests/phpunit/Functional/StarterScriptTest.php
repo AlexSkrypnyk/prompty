@@ -31,9 +31,9 @@ final class StarterScriptTest extends FunctionalTestCase {
     $this->assertStarterFlowWorks($this->starterScript);
   }
 
-  public function testStarterSelectThirdFramework(): void {
+  public function testStarterSelectThirdCourse(): void {
     $keystrokes = $this->keys(
-      'app', self::KEYS['ENTER'],
+      'walnut loaf', self::KEYS['ENTER'],
       self::KEYS['DOWN'], self::KEYS['DOWN'], self::KEYS['ENTER'],
       self::KEYS['ENTER'],
       self::KEYS['ENTER'],
@@ -41,27 +41,27 @@ final class StarterScriptTest extends FunctionalTestCase {
 
     $output = $this->runScript($this->starterScript, $keystrokes);
 
-    $this->assertStringContainsString('app', $output);
-    $this->assertStringContainsString('Svelte', $output);
+    $this->assertStringContainsString('walnut loaf', $output);
+    $this->assertStringContainsString('Dessert', $output);
     $this->assertStringContainsString('None', $output);
     $this->assertStringContainsString('Yes', $output);
   }
 
-  public function testStarterEmptyNameUsesPlaceholder(): void {
+  public function testStarterEmptyDishUsesPlaceholder(): void {
     $keystrokes = $this->keys(self::KEYS['ENTER'], self::KEYS['ENTER'], self::KEYS['ENTER'], self::KEYS['ENTER']);
 
     $output = $this->runScript($this->starterScript, $keystrokes);
 
-    $this->assertStringContainsString('my-app', $output);
-    $this->assertStringContainsString('React', $output);
+    $this->assertStringContainsString('pear tart', $output);
+    $this->assertStringContainsString('Starter', $output);
   }
 
-  public function testStarterDeclineInstall(): void {
-    $keystrokes = $this->keys('test', self::KEYS['ENTER'], self::KEYS['ENTER'], self::KEYS['ENTER'], self::KEYS['LEFT'], self::KEYS['ENTER']);
+  public function testStarterDeclineSend(): void {
+    $keystrokes = $this->keys('onion soup', self::KEYS['ENTER'], self::KEYS['ENTER'], self::KEYS['ENTER'], self::KEYS['LEFT'], self::KEYS['ENTER']);
 
     $output = $this->runScript($this->starterScript, $keystrokes);
 
-    $this->assertStringContainsString('test', $output);
+    $this->assertStringContainsString('onion soup', $output);
     $this->assertStringContainsString('No', $output);
   }
 
@@ -70,8 +70,8 @@ final class StarterScriptTest extends FunctionalTestCase {
 
     $output = $this->runScript($this->starterScript, $keystrokes);
 
-    $this->assertStringContainsString('Create a new project', $output);
-    $this->assertStringContainsString('Project created!', $output);
+    $this->assertStringContainsString('Compose an order', $output);
+    $this->assertStringContainsString('Order sent!', $output);
   }
 
 }

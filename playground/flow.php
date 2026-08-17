@@ -18,40 +18,39 @@ $unicode = !isset($opts['no-unicode']);
 $ansi = !isset($opts['no-ansi']);
 
 $results = Prompty::flow(fn(): array => [
-  'name' => Prompty::text('Project name', placeholder: 'my-app', description: "Used as the directory name and the \"name\" field\nin package.json."),
-  'framework' => Prompty::select('Framework',
-    options: ['react' => 'React', 'vue' => 'Vue', 'svelte' => 'Svelte', 'astro' => 'Astro'],
-    description: 'The UI layer for your project.',
+  'dish' => Prompty::text('Dish name', placeholder: 'pear tart', description: "Written on the order ticket and under\n\"Specials\" on the board."),
+  'course' => Prompty::select('Course',
+    options: ['starter' => 'Starter', 'main' => 'Main', 'dessert' => 'Dessert'],
+    description: 'Where the dish sits in the meal.',
     hints: [
-      'react' => 'Component-based library by Meta with the largest ecosystem.',
-      'vue' => "Gentle learning curve with excellent documentation.\nStrong ecosystem and single-file components.",
-      'svelte' => "Compile-time framework — no virtual DOM.\nSmaller bundles, less runtime overhead.",
-      'astro' => "Content-first framework for static sites.\nShips zero JavaScript by default.",
+      'starter' => 'Served first, in a small portion.',
+      'main' => 'The centre of the meal.',
+      'dessert' => 'Sweet, served last.',
     ],
   ),
-  'features' => Prompty::multiselect('Features',
-    options: ['typescript' => 'TypeScript', 'eslint' => 'ESLint', 'prettier' => 'Prettier', 'vitest' => 'Vitest', 'tailwind' => 'Tailwind CSS'],
-    description: "Select features to include.\nSpace to toggle, enter to confirm.",
+  'extras' => Prompty::multiselect('Extras',
+    options: ['bread' => 'Bread', 'olives' => 'Olives', 'herbs' => 'Herbs', 'lemon' => 'Lemon', 'honey' => 'Honey'],
+    description: "Anything served alongside.\nSpace to toggle, enter to confirm.",
     hints: [
-      'typescript' => 'Adds type safety with static type checking.',
-      'eslint' => 'Catches common code issues and enforces style rules.',
-      'prettier' => "Automatic code formatting on save.\nKeeps your codebase consistent.",
-      'vitest' => 'Fast unit testing framework powered by Vite.',
-      'tailwind' => "Utility-first CSS framework.\nBuild designs directly in your markup.",
+      'bread' => 'Warm, cut at the table.',
+      'olives' => 'Marinated, served in oil.',
+      'herbs' => 'Picked the same morning.',
+      'lemon' => 'Sharpens rich dishes.',
+      'honey' => 'Runny, spooned over to finish.',
     ],
   ),
-  'install' => Prompty::confirm('Install dependencies?', description: 'Runs npm install after scaffolding.'),
+  'send' => Prompty::confirm('Send order?', description: 'Passes the order to the kitchen.'),
 ],
-  intro: 'Create your project',
+  intro: 'Compose an order',
   outro: function (array $results): void {
-    Prompty::outro("You're all set!");
+    Prompty::outro('Order sent!');
     echo "\nCollected answers:\n";
     foreach ($results as $key => $value) {
       $display = is_array($value) ? (count($value) > 0 ? implode(', ', $value) : 'none') : (is_bool($value) ? ($value ? 'yes' : 'no') : $value);
       echo sprintf('  %s: %s%s', $key, $display, PHP_EOL);
     }
   },
-  cancelled: 'Cancelled.',
+  cancelled: 'Order cancelled.',
   numbering: TRUE,
   unicode: $unicode,
   ansi: $ansi,
