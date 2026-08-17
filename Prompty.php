@@ -547,7 +547,7 @@ class Prompty {
     $open = $ctx['open'] ?? [];
     $label = $p->numberLabel($label, $ctx);
 
-    $resolved = $discovered ?? $ctx['env_value'] ?? NULL;
+    $resolved = $discovered ?? $ctx['discovered'] ?? NULL;
 
     if ($resolved !== NULL) {
       /** @var int|float|string|bool $resolved */
@@ -704,7 +704,7 @@ class Prompty {
     $option_labels = array_values($options);
     $ordered_hints = array_map(fn(int|string $key) => $hints[$key] ?? '', $option_keys);
 
-    $resolved = $discovered ?? $ctx['env_value'] ?? NULL;
+    $resolved = $discovered ?? $ctx['discovered'] ?? NULL;
 
     if ($resolved !== NULL) {
       /** @var int|float|string|bool $resolved */
@@ -881,9 +881,9 @@ class Prompty {
     $ordered_hints = array_map(fn(int|string $key) => $hints[$key] ?? '', $option_keys);
 
     // Env values for multiselect arrive comma-separated (e.g., "a,b,c").
-    $env_value = $ctx['env_value'] ?? NULL;
-    /** @var int|float|string|bool|null $env_value */
-    $resolved = $discovered ?? ($env_value !== NULL ? array_map(trim(...), explode(',', (string) $env_value)) : NULL);
+    $ctx_discovered = $ctx['discovered'] ?? NULL;
+    /** @var int|float|string|bool|null $ctx_discovered */
+    $resolved = $discovered ?? ($ctx_discovered !== NULL ? array_map(trim(...), explode(',', (string) $ctx_discovered)) : NULL);
 
     if ($resolved !== NULL) {
       $resolved_array = is_array($resolved) ? $resolved : [$resolved];
@@ -1063,10 +1063,10 @@ class Prompty {
     $falsy = $ctx['falsy'] ?? ['0', 'false', 'no'];
 
     // Env values for confirm need truthy/falsy coercion (e.g., "yes" → TRUE).
-    $env_value = $ctx['env_value'] ?? NULL;
-    /** @var int|float|string|bool|null $env_value */
-    if ($discovered === NULL && $env_value !== NULL) {
-      $env_lower = strtolower((string) $env_value);
+    $ctx_discovered = $ctx['discovered'] ?? NULL;
+    /** @var int|float|string|bool|null $ctx_discovered */
+    if ($discovered === NULL && $ctx_discovered !== NULL) {
+      $env_lower = strtolower((string) $ctx_discovered);
       if (in_array($env_lower, $truthy, TRUE)) {
         $discovered = TRUE;
       }
@@ -1621,7 +1621,7 @@ class Prompty {
         'open' => $this->open,
         'results' => $this->results,
         'number' => ($options['numbering'] ?? FALSE) ? $number : NULL,
-        'env_value' => $env_value !== FALSE ? $env_value : NULL,
+        'discovered' => $env_value !== FALSE ? $env_value : NULL,
         'truthy' => $this->cfgTruthy,
         'falsy' => $this->cfgFalsy,
       ];
