@@ -382,7 +382,7 @@ final class EmbedScriptTest extends FunctionalTestCase {
     $this->assertProcessAnyOutputContains('Usage');
 
     // Missing markers.
-    $target = self::$tmp . '/no-markers.php';
+    $target = self::$tmp . '/target.no-markers.php';
     file_put_contents($target, "<?php\necho 'hello';\n");
 
     $this->processRun('php', [self::$root . '/embed.php', $target]);
@@ -453,7 +453,7 @@ final class EmbedScriptTest extends FunctionalTestCase {
     $content = preg_replace('/\/\/ Kill switch.*?if \(!getenv\(\'SHOULD_PROCEED\'\)\) \{\s*return;\s*\}\n*/s', '', $content);
     $this->assertIsString($content);
 
-    $target = self::$tmp . '/starter_no_ks.php';
+    $target = self::$tmp . '/starter.no-killswitch.php';
     file_put_contents($target, $content);
 
     return $target;

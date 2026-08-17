@@ -111,17 +111,17 @@ else {
   }
 }
 
-$embed_source = $source_override ?? EMBED_SOURCE;
+$source_path = $source_override ?? EMBED_SOURCE;
 
-if (!is_file($embed_source)) {
-  fwrite(STDERR, sprintf('Error: Source class not found: %s%s', $embed_source, PHP_EOL));
+if (!is_file($source_path)) {
+  fwrite(STDERR, sprintf('Error: Source class not found: %s%s', $source_path, PHP_EOL));
   exit(1);
 }
 
-$source = file_get_contents($embed_source);
+$source = file_get_contents($source_path);
 
 if ($source === FALSE) {
-  fwrite(STDERR, sprintf('Error: Could not read source class: %s%s', $embed_source, PHP_EOL));
+  fwrite(STDERR, sprintf('Error: Could not read source class: %s%s', $source_path, PHP_EOL));
   exit(1);
 }
 
@@ -276,8 +276,8 @@ if ($compact && $class_start !== NULL) {
 
   // Wrap in <?php for tokenization.
   $php_code = '<?php ' . $class_line;
-  $ctokens = token_get_all($php_code);
-  $ctokens_count = count($ctokens);
+  $compact_tokens = token_get_all($php_code);
+  $compact_token_count = count($compact_tokens);
 
   // --- Step 1: Collect protected/private property and method names. ---
   $protected_props = [];
@@ -287,12 +287,12 @@ if ($compact && $class_start !== NULL) {
   $visibility = NULL;
   $is_static = FALSE;
 
-  for ($i = 0; $i < $ctokens_count; $i++) {
-    if (!is_array($ctokens[$i])) {
+  for ($i = 0; $i < $compact_token_count; $i++) {
+    if (!is_array($compact_tokens[$i])) {
       continue;
     }
 
-    $token_type = $ctokens[$i][0];
+    $token_type = $compact_tokens[$i][0];
 
     if ($token_type === T_PUBLIC) {
       $visibility = 'public';
@@ -312,16 +312,16 @@ if ($compact && $class_start !== NULL) {
     }
 
     if ($token_type === T_VARIABLE && $visibility !== NULL) {
-      $prop_name = substr($ctokens[$i][1], 1);
+      $prop_name = substr($compact_tokens[$i][1], 1);
 
       // Treat as a property unless the preceding non-whitespace token is
       // T_FUNCTION.
       $is_property = TRUE;
       for ($k = $i - 1; $k >= 0; $k--) {
-        if (is_array($ctokens[$k]) && $ctokens[$k][0] === T_WHITESPACE) {
+        if (is_array($compact_tokens[$k]) && $compact_tokens[$k][0] === T_WHITESPACE) {
           continue;
         }
-        if (is_array($ctokens[$k]) && $ctokens[$k][0] === T_FUNCTION) {
+        if (is_array($compact_tokens[$k]) && $compact_tokens[$k][0] === T_FUNCTION) {
           $is_property = FALSE;
         }
         break;
@@ -336,12 +336,12 @@ if ($compact && $class_start !== NULL) {
     }
 
     if ($token_type === T_FUNCTION) {
-      for ($k = $i + 1; $k < $ctokens_count; $k++) {
-        if (is_array($ctokens[$k]) && $ctokens[$k][0] === T_WHITESPACE) {
+      for ($k = $i + 1; $k < $compact_token_count; $k++) {
+        if (is_array($compact_tokens[$k]) && $compact_tokens[$k][0] === T_WHITESPACE) {
           continue;
         }
-        if (is_array($ctokens[$k]) && $ctokens[$k][0] === T_STRING) {
-          $method_name = $ctokens[$k][1];
+        if (is_array($compact_tokens[$k]) && $compact_tokens[$k][0] === T_STRING) {
+          $method_name = $compact_tokens[$k][1];
 
           if (!str_starts_with($method_name, '__')) {
             if ($visibility !== 'public') {
@@ -349,18 +349,18 @@ if ($compact && $class_start !== NULL) {
             }
             else {
               $paren_depth = 0;
-              for ($m = $k + 1; $m < $ctokens_count; $m++) {
-                if (is_string($ctokens[$m]) && $ctokens[$m] === '(') {
+              for ($m = $k + 1; $m < $compact_token_count; $m++) {
+                if (is_string($compact_tokens[$m]) && $compact_tokens[$m] === '(') {
                   $paren_depth++;
                 }
-                elseif (is_string($ctokens[$m]) && $ctokens[$m] === ')') {
+                elseif (is_string($compact_tokens[$m]) && $compact_tokens[$m] === ')') {
                   $paren_depth--;
                   if ($paren_depth <= 0) {
                     break;
                   }
                 }
-                elseif (is_array($ctokens[$m]) && $ctokens[$m][0] === T_VARIABLE && $paren_depth > 0) {
-                  $public_method_params[substr($ctokens[$m][1], 1)] = TRUE;
+                elseif (is_array($compact_tokens[$m]) && $compact_tokens[$m][0] === T_VARIABLE && $paren_depth > 0) {
+                  $public_method_params[substr($compact_tokens[$m][1], 1)] = TRUE;
                 }
               }
             }
@@ -374,7 +374,7 @@ if ($compact && $class_start !== NULL) {
     }
 
     // Reset visibility on any unexpected token.
-    if (!in_array($token_type, [T_WHITESPACE, T_STRING, T_ARRAY, T_NS_SEPARATOR], TRUE) && $ctokens[$i][1] !== '?') {
+    if (!in_array($token_type, [T_WHITESPACE, T_STRING, T_ARRAY, T_NS_SEPARATOR], TRUE) && $compact_tokens[$i][1] !== '?') {
       $visibility = NULL;
       $is_static = FALSE;
     }
@@ -401,14 +401,14 @@ if ($compact && $class_start !== NULL) {
   ];
 
   $all_vars = [];
-  for ($i = 0; $i < $ctokens_count; $i++) {
-    if (!is_array($ctokens[$i])) {
+  for ($i = 0; $i < $compact_token_count; $i++) {
+    if (!is_array($compact_tokens[$i])) {
       continue;
     }
-    if ($ctokens[$i][0] !== T_VARIABLE) {
+    if ($compact_tokens[$i][0] !== T_VARIABLE) {
       continue;
     }
-    $var_name = substr($ctokens[$i][1], 1);
+    $var_name = substr($compact_tokens[$i][1], 1);
 
     if (in_array($var_name, $superglobals, TRUE)) {
       continue;
@@ -443,14 +443,14 @@ if ($compact && $class_start !== NULL) {
   // --- Step 3: Apply renames via token walk. ---
   $compact_output = '';
 
-  for ($i = 1; $i < $ctokens_count; $i++) {
-    if (is_string($ctokens[$i])) {
-      $compact_output .= $ctokens[$i];
+  for ($i = 1; $i < $compact_token_count; $i++) {
+    if (is_string($compact_tokens[$i])) {
+      $compact_output .= $compact_tokens[$i];
       continue;
     }
 
-    $token_type = $ctokens[$i][0];
-    $token_value = $ctokens[$i][1];
+    $token_type = $compact_tokens[$i][0];
+    $token_value = $compact_tokens[$i][1];
 
     if ($token_type === T_VARIABLE) {
       $var_name = substr($token_value, 1);
@@ -475,20 +475,20 @@ if ($compact && $class_start !== NULL) {
     if ($token_type === T_STRING) {
       $prev = NULL;
       for ($k = $i - 1; $k >= 0; $k--) {
-        if (is_array($ctokens[$k]) && $ctokens[$k][0] === T_WHITESPACE) {
+        if (is_array($compact_tokens[$k]) && $compact_tokens[$k][0] === T_WHITESPACE) {
           continue;
         }
-        $prev = is_array($ctokens[$k]) ? $ctokens[$k][0] : $ctokens[$k];
+        $prev = is_array($compact_tokens[$k]) ? $compact_tokens[$k][0] : $compact_tokens[$k];
         break;
       }
 
       if ($prev === T_OBJECT_OPERATOR || $prev === T_NULLSAFE_OBJECT_OPERATOR) {
         $next = NULL;
-        for ($k = $i + 1; $k < $ctokens_count; $k++) {
-          if (is_array($ctokens[$k]) && $ctokens[$k][0] === T_WHITESPACE) {
+        for ($k = $i + 1; $k < $compact_token_count; $k++) {
+          if (is_array($compact_tokens[$k]) && $compact_tokens[$k][0] === T_WHITESPACE) {
             continue;
           }
-          $next = is_array($ctokens[$k]) ? $ctokens[$k][1] : $ctokens[$k];
+          $next = is_array($compact_tokens[$k]) ? $compact_tokens[$k][1] : $compact_tokens[$k];
           break;
         }
 
@@ -505,11 +505,11 @@ if ($compact && $class_start !== NULL) {
 
       if ($prev === T_DOUBLE_COLON && isset($method_map[$token_value])) {
         $next = NULL;
-        for ($k = $i + 1; $k < $ctokens_count; $k++) {
-          if (is_array($ctokens[$k]) && $ctokens[$k][0] === T_WHITESPACE) {
+        for ($k = $i + 1; $k < $compact_token_count; $k++) {
+          if (is_array($compact_tokens[$k]) && $compact_tokens[$k][0] === T_WHITESPACE) {
             continue;
           }
-          $next = is_array($ctokens[$k]) ? $ctokens[$k][1] : $ctokens[$k];
+          $next = is_array($compact_tokens[$k]) ? $compact_tokens[$k][1] : $compact_tokens[$k];
           break;
         }
         if ($next === '(') {
@@ -533,24 +533,24 @@ if ($compact && $class_start !== NULL) {
   // --- Step 4: Reduce whitespace. ---
   // Remove spaces around operators where PHP allows it.
   // Works on tokens so string contents are not modified.
-  $ws_tokens = token_get_all('<?php ' . $compact_output);
-  $ws_count = count($ws_tokens);
-  $ws_output = '';
+  $whitespace_tokens = token_get_all('<?php ' . $compact_output);
+  $whitespace_token_count = count($whitespace_tokens);
+  $whitespace_output = '';
 
-  for ($i = 1; $i < $ws_count; $i++) {
-    if (!is_array($ws_tokens[$i])) {
-      $ws_output .= $ws_tokens[$i];
+  for ($i = 1; $i < $whitespace_token_count; $i++) {
+    if (!is_array($whitespace_tokens[$i])) {
+      $whitespace_output .= $whitespace_tokens[$i];
       continue;
     }
 
-    $token_type = $ws_tokens[$i][0];
-    $token_value = $ws_tokens[$i][1];
+    $token_type = $whitespace_tokens[$i][0];
+    $token_value = $whitespace_tokens[$i][1];
 
     if ($token_type === T_WHITESPACE) {
-      $before = is_array($ws_tokens[$i - 1]) ? $ws_tokens[$i - 1][1] : $ws_tokens[$i - 1];
+      $before = is_array($whitespace_tokens[$i - 1]) ? $whitespace_tokens[$i - 1][1] : $whitespace_tokens[$i - 1];
       $after = '';
-      if ($i + 1 < $ws_count) {
-        $after = is_array($ws_tokens[$i + 1]) ? $ws_tokens[$i + 1][1] : $ws_tokens[$i + 1];
+      if ($i + 1 < $whitespace_token_count) {
+        $after = is_array($whitespace_tokens[$i + 1]) ? $whitespace_tokens[$i + 1][1] : $whitespace_tokens[$i + 1];
       }
 
       // Remove the space when either neighbour is a non-word character.
@@ -562,16 +562,16 @@ if ($compact && $class_start !== NULL) {
 
       if ($before_is_word && $after_is_word) {
         // Space is needed between two word characters.
-        $ws_output .= ' ';
+        $whitespace_output .= ' ';
       }
       continue;
     }
 
-    $ws_output .= $token_value;
+    $whitespace_output .= $token_value;
   }
 
   $result_lines = $before_class;
-  $result_lines[] = $ws_output;
+  $result_lines[] = $whitespace_output;
   $minified = implode("\n", $result_lines);
 }
 
@@ -580,9 +580,9 @@ if (preg_match('/^\s*namespace\s+(.+?)\s*;/m', $source, $ns_match)) {
   $namespace = $ns_match[1];
 }
 
-$class_content = trim($minified) . "\n";
+$payload = trim($minified) . "\n";
 
-$class_content = preg_replace('/^(class\s)/m', "// @phpstan-ignore-next-line\n$1", $class_content, 1);
+$payload = preg_replace('/^(class\s)/m', "// @phpstan-ignore-next-line\n$1", $payload, 1);
 
 // Run Rector on the processed class content if available.
 $rector_bin = __DIR__ . '/vendor/bin/rector';
@@ -598,7 +598,7 @@ if (is_file($rector_bin) && is_file($rector_config)) {
   $rector_tmp .= '.php';
 
   // Wrap class content in a valid PHP file for rector.
-  $rector_input = "<?php\n\ndeclare(strict_types=1);\n\n" . $class_content;
+  $rector_input = "<?php\n\ndeclare(strict_types=1);\n\n" . $payload;
   file_put_contents($rector_tmp, $rector_input);
 
   $rector_output = [];
@@ -613,7 +613,7 @@ if (is_file($rector_bin) && is_file($rector_config)) {
     $rector_result = file_get_contents($rector_tmp);
     if ($rector_result !== FALSE) {
       $rector_result = preg_replace('/^<\?php\s+declare\(strict_types\s*=\s*1\)\s*;\s*/s', '', $rector_result);
-      $class_content = trim((string) $rector_result) . "\n";
+      $payload = trim((string) $rector_result) . "\n";
     }
   }
 
@@ -627,7 +627,7 @@ if ($stdout) {
   if ($namespace !== '') {
     $standalone .= "namespace {$namespace};\n\n";
   }
-  $standalone .= $class_content;
+  $standalone .= $payload;
 
   file_put_contents($stdout_path, $standalone);
 
@@ -647,7 +647,7 @@ if ($stdout) {
 
 // Build and inject the embedded block.
 $embedded = '// ' . EMBED_MARKER_START . "\n";
-$embedded .= $class_content;
+$embedded .= $payload;
 $embedded .= '// ' . EMBED_MARKER_END;
 
 $target = file_get_contents($target_path);
@@ -712,8 +712,8 @@ if ($lint_exit !== 0) {
 
 echo sprintf('Embedded into %s%s', $target_path, PHP_EOL);
 
-$final_content = file_get_contents($target_path);
-$final_has_killswitch = $final_content !== FALSE && str_contains($final_content, "if (!getenv('SHOULD_PROCEED'))");
+$final = file_get_contents($target_path);
+$final_has_killswitch = $final !== FALSE && str_contains($final, "if (!getenv('SHOULD_PROCEED'))");
 
 if (!$final_has_killswitch) {
   fwrite(STDERR, sprintf('Warning: No kill switch found in the target file. Please test the embedded script manually.%s', PHP_EOL));

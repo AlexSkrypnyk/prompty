@@ -134,7 +134,7 @@ function main(): void {
   foreach ($jobs as $name => $job) {
     $expect_script = $tmp_dir . '/' . $name . '.exp';
     $create_fn = $job['expect_fn'];
-    $create_fn($expect_script, $job['script']);
+    $create_fn($job['script'], $expect_script);
   }
 
   $script_path = __FILE__;
@@ -230,7 +230,7 @@ function processOne(string $name): void {
   $cols = $job['cols'] ?? TERMINAL_COLS;
   $at = $job['at'] ?? NULL;
 
-  recordSession($cast_file, $expect_script, $rows, $cols);
+  recordSession($expect_script, $cast_file, $rows, $cols);
   postProcessCast($cast_file);
   convertToSvg($cast_file, $svg_file, $script_dir, $at);
 }
@@ -284,16 +284,16 @@ function installNodeDependencies(string $script_dir): void {
 /**
  * Record a session using asciinema with an expect script.
  *
- * @param string $cast_file
- *   Path to write the cast file.
  * @param string $expect_script
  *   Path to the expect script for automation.
+ * @param string $cast_file
+ *   Path to write the cast file.
  * @param int $rows
  *   Number of terminal rows.
  * @param int $cols
  *   Number of terminal columns.
  */
-function recordSession(string $cast_file, string $expect_script, int $rows = TERMINAL_ROWS, int $cols = TERMINAL_COLS): void {
+function recordSession(string $expect_script, string $cast_file, int $rows = TERMINAL_ROWS, int $cols = TERMINAL_COLS): void {
   $cmd = sprintf(
     'asciinema rec --command=%s --window-size=%dx%d --idle-time-limit=%d --overwrite %s 2>&1',
     escapeshellarg($expect_script),
@@ -380,12 +380,12 @@ function convertToSvg(string $cast_file, string $svg_file, string $script_dir, ?
 /**
  * Create an expect script for the widgets.php playground.
  *
- * @param string $expect_script
- *   Path to write the expect script.
  * @param string $playground_script
  *   Path to the playground PHP script.
+ * @param string $expect_script
+ *   Path to write the expect script.
  */
-function createWidgetsExpectScript(string $expect_script, string $playground_script): void {
+function createWidgetsExpectScript(string $playground_script, string $expect_script): void {
   $delay = PROMPT_DELAY;
   $content = <<<EXPECT
 #!/usr/bin/env expect
@@ -462,12 +462,12 @@ EXPECT;
 /**
  * Create an expect script for the flow.php playground.
  *
- * @param string $expect_script
- *   Path to write the expect script.
  * @param string $playground_script
  *   Path to the playground PHP script.
+ * @param string $expect_script
+ *   Path to write the expect script.
  */
-function createFlowExpectScript(string $expect_script, string $playground_script): void {
+function createFlowExpectScript(string $playground_script, string $expect_script): void {
   $delay = PROMPT_DELAY;
   $content = <<<EXPECT
 #!/usr/bin/env expect
@@ -545,12 +545,12 @@ EXPECT;
 /**
  * Create an expect script for the flow-nested.php playground.
  *
- * @param string $expect_script
- *   Path to write the expect script.
  * @param string $playground_script
  *   Path to the playground PHP script.
+ * @param string $expect_script
+ *   Path to write the expect script.
  */
-function createFlowNestedExpectScript(string $expect_script, string $playground_script): void {
+function createFlowNestedExpectScript(string $playground_script, string $expect_script): void {
   $delay = PROMPT_DELAY;
   $content = <<<EXPECT
 #!/usr/bin/env expect
@@ -667,12 +667,12 @@ EXPECT;
 /**
  * Create an expect script for the widget-text.php playground.
  *
- * @param string $expect_script
- *   Path to write the expect script.
  * @param string $playground_script
  *   Path to the playground PHP script.
+ * @param string $expect_script
+ *   Path to write the expect script.
  */
-function createWidgetTextExpectScript(string $expect_script, string $playground_script): void {
+function createWidgetTextExpectScript(string $playground_script, string $expect_script): void {
   $delay = PROMPT_DELAY;
   $content = <<<EXPECT
 #!/usr/bin/env expect
@@ -729,12 +729,12 @@ EXPECT;
 /**
  * Create an expect script for the widget-select.php playground.
  *
- * @param string $expect_script
- *   Path to write the expect script.
  * @param string $playground_script
  *   Path to the playground PHP script.
+ * @param string $expect_script
+ *   Path to write the expect script.
  */
-function createWidgetSelectExpectScript(string $expect_script, string $playground_script): void {
+function createWidgetSelectExpectScript(string $playground_script, string $expect_script): void {
   $delay = PROMPT_DELAY;
   $content = <<<EXPECT
 #!/usr/bin/env expect
@@ -780,12 +780,12 @@ EXPECT;
 /**
  * Create an expect script for the widget-multiselect.php playground.
  *
- * @param string $expect_script
- *   Path to write the expect script.
  * @param string $playground_script
  *   Path to the playground PHP script.
+ * @param string $expect_script
+ *   Path to write the expect script.
  */
-function createWidgetMultiselectExpectScript(string $expect_script, string $playground_script): void {
+function createWidgetMultiselectExpectScript(string $playground_script, string $expect_script): void {
   $delay = PROMPT_DELAY;
   $content = <<<EXPECT
 #!/usr/bin/env expect
@@ -842,12 +842,12 @@ EXPECT;
 /**
  * Create an expect script for the widget-confirm.php playground.
  *
- * @param string $expect_script
- *   Path to write the expect script.
  * @param string $playground_script
  *   Path to the playground PHP script.
+ * @param string $expect_script
+ *   Path to write the expect script.
  */
-function createWidgetConfirmExpectScript(string $expect_script, string $playground_script): void {
+function createWidgetConfirmExpectScript(string $playground_script, string $expect_script): void {
   $delay = PROMPT_DELAY;
   $content = <<<EXPECT
 #!/usr/bin/env expect
