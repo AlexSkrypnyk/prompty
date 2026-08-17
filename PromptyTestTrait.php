@@ -150,9 +150,12 @@ trait PromptyTestTrait {
 
   /**
    * Strip ANSI escape codes from a string.
+   *
+   * The optional '?' covers private-mode sequences such as the cursor
+   * show/hide pair, which Prompty emits around every interactive widget.
    */
   protected function promptyStripAnsi(string $text): string {
-    return preg_replace('/\033\[[0-9;]*[A-Za-z]/', '', $text) ?? $text;
+    return preg_replace('/\033\[\??[0-9;]*[A-Za-z]/', '', $text) ?? $text;
   }
 
   /**
