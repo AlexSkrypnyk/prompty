@@ -139,8 +139,6 @@ trait PromptyTestTrait {
       }
     }
 
-    // Pre-create a singleton with the stream injected.
-    // The script's flow() call reuses this instance.
     $instance = $this->promptyCreateInstance();
     if ($stream !== NULL) {
       $this->promptySetProperty($instance, 'input', $stream);
