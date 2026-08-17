@@ -194,10 +194,10 @@ function main(): void {
   removeDir($tmp_dir);
 
   if (!empty($failed)) {
-    info('');
-    info('Errors:');
+    error('');
+    error('Errors:');
     foreach ($failed as $name => $output) {
-      info('  ' . $name . ': ' . $output);
+      error('  ' . $name . ': ' . $output);
     }
     throw new \RuntimeException('Failed to generate ' . count($failed) . ' asset(s).');
   }
@@ -930,6 +930,18 @@ function info(string $message): void {
   print $message . PHP_EOL;
 }
 
+/**
+ * Print an error message to STDERR.
+ *
+ * Not silenced by SCRIPT_QUIET, so failures surface in quiet runs.
+ *
+ * @param string $message
+ *   The message to print.
+ */
+function error(string $message): void {
+  fwrite(STDERR, $message . PHP_EOL);
+}
+
 ini_set('display_errors', '1');
 
 if (PHP_SAPI !== 'cli' || !empty($_SERVER['REMOTE_ADDR'])) {
@@ -953,7 +965,7 @@ try {
   }
 }
 catch (\Exception $exception) {
-  info('');
-  info('ERROR: ' . $exception->getMessage());
+  error('');
+  error('ERROR: ' . $exception->getMessage());
   exit(1);
 }
