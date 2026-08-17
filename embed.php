@@ -214,7 +214,7 @@ for ($i = 0; $i < $token_count; $i++) {
 }
 
 $lines = explode("\n", $output);
-$lines = array_map(fn(string $line): string => preg_replace('/\s+$/', '', $line) ?? $line, $lines);
+$lines = array_map(fn(string $line): string => rtrim($line), $lines);
 
 $collapsed = array_values(array_filter($lines, fn(string $line): bool => $line !== ''));
 
@@ -228,11 +228,11 @@ while ($i < $line_count) {
 
   if (preg_match('/^\s*(protected|public|private)\s+array\s+\$\w+\s*=\s*\[$/', $line)) {
     $depth = 1;
-    $parts = [preg_replace('/\s+$/', '', $line) ?? $line];
+    $parts = [rtrim($line)];
     $i++;
 
     while ($i < $line_count && $depth > 0) {
-      $inner = preg_replace('/^\s+|\s+$/', '', $collapsed[$i]) ?? $collapsed[$i];
+      $inner = trim($collapsed[$i]);
       // Count only structural brackets (not those inside strings).
       $stripped = preg_replace('/"[^"]*"|\'[^\']*\'/', '', $inner) ?? $inner;
       $depth += substr_count($stripped, '[') - substr_count($stripped, ']');
@@ -263,7 +263,7 @@ foreach ($result_lines as $idx => $result_line) {
 if ($class_start !== NULL) {
   $before_class = array_slice($result_lines, 0, $class_start);
   $class_lines = array_slice($result_lines, $class_start);
-  $class_single = implode(' ', array_map(fn(string $line): string => preg_replace('/^\s+|\s+$/', '', $line) ?? $line, $class_lines));
+  $class_single = implode(' ', array_map(fn(string $line): string => trim($line), $class_lines));
   $result_lines = array_merge($before_class, [$class_single]);
 }
 
@@ -580,7 +580,7 @@ if (preg_match('/^\s*namespace\s+(.+?)\s*;/m', $source, $ns_match)) {
   $namespace = $ns_match[1];
 }
 
-$class_content = preg_replace('/^\s+|\s+$/', '', $minified) . "\n";
+$class_content = trim($minified) . "\n";
 
 $class_content = preg_replace('/^(class\s)/m', "// @phpstan-ignore-next-line\n$1", $class_content, 1);
 
@@ -613,7 +613,7 @@ if (is_file($rector_bin) && is_file($rector_config)) {
     $rector_result = file_get_contents($rector_tmp);
     if ($rector_result !== FALSE) {
       $rector_result = preg_replace('/^<\?php\s+declare\(strict_types\s*=\s*1\)\s*;\s*/s', '', $rector_result);
-      $class_content = preg_replace('/^\s+|\s+$/', '', (string) $rector_result) . "\n";
+      $class_content = trim((string) $rector_result) . "\n";
     }
   }
 
