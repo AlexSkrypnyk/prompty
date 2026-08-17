@@ -12,8 +12,8 @@ use PHPUnit\Framework\Attributes\Group;
 /**
  * Tests widget execution with pre-resolved values (no TTY interaction).
  *
- * Widgets are called with `discovered` or `env_value` in ctx so they skip
- * the interactive loop and return immediately.
+ * Widgets are called with the `discovered` argument or the `discovered` ctx
+ * key so they skip the interactive loop and return immediately.
  */
 #[CoversClass(Prompty::class)]
 #[Group('unit')]
@@ -55,7 +55,7 @@ final class PromptyWidgetResolvedTest extends PromptyTestCase {
 
   public function testTextEnvResolved(): void {
     $this->captureOutput(function () use (&$result): void {
-      $result = Prompty::text('Project name', ctx: $this->ctx(['env_value' => 'env-app']));
+      $result = Prompty::text('Project name', ctx: $this->ctx(['discovered' => 'env-app']));
     });
 
     $this->assertSame('env-app', $result);
@@ -63,7 +63,7 @@ final class PromptyWidgetResolvedTest extends PromptyTestCase {
 
   public function testTextDiscoveredTakesPrecedenceOverEnv(): void {
     $this->captureOutput(function () use (&$result): void {
-      $result = Prompty::text('Project name', discovered: 'direct', ctx: $this->ctx(['env_value' => 'from-env']));
+      $result = Prompty::text('Project name', discovered: 'direct', ctx: $this->ctx(['discovered' => 'from-env']));
     });
 
     $this->assertSame('direct', $result);
@@ -88,7 +88,7 @@ final class PromptyWidgetResolvedTest extends PromptyTestCase {
 
   public function testSelectEnvResolved(): void {
     $this->captureOutput(function () use (&$result): void {
-      $result = Prompty::select('Framework', options: ['react' => 'React', 'vue' => 'Vue'], ctx: $this->ctx(['env_value' => 'vue']));
+      $result = Prompty::select('Framework', options: ['react' => 'React', 'vue' => 'Vue'], ctx: $this->ctx(['discovered' => 'vue']));
     });
 
     $this->assertSame('vue', $result);
@@ -104,11 +104,11 @@ final class PromptyWidgetResolvedTest extends PromptyTestCase {
   }
 
   #[DataProvider('dataProviderMultiselectResolved')]
-  public function testMultiselectResolved(string $env_value, array $expected): void {
-    $this->captureOutput(function () use ($env_value, &$result): void {
+  public function testMultiselectResolved(string $ctx_discovered, array $expected): void {
+    $this->captureOutput(function () use ($ctx_discovered, &$result): void {
       $result = Prompty::multiselect('Features',
         options: ['ts' => 'TypeScript', 'eslint' => 'ESLint', 'prettier' => 'Prettier'],
-        ctx: $this->ctx(['env_value' => $env_value]),
+        ctx: $this->ctx(['discovered' => $ctx_discovered]),
       );
     });
 
@@ -139,9 +139,9 @@ final class PromptyWidgetResolvedTest extends PromptyTestCase {
   }
 
   #[DataProvider('dataProviderConfirmResolved')]
-  public function testConfirmResolved(string $env_value, bool $expected): void {
-    $this->captureOutput(function () use ($env_value, &$result): void {
-      $result = Prompty::confirm('Install?', ctx: $this->ctx(['env_value' => $env_value]));
+  public function testConfirmResolved(string $ctx_discovered, bool $expected): void {
+    $this->captureOutput(function () use ($ctx_discovered, &$result): void {
+      $result = Prompty::confirm('Install?', ctx: $this->ctx(['discovered' => $ctx_discovered]));
     });
 
     $this->assertSame($expected, $result);
@@ -206,7 +206,7 @@ final class PromptyWidgetResolvedTest extends PromptyTestCase {
     $output = $this->captureOutput(function () use (&$result): void {
       $result = Prompty::multiselect('Features',
         options: ['ts' => 'TypeScript', 'eslint' => 'ESLint'],
-        ctx: $this->ctx(['depth' => 2, 'is_last' => FALSE, 'open' => [1 => TRUE, 2 => TRUE], 'env_value' => 'ts,eslint']),
+        ctx: $this->ctx(['depth' => 2, 'is_last' => FALSE, 'open' => [1 => TRUE, 2 => TRUE], 'discovered' => 'ts,eslint']),
       );
     });
 
@@ -332,9 +332,9 @@ final class PromptyWidgetResolvedTest extends PromptyTestCase {
   }
 
   #[DataProvider('dataProviderTextDefaultPrecedence')]
-  public function testTextDefaultPrecedence(?string $discovered, ?string $env_value, string $expected): void {
-    $this->captureOutput(function () use ($discovered, $env_value, &$result): void {
-      $result = Prompty::text('Name', default: 'seed', discovered: $discovered, ctx: $this->ctx(['env_value' => $env_value]));
+  public function testTextDefaultPrecedence(?string $discovered, ?string $ctx_discovered, string $expected): void {
+    $this->captureOutput(function () use ($discovered, $ctx_discovered, &$result): void {
+      $result = Prompty::text('Name', default: 'seed', discovered: $discovered, ctx: $this->ctx(['discovered' => $ctx_discovered]));
     });
 
     $this->assertSame($expected, $result);
@@ -346,13 +346,13 @@ final class PromptyWidgetResolvedTest extends PromptyTestCase {
   }
 
   #[DataProvider('dataProviderSelectDefaultPrecedence')]
-  public function testSelectDefaultPrecedence(?string $discovered, ?string $env_value, string $expected): void {
-    $this->captureOutput(function () use ($discovered, $env_value, &$result): void {
+  public function testSelectDefaultPrecedence(?string $discovered, ?string $ctx_discovered, string $expected): void {
+    $this->captureOutput(function () use ($discovered, $ctx_discovered, &$result): void {
       $result = Prompty::select('Framework',
         options: ['react' => 'React', 'vue' => 'Vue'],
         default: 'vue',
         discovered: $discovered,
-        ctx: $this->ctx(['env_value' => $env_value]),
+        ctx: $this->ctx(['discovered' => $ctx_discovered]),
       );
     });
 
@@ -365,13 +365,13 @@ final class PromptyWidgetResolvedTest extends PromptyTestCase {
   }
 
   #[DataProvider('dataProviderMultiselectDefaultPrecedence')]
-  public function testMultiselectDefaultPrecedence(?array $discovered, ?string $env_value, array $expected): void {
-    $this->captureOutput(function () use ($discovered, $env_value, &$result): void {
+  public function testMultiselectDefaultPrecedence(?array $discovered, ?string $ctx_discovered, array $expected): void {
+    $this->captureOutput(function () use ($discovered, $ctx_discovered, &$result): void {
       $result = Prompty::multiselect('Features',
         options: ['ts' => 'TypeScript', 'eslint' => 'ESLint'],
         default: ['ts'],
         discovered: $discovered,
-        ctx: $this->ctx(['env_value' => $env_value]),
+        ctx: $this->ctx(['discovered' => $ctx_discovered]),
       );
     });
 
