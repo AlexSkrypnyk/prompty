@@ -21,7 +21,11 @@ You'll get an acknowledgement within a few days. If the report is confirmed, we'
 
 ## Verifying a release
 
-Every release ships a `SHA256SUMS` file covering all assets, plus a detached GPG signature `SHA256SUMS.asc`. The signing key's public half is [`PUBLIC_KEY.asc`](PUBLIC_KEY.asc) in this repository.
+Every release ships a `SHA256SUMS` file covering all assets, plus a detached GPG signature `SHA256SUMS.asc`. The signing key's public half is [`PUBLIC_KEY.asc`](PUBLIC_KEY.asc) in this repository, and its fingerprint is:
+
+```text
+755E 824E 80F8 4913 5F5F  4043 E71E DB25 C4F6 D89D
+```
 
 Because Prompty is designed to be copied or embedded directly into your own script, verifying the download before you paste it in is worth the 20 seconds:
 
@@ -34,6 +38,9 @@ curl -LO $BASE/SHA256SUMS
 curl -LO $BASE/SHA256SUMS.asc
 curl -LO $RAW/PUBLIC_KEY.asc
 
+# Check the fingerprint against the one above before trusting the key.
+gpg --show-keys --with-fingerprint PUBLIC_KEY.asc
+
 gpg --import PUBLIC_KEY.asc
 gpg --verify SHA256SUMS.asc SHA256SUMS
 sha256sum --ignore-missing -c SHA256SUMS
@@ -42,6 +49,12 @@ sha256sum --ignore-missing -c SHA256SUMS
 `--ignore-missing` lets the check pass when you've only downloaded some of the assets. Drop it if you've pulled all of them.
 
 The release workflow performs this same verification itself after uploading, so a release that fails it never ships.
+
+### What this does and does not prove
+
+Worth being clear about the limits. The key and the fingerprint above both live in this repository, so on their own they prove the release was signed by whoever controls the repository - not that it was signed by the maintainer. Anyone who compromised the repository or the maintainer's account could replace the key, the signature and this page together, and a first-time download would still verify.
+
+What the fingerprint does buy you is continuity. Record it the first time, check it on every later download, and a key swap becomes visible immediately - which is the attack this actually defends against. If it ever changes without a corresponding note in the release notes, treat the release as suspect and [get in touch](#reporting-a-vulnerability) before running anything.
 
 ## Scope
 

@@ -49,7 +49,7 @@ The library itself is deliberately a single class in a single file with no depen
 
 ## Tests
 
-```
+```text
 tests/phpunit/Unit/Prompty/   Unit tests, driven through PromptyTestTrait.
 tests/phpunit/Functional/     Runs embed.php and starter.php as subprocesses.
 ```

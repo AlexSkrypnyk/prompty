@@ -61,7 +61,11 @@ See [Usage](#usage) for how to embed the class directly into your script.
 
 ### Verifying a download
 
-Every release ships a `SHA256SUMS` file covering all assets, signed with the maintainer's GPG key as `SHA256SUMS.asc`. The matching public key is [`PUBLIC_KEY.asc`](PUBLIC_KEY.asc) in this repository.
+Every release ships a `SHA256SUMS` file covering all assets, signed with the maintainer's GPG key as `SHA256SUMS.asc`. The matching public key is [`PUBLIC_KEY.asc`](PUBLIC_KEY.asc) in this repository, with this fingerprint:
+
+```text
+755E 824E 80F8 4913 5F5F  4043 E71E DB25 C4F6 D89D
+```
 
 ```bash
 BASE=https://github.com/AlexSkrypnyk/prompty/releases/latest/download
@@ -72,12 +76,15 @@ curl -LO $BASE/SHA256SUMS
 curl -LO $BASE/SHA256SUMS.asc
 curl -LO $RAW/PUBLIC_KEY.asc
 
+# Check the fingerprint against the one above before trusting the key.
+gpg --show-keys --with-fingerprint PUBLIC_KEY.asc
+
 gpg --import PUBLIC_KEY.asc
 gpg --verify SHA256SUMS.asc SHA256SUMS
 sha256sum --ignore-missing -c SHA256SUMS
 ```
 
-`--ignore-missing` lets the checksum check pass when only some assets were downloaded.
+`--ignore-missing` lets the checksum check pass when only some assets were downloaded. See [`SECURITY.md`](SECURITY.md) for what this verification does and does not prove.
 
 ### Composer
 
@@ -543,7 +550,8 @@ $results = Prompty::flow(fn(): array => [/* ... */]);
 // Or read them later.
 $results = Prompty::results();
 
-// Print your own banner from inside an outro callable.
+// Print a banner yourself. Passing a callable as flow()'s outro suppresses
+// the built-in one, so call this from inside it to keep the banner.
 Prompty::outro('Order sent to the kitchen!');
 ```
 
