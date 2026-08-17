@@ -61,7 +61,6 @@ return RectorConfig::configure()
     RenameVariableToMatchMethodCallReturnTypeRector::class,
     RenameVariableToMatchNewTypeRector::class,
     SimplifyEmptyCheckOnEmptyArrayRector::class,
-    // Dependencies.
     '*/vendor/*',
     '*/node_modules/*',
   ])

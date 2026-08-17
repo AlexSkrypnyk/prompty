@@ -2,7 +2,7 @@
 
 /**
  * @file
- * Playground — nested flow with conditionals, 3 levels deep, 3 items per level.
+ * Playground - nested flow with conditionals, 3 levels deep, 3 items per level.
  */
 
 declare(strict_types=1);
@@ -16,7 +16,6 @@ $unicode = !isset($opts['no-unicode']);
 $ansi = !isset($opts['no-ansi']);
 
 $results = Prompty::flow(fn(): array => [
-  // --- Level 0, item 1: Project type ---
   'type' => Prompty::select('Project type',
     options: ['app' => 'Application', 'lib' => 'Library', 'site' => 'Static site'],
     description: 'What are you building?',
@@ -26,13 +25,11 @@ $results = Prompty::flow(fn(): array => [
       'site' => 'Content-driven site with static generation.',
     ],
     children: [
-      // --- Level 1, item 1: App framework (conditional on type=app) ---
       'app_framework' => Prompty::select('App framework',
         options: ['next' => 'Next.js', 'nuxt' => 'Nuxt', 'sveltekit' => 'SvelteKit'],
         description: 'Server-side rendering framework.',
         condition: fn($r): bool => ($r['type'] ?? '') === 'app',
         children: [
-          // --- Level 2: SSR settings (conditional on framework) ---
           'ssr_mode' => Prompty::select('SSR mode',
             options: ['ssr' => 'Server-side', 'ssg' => 'Static generation', 'hybrid' => 'Hybrid'],
             description: 'How pages are rendered.',
@@ -42,44 +39,32 @@ $results = Prompty::flow(fn(): array => [
             description: 'Deploy to edge functions for lower latency.',
             condition: fn($r): bool => ($r['app_framework'] ?? '') === 'next',
           ),
-          'api_routes' => Prompty::confirm('Include API routes?',
-            description: 'Add server-side API endpoints.',
-          ),
+          'api_routes' => Prompty::confirm('Include API routes?', description: 'Add server-side API endpoints.'),
         ],
       ),
-      // --- Level 1, item 2: Lib settings (conditional on type=lib) ---
       'lib_format' => Prompty::multiselect('Output formats',
         options: ['esm' => 'ESM', 'cjs' => 'CommonJS', 'umd' => 'UMD'],
         description: 'Which module formats to build.',
         condition: fn($r): bool => ($r['type'] ?? '') === 'lib',
         children: [
-          // --- Level 2: Build tool ---
           'bundler' => Prompty::select('Bundler',
             options: ['tsup' => 'tsup', 'rollup' => 'Rollup', 'unbuild' => 'unbuild'],
             description: 'Build tool for the library.',
           ),
-          'declarations' => Prompty::confirm('Generate .d.ts files?',
-            description: 'TypeScript declaration files for consumers.',
-          ),
-          'sourcemaps' => Prompty::confirm('Include sourcemaps?',
-            description: 'Helps consumers debug into your library.',
-          ),
+          'declarations' => Prompty::confirm('Generate .d.ts files?', description: 'TypeScript declaration files for consumers.'),
+          'sourcemaps' => Prompty::confirm('Include sourcemaps?', description: 'Helps consumers debug into your library.'),
         ],
       ),
-      // --- Level 1, item 3: Site generator (conditional on type=site) ---
       'site_generator' => Prompty::select('Generator',
         options: ['astro' => 'Astro', 'eleventy' => 'Eleventy', 'hugo' => 'Hugo'],
         description: 'Static site generator.',
         condition: fn($r): bool => ($r['type'] ?? '') === 'site',
         children: [
-          // --- Level 2: Content source ---
           'content_source' => Prompty::select('Content source',
             options: ['markdown' => 'Markdown files', 'cms' => 'Headless CMS', 'both' => 'Both'],
             description: 'Where content lives.',
           ),
-          'image_optimization' => Prompty::confirm('Enable image optimization?',
-            description: 'Automatic resizing, format conversion, and lazy loading.',
-          ),
+          'image_optimization' => Prompty::confirm('Enable image optimization?', description: 'Automatic resizing, format conversion, and lazy loading.'),
           'deploy_target' => Prompty::select('Deploy target',
             options: ['vercel' => 'Vercel', 'netlify' => 'Netlify', 'cloudflare' => 'Cloudflare Pages'],
             description: 'Hosting platform.',
@@ -89,7 +74,6 @@ $results = Prompty::flow(fn(): array => [
     ],
   ),
 
-  // --- Level 0, item 2: Code quality ---
   'quality' => Prompty::multiselect('Code quality',
     options: ['typescript' => 'TypeScript', 'eslint' => 'ESLint', 'prettier' => 'Prettier', 'husky' => 'Husky'],
     description: "Select code quality tools.\nSpace to toggle, enter to confirm.",
@@ -116,7 +100,6 @@ $results = Prompty::flow(fn(): array => [
     ],
   ),
 
-  // --- Level 0, item 3: Testing ---
   'testing' => Prompty::multiselect('Testing',
     options: ['unit' => 'Unit tests', 'e2e' => 'E2E tests', 'coverage' => 'Coverage reporting'],
     description: 'Select testing tools.',

@@ -32,23 +32,17 @@ final class PromptyTextInteractiveTest extends PromptyTestCase {
    *   The widget return value and captured output.
    */
   protected function runTextWidget(string $keystrokes, array $ctx_overrides = [], string $default = ''): array {
-    return $this->promptyRun(function () use ($ctx_overrides, $default): mixed {
-      $p = $this->createInstance();
-      $default_ctx = [
-        'depth' => 0,
-        'is_last' => FALSE,
-        'open' => [],
-        'number' => NULL,
-        'env_value' => NULL,
-      ];
-
-      return Prompty::text('Project name', default: $default, placeholder: 'my-app', description: 'Enter a name.', ctx: array_merge($default_ctx, $ctx_overrides));
-    }, $keystrokes);
+    return $this->promptyRun(fn(): mixed => Prompty::text('Project name',
+      default: $default,
+      placeholder: 'my-app',
+      description: 'Enter a name.',
+      ctx: array_merge($this->defaultCtx(), $ctx_overrides),
+    ), $keystrokes);
   }
 
   #[DataProvider('dataProviderTypeAndSubmit')]
-  public function testTypeAndSubmit(string $typed, string $expected): void {
-    $r = $this->runTextWidget($typed . self::KEY_ENTER);
+  public function testTypeAndSubmit(string $keystrokes, string $expected): void {
+    $r = $this->runTextWidget($keystrokes . self::KEY_ENTER);
 
     $this->assertSame($expected, $r['result']);
   }
@@ -58,7 +52,7 @@ final class PromptyTextInteractiveTest extends PromptyTestCase {
     yield 'single char' => ['x', 'x'];
     yield 'numbers' => ['123', '123'];
     yield 'mixed' => ['my-app-v2', 'my-app-v2'];
-    yield 'with spaces' => ["my\x20app", 'my app'];
+    yield 'with spaces' => ['my app', 'my app'];
   }
 
   public function testEmptySubmitReturnsPlaceholder(): void {
@@ -129,22 +123,14 @@ final class PromptyTextInteractiveTest extends PromptyTestCase {
   }
 
   public function testInteractiveAtDepth(): void {
-    $r = $this->runTextWidget('val' . self::KEY_ENTER, [
-      'depth' => 1,
-      'is_last' => FALSE,
-      'open' => [1 => TRUE],
-    ]);
+    $r = $this->runTextWidget('val' . self::KEY_ENTER, ['depth' => 1, 'is_last' => FALSE, 'open' => [1 => TRUE]]);
 
     $this->assertSame('val', $r['result']);
     $this->assertStringContainsString('Project name', $r['output']);
   }
 
   public function testInteractiveAtDepthCancelled(): void {
-    $r = $this->runTextWidget('x' . self::KEY_CTRL_C, [
-      'depth' => 1,
-      'is_last' => TRUE,
-      'open' => [],
-    ]);
+    $r = $this->runTextWidget('x' . self::KEY_CTRL_C, ['depth' => 1, 'is_last' => TRUE, 'open' => []]);
 
     $this->assertNull($r['result']);
     $this->assertStringContainsString('(cancelled)', $r['output']);

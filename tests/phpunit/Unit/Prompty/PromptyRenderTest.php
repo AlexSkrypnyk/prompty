@@ -180,10 +180,10 @@ EXPECTED,
   }
 
   #[DataProvider('dataProviderRenderCompleted')]
-  public function testRenderCompleted(string $label, string $value, int $depth, bool $is_last, array $open, string $expected): void {
+  public function testRenderCompleted(string $label, string $value, int $depth, array $open, string $expected): void {
     $p = $this->createInstance();
 
-    $lines = $this->callProtectedLines($p, 'renderCompleted', $label, $value, $depth, $is_last, $open);
+    $lines = $this->callProtectedLines($p, 'renderCompleted', $label, $value, $depth, $open);
 
     $actual = $this->stripAnsi(implode("\n", $lines));
 
@@ -195,7 +195,6 @@ EXPECTED,
       'Project name',
       'my-app',
       0,
-      FALSE,
       [],
       <<<'EXPECTED'
 +  Project name
@@ -208,7 +207,6 @@ EXPECTED,
       'Install dependencies?',
       'Yes',
       0,
-      FALSE,
       [],
       <<<'EXPECTED'
 +  Install dependencies?
@@ -221,7 +219,6 @@ EXPECTED,
       'App framework',
       'Next.js',
       1,
-      FALSE,
       [1 => TRUE],
       // labelPrefix(1, ...) = '  ', bodyPrefix(1, [1=>TRUE]) = '  |  '.
       "|  +  App framework\n|  |  Next.js\n|  |  ",
@@ -231,7 +228,6 @@ EXPECTED,
       'API routes',
       'Yes',
       1,
-      TRUE,
       [],
       // labelPrefix(1, ...) = '  ', bodyPrefix(1, []) = '     '.
       "|  +  API routes\n|     Yes\n|     ",
@@ -241,7 +237,6 @@ EXPECTED,
       'SSR mode',
       'Hybrid',
       2,
-      FALSE,
       [1 => TRUE, 2 => TRUE],
       // labelPrefix(2) = '  |  ', bodyPrefix(2, [1,2=>TRUE]) = '  |  |  '.
       "|  |  +  SSR mode\n|  |  |  Hybrid\n|  |  |  ",
@@ -249,10 +244,10 @@ EXPECTED,
   }
 
   #[DataProvider('dataProviderRenderCancelled')]
-  public function testRenderCancelled(string $label, string $value, int $depth, bool $is_last, array $open, string $expected): void {
+  public function testRenderCancelled(string $label, string $value, int $depth, array $open, string $expected): void {
     $p = $this->createInstance();
 
-    $lines = $this->callProtectedLines($p, 'renderCancelled', $label, $value, $depth, $is_last, $open);
+    $lines = $this->callProtectedLines($p, 'renderCancelled', $label, $value, $depth, $open);
 
     $actual = $this->stripAnsi(implode("\n", $lines));
 
@@ -264,7 +259,6 @@ EXPECTED,
       'Project name',
       '',
       0,
-      FALSE,
       [],
       <<<'EXPECTED'
 o  Project name
@@ -277,7 +271,6 @@ EXPECTED,
       'Project name',
       'my-a',
       0,
-      FALSE,
       [],
       <<<'EXPECTED'
 o  Project name
@@ -290,7 +283,6 @@ EXPECTED,
       'Framework',
       'React',
       1,
-      FALSE,
       [1 => TRUE],
       // labelPrefix(1, ...) = '  ', bodyPrefix(1, [1=>TRUE]) = '  |  '.
       "|  o  Framework\n|  |  React (cancelled)\n|  |  ",
@@ -300,7 +292,6 @@ EXPECTED,
       'Framework',
       '',
       1,
-      TRUE,
       [],
       // labelPrefix(1, ...) = '  ', bodyPrefix(1, []) = '     '.
       "|  o  Framework\n|      (cancelled)\n|     ",

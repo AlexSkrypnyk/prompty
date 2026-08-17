@@ -12,7 +12,6 @@ use PHPUnit\Framework\TestCase;
  * Base test case for Prompty unit tests.
  *
  * Delegates to PromptyTestTrait for reflection and output helpers.
- * Shorter aliases keep existing tests unchanged.
  */
 abstract class PromptyTestCase extends TestCase {
 
@@ -35,13 +34,7 @@ abstract class PromptyTestCase extends TestCase {
    *   Context array.
    */
   protected function defaultCtx(array $overrides = []): array {
-    return array_merge([
-      'depth' => 0,
-      'is_last' => FALSE,
-      'open' => [],
-      'number' => NULL,
-      'env_value' => NULL,
-    ], $overrides);
+    return array_merge(['depth' => 0, 'is_last' => FALSE, 'open' => [], 'number' => NULL, 'env_value' => NULL], $overrides);
   }
 
   /**
@@ -142,7 +135,6 @@ abstract class PromptyTestCase extends TestCase {
   }
 
   protected function tearDown(): void {
-    // Clean up any env vars set during the test.
     array_map(putenv(...), $this->envKeys);
     $this->envKeys = [];
 

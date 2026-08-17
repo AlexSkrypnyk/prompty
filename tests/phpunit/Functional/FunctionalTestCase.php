@@ -51,7 +51,7 @@ abstract class FunctionalTestCase extends TestCase {
    * Run a command in a subprocess with raw keystroke input.
    *
    * Unlike processRun() which joins inputs with newlines, this method
-   * passes raw bytes directly to stdin — required for TUI escape sequences.
+   * passes raw bytes directly to stdin - required for TUI escape sequences.
    *
    * @param string $command
    *   The command to execute.
@@ -62,11 +62,7 @@ abstract class FunctionalTestCase extends TestCase {
    *   Process output.
    */
   protected function runWithKeystrokes(string $command, string $keystrokes): array {
-    $descriptors = [
-      0 => ['pipe', 'r'],
-      1 => ['pipe', 'w'],
-      2 => ['pipe', 'w'],
-    ];
+    $descriptors = [0 => ['pipe', 'r'], 1 => ['pipe', 'w'], 2 => ['pipe', 'w']];
 
     $process = proc_open($command, $descriptors, $pipes);
     $this->assertIsResource($process);
@@ -82,11 +78,7 @@ abstract class FunctionalTestCase extends TestCase {
 
     $exit_code = proc_close($process);
 
-    return [
-      'stdout' => $stdout ?: '',
-      'stderr' => $stderr ?: '',
-      'exit_code' => $exit_code,
-    ];
+    return ['stdout' => $stdout ?: '', 'stderr' => $stderr ?: '', 'exit_code' => $exit_code];
   }
 
   /**
@@ -114,10 +106,10 @@ abstract class FunctionalTestCase extends TestCase {
    */
   protected function assertStarterFlowWorks(string $script_path): void {
     $keystrokes = $this->keys(
-      'my-project', static::KEYS['ENTER'],
-      static::KEYS['DOWN'], static::KEYS['ENTER'],
-      static::KEYS['SPACE'], static::KEYS['ENTER'],
-      static::KEYS['ENTER'],
+      'my-project', self::KEYS['ENTER'],
+      self::KEYS['DOWN'], self::KEYS['ENTER'],
+      self::KEYS['SPACE'], self::KEYS['ENTER'],
+      self::KEYS['ENTER'],
     );
 
     $output = $this->runScript($script_path, $keystrokes);

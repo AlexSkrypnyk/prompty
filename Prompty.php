@@ -127,6 +127,13 @@ class Prompty {
   ];
 
   /**
+   * Default ANSI color escape sequences (used to restore after suppression).
+   *
+   * @var array<string, string>
+   */
+  protected array $cfgColorsDefault;
+
+  /**
    * Spacing strings for indentation.
    *
    * @var array<string, string>
@@ -161,13 +168,6 @@ class Prompty {
   protected ?bool $cfgAnsi = NULL;
 
   /**
-   * Default ANSI color escape sequences (used to restore after suppression).
-   *
-   * @var array<string, string>
-   */
-  protected array $cfgColorsDefault;
-
-  /**
    * Environment variable prefix for auto-discovery.
    */
   protected string $cfgEnvPrefix = 'PROMPTY_';
@@ -190,7 +190,6 @@ class Prompty {
    * Constructs a Prompty instance.
    */
   protected function __construct() {
-    // Resolve Unicode: TRUE/FALSE to force, NULL to auto-detect from locale.
     if ($this->cfgUnicode === NULL) {
       $lang = getenv('LANG') ?: getenv('LC_ALL') ?: getenv('LC_CTYPE') ?: setlocale(LC_CTYPE, '0') ?: '';
       $this->cfgUnicode = stripos($lang, 'utf') !== FALSE;
@@ -198,7 +197,6 @@ class Prompty {
 
     $this->cfgSymbols = $this->cfgUnicode ? $this->cfgSymbolsUnicode : $this->cfgSymbolsAscii;
 
-    // Resolve ANSI: TRUE/FALSE to force, NULL to auto-detect.
     $this->cfgColorsDefault = $this->cfgColors;
     if ($this->cfgAnsi === NULL) {
       $no_color = getenv('NO_COLOR');
@@ -295,7 +293,18 @@ class Prompty {
    * @param list<string>|null $falsy
    *   Values treated as FALSE.
    */
-  public static function configure(?array $symbols_unicode = NULL, ?array $symbols_ascii = NULL, ?array $colors = NULL, ?array $spacing = NULL, ?array $labels = NULL, ?bool $unicode = NULL, ?bool $ansi = NULL, ?string $env_prefix = NULL, ?array $truthy = NULL, ?array $falsy = NULL): void {
+  public static function configure(
+    ?array $symbols_unicode = NULL,
+    ?array $symbols_ascii = NULL,
+    ?array $colors = NULL,
+    ?array $spacing = NULL,
+    ?array $labels = NULL,
+    ?bool $unicode = NULL,
+    ?bool $ansi = NULL,
+    ?string $env_prefix = NULL,
+    ?array $truthy = NULL,
+    ?array $falsy = NULL,
+  ): void {
     $p = static::instance();
     if ($symbols_unicode !== NULL) {
       $p->cfgSymbolsUnicode = array_replace($p->cfgSymbolsUnicode, $symbols_unicode);
@@ -373,9 +382,33 @@ class Prompty {
    * @return array<string, string|bool|int|array<string,string>>|null
    *   Collected results or NULL if cancelled.
    */
-  public static function flow(callable $steps, string|callable|null $intro = NULL, string|callable|null $outro = NULL, string|callable|null $cancelled = NULL, bool $numbering = FALSE, ?array $symbols_unicode = NULL, ?array $symbols_ascii = NULL, ?array $colors = NULL, ?array $spacing = NULL, ?array $labels = NULL, ?bool $unicode = NULL, ?bool $ansi = NULL, ?string $env_prefix = NULL, ?array $truthy = NULL, ?array $falsy = NULL): ?array {
-    // Apply config overrides if any are provided.
-    if ($symbols_unicode !== NULL || $symbols_ascii !== NULL || $colors !== NULL || $spacing !== NULL || $labels !== NULL || $unicode !== NULL || $ansi !== NULL || $env_prefix !== NULL || $truthy !== NULL || $falsy !== NULL) {
+  public static function flow(
+    callable $steps,
+    string|callable|null $intro = NULL,
+    string|callable|null $outro = NULL,
+    string|callable|null $cancelled = NULL,
+    bool $numbering = FALSE,
+    ?array $symbols_unicode = NULL,
+    ?array $symbols_ascii = NULL,
+    ?array $colors = NULL,
+    ?array $spacing = NULL,
+    ?array $labels = NULL,
+    ?bool $unicode = NULL,
+    ?bool $ansi = NULL,
+    ?string $env_prefix = NULL,
+    ?array $truthy = NULL,
+    ?array $falsy = NULL,
+  ): ?array {
+    if ($symbols_unicode !== NULL
+      || $symbols_ascii !== NULL
+      || $colors !== NULL
+      || $spacing !== NULL
+      || $labels !== NULL
+      || $unicode !== NULL
+      || $ansi !== NULL
+      || $env_prefix !== NULL
+      || $truthy !== NULL
+      || $falsy !== NULL) {
       static::configure($symbols_unicode, $symbols_ascii, $colors, $spacing, $labels, $unicode, $ansi, $env_prefix, $truthy, $falsy);
     }
     $p = static::instance();
@@ -385,14 +418,13 @@ class Prompty {
     // Evaluate the steps callable now that $inFlow is TRUE.
     $steps = $steps();
 
-    $flow_opts = [
+    $options = [
       'numbering' => $numbering,
     ];
 
-    // Save current TTY settings and enable raw mode for keypress reading.
-    // Returns NULL when no TTY exists (e.g., piped input), allowing the flow
-    // to run with env/discovered values without terminal control.
-    // Skip TTY setup when an input stream is injected (test mode).
+    // $prev_tty is NULL when no TTY exists (e.g., piped input), and the flow
+    // then runs with env/discovered values without terminal control. An
+    // injected input stream (test mode) also skips TTY setup.
     $prev_tty = $p->input === NULL ? (shell_exec('stty -g 2>/dev/null') ?: NULL) : NULL;
 
     if ($prev_tty !== NULL) {
@@ -401,7 +433,7 @@ class Prompty {
       // is available immediately without waiting for Enter.
       shell_exec('stty -echo -icanon min 1 time 0 2>/dev/null');
 
-      // Safety net: restore terminal even on fatal errors or exceptions.
+      // Restore the terminal even on fatal errors or exceptions.
       register_shutdown_function(function () use ($p, $prev_tty): void {
         // @codeCoverageIgnoreStart
         $p->restoreTty($prev_tty);
@@ -409,18 +441,15 @@ class Prompty {
         // @codeCoverageIgnoreEnd
       });
 
-      // Hide cursor.
-      echo "\033[?25l";
+      $p->hideCursor();
     }
 
     if ($intro !== NULL) {
       is_callable($intro) ? $intro($p->results) : $p->printLines($p->renderIntro($intro));
     }
 
-    // Walk all steps recursively, starting at depth 0 with no number prefix.
-    $outcome = $p->flowWalk($steps, 0, $flow_opts, '');
+    $outcome = $p->walkFlow($steps, 0, $options, '');
 
-    // A widget returning NULL means the user cancelled (ctrl-c / escape).
     if ($outcome === FALSE) {
       if ($cancelled !== NULL) {
         is_callable($cancelled) ? $cancelled($p->results) : $p->printLines($p->renderOutro($cancelled));
@@ -475,17 +504,31 @@ class Prompty {
    * @return \Closure|array<string, mixed>|string|null
    *   A closure in flow mode, or the entered string in standalone mode.
    */
-  public static function text(string $label, string $default = '', string $placeholder = '', string $description = '', mixed $discovered = NULL, ?callable $condition = NULL, array $children = [], ?array $ctx = NULL): \Closure|array|string|null {
-    // Flow mode: return closure for deferred execution.
+  public static function text(
+    string $label,
+    string $default = '',
+    string $placeholder = '',
+    string $description = '',
+    mixed $discovered = NULL,
+    ?callable $condition = NULL,
+    array $children = [],
+    ?array $ctx = NULL,
+  ): \Closure|array|string|null {
     if (static::$inFlow && $ctx === NULL) {
-      $call = fn(array $ctx): array|\Closure|string|null => static::text($label, default: $default, placeholder: $placeholder, description: $description, discovered: $discovered, ctx: $ctx);
+      $call = fn(array $ctx): array|\Closure|string|null => static::text(
+        $label,
+        default: $default,
+        placeholder: $placeholder,
+        description: $description,
+        discovered: $discovered,
+        ctx: $ctx,
+      );
       if ($condition !== NULL || $children !== []) {
         return ['__call' => $call, '__children' => $children, '__condition' => $condition];
       }
       return $call;
     }
 
-    // Execution mode.
     $p = static::instance();
     $ctx ??= [
       'depth' => 0,
@@ -500,19 +543,16 @@ class Prompty {
 
     /** @var int $depth */
     $depth = $ctx['depth'] ?? 0;
-    /** @var bool $is_last */
-    $is_last = $ctx['is_last'] ?? FALSE;
     /** @var array<int, bool> $open */
     $open = $ctx['open'] ?? [];
     $label = $p->numberLabel($label, $ctx);
 
-    // Skip interactive prompt if a value was provided directly or via env var.
     $resolved = $discovered ?? $ctx['env_value'] ?? NULL;
 
     if ($resolved !== NULL) {
       /** @var int|float|string|bool $resolved */
       $display = (string) $resolved;
-      $p->printLines($p->renderCompleted($label, $display, $depth, $is_last, $open));
+      $p->printLines($p->renderCompleted($label, $display, $depth, $open));
       if ($standalone) {
         // @codeCoverageIgnoreStart
         $p->teardownTty();
@@ -521,7 +561,6 @@ class Prompty {
       return $display;
     }
 
-    // Render the active text input state for the current value.
     $render_active = function (string $value) use ($p, $label, $placeholder, $description, $depth, $open): array {
       $cursor = $p->color('█', 'cyan');
       $display = $value === '' ? $p->color($placeholder, 'gray') . $cursor : $p->color($value, 'white') . $cursor;
@@ -545,7 +584,6 @@ class Prompty {
       return $lines;
     };
 
-    // Interactive input loop.
     $value = $default;
     $line_count = $p->printLines($render_active($value));
 
@@ -553,7 +591,7 @@ class Prompty {
       $key = $p->readKey();
 
       if ($key === 'ctrl-c' || $key === 'escape') {
-        $p->redraw($line_count, $p->renderCancelled($label, $value, $depth, $is_last, $open));
+        $p->redraw($line_count, $p->renderCancelled($label, $value, $depth, $open));
         if ($standalone) {
           // @codeCoverageIgnoreStart
           $p->teardownTty();
@@ -564,7 +602,7 @@ class Prompty {
 
       if ($key === 'enter') {
         $display = $value !== '' ? $value : $placeholder;
-        $p->redraw($line_count, $p->renderCompleted($label, $display, $depth, $is_last, $open));
+        $p->redraw($line_count, $p->renderCompleted($label, $display, $depth, $open));
         if ($standalone) {
           // @codeCoverageIgnoreStart
           $p->teardownTty();
@@ -615,9 +653,27 @@ class Prompty {
    * @return \Closure|array<string, mixed>|string|null
    *   A closure in flow mode, or the selected option key in standalone mode.
    */
-  public static function select(string $label, array $options = [], string $default = '', string $description = '', array $hints = [], mixed $discovered = NULL, ?callable $condition = NULL, array $children = [], ?array $ctx = NULL): \Closure|array|string|null {
+  public static function select(
+    string $label,
+    array $options = [],
+    string $default = '',
+    string $description = '',
+    array $hints = [],
+    mixed $discovered = NULL,
+    ?callable $condition = NULL,
+    array $children = [],
+    ?array $ctx = NULL,
+  ): \Closure|array|string|null {
     if (static::$inFlow && $ctx === NULL) {
-      $call = fn(array $ctx): array|\Closure|string|null => static::select($label, options: $options, default: $default, description: $description, hints: $hints, discovered: $discovered, ctx: $ctx);
+      $call = fn(array $ctx): array|\Closure|string|null => static::select(
+        $label,
+        options: $options,
+        default: $default,
+        description: $description,
+        hints: $hints,
+        discovered: $discovered,
+        ctx: $ctx,
+      );
       if ($condition !== NULL || $children !== []) {
         return ['__call' => $call, '__children' => $children, '__condition' => $condition];
       }
@@ -638,8 +694,6 @@ class Prompty {
 
     /** @var int $depth */
     $depth = $ctx['depth'] ?? 0;
-    /** @var bool $is_last */
-    $is_last = $ctx['is_last'] ?? FALSE;
     /** @var array<int, bool> $open */
     $open = $ctx['open'] ?? [];
     $label = $p->numberLabel($label, $ctx);
@@ -648,14 +702,13 @@ class Prompty {
     $option_labels = array_values($options);
     $ordered_hints = array_map(fn(int|string $key) => $hints[$key] ?? '', $option_keys);
 
-    // Resolve discovered or environment value.
     $resolved = $discovered ?? $ctx['env_value'] ?? NULL;
 
     if ($resolved !== NULL) {
       /** @var int|float|string|bool $resolved */
       $resolved_str = (string) $resolved;
       $display = $options[$resolved_str] ?? $resolved_str;
-      $p->printLines($p->renderCompleted($label, $display, $depth, $is_last, $open));
+      $p->printLines($p->renderCompleted($label, $display, $depth, $open));
       if ($standalone) {
         // @codeCoverageIgnoreStart
         $p->teardownTty();
@@ -664,7 +717,6 @@ class Prompty {
       return $resolved_str;
     }
 
-    // Render the active select state for the current focused index.
     $render_active = function (int $focused) use ($p, $label, $option_labels, $description, $ordered_hints, $depth, $open): array {
       if ($depth === 0) {
         $lines = [$p->color($p->cfgSymbols['active'], 'cyan') . $p->cfgSpacing['indent'] . $label];
@@ -675,7 +727,7 @@ class Prompty {
           $radio = $p->color($p->cfgSymbols[$is_focused ? 'radio_on' : 'radio_off'], $is_focused ? 'green' : 'dim');
           $text = $is_focused ? $option : $p->color($option, 'dim');
 
-          $lines[] = $p->bar() . $p->cursor($is_focused) . $radio . ' ' . $text;
+          $lines[] = $p->bar() . $p->pointer($is_focused) . $radio . ' ' . $text;
 
           if ($is_focused && ($ordered_hints[$index] ?? '') !== '') {
             $lines = array_merge($lines, $p->renderHint($ordered_hints[$index]));
@@ -697,7 +749,7 @@ class Prompty {
         $radio = $p->color($p->cfgSymbols[$is_focused ? 'radio_on' : 'radio_off'], $is_focused ? 'green' : 'dim');
         $text = $is_focused ? $option : $p->color($option, 'dim');
 
-        $lines[] = $p->bar() . $body_prefix . $p->cursor($is_focused) . $radio . ' ' . $text;
+        $lines[] = $p->bar() . $body_prefix . $p->pointer($is_focused) . $radio . ' ' . $text;
 
         if ($is_focused && ($ordered_hints[$index] ?? '') !== '') {
           $lines = array_merge($lines, $p->renderHint($ordered_hints[$index], $depth, $open));
@@ -709,7 +761,6 @@ class Prompty {
       return $lines;
     };
 
-    // Interactive selection loop.
     $focused = 0;
     $default_index = $default !== '' ? array_search($default, $option_keys, TRUE) : FALSE;
 
@@ -723,7 +774,7 @@ class Prompty {
       $key = $p->readKey();
 
       if ($key === 'ctrl-c' || $key === 'escape') {
-        $p->redraw($line_count, $p->renderCancelled($label, $option_labels[$focused], $depth, $is_last, $open));
+        $p->redraw($line_count, $p->renderCancelled($label, $option_labels[$focused], $depth, $open));
         if ($standalone) {
           // @codeCoverageIgnoreStart
           $p->teardownTty();
@@ -733,7 +784,7 @@ class Prompty {
       }
 
       if ($key === 'enter') {
-        $p->redraw($line_count, $p->renderCompleted($label, $option_labels[$focused], $depth, $is_last, $open));
+        $p->redraw($line_count, $p->renderCompleted($label, $option_labels[$focused], $depth, $open));
         if ($standalone) {
           // @codeCoverageIgnoreStart
           $p->teardownTty();
@@ -778,9 +829,27 @@ class Prompty {
    * @return \Closure|array<string, mixed>|list<string>|null
    *   A closure in flow mode, or the array of selected keys in standalone mode.
    */
-  public static function multiselect(string $label, array $options = [], array $default = [], string $description = '', array $hints = [], mixed $discovered = NULL, ?callable $condition = NULL, array $children = [], ?array $ctx = NULL): \Closure|array|null {
+  public static function multiselect(
+    string $label,
+    array $options = [],
+    array $default = [],
+    string $description = '',
+    array $hints = [],
+    mixed $discovered = NULL,
+    ?callable $condition = NULL,
+    array $children = [],
+    ?array $ctx = NULL,
+  ): \Closure|array|null {
     if (static::$inFlow && $ctx === NULL) {
-      $call = fn(array $ctx): array|\Closure|null => static::multiselect($label, options: $options, default: $default, description: $description, hints: $hints, discovered: $discovered, ctx: $ctx);
+      $call = fn(array $ctx): array|\Closure|null => static::multiselect(
+        $label,
+        options: $options,
+        default: $default,
+        description: $description,
+        hints: $hints,
+        discovered: $discovered,
+        ctx: $ctx,
+      );
       if ($condition !== NULL || $children !== []) {
         return ['__call' => $call, '__children' => $children, '__condition' => $condition];
       }
@@ -801,8 +870,6 @@ class Prompty {
 
     /** @var int $depth */
     $depth = $ctx['depth'] ?? 0;
-    /** @var bool $is_last */
-    $is_last = $ctx['is_last'] ?? FALSE;
     /** @var array<int, bool> $open */
     $open = $ctx['open'] ?? [];
     $label = $p->numberLabel($label, $ctx);
@@ -818,8 +885,10 @@ class Prompty {
 
     if ($resolved !== NULL) {
       $resolved_array = is_array($resolved) ? $resolved : [$resolved];
-      $display = $resolved_array !== [] ? implode(', ', array_map(fn($key) => $options[is_string($key) ? $key : ''] ?? (is_string($key) ? $key : ''), $resolved_array)) : $p->cfgLabels['none'];
-      $p->printLines($p->renderCompleted($label, $display, $depth, $is_last, $open));
+      $display = $resolved_array !== []
+        ? implode(', ', array_map(fn(mixed $key) => $options[is_string($key) ? $key : ''] ?? (is_string($key) ? $key : ''), $resolved_array))
+        : $p->cfgLabels['none'];
+      $p->printLines($p->renderCompleted($label, $display, $depth, $open));
       if ($standalone) {
         // @codeCoverageIgnoreStart
         $p->teardownTty();
@@ -828,7 +897,6 @@ class Prompty {
       return $resolved_array;
     }
 
-    // Render the active multiselect state for focused index and checked items.
     $render_active = function (int $focused, array $checked) use ($p, $label, $option_labels, $description, $ordered_hints, $depth, $open): array {
       if ($depth === 0) {
         $lines = [$p->color($p->cfgSymbols['active'], 'cyan') . $p->cfgSpacing['indent'] . $label];
@@ -837,10 +905,10 @@ class Prompty {
         foreach ($option_labels as $index => $option) {
           $is_checked = $checked[$index] ?? FALSE;
           $is_focused = $index === $focused;
-          $box = $p->color($p->cfgSymbols[$is_checked ? 'check_on' : 'check_off'], $is_focused || $is_checked ? 'green' : 'dim');
+          $check = $p->color($p->cfgSymbols[$is_checked ? 'check_on' : 'check_off'], $is_focused || $is_checked ? 'green' : 'dim');
           $text = $is_focused || $is_checked ? $option : $p->color($option, 'dim');
 
-          $lines[] = $p->bar() . $p->cursor($is_focused) . $box . ' ' . $text;
+          $lines[] = $p->bar() . $p->pointer($is_focused) . $check . ' ' . $text;
 
           if ($is_focused && ($ordered_hints[$index] ?? '') !== '') {
             $lines = array_merge($lines, $p->renderHint($ordered_hints[$index]));
@@ -860,10 +928,10 @@ class Prompty {
       foreach ($option_labels as $index => $option) {
         $is_checked = $checked[$index] ?? FALSE;
         $is_focused = $index === $focused;
-        $box = $p->color($p->cfgSymbols[$is_checked ? 'check_on' : 'check_off'], $is_focused || $is_checked ? 'green' : 'dim');
+        $check = $p->color($p->cfgSymbols[$is_checked ? 'check_on' : 'check_off'], $is_focused || $is_checked ? 'green' : 'dim');
         $text = $is_focused || $is_checked ? $option : $p->color($option, 'dim');
 
-        $lines[] = $p->bar() . $body_prefix . $p->cursor($is_focused) . $box . ' ' . $text;
+        $lines[] = $p->bar() . $body_prefix . $p->pointer($is_focused) . $check . ' ' . $text;
 
         if ($is_focused && ($ordered_hints[$index] ?? '') !== '') {
           $lines = array_merge($lines, $p->renderHint($ordered_hints[$index], $depth, $open));
@@ -875,16 +943,15 @@ class Prompty {
       return $lines;
     };
 
-    // Interactive multi-selection loop.
     $focused = 0;
-    $checked = array_map(static fn(string $key): bool => in_array($key, $default, TRUE), $option_keys);
+    $checked = array_map(fn(string $key): bool => in_array($key, $default, TRUE), $option_keys);
     $line_count = $p->printLines($render_active($focused, $checked));
 
     while (TRUE) {
       $key = $p->readKey();
 
       if ($key === 'ctrl-c' || $key === 'escape') {
-        $p->redraw($line_count, $p->renderCancelled($label, '', $depth, $is_last, $open));
+        $p->redraw($line_count, $p->renderCancelled($label, '', $depth, $open));
         if ($standalone) {
           // @codeCoverageIgnoreStart
           $p->teardownTty();
@@ -904,7 +971,7 @@ class Prompty {
           }
         }
 
-        $p->redraw($line_count, $p->renderCompleted($label, $selected_labels !== [] ? implode(', ', $selected_labels) : $p->cfgLabels['none'], $depth, $is_last, $open));
+        $p->redraw($line_count, $p->renderCompleted($label, $selected_labels !== [] ? implode(', ', $selected_labels) : $p->cfgLabels['none'], $depth, $open));
         if ($standalone) {
           // @codeCoverageIgnoreStart
           $p->teardownTty();
@@ -948,9 +1015,23 @@ class Prompty {
    * @return \Closure|array<string, mixed>|bool|null
    *   A closure in flow mode, or the boolean result in standalone mode.
    */
-  public static function confirm(string $label, bool $default = TRUE, string $description = '', mixed $discovered = NULL, ?callable $condition = NULL, array $children = [], ?array $ctx = NULL): \Closure|array|bool|null {
+  public static function confirm(
+    string $label,
+    bool $default = TRUE,
+    string $description = '',
+    mixed $discovered = NULL,
+    ?callable $condition = NULL,
+    array $children = [],
+    ?array $ctx = NULL,
+  ): \Closure|array|bool|null {
     if (static::$inFlow && $ctx === NULL) {
-      $call = fn(array $ctx): array|bool|\Closure|null => static::confirm($label, default: $default, description: $description, discovered: $discovered, ctx: $ctx);
+      $call = fn(array $ctx): array|bool|\Closure|null => static::confirm(
+        $label,
+        default: $default,
+        description: $description,
+        discovered: $discovered,
+        ctx: $ctx,
+      );
       if ($condition !== NULL || $children !== []) {
         return ['__call' => $call, '__children' => $children, '__condition' => $condition];
       }
@@ -971,8 +1052,6 @@ class Prompty {
 
     /** @var int $depth */
     $depth = $ctx['depth'] ?? 0;
-    /** @var bool $is_last */
-    $is_last = $ctx['is_last'] ?? FALSE;
     /** @var array<int, bool> $open */
     $open = $ctx['open'] ?? [];
     $label = $p->numberLabel($label, $ctx);
@@ -982,10 +1061,10 @@ class Prompty {
     $falsy = $ctx['falsy'] ?? ['0', 'false', 'no'];
 
     // Env values for confirm need truthy/falsy coercion (e.g., "yes" → TRUE).
-    $env_value_confirm = $ctx['env_value'] ?? NULL;
-    /** @var int|float|string|bool|null $env_value_confirm */
-    if ($discovered === NULL && $env_value_confirm !== NULL) {
-      $env_lower = strtolower((string) $env_value_confirm);
+    $env_value = $ctx['env_value'] ?? NULL;
+    /** @var int|float|string|bool|null $env_value */
+    if ($discovered === NULL && $env_value !== NULL) {
+      $env_lower = strtolower((string) $env_value);
       if (in_array($env_lower, $truthy, TRUE)) {
         $discovered = TRUE;
       }
@@ -995,7 +1074,7 @@ class Prompty {
     }
 
     if ($discovered !== NULL) {
-      $p->printLines($p->renderCompleted($label, $discovered ? $p->cfgLabels['yes'] : $p->cfgLabels['no'], $depth, $is_last, $open));
+      $p->printLines($p->renderCompleted($label, $discovered ? $p->cfgLabels['yes'] : $p->cfgLabels['no'], $depth, $open));
       if ($standalone) {
         // @codeCoverageIgnoreStart
         $p->teardownTty();
@@ -1004,11 +1083,12 @@ class Prompty {
       return (bool) $discovered;
     }
 
-    // Render the active confirm state for the current yes/no focus.
     $render_active = function (bool $focused_yes) use ($p, $label, $description, $depth, $open): array {
       $options_display = $focused_yes
-        ? $p->color($p->cfgSymbols['radio_on'], 'green') . ' ' . $p->cfgLabels['yes'] . ' ' . $p->color($p->cfgLabels['separator'], 'dim') . ' ' . $p->color($p->cfgSymbols['radio_off'], 'dim') . ' ' . $p->color($p->cfgLabels['no'], 'dim')
-        : $p->color($p->cfgSymbols['radio_off'], 'dim') . ' ' . $p->color($p->cfgLabels['yes'], 'dim') . ' ' . $p->color($p->cfgLabels['separator'], 'dim') . ' ' . $p->color($p->cfgSymbols['radio_on'], 'green') . ' ' . $p->cfgLabels['no'];
+        ? $p->color($p->cfgSymbols['radio_on'], 'green') . ' ' . $p->cfgLabels['yes'] . ' ' . $p->color($p->cfgLabels['separator'], 'dim')
+          . ' ' . $p->color($p->cfgSymbols['radio_off'], 'dim') . ' ' . $p->color($p->cfgLabels['no'], 'dim')
+        : $p->color($p->cfgSymbols['radio_off'], 'dim') . ' ' . $p->color($p->cfgLabels['yes'], 'dim') . ' ' . $p->color($p->cfgLabels['separator'], 'dim')
+          . ' ' . $p->color($p->cfgSymbols['radio_on'], 'green') . ' ' . $p->cfgLabels['no'];
 
       if ($depth === 0) {
         $lines = [$p->color($p->cfgSymbols['active'], 'cyan') . $p->cfgSpacing['indent'] . $label];
@@ -1029,7 +1109,6 @@ class Prompty {
       return $lines;
     };
 
-    // Interactive confirm loop.
     $yes = $default;
     $line_count = $p->printLines($render_active($yes));
 
@@ -1037,7 +1116,7 @@ class Prompty {
       $key = $p->readKey();
 
       if ($key === 'ctrl-c' || $key === 'escape') {
-        $p->redraw($line_count, $p->renderCancelled($label, $yes ? $p->cfgLabels['yes'] : $p->cfgLabels['no'], $depth, $is_last, $open));
+        $p->redraw($line_count, $p->renderCancelled($label, $yes ? $p->cfgLabels['yes'] : $p->cfgLabels['no'], $depth, $open));
         if ($standalone) {
           // @codeCoverageIgnoreStart
           $p->teardownTty();
@@ -1047,7 +1126,7 @@ class Prompty {
       }
 
       if ($key === 'enter') {
-        $p->redraw($line_count, $p->renderCompleted($label, $yes ? $p->cfgLabels['yes'] : $p->cfgLabels['no'], $depth, $is_last, $open));
+        $p->redraw($line_count, $p->renderCompleted($label, $yes ? $p->cfgLabels['yes'] : $p->cfgLabels['no'], $depth, $open));
         if ($standalone) {
           // @codeCoverageIgnoreStart
           $p->teardownTty();
@@ -1091,6 +1170,9 @@ class Prompty {
    *
    * @param array<int, string> $lines
    *   Lines to print.
+   *
+   * @return int
+   *   The number of lines printed.
    */
   public static function output(array $lines): int {
     return static::instance()->printLines($lines);
@@ -1111,19 +1193,19 @@ class Prompty {
   }
 
   /**
-   * Returns the cursor gutter shown before an option's indicator.
+   * Returns the pointer gutter shown before an option's indicator.
    *
-   * Marks which row the cursor is on independently of the selection state, so
-   * a focused row stays distinguishable even when it is already checked.
+   * Marks the focused row independently of the selection state, so it stays
+   * distinguishable even when it is already checked.
    *
    * @param bool $focused
    *   Whether this option is the focused one.
    *
    * @return string
-   *   The styled caret when focused, or equal-width padding when not, followed
-   *   by a separating space.
+   *   The styled pointer when focused, or equal-width padding when not,
+   *   followed by a separating space.
    */
-  protected function cursor(bool $focused): string {
+  protected function pointer(bool $focused): string {
     return ($focused ? $this->color($this->cfgSymbols['pointer'], 'cyan') : ' ') . ' ';
   }
 
@@ -1170,6 +1252,13 @@ class Prompty {
   }
 
   /**
+   * Hides the terminal cursor.
+   */
+  protected function hideCursor(): void {
+    echo "\033[?25l";
+  }
+
+  /**
    * Set up TTY for standalone widget execution.
    */
   protected function setupTty(): void {
@@ -1178,7 +1267,7 @@ class Prompty {
     if ($this->prevTty !== NULL) {
       $this->prevTty = trim($this->prevTty);
       shell_exec('stty -echo -icanon min 1 time 0 2>/dev/null');
-      echo "\033[?25l";
+      $this->hideCursor();
     }
   }
 
@@ -1200,6 +1289,9 @@ class Prompty {
    *
    * @param array<int, string> $lines
    *   Lines to print.
+   *
+   * @return int
+   *   The number of lines printed.
    */
   protected function printLines(array $lines): int {
     echo implode(PHP_EOL, $lines) . PHP_EOL;
@@ -1344,7 +1436,7 @@ class Prompty {
     $hint_lines = explode("\n", $hint);
 
     return array_map(
-      fn($text_line, $index): string => $this->bar() . $body_prefix . ($index === 0
+      fn(string $text_line, int $index): string => $this->bar() . $body_prefix . ($index === 0
           ? $this->cfgSpacing['hint_indent'] . $this->color($this->cfgSymbols['hint_arrow'], 'dim') . ' ' . $this->color($text_line, 'dim_italic')
           : $this->cfgSpacing['hint_cont'] . $this->color($text_line, 'dim_italic')
         ),
@@ -1382,16 +1474,13 @@ class Prompty {
    *   The submitted value to display.
    * @param int $depth
    *   The current nesting depth.
-   * @param bool $is_last
-   *   Whether this is the last widget at its depth level.
    * @param array<int, bool> $open
    *   Tracks which depth levels have continuing siblings.
    *
    * @return array<int, string>
    *   The rendered completed-state lines.
    */
-  protected function renderCompleted(string $label, string $value, int $depth = 0, bool $is_last = FALSE, array $open = []): array {
-
+  protected function renderCompleted(string $label, string $value, int $depth = 0, array $open = []): array {
     if ($depth === 0) {
       return [
         $this->color($this->cfgSymbols['completed'], 'cyan') . $this->cfgSpacing['indent'] . $label,
@@ -1419,16 +1508,13 @@ class Prompty {
    *   The current value at the time of cancellation.
    * @param int $depth
    *   The current nesting depth.
-   * @param bool $is_last
-   *   Whether this is the last widget at its depth level.
    * @param array<int, bool> $open
    *   Tracks which depth levels have continuing siblings.
    *
    * @return array<int, string>
    *   The rendered cancelled-state lines.
    */
-  protected function renderCancelled(string $label, string $value, int $depth = 0, bool $is_last = FALSE, array $open = []): array {
-
+  protected function renderCancelled(string $label, string $value, int $depth = 0, array $open = []): array {
     if ($depth === 0) {
       return [
         $this->color($this->cfgSymbols['active'], 'red') . $this->cfgSpacing['indent'] . $label,
@@ -1462,18 +1548,18 @@ class Prompty {
    * @return bool
    *   TRUE if all steps completed, FALSE if the user cancelled.
    */
-  protected function flowWalk(array $steps, int $depth, array $options, string $number_prefix): bool {
+  protected function walkFlow(array $steps, int $depth, array $options, string $number_prefix): bool {
     $step_number = 0;
 
     foreach ($steps as $key => $step) {
       if (is_callable($step)) {
-        $callback = $step;
+        $call = $step;
         $condition = NULL;
         $children = [];
       }
       else {
         /** @var array<string, mixed> $step */
-        $callback = $step['__call'];
+        $call = $step['__call'];
         $condition = isset($step['__condition']) && is_callable($step['__condition']) ? $step['__condition'] : NULL;
         /** @var array<string, mixed> $children */
         $children = is_array($step['__children'] ?? NULL) ? $step['__children'] : [];
@@ -1512,7 +1598,7 @@ class Prompty {
 
       $is_last = $depth > 0 && !$has_next_sibling;
 
-      // Update tree connector state BEFORE creating ctx so the widget sees
+      // Update tree connector state before creating ctx so the widget sees
       // the correct open/closed state for its depth level.
       if ($depth > 0) {
         if ($is_last) {
@@ -1537,8 +1623,8 @@ class Prompty {
         'falsy' => $this->cfgFalsy,
       ];
 
-      /** @var callable $callback */
-      $value = $callback($ctx);
+      /** @var callable $call */
+      $value = $call($ctx);
 
       if ($value === NULL) {
         return FALSE;
@@ -1568,7 +1654,7 @@ class Prompty {
           $sep = $this->bar() . $this->labelPrefix($child_depth, $this->open) . $this->bar();
           $this->printLines([$sep]);
 
-          if (!$this->flowWalk($children, $child_depth, $options, $number)) {
+          if (!$this->walkFlow($children, $child_depth, $options, $number)) {
             return FALSE;
           }
         }

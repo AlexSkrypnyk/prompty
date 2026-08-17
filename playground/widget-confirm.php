@@ -2,7 +2,7 @@
 
 /**
  * @file
- * Playground — confirm widget standalone.
+ * Playground - confirm widget standalone.
  */
 
 declare(strict_types=1);

@@ -18,9 +18,7 @@ final class PromptyWidgetFlowModeTest extends PromptyTestCase {
   protected function setUp(): void {
     parent::setUp();
     // Put Prompty in flow mode so widgets return deferred closures.
-    $this->setStaticProperty('inFlow', TRUE);
-    // Ensure a singleton instance exists.
-    $this->setStaticProperty('instance', $this->createInstance());
+    $this->createAndSetInstance([], TRUE);
   }
 
   public function testTextFlowMode(): void {
@@ -32,9 +30,7 @@ final class PromptyWidgetFlowModeTest extends PromptyTestCase {
   public function testTextFlowModeWithChildren(): void {
     $child = Prompty::text('Child question');
 
-    $result = Prompty::text('Project name',
-      children: ['child_key' => $child],
-    );
+    $result = Prompty::text('Project name', children: ['child_key' => $child]);
 
     $this->assertIsArray($result);
     $this->assertArrayHasKey('__call', $result);
@@ -57,9 +53,7 @@ final class PromptyWidgetFlowModeTest extends PromptyTestCase {
   }
 
   public function testSelectFlowMode(): void {
-    $result = Prompty::select('Framework',
-      options: ['react' => 'React', 'vue' => 'Vue'],
-    );
+    $result = Prompty::select('Framework', options: ['react' => 'React', 'vue' => 'Vue']);
 
     $this->assertInstanceOf(\Closure::class, $result);
   }
@@ -67,10 +61,7 @@ final class PromptyWidgetFlowModeTest extends PromptyTestCase {
   public function testSelectFlowModeWithCondition(): void {
     $condition = fn($r): bool => ($r['type'] ?? '') === 'app';
 
-    $result = Prompty::select('Framework',
-      options: ['react' => 'React'],
-      condition: $condition,
-    );
+    $result = Prompty::select('Framework', options: ['react' => 'React'], condition: $condition);
 
     $this->assertIsArray($result);
     $this->assertArrayHasKey('__call', $result);
@@ -80,10 +71,7 @@ final class PromptyWidgetFlowModeTest extends PromptyTestCase {
   public function testSelectFlowModeWithChildren(): void {
     $child = Prompty::confirm('Use SSR?');
 
-    $result = Prompty::select('Framework',
-      options: ['react' => 'React'],
-      children: ['ssr' => $child],
-    );
+    $result = Prompty::select('Framework', options: ['react' => 'React'], children: ['ssr' => $child]);
 
     $this->assertIsArray($result);
     $this->assertArrayHasKey('__call', $result);
@@ -92,9 +80,7 @@ final class PromptyWidgetFlowModeTest extends PromptyTestCase {
   }
 
   public function testMultiselectFlowMode(): void {
-    $result = Prompty::multiselect('Features',
-      options: ['ts' => 'TypeScript', 'eslint' => 'ESLint'],
-    );
+    $result = Prompty::multiselect('Features', options: ['ts' => 'TypeScript', 'eslint' => 'ESLint']);
 
     $this->assertInstanceOf(\Closure::class, $result);
   }
@@ -121,9 +107,7 @@ final class PromptyWidgetFlowModeTest extends PromptyTestCase {
   }
 
   public function testConfirmFlowModeWithChildren(): void {
-    $result = Prompty::confirm('Enable testing?',
-      children: ['runner' => Prompty::select('Runner', options: ['jest' => 'Jest'])],
-    );
+    $result = Prompty::confirm('Enable testing?', children: ['runner' => Prompty::select('Runner', options: ['jest' => 'Jest'])]);
 
     $this->assertIsArray($result);
     $this->assertArrayHasKey('__call', $result);
@@ -136,15 +120,7 @@ final class PromptyWidgetFlowModeTest extends PromptyTestCase {
 
     $this->assertInstanceOf(\Closure::class, $result);
 
-    // When the flow walker calls the closure with ctx, it should execute
-    // and return the discovered value.
-    $ctx = [
-      'depth' => 0,
-      'is_last' => FALSE,
-      'open' => [],
-      'number' => NULL,
-      'env_value' => NULL,
-    ];
+    $ctx = $this->defaultCtx();
 
     ob_start();
     $value = $result($ctx);

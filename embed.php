@@ -2,7 +2,7 @@
 
 /**
  * @file
- * Embedder — minifies and embeds a PHP class into a target script.
+ * Embedder - minifies and embeds a PHP class into a target script.
  *
  * Part of the Prompty project.
  *
@@ -41,11 +41,9 @@
 
 declare(strict_types=1);
 
-// Configuration — adjust these when reusing for a different project.
-// Path to the PHP class file to embed (relative to this script).
+// Configuration - adjust these when reusing for a different project.
 define('EMBED_SOURCE', __DIR__ . '/Prompty.php');
 
-// Marker comments in the target script.
 define('EMBED_MARKER_START', '@embed-start');
 define('EMBED_MARKER_END', '@embed-end');
 
@@ -69,7 +67,7 @@ for ($arg_i = 1; $arg_i < $argc; $arg_i++) {
   elseif ($argv[$arg_i] === '--source') {
     $arg_i++;
     if ($arg_i >= $argc) {
-      fwrite(STDERR, "Error: --source requires a path argument.\n");
+      fwrite(STDERR, sprintf('Error: --source requires a path argument.%s', PHP_EOL));
       exit(1);
     }
     $source_override = $argv[$arg_i];
@@ -81,7 +79,7 @@ for ($arg_i = 1; $arg_i < $argc; $arg_i++) {
 
 if ($positional === []) {
   $usage = <<<'USAGE'
-Embedder — minifies and embeds a PHP class into a target script.
+Embedder - minifies and embeds a PHP class into a target script.
 
 Usage:
   php embed.php [options] <source-script> [<output-script>]
@@ -124,7 +122,6 @@ else {
     exit(1);
   }
 
-  // If output path is provided, copy source there first.
   $target_path = $positional[1] ?? $input_path;
 
   if (isset($positional[1]) && !copy($input_path, $target_path)) {
@@ -140,7 +137,6 @@ if (!is_file($embed_source)) {
   exit(1);
 }
 
-// Read and tokenize the source class.
 $source = file_get_contents($embed_source);
 
 if ($source === FALSE) {
@@ -164,7 +160,6 @@ for ($i = 0; $i < $token_count; $i++) {
     continue;
   }
 
-  // Walk backwards from the class token to find the preceding docblock.
   for ($j = $i - 1; $j >= 0; $j--) {
     if (!is_array($tokens[$j])) {
       break;
@@ -175,7 +170,6 @@ for ($i = 0; $i < $token_count; $i++) {
       break;
     }
 
-    // Skip whitespace when walking backwards.
     if ($tokens[$j][0] !== T_WHITESPACE) {
       break;
     }
@@ -197,14 +191,11 @@ for ($i = 0; $i < $token_count; $i++) {
   $token_type = $tokens[$i][0];
   $token_value = $tokens[$i][1];
 
-  // Skip <?php tag.
   if ($token_type === T_OPEN_TAG) {
     continue;
   }
 
-  // Skip declare(strict_types=1).
   if ($token_type === T_DECLARE) {
-    // Skip everything until the semicolon after the declare statement.
     while ($i < $token_count) {
       $i++;
       if (is_string($tokens[$i]) && $tokens[$i] === ';') {
@@ -214,7 +205,7 @@ for ($i = 0; $i < $token_count; $i++) {
     continue;
   }
 
-  // Skip the namespace declaration (we re-add it in the embedded output).
+  // Skip the namespace declaration (re-added in the embedded output).
   if ($token_type === T_NAMESPACE) {
     while ($i < $token_count) {
       $i++;
@@ -226,7 +217,6 @@ for ($i = 0; $i < $token_count; $i++) {
     continue;
   }
 
-  // Strip all comments except the class header docblock.
   if ($token_type === T_COMMENT || $token_type === T_DOC_COMMENT) {
     if ($i === $class_header_index) {
       $output .= $token_value;
@@ -234,7 +224,6 @@ for ($i = 0; $i < $token_count; $i++) {
     continue;
   }
 
-  // Skip leading whitespace from the preamble.
   if ($skip_preamble && $token_type === T_WHITESPACE) {
     continue;
   }
@@ -242,12 +231,10 @@ for ($i = 0; $i < $token_count; $i++) {
   $output .= $token_value;
 }
 
-// Trim trailing whitespace from each line.
 $lines = explode("\n", $output);
-$lines = array_map(static fn(string $l): string => preg_replace('/\s+$/', '', $l) ?? $l, $lines);
+$lines = array_map(fn(string $line): string => preg_replace('/\s+$/', '', $line) ?? $line, $lines);
 
-// Remove all blank lines.
-$collapsed = array_values(array_filter($lines, static fn(string $line): bool => $line !== ''));
+$collapsed = array_values(array_filter($lines, fn(string $line): bool => $line !== ''));
 
 // Collapse multi-line property array declarations to single lines.
 $result_lines = [];
@@ -257,7 +244,6 @@ $line_count = count($collapsed);
 while ($i < $line_count) {
   $line = $collapsed[$i];
 
-  // Only collapse property declarations (protected/public/private array).
   if (preg_match('/^\s*(protected|public|private)\s+array\s+\$\w+\s*=\s*\[$/', $line)) {
     $depth = 1;
     $parts = [preg_replace('/\s+$/', '', $line) ?? $line];
@@ -295,7 +281,7 @@ foreach ($result_lines as $idx => $result_line) {
 if ($class_start !== NULL) {
   $before_class = array_slice($result_lines, 0, $class_start);
   $class_lines = array_slice($result_lines, $class_start);
-  $class_single = implode(' ', array_map(static fn(string $l): string => preg_replace('/^\s+|\s+$/', '', $l) ?? $l, $class_lines));
+  $class_single = implode(' ', array_map(fn(string $line): string => preg_replace('/^\s+|\s+$/', '', $line) ?? $line, $class_lines));
   $result_lines = array_merge($before_class, [$class_single]);
 }
 
@@ -324,30 +310,29 @@ if ($compact && $class_start !== NULL) {
       continue;
     }
 
-    $tt = $ctokens[$i][0];
+    $token_type = $ctokens[$i][0];
 
-    if ($tt === T_PUBLIC) {
+    if ($token_type === T_PUBLIC) {
       $visibility = 'public';
       $is_static = FALSE;
       continue;
     }
 
-    if ($tt === T_PROTECTED || $tt === T_PRIVATE) {
+    if ($token_type === T_PROTECTED || $token_type === T_PRIVATE) {
       $visibility = 'protected';
       $is_static = FALSE;
       continue;
     }
 
-    if ($tt === T_STATIC) {
+    if ($token_type === T_STATIC) {
       $is_static = TRUE;
       continue;
     }
 
-    // Property declaration.
-    if ($tt === T_VARIABLE && $visibility !== NULL) {
+    if ($token_type === T_VARIABLE && $visibility !== NULL) {
       $prop_name = substr($ctokens[$i][1], 1);
 
-      // Check if next non-whitespace is '(' — that would make it a
+      // Check if next non-whitespace is '(' - that would make it a
       // method parameter, not a property.
       $is_property = TRUE;
       for ($k = $i - 1; $k >= 0; $k--) {
@@ -368,9 +353,7 @@ if ($compact && $class_start !== NULL) {
       continue;
     }
 
-    // Method declaration.
-    if ($tt === T_FUNCTION) {
-      // Find the method name.
+    if ($token_type === T_FUNCTION) {
       for ($k = $i + 1; $k < $ctokens_count; $k++) {
         if (is_array($ctokens[$k]) && $ctokens[$k][0] === T_WHITESPACE) {
           continue;
@@ -378,13 +361,11 @@ if ($compact && $class_start !== NULL) {
         if (is_array($ctokens[$k]) && $ctokens[$k][0] === T_STRING) {
           $method_name = $ctokens[$k][1];
 
-          // Skip magic methods.
           if (!str_starts_with($method_name, '__')) {
             if ($visibility !== 'public') {
               $protected_methods[] = $method_name;
             }
             else {
-              // Collect public method parameter names.
               $paren_depth = 0;
               for ($m = $k + 1; $m < $ctokens_count; $m++) {
                 if (is_string($ctokens[$m]) && $ctokens[$m] === '(') {
@@ -410,8 +391,8 @@ if ($compact && $class_start !== NULL) {
       continue;
     }
 
-    // Reset visibility if we hit something unexpected.
-    if (!in_array($tt, [T_WHITESPACE, T_STRING, T_ARRAY, T_NS_SEPARATOR], TRUE) && $ctokens[$i][1] !== '?') {
+    // Reset visibility on any unexpected token.
+    if (!in_array($token_type, [T_WHITESPACE, T_STRING, T_ARRAY, T_NS_SEPARATOR], TRUE) && $ctokens[$i][1] !== '?') {
       $visibility = NULL;
       $is_static = FALSE;
     }
@@ -432,8 +413,6 @@ if ($compact && $class_start !== NULL) {
     $idx++;
   }
 
-  // Collect all variable names used in the class (excluding $this,
-  // superglobals, and public method params).
   $superglobals = [
     'this', 'GLOBALS', '_SERVER', '_GET', '_POST', '_FILES',
     '_COOKIE', '_SESSION', '_REQUEST', '_ENV', 'argc', 'argv',
@@ -458,7 +437,6 @@ if ($compact && $class_start !== NULL) {
       continue;
     }
 
-    // Skip public method parameter names.
     if (isset($public_method_params[$var_name])) {
       continue;
     }
@@ -488,12 +466,11 @@ if ($compact && $class_start !== NULL) {
       continue;
     }
 
-    $tt = $ctokens[$i][0];
-    $tv = $ctokens[$i][1];
+    $token_type = $ctokens[$i][0];
+    $token_value = $ctokens[$i][1];
 
-    // Rename variables.
-    if ($tt === T_VARIABLE) {
-      $var_name = substr($tv, 1);
+    if ($token_type === T_VARIABLE) {
+      $var_name = substr($token_value, 1);
 
       // Property reference after -> : the variable itself stays, the
       // property name is handled as T_STRING after T_OBJECT_OPERATOR.
@@ -508,13 +485,11 @@ if ($compact && $class_start !== NULL) {
         continue;
       }
 
-      $compact_output .= $tv;
+      $compact_output .= $token_value;
       continue;
     }
 
-    // Rename property/method access after -> or ::.
-    if ($tt === T_STRING) {
-      // Check if preceded by -> (object operator).
+    if ($token_type === T_STRING) {
       $prev = NULL;
       for ($k = $i - 1; $k >= 0; $k--) {
         if (is_array($ctokens[$k]) && $ctokens[$k][0] === T_WHITESPACE) {
@@ -525,7 +500,6 @@ if ($compact && $class_start !== NULL) {
       }
 
       if ($prev === T_OBJECT_OPERATOR || $prev === T_NULLSAFE_OBJECT_OPERATOR) {
-        // Check if it's a method call (followed by '(') or property access.
         $next = NULL;
         for ($k = $i + 1; $k < $ctokens_count; $k++) {
           if (is_array($ctokens[$k]) && $ctokens[$k][0] === T_WHITESPACE) {
@@ -535,19 +509,18 @@ if ($compact && $class_start !== NULL) {
           break;
         }
 
-        if ($next === '(' && isset($method_map[$tv])) {
-          $compact_output .= $method_map[$tv];
+        if ($next === '(' && isset($method_map[$token_value])) {
+          $compact_output .= $method_map[$token_value];
           continue;
         }
 
-        if ($next !== '(' && isset($prop_map[$tv])) {
-          $compact_output .= $prop_map[$tv];
+        if ($next !== '(' && isset($prop_map[$token_value])) {
+          $compact_output .= $prop_map[$token_value];
           continue;
         }
       }
 
-      // Static method call: static::methodName(.
-      if ($prev === T_DOUBLE_COLON && isset($method_map[$tv])) {
+      if ($prev === T_DOUBLE_COLON && isset($method_map[$token_value])) {
         $next = NULL;
         for ($k = $i + 1; $k < $ctokens_count; $k++) {
           if (is_array($ctokens[$k]) && $ctokens[$k][0] === T_WHITESPACE) {
@@ -557,27 +530,26 @@ if ($compact && $class_start !== NULL) {
           break;
         }
         if ($next === '(') {
-          $compact_output .= $method_map[$tv];
+          $compact_output .= $method_map[$token_value];
           continue;
         }
       }
 
-      // Method declaration: function methodName.
-      if ($prev === T_FUNCTION && isset($method_map[$tv])) {
-        $compact_output .= $method_map[$tv];
+      if ($prev === T_FUNCTION && isset($method_map[$token_value])) {
+        $compact_output .= $method_map[$token_value];
         continue;
       }
 
-      $compact_output .= $tv;
+      $compact_output .= $token_value;
       continue;
     }
 
-    $compact_output .= $tv;
+    $compact_output .= $token_value;
   }
 
   // --- Step 4: Reduce whitespace. ---
   // Remove spaces around operators where PHP allows it.
-  // Be careful not to modify string contents — work on tokens.
+  // Works on tokens so string contents are not modified.
   $ws_tokens = token_get_all('<?php ' . $compact_output);
   $ws_count = count($ws_tokens);
   $ws_output = '';
@@ -588,12 +560,10 @@ if ($compact && $class_start !== NULL) {
       continue;
     }
 
-    $tt = $ws_tokens[$i][0];
-    $tv = $ws_tokens[$i][1];
+    $token_type = $ws_tokens[$i][0];
+    $token_value = $ws_tokens[$i][1];
 
-    // Collapse whitespace to a single space, then check if it can be removed.
-    if ($tt === T_WHITESPACE) {
-      // Check what comes before and after.
+    if ($token_type === T_WHITESPACE) {
       $before = is_array($ws_tokens[$i - 1]) ? $ws_tokens[$i - 1][1] : $ws_tokens[$i - 1];
       $after = '';
       if ($i + 1 < $ws_count) {
@@ -611,20 +581,17 @@ if ($compact && $class_start !== NULL) {
         // Space is needed between two word characters.
         $ws_output .= ' ';
       }
-      // Otherwise, remove the space entirely.
       continue;
     }
 
-    $ws_output .= $tv;
+    $ws_output .= $token_value;
   }
 
-  // Replace the class line in result_lines.
   $result_lines = $before_class;
   $result_lines[] = $ws_output;
   $minified = implode("\n", $result_lines);
 }
 
-// Extract namespace from source.
 $namespace = '';
 if (preg_match('/^\s*namespace\s+(.+?)\s*;/m', $source, $ns_match)) {
   $namespace = $ns_match[1];
@@ -632,7 +599,6 @@ if (preg_match('/^\s*namespace\s+(.+?)\s*;/m', $source, $ns_match)) {
 
 $class_content = preg_replace('/^\s+|\s+$/', '', $minified) . "\n";
 
-// Add phpstan-ignore-next-line before the class declaration.
 $class_content = preg_replace('/^(class\s)/m', "// @phpstan-ignore-next-line\n$1", $class_content, 1);
 
 // Run Rector on the processed class content if available.
@@ -640,7 +606,11 @@ $rector_bin = __DIR__ . '/vendor/bin/rector';
 $rector_config = __DIR__ . '/rector.php';
 
 if (is_file($rector_bin) && is_file($rector_config)) {
-  $rector_tmp = tempnam(sys_get_temp_dir(), 'embed_rector_');
+  $tmp_dir = __DIR__ . '/.artifacts/tmp';
+  if (!is_dir($tmp_dir)) {
+    mkdir($tmp_dir, 0755, TRUE);
+  }
+  $rector_tmp = tempnam($tmp_dir, 'embed_rector_');
   rename($rector_tmp, $rector_tmp . '.php');
   $rector_tmp .= '.php';
 
@@ -650,10 +620,13 @@ if (is_file($rector_bin) && is_file($rector_config)) {
 
   $rector_output = [];
   $rector_exit = 0;
-  exec('php ' . escapeshellarg($rector_bin) . ' process --no-ansi --config=' . escapeshellarg($rector_config) . ' ' . escapeshellarg($rector_tmp) . ' 2>&1', $rector_output, $rector_exit);
+  exec(
+    'php ' . escapeshellarg($rector_bin) . ' process --no-ansi --config=' . escapeshellarg($rector_config) . ' ' . escapeshellarg($rector_tmp) . ' 2>&1',
+    $rector_output,
+    $rector_exit,
+  );
 
   if ($rector_exit <= 1) {
-    // Read back the processed content and strip the PHP preamble.
     $rector_result = file_get_contents($rector_tmp);
     if ($rector_result !== FALSE) {
       $rector_result = preg_replace('/^<\?php\s+declare\(strict_types\s*=\s*1\)\s*;\s*/s', '', $rector_result);
@@ -675,14 +648,13 @@ if ($stdout) {
 
   file_put_contents($stdout_path, $standalone);
 
-  // Validate with php -l.
   $lint_output = [];
   $lint_exit = 0;
   exec('php -l ' . escapeshellarg($stdout_path) . ' 2>&1', $lint_output, $lint_exit);
 
   if ($lint_exit !== 0) {
-    fwrite(STDERR, "Error: PHP lint failed:\n");
-    fwrite(STDERR, implode("\n", $lint_output) . "\n");
+    fwrite(STDERR, sprintf('Error: PHP lint failed:%s', PHP_EOL));
+    fwrite(STDERR, implode(PHP_EOL, $lint_output) . PHP_EOL);
     exit(1);
   }
 
@@ -695,7 +667,6 @@ $embedded = '// ' . EMBED_MARKER_START . "\n";
 $embedded .= $class_content;
 $embedded .= '// ' . EMBED_MARKER_END;
 
-// Read target file and replace marker region.
 $target = file_get_contents($target_path);
 
 if ($target === FALSE) {
@@ -717,11 +688,10 @@ if (!preg_match($pattern, $target)) {
 $result = preg_replace($pattern, str_replace(['\\', '$'], ['\\\\', '\\$'], $embedded), $target, 1);
 
 if ($result === NULL) {
-  fwrite(STDERR, "Error: Failed to replace marker region.\n");
+  fwrite(STDERR, sprintf('Error: Failed to replace marker region.%s', PHP_EOL));
   exit(1);
 }
 
-// Collapse any resulting consecutive blank lines.
 $result = preg_replace('/\n{3,}/', "\n\n", $result);
 
 // Inject kill switch if not present and not opted out.
@@ -730,15 +700,13 @@ $has_killswitch = str_contains((string) $result, "if (!getenv('SHOULD_PROCEED'))
 if (!$has_killswitch && !$no_killswitch) {
   $killswitch = <<<'KILLSWITCH'
 
-// Kill switch — stop here when running under tests.
+// Kill switch - stop here when running under tests.
 // In production, set SHOULD_PROCEED=1 to continue past this point.
 if (!getenv('SHOULD_PROCEED')) {
   return;
 }
 KILLSWITCH;
 
-  // Insert after the // phpcs:enable line if present, otherwise
-  // after @embed-end.
   if (str_contains((string) $result, '// phpcs:enable')) {
     $result = preg_replace('/(\/\/ phpcs:enable\n)/', '$1' . $killswitch, (string) $result, 1);
   }
@@ -747,23 +715,20 @@ KILLSWITCH;
   }
 }
 
-// Write the result.
 file_put_contents($target_path, $result);
 
-// Validate with php -l.
 $lint_output = [];
 $lint_exit = 0;
 exec('php -l ' . escapeshellarg($target_path) . ' 2>&1', $lint_output, $lint_exit);
 
 if ($lint_exit !== 0) {
-  fwrite(STDERR, "Error: PHP lint failed after embedding:\n");
-  fwrite(STDERR, implode("\n", $lint_output) . "\n");
+  fwrite(STDERR, sprintf('Error: PHP lint failed after embedding:%s', PHP_EOL));
+  fwrite(STDERR, implode(PHP_EOL, $lint_output) . PHP_EOL);
   exit(1);
 }
 
 echo sprintf('Embedded into %s%s', $target_path, PHP_EOL);
 
-// Check final kill switch state for warnings.
 $final_content = file_get_contents($target_path);
 $final_has_killswitch = $final_content !== FALSE && str_contains($final_content, "if (!getenv('SHOULD_PROCEED'))");
 
@@ -771,14 +736,13 @@ if (!$final_has_killswitch) {
   echo "\033[33mWarning: No kill switch found in the target file. Please test the embedded script manually.\033[0m" . PHP_EOL;
 }
 elseif (posix_isatty(STDIN)) {
-  // Run the embedded script to verify it works (only in interactive mode).
   echo sprintf('Verifying embedded script (interactive input required)...%s', PHP_EOL);
 
   $verify_exit = 0;
   passthru('php ' . escapeshellarg($target_path), $verify_exit);
 
   if ($verify_exit !== 0) {
-    fwrite(STDERR, sprintf("Warning: Embedded script exited with code %d.%s", $verify_exit, PHP_EOL));
+    fwrite(STDERR, sprintf('Warning: Embedded script exited with code %d.%s', $verify_exit, PHP_EOL));
   }
 }
 else {
@@ -802,7 +766,7 @@ else {
     $verify_exit = proc_close($verify_proc);
 
     if ($verify_exit !== 0) {
-      fwrite(STDERR, sprintf("Warning: Embedded script exited with code %d.%s", $verify_exit, PHP_EOL));
+      fwrite(STDERR, sprintf('Warning: Embedded script exited with code %d.%s', $verify_exit, PHP_EOL));
     }
   }
 }

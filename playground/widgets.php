@@ -2,9 +2,9 @@
 
 /**
  * @file
- * Playground — each widget type standalone, one at a time.
+ * Playground - each widget type standalone, one at a time.
  *
- * Widgets are called directly without a flow — they handle TTY setup/teardown
+ * Widgets are called directly without a flow - they handle TTY setup/teardown
  * internally in standalone mode.
  */
 

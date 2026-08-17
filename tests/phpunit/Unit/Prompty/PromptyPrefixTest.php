@@ -17,13 +17,13 @@ use PHPUnit\Framework\Attributes\Group;
 final class PromptyPrefixTest extends PromptyTestCase {
 
   #[DataProvider('dataProviderLabelPrefix')]
-  public function testLabelPrefix(int $depth, array $open, string $expected_stripped): void {
+  public function testLabelPrefix(int $depth, array $open, string $expected): void {
     $p = $this->createInstance();
 
     $result = $this->callProtected($p, 'labelPrefix', $depth, $open);
 
     $this->assertIsString($result);
-    $this->assertSame($expected_stripped, $this->stripAnsi($result));
+    $this->assertSame($expected, $this->stripAnsi($result));
   }
 
   public static function dataProviderLabelPrefix(): \Iterator {
@@ -44,13 +44,13 @@ final class PromptyPrefixTest extends PromptyTestCase {
   }
 
   #[DataProvider('dataProviderBodyPrefix')]
-  public function testBodyPrefix(int $depth, array $open, string $expected_stripped): void {
+  public function testBodyPrefix(int $depth, array $open, string $expected): void {
     $p = $this->createInstance();
 
     $result = $this->callProtected($p, 'bodyPrefix', $depth, $open);
 
     $this->assertIsString($result);
-    $this->assertSame($expected_stripped, $this->stripAnsi($result));
+    $this->assertSame($expected, $this->stripAnsi($result));
   }
 
   public static function dataProviderBodyPrefix(): \Iterator {

@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace AlexSkrypnyk\Prompty;
 
 /**
- * PromptyTestTrait — testing helper for Prompty interactive prompts.
+ * PromptyTestTrait - testing helper for Prompty interactive prompts.
  *
- * Ships alongside Prompty.php. Include in your PHPUnit test case to simulate
+ * Ships alongside Prompty.php. Include in a PHPUnit test case to simulate
  * keystrokes, capture output, and assert on results without a real TTY.
  *
  * Usage:
@@ -72,10 +72,8 @@ trait PromptyTestTrait {
       }
     }
 
-    // Create and configure the singleton instance.
     $instance = $this->promptyCreateInstance($config);
 
-    // Inject keystroke stream into the instance.
     if ($stream !== NULL) {
       $this->promptySetProperty($instance, 'input', $stream);
     }
@@ -129,7 +127,7 @@ trait PromptyTestTrait {
     }
 
     // Pre-create a singleton with the stream injected.
-    // The script's flow() call will reuse this instance.
+    // The script's flow() call reuses this instance.
     $instance = $this->promptyCreateInstance();
     if ($stream !== NULL) {
       $this->promptySetProperty($instance, 'input', $stream);
@@ -257,7 +255,7 @@ trait PromptyTestTrait {
   /**
    * Clean up Prompty singleton state.
    *
-   * Call this in your tearDown() method.
+   * Call from the test case's tearDown() method.
    */
   protected function promptyTearDown(): void {
     $this->promptySetStatic('instance', NULL);

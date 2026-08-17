@@ -49,17 +49,9 @@ final class PromptyConfigTest extends PromptyTestCase {
   }
 
   public static function dataProviderConfigOverrides(): \Iterator {
-    yield 'custom env_prefix' => [
-      ['env_prefix' => 'MY_APP_'],
-      'cfgEnvPrefix',
-      'MY_APP_',
-    ];
+    yield 'custom env_prefix' => [['env_prefix' => 'MY_APP_'], 'cfgEnvPrefix', 'MY_APP_'];
 
-    yield 'custom truthy values' => [
-      ['truthy' => ['y', 'on', 'yep']],
-      'cfgTruthy',
-      ['y', 'on', 'yep'],
-    ];
+    yield 'custom truthy values' => [['truthy' => ['y', 'on', 'yep']], 'cfgTruthy', ['y', 'on', 'yep']];
 
     yield 'custom labels' => [
       ['labels' => ['yes' => 'Yep', 'no' => 'Nope', 'cancelled' => '(nah)', 'none' => 'Zilch', 'separator' => '|']],
@@ -70,7 +62,6 @@ final class PromptyConfigTest extends PromptyTestCase {
 
   #[DataProvider('dataProviderUnicodeDetection')]
   public function testUnicodeDetection(string $env_var, string $env_value, bool $expected): void {
-    // Clear all locale env vars first.
     $saved = [];
     foreach (['LANG', 'LC_ALL', 'LC_CTYPE'] as $var) {
       $saved[$var] = getenv($var);
@@ -83,7 +74,6 @@ final class PromptyConfigTest extends PromptyTestCase {
 
     $this->assertSame($expected, $this->getProperty($p, 'cfgUnicode'));
 
-    // Restore env vars.
     foreach ($saved as $var => $value) {
       $value !== FALSE ? putenv($var . '=' . $value) : putenv($var);
     }
@@ -129,8 +119,7 @@ final class PromptyConfigTest extends PromptyTestCase {
 
   #[DataProvider('dataProviderConfigure')]
   public function testConfigure(array $args, string $property, mixed $expected): void {
-    $p = $this->createInstance();
-    $this->setStaticProperty('instance', $p);
+    $p = $this->createAndSetInstance();
 
     Prompty::configure(...$args);
 
@@ -138,40 +127,19 @@ final class PromptyConfigTest extends PromptyTestCase {
   }
 
   public static function dataProviderConfigure(): \Iterator {
-    yield 'env_prefix' => [
-      ['env_prefix' => 'MYAPP_'],
-      'cfgEnvPrefix',
-      'MYAPP_',
-    ];
+    yield 'env_prefix' => [['env_prefix' => 'MYAPP_'], 'cfgEnvPrefix', 'MYAPP_'];
 
-    yield 'truthy' => [
-      ['truthy' => ['y', 'on']],
-      'cfgTruthy',
-      ['y', 'on'],
-    ];
+    yield 'truthy' => [['truthy' => ['y', 'on']], 'cfgTruthy', ['y', 'on']];
 
-    yield 'falsy' => [
-      ['falsy' => ['n', 'off']],
-      'cfgFalsy',
-      ['n', 'off'],
-    ];
+    yield 'falsy' => [['falsy' => ['n', 'off']], 'cfgFalsy', ['n', 'off']];
 
-    yield 'unicode true' => [
-      ['unicode' => TRUE],
-      'cfgUnicode',
-      TRUE,
-    ];
+    yield 'unicode true' => [['unicode' => TRUE], 'cfgUnicode', TRUE];
 
-    yield 'unicode false' => [
-      ['unicode' => FALSE],
-      'cfgUnicode',
-      FALSE,
-    ];
+    yield 'unicode false' => [['unicode' => FALSE], 'cfgUnicode', FALSE];
   }
 
   public function testConfigurePartialArrayMerge(): void {
-    $p = $this->createInstance();
-    $this->setStaticProperty('instance', $p);
+    $p = $this->createAndSetInstance();
 
     /** @var array<string, string> $original_labels */
     $original_labels = $this->getProperty($p, 'cfgLabels');
@@ -186,8 +154,7 @@ final class PromptyConfigTest extends PromptyTestCase {
   }
 
   public function testConfigureColors(): void {
-    $p = $this->createInstance();
-    $this->setStaticProperty('instance', $p);
+    $p = $this->createAndSetInstance();
 
     Prompty::configure(colors: ['cyan' => "\033[96m"]);
 
@@ -198,8 +165,7 @@ final class PromptyConfigTest extends PromptyTestCase {
   }
 
   public function testConfigureSpacing(): void {
-    $p = $this->createInstance();
-    $this->setStaticProperty('instance', $p);
+    $p = $this->createAndSetInstance();
 
     Prompty::configure(spacing: ['indent' => '    ']);
 
@@ -210,8 +176,7 @@ final class PromptyConfigTest extends PromptyTestCase {
   }
 
   public function testConfigureSymbolsUnicode(): void {
-    $p = $this->createInstance(['unicode' => TRUE]);
-    $this->setStaticProperty('instance', $p);
+    $p = $this->createAndSetInstance(['unicode' => TRUE]);
 
     Prompty::configure(symbols_unicode: ['bar' => '┃']);
 
@@ -225,8 +190,7 @@ final class PromptyConfigTest extends PromptyTestCase {
   }
 
   public function testConfigureSymbolsAscii(): void {
-    $p = $this->createInstance(['unicode' => FALSE]);
-    $this->setStaticProperty('instance', $p);
+    $p = $this->createAndSetInstance(['unicode' => FALSE]);
 
     Prompty::configure(symbols_ascii: ['bar' => '!']);
 
@@ -241,10 +205,11 @@ final class PromptyConfigTest extends PromptyTestCase {
 
   #[DataProvider('dataProviderAnsiDetection')]
   public function testAnsiDetection(string $env_var, string $env_value, bool $expected): void {
-    $saved_no_color = getenv('NO_COLOR');
-    $saved_term = getenv('TERM');
-    putenv('NO_COLOR');
-    putenv('TERM');
+    $saved = [];
+    foreach (['NO_COLOR', 'TERM'] as $var) {
+      $saved[$var] = getenv($var);
+      putenv($var);
+    }
 
     if ($env_value !== '') {
       putenv($env_var . '=' . $env_value);
@@ -254,8 +219,9 @@ final class PromptyConfigTest extends PromptyTestCase {
 
     $this->assertSame($expected, $this->getProperty($p, 'cfgAnsi'));
 
-    $saved_no_color !== FALSE ? putenv('NO_COLOR=' . $saved_no_color) : putenv('NO_COLOR');
-    $saved_term !== FALSE ? putenv('TERM=' . $saved_term) : putenv('TERM');
+    foreach ($saved as $var => $value) {
+      $value !== FALSE ? putenv($var . '=' . $value) : putenv($var);
+    }
   }
 
   public static function dataProviderAnsiDetection(): \Iterator {
@@ -287,8 +253,7 @@ final class PromptyConfigTest extends PromptyTestCase {
   }
 
   public function testConfigureAnsiToggle(): void {
-    $p = $this->createInstance();
-    $this->setStaticProperty('instance', $p);
+    $p = $this->createAndSetInstance();
 
     Prompty::configure(ansi: FALSE);
 
@@ -306,8 +271,7 @@ final class PromptyConfigTest extends PromptyTestCase {
   }
 
   public function testConfigureAnsiWithColorOverrides(): void {
-    $p = $this->createInstance();
-    $this->setStaticProperty('instance', $p);
+    $p = $this->createAndSetInstance();
 
     Prompty::configure(colors: ['cyan' => "\033[96m"]);
     Prompty::configure(ansi: FALSE);
@@ -324,8 +288,7 @@ final class PromptyConfigTest extends PromptyTestCase {
   }
 
   public function testAnsiInConfig(): void {
-    $p = $this->createInstance(['ansi' => FALSE]);
-    $this->setStaticProperty('instance', $p);
+    $this->createAndSetInstance(['ansi' => FALSE]);
 
     /** @var array<string, mixed> $cfg */
     $cfg = Prompty::config();
@@ -334,8 +297,7 @@ final class PromptyConfigTest extends PromptyTestCase {
   }
 
   public function testConfigureUnicodeResolvesSymbols(): void {
-    $p = $this->createInstance(['unicode' => FALSE]);
-    $this->setStaticProperty('instance', $p);
+    $p = $this->createAndSetInstance(['unicode' => FALSE]);
 
     /** @var array<string, string> $symbols_before */
     $symbols_before = $this->getProperty($p, 'cfgSymbols');
@@ -349,8 +311,7 @@ final class PromptyConfigTest extends PromptyTestCase {
   }
 
   public function testConfigureNullsAreIgnored(): void {
-    $p = $this->createInstance();
-    $this->setStaticProperty('instance', $p);
+    $p = $this->createAndSetInstance();
 
     $original_prefix = $this->getProperty($p, 'cfgEnvPrefix');
 
