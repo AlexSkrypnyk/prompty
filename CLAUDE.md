@@ -33,9 +33,9 @@ Namespace: `AlexSkrypnyk\Prompty`. Key files: `Prompty.php` (library),
 
 ### Playground
 
-- `playground/widgets.php` - standalone widget demos.
-- `playground/flow.php` - linear flow.
-- `playground/flow-nested.php` - nested flow with conditionals.
+`playground/` holds runnable demos - `widgets*.php` and `widget-*.php` for
+standalone widgets, `flow*.php` for flows. `CONTRIBUTING.md` lists what each
+one shows and which accept `--no-unicode` / `--no-ansi`.
 
 ## Demo content
 
@@ -52,14 +52,14 @@ composer lint          # PHPCS + PHPStan + Rector dry-run
 composer lint-fix      # Rector + PHPCBF
 composer test          # PHPUnit (no coverage)
 composer test-coverage # PHPUnit with coverage
-composer reset         # rm vendor/, reinstall
+composer reset         # rm vendor/, vendor-bin/, composer.lock
 ```
 
 ## Code Quality
 
 1. **PHPCS** - Drupal standard + strict types (`phpcs.xml`)
 2. **PHPStan** - Level 9 (`phpstan.neon`)
-3. **Rector** - PHP 8.2/8.3 modernization (`rector.php`)
+3. **Rector** - PHP 8.2 modernization (`rector.php`)
 
 ## Conventions
 
