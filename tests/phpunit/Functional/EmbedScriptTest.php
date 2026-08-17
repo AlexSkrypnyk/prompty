@@ -126,7 +126,7 @@ final class EmbedScriptTest extends FunctionalTestCase {
     $this->assertStarterFlowWorks($target);
 
     // Simulate a user editing the script outside the embedded block.
-    $modified = str_replace("intro: 'Create a new project'", "intro: 'Create a NEW project'", $first_content);
+    $modified = str_replace("intro: 'Compose an order'", "intro: 'Compose an ORDER'", $first_content);
     $this->assertNotSame($first_content, $modified);
     file_put_contents($target, $modified);
 
@@ -137,7 +137,7 @@ final class EmbedScriptTest extends FunctionalTestCase {
     $this->assertPhpLintPasses($target);
 
     // User's edit preserved.
-    $this->assertStringContainsString("intro: 'Create a NEW project'", $re_embedded);
+    $this->assertStringContainsString("intro: 'Compose an ORDER'", $re_embedded);
 
     // Markers still present.
     $this->assertStringContainsString('// @embed-start', $re_embedded);
@@ -244,7 +244,7 @@ final class EmbedScriptTest extends FunctionalTestCase {
     $target = $this->prepareTarget();
 
     $keystrokes = $this->keys(
-      'my-project', self::KEYS['ENTER'],
+      'plum compote', self::KEYS['ENTER'],
       self::KEYS['DOWN'], self::KEYS['ENTER'],
       self::KEYS['SPACE'], self::KEYS['ENTER'],
       self::KEYS['ENTER'],

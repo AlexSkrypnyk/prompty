@@ -101,12 +101,12 @@ abstract class FunctionalTestCase extends TestCase {
   /**
    * Assert that a starter script produces expected output for a standard flow.
    *
-   * Runs the script with keystrokes that select: name=my-project,
-   * framework=Vue, features=[TypeScript], install=Yes.
+   * Runs the script with keystrokes that select: dish=plum compote,
+   * course=Main, extras=[Bread], send=Yes.
    */
   protected function assertStarterFlowWorks(string $script_path): void {
     $keystrokes = $this->keys(
-      'my-project', self::KEYS['ENTER'],
+      'plum compote', self::KEYS['ENTER'],
       self::KEYS['DOWN'], self::KEYS['ENTER'],
       self::KEYS['SPACE'], self::KEYS['ENTER'],
       self::KEYS['ENTER'],
@@ -114,11 +114,11 @@ abstract class FunctionalTestCase extends TestCase {
 
     $output = $this->runScript($script_path, $keystrokes);
 
-    $this->assertStringContainsString('Create a new project', $output);
-    $this->assertStringContainsString('Project created!', $output);
-    $this->assertStringContainsString('my-project', $output);
-    $this->assertStringContainsString('Vue', $output);
-    $this->assertStringContainsString('TypeScript', $output);
+    $this->assertStringContainsString('Compose an order', $output);
+    $this->assertStringContainsString('Order sent!', $output);
+    $this->assertStringContainsString('plum compote', $output);
+    $this->assertStringContainsString('Main', $output);
+    $this->assertStringContainsString('Bread', $output);
     $this->assertStringContainsString('Yes', $output);
   }
 
