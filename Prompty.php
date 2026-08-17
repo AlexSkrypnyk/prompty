@@ -1284,40 +1284,6 @@ class Prompty {
   }
 
   /**
-   * Renders the intro banner lines.
-   *
-   * @param string $message
-   *   The intro message to display.
-   *
-   * @return array<int, string>
-   *   The rendered intro lines.
-   */
-  protected function renderIntro(string $message): array {
-    return [
-      '',
-      $this->color($this->cfgSymbols['intro'], 'gray') . $this->cfgSpacing['indent'] . $this->color($message, 'bold'),
-      $this->bar(),
-    ];
-  }
-
-  /**
-   * Renders the outro banner lines.
-   *
-   * @param string $message
-   *   The outro message to display.
-   *
-   * @return array<int, string>
-   *   The rendered outro lines.
-   */
-  protected function renderOutro(string $message): array {
-    return [
-      $this->bar(),
-      $this->color($this->cfgSymbols['outro'], 'gray') . $this->cfgSpacing['indent'] . $this->color($message, 'green'),
-      '',
-    ];
-  }
-
-  /**
    * Clears previously printed lines and redraws with new content.
    *
    * @param int $prev_line_count
@@ -1378,6 +1344,60 @@ class Prompty {
   }
 
   /**
+   * Appends a step number suffix to a label when numbering is enabled.
+   *
+   * @param string $label
+   *   The original label text.
+   * @param array<string, mixed> $ctx
+   *   Flow context.
+   *
+   * @return string
+   *   The label with an optional step number suffix.
+   */
+  protected function numberLabel(string $label, array $ctx): string {
+    if (isset($ctx['number'])) {
+      /** @var string $number */
+      $number = $ctx['number'];
+      return $label . ' ' . $this->color('(' . $number . ')', 'dim');
+    }
+    return $label;
+  }
+
+  /**
+   * Renders the intro banner lines.
+   *
+   * @param string $message
+   *   The intro message to display.
+   *
+   * @return array<int, string>
+   *   The rendered intro lines.
+   */
+  protected function renderIntro(string $message): array {
+    return [
+      '',
+      $this->color($this->cfgSymbols['intro'], 'gray') . $this->cfgSpacing['indent'] . $this->color($message, 'bold'),
+      $this->bar(),
+    ];
+  }
+
+  /**
+   * Renders the outro banner lines.
+   *
+   * @param string $message
+   *   The outro message to display.
+   *
+   * @return array<int, string>
+   *   The rendered outro lines.
+   */
+  protected function renderOutro(string $message): array {
+    return [
+      $this->bar(),
+      $this->color($this->cfgSymbols['outro'], 'gray') . $this->cfgSpacing['indent'] . $this->color($message, 'green'),
+      '',
+    ];
+  }
+
+  /**
    * Renders description text lines with appropriate depth indentation.
    *
    * @param string $description
@@ -1428,26 +1448,6 @@ class Prompty {
       $hint_lines,
       array_keys($hint_lines),
     );
-  }
-
-  /**
-   * Appends a step number suffix to a label when numbering is enabled.
-   *
-   * @param string $label
-   *   The original label text.
-   * @param array<string, mixed> $ctx
-   *   Flow context.
-   *
-   * @return string
-   *   The label with an optional step number suffix.
-   */
-  protected function numberLabel(string $label, array $ctx): string {
-    if (isset($ctx['number'])) {
-      /** @var string $number */
-      $number = $ctx['number'];
-      return $label . ' ' . $this->color('(' . $number . ')', 'dim');
-    }
-    return $label;
   }
 
   /**
