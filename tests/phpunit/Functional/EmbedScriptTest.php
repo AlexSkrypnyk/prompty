@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace AlexSkrypnyk\Prompty\Tests\Functional;
 
 use PHPUnit\Framework\Attributes\CoversNothing;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Group;
 
 /**
@@ -211,17 +212,6 @@ final class EmbedScriptTest extends FunctionalTestCase {
     $this->assertRectorClean($output_path);
   }
 
-  public function testEmbedKillswitchAlreadyPresent(): void {
-    $target = $this->prepareTarget();
-
-    $this->runEmbed($target);
-
-    $content = file_get_contents($target);
-    $this->assertIsString($content);
-
-    $this->assertSame(1, substr_count($content, "if (!getenv('SHOULD_PROCEED'))"), 'Kill switch should appear exactly once.');
-  }
-
   public function testEmbedKillswitchInjected(): void {
     $target = $this->prepareTargetWithoutKillswitch();
 
@@ -240,32 +230,39 @@ final class EmbedScriptTest extends FunctionalTestCase {
     $this->assertGreaterThan($embed_end_pos, $killswitch_pos);
   }
 
-  public function testEmbedRunsVerification(): void {
-    $target = $this->prepareTarget();
+  #[DataProvider('dataProviderEmbedKillswitchAndVerification')]
+  public function testEmbedKillswitchAndVerification(bool $has_killswitch, string $flags, bool $expect_killswitch, bool $expect_verification): void {
+    $target = $has_killswitch ? $this->prepareTarget() : $this->prepareTargetWithoutKillswitch();
 
-    $keystrokes = $this->keys(
-      'plum compote', self::KEYS['ENTER'],
-      self::KEYS['DOWN'], self::KEYS['ENTER'],
-      self::KEYS['SPACE'], self::KEYS['ENTER'],
-      self::KEYS['ENTER'],
-    );
+    $args = $flags === '' ? [] : explode(' ', $flags);
+    $args[] = $target;
 
-    $r = $this->runWithKeystrokes('php ' . escapeshellarg(self::$root . '/embed.php') . ' ' . escapeshellarg($target), $keystrokes);
-    $this->assertSame(0, $r['exit_code'], 'Embed with verification failed: ' . $r['stderr']);
-    $this->assertStringContainsString('Verifying', $r['stdout']);
-  }
-
-  public function testEmbedNoKillswitchFlag(): void {
-    $target = $this->prepareTargetWithoutKillswitch();
-
-    $embed_output = $this->runEmbedWithOutput('--no-killswitch', $target);
+    $embed_output = $this->runEmbedWithOutput(...$args);
 
     $content = file_get_contents($target);
     $this->assertIsString($content);
 
-    $this->assertStringNotContainsString("if (!getenv('SHOULD_PROCEED'))", $content);
-    $this->assertStringContainsString('no kill switch', strtolower($embed_output));
-    $this->assertStringNotContainsString('Verifying', $embed_output);
+    $this->assertSame($expect_killswitch ? 1 : 0, substr_count($content, "if (!getenv('SHOULD_PROCEED'))"), 'Kill switch count in the embedded file.');
+    $this->assertSame($expect_verification, str_contains($embed_output, 'Verifying'), 'Verification run in the embedder output.');
+    $this->assertSame(!$expect_killswitch, str_contains(strtolower($embed_output), 'no kill switch'), 'Missing kill switch warning in the embedder output.');
+  }
+
+  public static function dataProviderEmbedKillswitchAndVerification(): \Iterator {
+    yield 'own kill switch' => [TRUE, '', TRUE, TRUE];
+
+    yield 'own kill switch, --no-killswitch' => [TRUE, '--no-killswitch', TRUE, FALSE];
+
+    yield 'own kill switch, --no-verify' => [TRUE, '--no-verify', TRUE, FALSE];
+
+    yield 'own kill switch, both flags' => [TRUE, '--no-killswitch --no-verify', TRUE, FALSE];
+
+    yield 'no kill switch' => [FALSE, '', TRUE, TRUE];
+
+    yield 'no kill switch, --no-killswitch' => [FALSE, '--no-killswitch', FALSE, FALSE];
+
+    yield 'no kill switch, --no-verify' => [FALSE, '--no-verify', TRUE, FALSE];
+
+    yield 'no kill switch, both flags' => [FALSE, '--no-killswitch --no-verify', FALSE, FALSE];
   }
 
   public function testSourceFlag(): void {
@@ -372,7 +369,7 @@ final class EmbedScriptTest extends FunctionalTestCase {
     $this->processRun('php', [self::$root . '/embed.php']);
     $this->assertProcessFailed();
 
-    $this->assertProcessAnyOutputContains(['Usage:', '--source', '--compact', '--stdout', '--no-killswitch', 'Re-embedding', 'Arguments:', 'Options:']);
+    $this->assertProcessAnyOutputContains(['Usage:', '--source', '--compact', '--stdout', '--no-killswitch', '--no-verify', 'Re-embedding', 'Arguments:', 'Options:']);
   }
 
   public function testEmbedErrors(): void {

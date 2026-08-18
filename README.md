@@ -707,6 +707,7 @@ See [`starter.php`](starter.php) for an example with markers already in place. F
 | `--compact`       | Collapse the class onto a single line and shorten internal names, for a smaller output.   |
 | `--stdout`        | Write the processed class as a standalone PHP file instead of embedding into a script.    |
 | `--no-killswitch` | Skip injecting the kill switch block and the post-embed verification run.                 |
+| `--no-verify`     | Skip the post-embed verification run, still injecting the kill switch block.              |
 
 ```bash
 php embed.php --compact my-script.php
@@ -735,7 +736,7 @@ php embed.php --source /path/to/new/Prompty.php my-script.php
 If your script does not already contain a kill-switch statement, `embed.php` will automatically inject one after the embed region. This allows tests to run the script without executing the real work below:
 
 ```php
-// Kill switch — stop here when running under tests.
+// Kill switch - stop here when running under tests.
 // In production, set SHOULD_PROCEED=1 to continue past this point.
 if (!getenv('SHOULD_PROCEED')) {
   return;
@@ -746,6 +747,18 @@ Use `--no-killswitch` to skip the injection:
 
 ```bash
 php embed.php --no-killswitch my-script.php
+```
+
+### Verification run
+
+Once the file is written, `embed.php` runs it to confirm the embedded class works. In a terminal the run takes over the keyboard so the flow can be stepped through by hand; otherwise it pipes a few newlines in and discards the output.
+
+The kill switch is what keeps that run from reaching the real work, so the run only happens when the file ends up with one. `--no-killswitch` therefore skips the run as well as the injection.
+
+Use `--no-verify` to embed without running the result while still injecting the kill switch - for build steps, CI jobs, and scripts that regenerate an embedded file:
+
+```bash
+php embed.php --no-verify my-script.php
 ```
 
 ### For AI agents
