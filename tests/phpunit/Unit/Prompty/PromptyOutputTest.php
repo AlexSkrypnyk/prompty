@@ -99,16 +99,15 @@ final class PromptyOutputTest extends PromptyTestCase {
   public function testRestoreTty(): void {
     $p = $this->createInstance();
 
-    // restoreTty calls shell_exec with stty - just verify it doesn't throw.
-    // The test passes a dummy value; in CI there's no TTY so stty fails
-    // silently.
+    // restoreTty() shells out to stty. Without a TTY the command fails
+    // silently, so a dummy value only has to not throw.
     $this->callProtected($p, 'restoreTty', 'dummy-settings');
   }
 
   public function testSetupTtyNoTty(): void {
     $p = $this->createInstance();
 
-    // In test environment, stty -g may return NULL (no TTY).
+    // Without a TTY attached, stty -g returns NULL.
     ob_start();
     $this->callProtected($p, 'setupTty');
     ob_get_clean();

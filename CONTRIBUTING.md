@@ -149,3 +149,9 @@ Publishing a GitHub release triggers [`release.yml`](.github/workflows/release.y
 5. Verifies the signature and checksums, uploads everything, then downloads it all again and re-verifies.
 
 Release notes are drafted automatically by [`draft-release-notes.yml`](.github/workflows/draft-release-notes.yml) using the categories in [`.github/release-drafter.yml`](.github/release-drafter.yml).
+
+## Updating from the template
+
+This repository was generated from the [Scaffold](https://getscaffold.dev/) template and can pull the template's latest CI workflows, linting configuration and docs at any time.
+
+The update is agent-driven: ask Claude Code to "update scaffold" and it fetches the updater skill and follows it. [`AGENTS.md`](AGENTS.md) has the steps.
