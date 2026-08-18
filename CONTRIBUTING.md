@@ -81,6 +81,7 @@ The [`playground/`](playground) directory holds runnable demos - the quickest wa
 | `flow-nested.php`             | A nested flow with conditionals, 3 levels deep.     |
 | `flow-config.php`             | A flow with `configure()` applied beforehand.       |
 | `flow-multiple.php`           | Several flows, and a standalone widget between them.|
+| `flow-embed.php`              | The same flow as flow.php, prepared for embedding.  |
 
 ```bash
 php playground/flow-nested.php
@@ -93,6 +94,16 @@ php playground/flow.php --no-unicode --no-ansi
 ```
 
 `flow-config.php` and `flow-multiple.php` set their display mode in code instead, so the flags do nothing there.
+
+`flow-embed.php` carries `embed.php` markers around its `require`. Run the embedder over it to get the single-file form, and compare the two:
+
+```bash
+mkdir -p .artifacts
+php embed.php playground/flow-embed.php .artifacts/flow-embed.dist.php
+php .artifacts/flow-embed.dist.php
+```
+
+Always pass the output path. Embedding in place would rewrite the demo with the minified class, which `composer lint` checks and rejects.
 
 ## Demo content
 
