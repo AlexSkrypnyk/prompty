@@ -76,3 +76,28 @@ composer reset         # rm vendor/, vendor-bin/, composer.lock
 - Functional tests in `tests/phpunit/Functional/` - these run `embed.php` and
   `starter.php` in real subprocesses
 - Autoload: classmap (no PSR-4)
+
+## Updating from the template
+
+This project was generated from the
+[Scaffold](https://github.com/AlexSkrypnyk/scaffold) template and can pull the
+template's latest infrastructure (CI workflows, linting and test configuration,
+docs) at any time. When you are asked to "update scaffold", fetch the updater
+skill into the local `.claude/skills/` directory, then invoke it:
+
+1. Create the target directory if it does not exist:
+
+   ```bash
+   mkdir -p .claude/skills/update-consumer-scaffold
+   ```
+
+2. Download the skill:
+
+   ```bash
+   curl -sSL https://raw.githubusercontent.com/AlexSkrypnyk/scaffold/main/.scaffold/skills/update-consumer-scaffold/SKILL.md -o .claude/skills/update-consumer-scaffold/SKILL.md
+   ```
+
+3. Invoke the `update-consumer-scaffold` skill and follow its steps.
+
+The skill directory is fetched on demand and is git-ignored; it is not committed
+to the project.

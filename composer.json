@@ -21,15 +21,15 @@
     },
     "require-dev": {
         "alexskrypnyk/phpunit-helpers": "^0.16.0",
-        "bamarni/composer-bin-plugin": "^1.8",
-        "dealerdirect/phpcodesniffer-composer-installer": "^1",
-        "drevops/phpcs-standard": "^0.6",
-        "drupal/coder": "^9.0@alpha",
-        "ergebnis/composer-normalize": "^2.48",
-        "opis/closure": "^4.4",
-        "phpstan/phpstan": "^2",
-        "phpunit/phpunit": "^11.5",
-        "rector/rector": "^2.6.0"
+        "bamarni/composer-bin-plugin": "^1.9.1",
+        "dealerdirect/phpcodesniffer-composer-installer": "^1.2.1",
+        "drevops/phpcs-standard": "^0.7",
+        "drupal/coder": "^9.0.1",
+        "ergebnis/composer-normalize": "^2.52.0",
+        "opis/closure": "^4.5.0",
+        "phpstan/phpstan": "^2.2.8",
+        "phpunit/phpunit": "^11.5.56",
+        "rector/rector": "^2.6.2"
     },
     "minimum-stability": "stable",
     "prefer-stable": true,
@@ -50,11 +50,16 @@
             "dealerdirect/phpcodesniffer-composer-installer": true,
             "ergebnis/composer-normalize": true
         },
-        "audit": {
-            "abandoned": "report",
-            "block-insecure": true
-        },
         "discard-changes": true,
+        "policy": {
+            "advisories": {
+                "block": false,
+                "audit": "fail"
+            },
+            "abandoned": {
+                "audit": "report"
+            }
+        },
         "sort-packages": true
     },
     "scripts": {

@@ -22,8 +22,10 @@ jobs:
     steps:
       - name: Set version
         id: version
+        env:
+          RELEASE_VERSION_SCHEME: ${{ vars.RELEASE_VERSION_SCHEME }}
         run: |
-          SCHEME="${{ vars.RELEASE_VERSION_SCHEME }}"
+          SCHEME="${RELEASE_VERSION_SCHEME}"
           if [ "${SCHEME}" = "calver" ]; then
             VERSION="$(date "+%y.%-m").0"
             echo "version=${VERSION}" >> "${GITHUB_OUTPUT}"
