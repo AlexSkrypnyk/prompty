@@ -365,6 +365,15 @@ final class PromptyFlowIntegrationTest extends PromptyTestCase {
     yield 'outro callback' => [
       fn(): mixed => Prompty::flow(fn(): array => ['dish' => Prompty::text('Dish name')], outro: fn(): never => throw new \RuntimeException('boom'), unicode: FALSE),
     ];
+
+    // Throws from the recursive walkFlow() call, one level below the parent.
+    yield 'nested child callable' => [
+      fn(): mixed => Prompty::flow(fn(): array => [
+        'dish' => Prompty::text('Dish name', children: [
+          'method' => fn(array $ctx): never => throw new \RuntimeException('boom'),
+        ]),
+      ], unicode: FALSE),
+    ];
   }
 
   public function testFlowThrowLeavesWidgetsInStandaloneMode(): void {
