@@ -75,10 +75,8 @@ function main(): void {
  *   When the embedder fails or writes nothing.
  */
 function build(string $project_dir, string $target): string {
-  // Redirect stdin so the embedder takes its non-interactive path. Given a
-  // TTY it hands the terminal to the embedded script and waits for keys.
   $command = sprintf(
-    'php %s %s %s < /dev/null 2>&1',
+    'php %s --no-verify %s %s 2>&1',
     escapeshellarg($project_dir . '/embed.php'),
     escapeshellarg($project_dir . '/' . SOURCE_SCRIPT),
     escapeshellarg($target),

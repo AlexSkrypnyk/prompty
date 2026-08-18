@@ -59,7 +59,7 @@
     },
     "scripts": {
         "check-embed-playground": "php .util/check-embed.php",
-        "embed-playground": "php embed.php playground/flow-embed.php playground/flow-embed.dist.php",
+        "embed-playground": "php embed.php --no-verify playground/flow-embed.php playground/flow-embed.dist.php",
         "lint": [
             "phpcs",
             "phpstan",

@@ -31,6 +31,7 @@ define('EMBED_MARKER_END', '@embed-end');
 $compact = FALSE;
 $stdout = FALSE;
 $no_killswitch = FALSE;
+$no_verify = FALSE;
 $source_override = NULL;
 $positional = [];
 
@@ -43,6 +44,9 @@ for ($arg_i = 1; $arg_i < $argc; $arg_i++) {
   }
   elseif ($argv[$arg_i] === '--no-killswitch') {
     $no_killswitch = TRUE;
+  }
+  elseif ($argv[$arg_i] === '--no-verify') {
+    $no_verify = TRUE;
   }
   elseif ($argv[$arg_i] === '--source') {
     $arg_i++;
@@ -80,6 +84,8 @@ Options:
                     of embedding into a target script.
   --no-killswitch   Skip injecting the kill switch block and post-embed
                     verification run.
+  --no-verify       Skip the post-embed verification run, still injecting the
+                    kill switch block.
 
 Re-embedding:
   Running embed.php on a previously embedded script replaces the embedded region
@@ -716,8 +722,16 @@ $final_has_killswitch = $final !== FALSE && str_contains($final, "if (!getenv('S
 
 if (!$final_has_killswitch) {
   fwrite(STDERR, sprintf('Warning: No kill switch found in the target file. Please test the embedded script manually.%s', PHP_EOL));
+  exit(0);
 }
-elseif (posix_isatty(STDIN)) {
+
+// Verification runs the embedded script, and --no-killswitch leaves it with
+// nothing to stop before the real work.
+if ($no_killswitch || $no_verify) {
+  exit(0);
+}
+
+if (posix_isatty(STDIN)) {
   echo sprintf('Verifying embedded script (interactive input required)...%s', PHP_EOL);
 
   $verify_exit = 0;
