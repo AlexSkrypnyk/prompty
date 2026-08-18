@@ -370,7 +370,7 @@ For confirm widgets, env values are interpreted using configurable truthy/falsy 
 
 A discovered value has to be an answer the widget would have accepted interactively. For `select` and `multiselect` that means a key of `options`; for `confirm`, a value in the truthy or falsy list. Anything else throws an `InvalidArgumentException` naming the widget, the offending value, and what was allowed:
 
-```
+```text
 Discovered value "pudding" for "Course" is not a valid option. Available options: starter, main, dessert.
 ```
 
