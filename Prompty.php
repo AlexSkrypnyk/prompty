@@ -350,6 +350,9 @@ class Prompty {
    * after $inFlow is set, so widgets inside it return closures for deferred
    * execution instead of running immediately.
    *
+   * Flow state and terminal state are restored on every exit path, including
+   * when a step, condition or callback throws.
+   *
    * @param callable $steps
    *   Callable that returns the associative steps array.
    * @param string|callable|null $intro
@@ -417,53 +420,54 @@ class Prompty {
     $p->results = [];
     static::$inFlow = TRUE;
 
-    // Evaluate the steps callable now that $inFlow is TRUE.
-    $steps = $steps();
+    try {
+      // Evaluate the steps callable now that $inFlow is TRUE.
+      $steps = $steps();
 
-    $options = [
-      'numbering' => $numbering,
-    ];
+      $options = [
+        'numbering' => $numbering,
+      ];
 
-    // No TTY exists when input is piped, and the flow then runs with
-    // env/discovered values without terminal control. An injected input
-    // stream (test mode) also skips TTY setup.
-    $p->setupTty();
+      // No TTY exists when input is piped, and the flow then runs with
+      // env/discovered values without terminal control. An injected input
+      // stream (test mode) also skips TTY setup.
+      $p->setupTty();
 
-    if ($p->prevTty !== NULL) {
-      // @codeCoverageIgnoreStart
-      // Restore the terminal even on fatal errors or exceptions. teardownTty()
-      // clears prevTty, so this is a no-op once a normal exit path has run.
-      register_shutdown_function(function () use ($p): void {
-        $p->teardownTty();
-      });
-      // @codeCoverageIgnoreEnd
-    }
-
-    if ($intro !== NULL) {
-      is_callable($intro) ? $intro($p->results) : $p->printLines($p->renderIntro($intro));
-    }
-
-    $outcome = $p->walkFlow($steps, 0, $options, '');
-
-    if ($outcome === FALSE) {
-      if ($cancelled !== NULL) {
-        is_callable($cancelled) ? $cancelled($p->results) : $p->printLines($p->renderOutro($cancelled));
+      if ($p->prevTty !== NULL) {
+        // @codeCoverageIgnoreStart
+        // Restore the terminal on a fatal error, which skips the finally
+        // below. teardownTty() clears prevTty, so this is a no-op once the
+        // finally has run.
+        register_shutdown_function(function () use ($p): void {
+          $p->teardownTty();
+        });
+        // @codeCoverageIgnoreEnd
       }
 
+      if ($intro !== NULL) {
+        is_callable($intro) ? $intro($p->results) : $p->printLines($p->renderIntro($intro));
+      }
+
+      $outcome = $p->walkFlow($steps, 0, $options, '');
+
+      if ($outcome === FALSE) {
+        if ($cancelled !== NULL) {
+          is_callable($cancelled) ? $cancelled($p->results) : $p->printLines($p->renderOutro($cancelled));
+        }
+
+        return NULL;
+      }
+
+      if ($outro !== NULL) {
+        is_callable($outro) ? $outro($p->results) : $p->printLines($p->renderOutro($outro));
+      }
+
+      return $p->results;
+    }
+    finally {
       $p->teardownTty();
-
       static::$inFlow = FALSE;
-      return NULL;
     }
-
-    if ($outro !== NULL) {
-      is_callable($outro) ? $outro($p->results) : $p->printLines($p->renderOutro($outro));
-    }
-
-    $p->teardownTty();
-
-    static::$inFlow = FALSE;
-    return $p->results;
   }
 
   /**
