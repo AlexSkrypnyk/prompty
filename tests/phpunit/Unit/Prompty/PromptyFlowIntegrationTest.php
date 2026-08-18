@@ -6,6 +6,7 @@ namespace AlexSkrypnyk\Prompty\Tests\Unit\Prompty;
 
 use AlexSkrypnyk\Prompty\Prompty;
 use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Group;
 
 /**
@@ -326,6 +327,86 @@ final class PromptyFlowIntegrationTest extends PromptyTestCase {
     $r = $this->promptyRun(fn(): mixed => Prompty::flow(fn(): array => ['name' => Prompty::text('Name')], unicode: FALSE), self::KEY_ESCAPE);
 
     $this->assertNull($r['result']);
+  }
+
+  #[DataProvider('dataProviderFlowResetsStateWhenCallbackThrows')]
+  public function testFlowResetsStateWhenCallbackThrows(\Closure $run): void {
+    $this->setEnvVars(['dish' => 'pear tart']);
+
+    $caught = NULL;
+
+    $this->captureOutput(function () use ($run, &$caught): void {
+      try {
+        $run();
+      }
+      catch (\RuntimeException $exception) {
+        $caught = $exception;
+      }
+    });
+
+    $this->assertInstanceOf(\RuntimeException::class, $caught);
+    $this->assertSame('boom', $caught->getMessage());
+    $this->assertFalse($this->getStaticProperty('inFlow'));
+  }
+
+  public static function dataProviderFlowResetsStateWhenCallbackThrows(): \Iterator {
+    yield 'steps callable' => [
+      fn(): mixed => Prompty::flow(fn(): array => throw new \RuntimeException('boom'), unicode: FALSE),
+    ];
+
+    yield 'intro callback' => [
+      fn(): mixed => Prompty::flow(fn(): array => ['dish' => Prompty::text('Dish name')], intro: fn(): never => throw new \RuntimeException('boom'), unicode: FALSE),
+    ];
+
+    yield 'widget condition' => [
+      fn(): mixed => Prompty::flow(fn(): array => ['dish' => Prompty::text('Dish name', condition: fn(): never => throw new \RuntimeException('boom'))], unicode: FALSE),
+    ];
+
+    yield 'outro callback' => [
+      fn(): mixed => Prompty::flow(fn(): array => ['dish' => Prompty::text('Dish name')], outro: fn(): never => throw new \RuntimeException('boom'), unicode: FALSE),
+    ];
+
+    // Throws from the recursive walkFlow() call, one level below the parent.
+    yield 'nested child callable' => [
+      fn(): mixed => Prompty::flow(fn(): array => [
+        'dish' => Prompty::text('Dish name', children: [
+          'method' => fn(array $ctx): never => throw new \RuntimeException('boom'),
+        ]),
+      ], unicode: FALSE),
+    ];
+  }
+
+  public function testFlowThrowLeavesWidgetsInStandaloneMode(): void {
+    $stream = fopen('php://memory', 'r+');
+
+    if ($stream === FALSE) {
+      $this->fail('Could not open the keystroke stream.');
+    }
+
+    fwrite($stream, 'pear tart' . self::KEY_ENTER);
+    rewind($stream);
+
+    $instance = $this->createInstance();
+    $this->setProperty($instance, 'input', $stream);
+    $this->setStaticProperty('instance', $instance);
+
+    $value = NULL;
+
+    $this->captureOutput(function () use (&$value): void {
+      try {
+        Prompty::flow(fn(): array => throw new \RuntimeException('boom'));
+      }
+      catch (\RuntimeException) {
+        // Swallowed, as a caller that catches and carries on would.
+      }
+
+      $value = Prompty::text('Dish name');
+    });
+
+    fclose($stream);
+
+    $this->assertIsString($value);
+    $this->assertSame('pear tart', $value);
   }
 
 }
