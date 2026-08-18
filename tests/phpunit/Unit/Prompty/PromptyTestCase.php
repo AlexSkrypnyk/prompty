@@ -127,11 +127,54 @@ abstract class PromptyTestCase extends TestCase {
     return $this->promptyStripAnsi($text);
   }
 
+  /**
+   * Run a callable and return its ANSI-stripped output.
+   *
+   * The buffer is closed even when the callable throws, so a test asserting on
+   * an exception does not leak its buffer into the next test.
+   */
   protected function captureOutput(callable $fn): string {
     ob_start();
-    $fn();
 
-    return $this->promptyStripAnsi(ob_get_clean() ?: '');
+    try {
+      $fn();
+    }
+    finally {
+      $output = ob_get_clean();
+    }
+
+    return $this->promptyStripAnsi($output ?: '');
+  }
+
+  /**
+   * Assert that a callable throws, and return the output produced before it.
+   *
+   * @param class-string<\Throwable> $exception
+   *   Expected exception class.
+   * @param string $message
+   *   Expected exception message, matched exactly.
+   * @param callable $fn
+   *   The callable expected to throw.
+   *
+   * @return string
+   *   ANSI-stripped output emitted before the throw.
+   */
+  protected function captureOutputThrows(string $exception, string $message, callable $fn): string {
+    ob_start();
+
+    try {
+      $fn();
+    }
+    catch (\Throwable $throwable) {
+      $output = ob_get_clean();
+
+      $this->assertInstanceOf($exception, $throwable);
+      $this->assertSame($message, $throwable->getMessage());
+
+      return $this->promptyStripAnsi($output ?: '');
+    }
+
+    $this->fail(sprintf('Expected %s was not thrown. Output: %s', $exception, ob_get_clean() ?: ''));
   }
 
   protected function tearDown(): void {

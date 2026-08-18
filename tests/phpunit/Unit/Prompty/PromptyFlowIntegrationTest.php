@@ -220,6 +220,78 @@ final class PromptyFlowIntegrationTest extends PromptyTestCase {
     $this->assertSame(['ts', 'eslint'], $result['features']);
   }
 
+  public function testFlowMultiselectEnvNormalisesOrderAndDuplicates(): void {
+    $this->setEnvVars(['features' => 'prettier, ts ,prettier']);
+
+    $result = NULL;
+    $this->captureOutput(function () use (&$result): void {
+      $result = Prompty::flow(fn(): array => [
+        'features' => Prompty::multiselect('Features',
+          options: ['ts' => 'TypeScript', 'eslint' => 'ESLint', 'prettier' => 'Prettier'],
+        ),
+      ], unicode: FALSE);
+    });
+
+    $this->assertNotNull($result);
+    $this->assertSame(['ts', 'prettier'], $result['features']);
+  }
+
+  #[DataProvider('dataProviderFlowRejectsOutOfDomainEnv')]
+  public function testFlowRejectsOutOfDomainEnv(array $env, \Closure $run, string $message): void {
+    $this->setEnvVars($env);
+
+    $caught = NULL;
+
+    $this->captureOutput(function () use ($run, &$caught): void {
+      try {
+        $run();
+      }
+      catch (\InvalidArgumentException $exception) {
+        $caught = $exception;
+      }
+    });
+
+    $this->assertInstanceOf(\InvalidArgumentException::class, $caught);
+    $this->assertSame($message, $caught->getMessage());
+    $this->assertFalse($this->getStaticProperty('inFlow'));
+  }
+
+  public static function dataProviderFlowRejectsOutOfDomainEnv(): \Iterator {
+    yield 'select' => [
+      ['framework' => 'angular'],
+      fn(): mixed => Prompty::flow(fn(): array => [
+        'framework' => Prompty::select('Framework', options: ['react' => 'React', 'vue' => 'Vue']),
+      ], unicode: FALSE),
+      'Discovered value "angular" for "Framework" is not a valid option. Available options: react, vue.',
+    ];
+
+    yield 'multiselect' => [
+      ['features' => 'ts,webpack'],
+      fn(): mixed => Prompty::flow(fn(): array => [
+        'features' => Prompty::multiselect('Features', options: ['ts' => 'TypeScript', 'eslint' => 'ESLint']),
+      ], unicode: FALSE),
+      'Discovered value "webpack" for "Features" is not a valid option. Available options: ts, eslint.',
+    ];
+
+    yield 'confirm' => [
+      ['install' => 'maybe'],
+      fn(): mixed => Prompty::flow(fn(): array => [
+        'install' => Prompty::confirm('Install?'),
+      ], unicode: FALSE),
+      'Discovered value "maybe" for "Install?" is not a valid answer. Accepted values: 1, true, yes, 0, false, no.',
+    ];
+
+    yield 'nested child step' => [
+      ['type' => 'app', 'app_framework' => 'svelte'],
+      fn(): mixed => Prompty::flow(fn(): array => [
+        'type' => Prompty::select('Type', options: ['app' => 'App'], children: [
+          'app_framework' => Prompty::select('App framework', options: ['next' => 'Next.js', 'nuxt' => 'Nuxt']),
+        ]),
+      ], unicode: FALSE),
+      'Discovered value "svelte" for "App framework" is not a valid option. Available options: next, nuxt.',
+    ];
+  }
+
   public function testFlowEmptyReturnsEmptyArray(): void {
     $result = NULL;
     $this->captureOutput(function () use (&$result): void {
