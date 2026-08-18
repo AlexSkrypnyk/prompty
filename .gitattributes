@@ -7,7 +7,6 @@
 /.gitignore      export-ignore
 /.util           export-ignore
 /CLAUDE.md       export-ignore
-/logo.png        export-ignore
 /phpcs.xml       export-ignore
 /phpstan.neon    export-ignore
 /phpunit.xml     export-ignore

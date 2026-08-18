@@ -58,7 +58,7 @@ jobs:
           if [[ "${{ matrix.deps }}" == "lowest" ]]; then
             composer update --prefer-lowest --prefer-stable ${{ matrix.php-versions == '8.5' && '--ignore-platform-reqs' || '' }}
           else
-            composer install ${{ matrix.php-versions == '8.5' && '--ignore-platform-reqs' || '' }}
+            composer install --audit ${{ matrix.php-versions == '8.5' && '--ignore-platform-reqs' || '' }}
           fi
 
       - name: Validate composer.json

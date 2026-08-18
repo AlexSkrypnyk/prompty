@@ -94,8 +94,11 @@ skill into the local `.claude/skills/` directory, then invoke it:
 2. Download the skill:
 
    ```bash
-   curl -sSL https://raw.githubusercontent.com/AlexSkrypnyk/scaffold/main/.scaffold/skills/update-consumer-scaffold/SKILL.md -o .claude/skills/update-consumer-scaffold/SKILL.md
+   curl -fsSL https://raw.githubusercontent.com/AlexSkrypnyk/scaffold/main/.scaffold/skills/update-consumer-scaffold/SKILL.md -o .claude/skills/update-consumer-scaffold/SKILL.md
    ```
+
+   The `-f` flag makes curl fail on an HTTP error instead of writing the error
+   body into `SKILL.md`. If the download fails, stop; do not invoke the skill.
 
 3. Invoke the `update-consumer-scaffold` skill and follow its steps.
 
