@@ -271,6 +271,30 @@ final class PromptyWidgetResolvedTest extends PromptyTestCase {
     $this->assertStringContainsString('No', $output);
   }
 
+  public function testConfirmStandaloneUsesConfiguredTruthyFalsy(): void {
+    $this->setStaticProperty('inFlow', FALSE);
+    $this->createAndSetInstance(['truthy' => ['on'], 'falsy' => ['off']]);
+
+    $this->captureOutput(function () use (&$result): void {
+      $result = Prompty::confirm('OK?', discovered: 'off');
+    });
+
+    $this->assertFalse($result);
+  }
+
+  public function testConfirmStandaloneRejectsValueOutsideConfiguredLists(): void {
+    $this->setStaticProperty('inFlow', FALSE);
+    $this->createAndSetInstance(['truthy' => ['on'], 'falsy' => ['off']]);
+
+    $this->captureOutputThrows(
+      \InvalidArgumentException::class,
+      'Discovered value "yes" for "OK?" is not a valid answer. Accepted values: on, off.',
+      function (): void {
+        Prompty::confirm('OK?', discovered: 'yes');
+      },
+    );
+  }
+
   public function testSelectWithDescription(): void {
     $output = $this->captureOutput(function () use (&$result): void {
       $result = Prompty::select('Framework', options: ['react' => 'React'], description: 'Pick your framework.', discovered: 'react', ctx: $this->ctx());
@@ -312,13 +336,173 @@ final class PromptyWidgetResolvedTest extends PromptyTestCase {
     $this->assertStringContainsString('my-app', $output);
   }
 
-  public function testSelectUnknownKeyFallback(): void {
+  public function testSelectRendersOptionLabelNotKey(): void {
     $output = $this->captureOutput(function () use (&$result): void {
-      $result = Prompty::select('Pick', options: ['a' => 'Alpha'], discovered: 'unknown', ctx: $this->ctx());
+      $result = Prompty::select('Pick', options: ['a' => 'Alpha'], discovered: 'a', ctx: $this->ctx());
     });
 
-    $this->assertSame('unknown', $result);
-    $this->assertStringContainsString('unknown', $output);
+    $this->assertSame('a', $result);
+    $this->assertStringContainsString('Alpha', $output);
+  }
+
+  public function testSelectRendersEmptyOptionLabel(): void {
+    $output = $this->captureOutput(function () use (&$result): void {
+      $result = Prompty::select('Pick', options: ['a' => ''], discovered: 'a', ctx: $this->ctx());
+    });
+
+    $this->assertSame('a', $result);
+    $this->assertStringContainsString('Pick', $output);
+  }
+
+  #[DataProvider('dataProviderSelectOutOfDomainThrows')]
+  public function testSelectOutOfDomainThrows(?string $discovered, ?string $ctx_discovered, array $options, string $message): void {
+    $output = $this->captureOutputThrows(\InvalidArgumentException::class, $message, function () use ($discovered, $ctx_discovered, $options): void {
+      Prompty::select('Pick', options: $options, discovered: $discovered, ctx: $this->ctx(['discovered' => $ctx_discovered]));
+    });
+
+    $this->assertSame('', $output);
+  }
+
+  public static function dataProviderSelectOutOfDomainThrows(): \Iterator {
+    $options = ['a' => 'Alpha', 'b' => 'Beta'];
+
+    yield 'discovered argument' => ['unknown', NULL, $options, 'Discovered value "unknown" for "Pick" is not a valid option. Available options: a, b.'];
+    yield 'env value' => [NULL, 'nope', $options, 'Discovered value "nope" for "Pick" is not a valid option. Available options: a, b.'];
+    yield 'empty env value' => [NULL, '', $options, 'Discovered value "" for "Pick" is not a valid option. Available options: a, b.'];
+    yield 'no options declared' => ['a', NULL, [], 'Discovered value "a" for "Pick" is not a valid option. Available options: none.'];
+    yield 'option label is not a key' => ['Alpha', NULL, $options, 'Discovered value "Alpha" for "Pick" is not a valid option. Available options: a, b.'];
+  }
+
+  public function testSelectTrimsDiscoveredValue(): void {
+    $this->captureOutput(function () use (&$result): void {
+      $result = Prompty::select('Pick', options: ['a' => 'Alpha'], ctx: $this->ctx(['discovered' => '  a  ']));
+    });
+
+    $this->assertSame('a', $result);
+  }
+
+  #[DataProvider('dataProviderMultiselectOutOfDomainThrows')]
+  public function testMultiselectOutOfDomainThrows(?array $discovered, ?string $ctx_discovered, string $message): void {
+    $output = $this->captureOutputThrows(\InvalidArgumentException::class, $message, function () use ($discovered, $ctx_discovered): void {
+      Prompty::multiselect('Pick',
+        options: ['a' => 'Alpha', 'b' => 'Beta'],
+        discovered: $discovered,
+        ctx: $this->ctx(['discovered' => $ctx_discovered]),
+      );
+    });
+
+    $this->assertSame('', $output);
+  }
+
+  public static function dataProviderMultiselectOutOfDomainThrows(): \Iterator {
+    yield 'sole entry unknown' => [['nope'], NULL, 'Discovered value "nope" for "Pick" is not a valid option. Available options: a, b.'];
+    yield 'one entry of several unknown' => [['a', 'zz'], NULL, 'Discovered value "zz" for "Pick" is not a valid option. Available options: a, b.'];
+    yield 'env entry unknown' => [NULL, 'a,zz', 'Discovered value "zz" for "Pick" is not a valid option. Available options: a, b.'];
+    yield 'option label is not a key' => [['Alpha'], NULL, 'Discovered value "Alpha" for "Pick" is not a valid option. Available options: a, b.'];
+  }
+
+  #[DataProvider('dataProviderMultiselectNormalisesDiscovered')]
+  public function testMultiselectNormalisesDiscovered(mixed $discovered, ?string $ctx_discovered, array $expected): void {
+    $this->captureOutput(function () use ($discovered, $ctx_discovered, &$result): void {
+      $result = Prompty::multiselect('Pick',
+        options: ['a' => 'Alpha', 'b' => 'Beta', 'c' => 'Gamma'],
+        discovered: $discovered,
+        ctx: $this->ctx(['discovered' => $ctx_discovered]),
+      );
+    });
+
+    $this->assertSame($expected, $result);
+  }
+
+  public static function dataProviderMultiselectNormalisesDiscovered(): \Iterator {
+    yield 'argument reordered to option order' => [['c', 'a'], NULL, ['a', 'c']];
+    yield 'argument duplicates removed' => [['b', 'a', 'b'], NULL, ['a', 'b']];
+    yield 'env reordered to option order' => [NULL, 'c,a', ['a', 'c']];
+    yield 'env duplicates removed' => [NULL, 'b,a,b', ['a', 'b']];
+    yield 'env entries trimmed' => [NULL, ' a , b ', ['a', 'b']];
+    yield 'empty env means none' => [NULL, '', []];
+    yield 'trailing comma ignored' => [NULL, 'a,', ['a']];
+    yield 'doubled comma ignored' => [NULL, 'a,,b', ['a', 'b']];
+    yield 'whitespace-only entry ignored' => [NULL, 'a, ,b', ['a', 'b']];
+    yield 'empty argument list' => [[], NULL, []];
+  }
+
+  public function testMultiselectWithoutOptionsAcceptsEmptySelection(): void {
+    $this->captureOutput(function () use (&$result): void {
+      $result = Prompty::multiselect('Pick', options: [], discovered: [], ctx: $this->ctx());
+    });
+
+    $this->assertSame([], $result);
+  }
+
+  #[DataProvider('dataProviderConfirmCoercesDiscoveredArgument')]
+  public function testConfirmCoercesDiscoveredArgument(mixed $discovered, bool $expected): void {
+    $this->captureOutput(function () use ($discovered, &$result): void {
+      $result = Prompty::confirm('Install?', discovered: $discovered, ctx: $this->ctx());
+    });
+
+    $this->assertSame($expected, $result);
+  }
+
+  public static function dataProviderConfirmCoercesDiscoveredArgument(): \Iterator {
+    yield 'bool TRUE' => [TRUE, TRUE];
+    yield 'bool FALSE' => [FALSE, FALSE];
+    yield 'string yes' => ['yes', TRUE];
+    yield 'string no' => ['no', FALSE];
+    yield 'string NO (case)' => ['NO', FALSE];
+    yield 'string true' => ['true', TRUE];
+    yield 'string false' => ['false', FALSE];
+    yield 'string padded' => [' no ', FALSE];
+    yield 'int 1' => [1, TRUE];
+    yield 'int 0' => [0, FALSE];
+  }
+
+  #[DataProvider('dataProviderConfirmOutOfDomainThrows')]
+  public function testConfirmOutOfDomainThrows(mixed $discovered, ?string $ctx_discovered, string $message): void {
+    $output = $this->captureOutputThrows(\InvalidArgumentException::class, $message, function () use ($discovered, $ctx_discovered): void {
+      Prompty::confirm('Install?', discovered: $discovered, ctx: $this->ctx(['discovered' => $ctx_discovered]));
+    });
+
+    $this->assertSame('', $output);
+  }
+
+  public static function dataProviderConfirmOutOfDomainThrows(): \Iterator {
+    $accepted = 'Accepted values: 1, true, yes, 0, false, no.';
+
+    yield 'discovered argument' => ['maybe', NULL, 'Discovered value "maybe" for "Install?" is not a valid answer. ' . $accepted];
+    yield 'env value' => [NULL, 'maybe', 'Discovered value "maybe" for "Install?" is not a valid answer. ' . $accepted];
+    yield 'empty env value' => [NULL, '', 'Discovered value "" for "Install?" is not a valid answer. ' . $accepted];
+    yield 'out of range int' => [2, NULL, 'Discovered value "2" for "Install?" is not a valid answer. ' . $accepted];
+  }
+
+  #[DataProvider('dataProviderConfirmHonoursCustomTruthyFalsy')]
+  public function testConfirmHonoursCustomTruthyFalsy(?string $discovered, ?string $ctx_discovered, bool $expected): void {
+    $ctx = $this->ctx(['truthy' => ['on'], 'falsy' => ['off'], 'discovered' => $ctx_discovered]);
+
+    $this->captureOutput(function () use ($discovered, $ctx, &$result): void {
+      $result = Prompty::confirm('Install?', discovered: $discovered, ctx: $ctx);
+    });
+
+    $this->assertSame($expected, $result);
+  }
+
+  public static function dataProviderConfirmHonoursCustomTruthyFalsy(): \Iterator {
+    yield 'custom truthy via argument' => ['on', NULL, TRUE];
+    yield 'custom falsy via argument' => ['off', NULL, FALSE];
+    yield 'custom truthy via env' => [NULL, 'on', TRUE];
+    yield 'custom falsy via env' => [NULL, 'off', FALSE];
+  }
+
+  public function testConfirmRejectsDefaultListValueWhenListsAreCustom(): void {
+    $ctx = $this->ctx(['truthy' => ['on'], 'falsy' => ['off']]);
+
+    $this->captureOutputThrows(
+      \InvalidArgumentException::class,
+      'Discovered value "yes" for "Install?" is not a valid answer. Accepted values: on, off.',
+      function () use ($ctx): void {
+        Prompty::confirm('Install?', discovered: 'yes', ctx: $ctx);
+      },
+    );
   }
 
   public function testWidgetsWithNumbering(): void {

@@ -173,14 +173,14 @@ class Prompty {
   protected string $cfgEnvPrefix = 'PROMPTY_';
 
   /**
-   * Values treated as TRUE for env variable coercion.
+   * Values treated as TRUE when coercing a discovered value.
    *
    * @var list<string>
    */
   protected array $cfgTruthy = ['1', 'true', 'yes'];
 
   /**
-   * Values treated as FALSE for env variable coercion.
+   * Values treated as FALSE when coercing a discovered value.
    *
    * @var list<string>
    */
@@ -637,7 +637,8 @@ class Prompty {
    * @param array<string, string> $hints
    *   Map of option key to hint text.
    * @param mixed $discovered
-   *   Pre-filled value that bypasses interactive input.
+   *   Pre-filled value that bypasses interactive input. Must be a key of
+   *   $options.
    * @param callable|null $condition
    *   Optional condition callback; skips the step when it returns FALSE.
    * @param array<string, mixed> $children
@@ -647,6 +648,9 @@ class Prompty {
    *
    * @return \Closure|array<string, mixed>|string|null
    *   A closure in flow mode, or the selected option key in standalone mode.
+   *
+   * @throws \InvalidArgumentException
+   *   When a discovered value is not a key of $options.
    */
   public static function select(
     string $label,
@@ -684,6 +688,11 @@ class Prompty {
     ];
     $standalone = !static::$inFlow;
 
+    // Validate before raw mode is entered, so a rejected value cannot leave
+    // the terminal unrestored.
+    $resolved = $discovered ?? $ctx['discovered'] ?? NULL;
+    $resolved_key = $resolved === NULL ? NULL : $p->assertDiscoveredOption($label, $resolved, $options);
+
     if ($standalone) {
       $p->setupTty();
     }
@@ -698,20 +707,15 @@ class Prompty {
     $option_labels = array_values($options);
     $ordered_hints = array_map(fn(int|string $key) => $hints[$key] ?? '', $option_keys);
 
-    $resolved = $discovered ?? $ctx['discovered'] ?? NULL;
-
-    if ($resolved !== NULL) {
-      /** @var int|float|string|bool $resolved */
-      $resolved_str = (string) $resolved;
-      $display = $options[$resolved_str] ?? $resolved_str;
-      $p->printLines($p->renderCompleted($label, $display, $depth, $open));
+    if ($resolved_key !== NULL) {
+      $p->printLines($p->renderCompleted($label, $options[$resolved_key], $depth, $open));
       if ($standalone) {
         // @codeCoverageIgnoreStart
         $p->teardownTty();
         // @codeCoverageIgnoreEnd
       }
 
-      return $resolved_str;
+      return $resolved_key;
     }
 
     $render_active = function (int $focused) use ($p, $label, $option_labels, $description, $ordered_hints, $depth, $open): array {
@@ -817,7 +821,8 @@ class Prompty {
    * @param array<string, string> $hints
    *   Map of option key to hint text.
    * @param mixed $discovered
-   *   Pre-filled value that bypasses interactive input.
+   *   Pre-filled value that bypasses interactive input. Every entry must be a
+   *   key of $options.
    * @param callable|null $condition
    *   Optional condition callback; skips the step when it returns FALSE.
    * @param array<string, mixed> $children
@@ -826,7 +831,11 @@ class Prompty {
    *   Flow context passed by the flow walker.
    *
    * @return \Closure|array<string, mixed>|list<string>|null
-   *   A closure in flow mode, or the array of selected keys in standalone mode.
+   *   A closure in flow mode, or the array of selected keys in standalone mode,
+   *   deduplicated and in option order.
+   *
+   * @throws \InvalidArgumentException
+   *   When a discovered entry is not a key of $options.
    */
   public static function multiselect(
     string $label,
@@ -864,6 +873,15 @@ class Prompty {
     ];
     $standalone = !static::$inFlow;
 
+    // Env values for multiselect arrive comma-separated (e.g., "a,b,c").
+    $ctx_discovered = $ctx['discovered'] ?? NULL;
+    /** @var int|float|string|bool|null $ctx_discovered */
+    $resolved = $discovered ?? ($ctx_discovered !== NULL ? explode(',', (string) $ctx_discovered) : NULL);
+
+    // Validate before raw mode is entered, so a rejected value cannot leave
+    // the terminal unrestored.
+    $resolved_keys = $resolved === NULL ? NULL : $p->assertDiscoveredOptions($label, $resolved, $options);
+
     if ($standalone) {
       $p->setupTty();
     }
@@ -878,16 +896,8 @@ class Prompty {
     $option_labels = array_values($options);
     $ordered_hints = array_map(fn(int|string $key) => $hints[$key] ?? '', $option_keys);
 
-    // Env values for multiselect arrive comma-separated (e.g., "a,b,c").
-    $ctx_discovered = $ctx['discovered'] ?? NULL;
-    /** @var int|float|string|bool|null $ctx_discovered */
-    $resolved = $discovered ?? ($ctx_discovered !== NULL ? array_map(trim(...), explode(',', (string) $ctx_discovered)) : NULL);
-
-    if ($resolved !== NULL) {
-      $resolved_array = is_array($resolved) ? $resolved : [$resolved];
-      $display = $resolved_array !== []
-        ? implode(', ', array_map(fn(mixed $key) => $options[is_string($key) ? $key : ''] ?? (is_string($key) ? $key : ''), $resolved_array))
-        : $p->cfgLabels['none'];
+    if ($resolved_keys !== NULL) {
+      $display = $resolved_keys !== [] ? implode(', ', array_map(fn(string $key): string => $options[$key], $resolved_keys)) : $p->cfgLabels['none'];
       $p->printLines($p->renderCompleted($label, $display, $depth, $open));
       if ($standalone) {
         // @codeCoverageIgnoreStart
@@ -895,7 +905,7 @@ class Prompty {
         // @codeCoverageIgnoreEnd
       }
 
-      return $resolved_array;
+      return $resolved_keys;
     }
 
     $render_active = function (int $focused, array $checked) use ($p, $label, $option_labels, $description, $ordered_hints, $depth, $open): array {
@@ -1007,7 +1017,8 @@ class Prompty {
    * @param string $description
    *   Optional description rendered below the label.
    * @param mixed $discovered
-   *   Pre-filled value that bypasses interactive input.
+   *   Pre-filled value that bypasses interactive input. A boolean is taken as
+   *   is; anything else must appear in the truthy or falsy list.
    * @param callable|null $condition
    *   Optional condition callback; skips the step when it returns FALSE.
    * @param array<string, mixed> $children
@@ -1017,6 +1028,9 @@ class Prompty {
    *
    * @return \Closure|array<string, mixed>|bool|null
    *   A closure in flow mode, or the boolean result in standalone mode.
+   *
+   * @throws \InvalidArgumentException
+   *   When a discovered value appears in neither the truthy nor falsy list.
    */
   public static function confirm(
     string $label,
@@ -1050,6 +1064,16 @@ class Prompty {
     ];
     $standalone = !static::$inFlow;
 
+    /** @var list<string> $truthy */
+    $truthy = $ctx['truthy'] ?? $p->cfgTruthy;
+    /** @var list<string> $falsy */
+    $falsy = $ctx['falsy'] ?? $p->cfgFalsy;
+
+    // Validate before raw mode is entered, so a rejected value cannot leave
+    // the terminal unrestored.
+    $resolved = $discovered ?? $ctx['discovered'] ?? NULL;
+    $resolved_bool = $resolved === NULL ? NULL : $p->assertDiscoveredBool($label, $resolved, $truthy, $falsy);
+
     if ($standalone) {
       $p->setupTty();
     }
@@ -1059,33 +1083,16 @@ class Prompty {
     /** @var array<int, bool> $open */
     $open = $ctx['open'] ?? [];
     $label = $p->numberLabel($label, $ctx);
-    /** @var array<int, string> $truthy */
-    $truthy = $ctx['truthy'] ?? ['1', 'true', 'yes'];
-    /** @var array<int, string> $falsy */
-    $falsy = $ctx['falsy'] ?? ['0', 'false', 'no'];
 
-    // Env values for confirm need truthy/falsy coercion (e.g., "yes" → TRUE).
-    $ctx_discovered = $ctx['discovered'] ?? NULL;
-    /** @var int|float|string|bool|null $ctx_discovered */
-    if ($discovered === NULL && $ctx_discovered !== NULL) {
-      $env_lower = strtolower((string) $ctx_discovered);
-      if (in_array($env_lower, $truthy, TRUE)) {
-        $discovered = TRUE;
-      }
-      elseif (in_array($env_lower, $falsy, TRUE)) {
-        $discovered = FALSE;
-      }
-    }
-
-    if ($discovered !== NULL) {
-      $p->printLines($p->renderCompleted($label, $discovered ? $p->cfgLabels['yes'] : $p->cfgLabels['no'], $depth, $open));
+    if ($resolved_bool !== NULL) {
+      $p->printLines($p->renderCompleted($label, $resolved_bool ? $p->cfgLabels['yes'] : $p->cfgLabels['no'], $depth, $open));
       if ($standalone) {
         // @codeCoverageIgnoreStart
         $p->teardownTty();
         // @codeCoverageIgnoreEnd
       }
 
-      return (bool) $discovered;
+      return $resolved_bool;
     }
 
     $render_active = function (bool $focused_yes) use ($p, $label, $description, $depth, $open): array {
@@ -1385,6 +1392,109 @@ class Prompty {
     }
 
     return $label;
+  }
+
+  /**
+   * Validates a discovered value against a widget's declared options.
+   *
+   * @param string $label
+   *   The widget label, used to identify the widget in the error message.
+   * @param mixed $value
+   *   The discovered value.
+   * @param array<string, string> $options
+   *   Map of option key to display label.
+   *
+   * @return string
+   *   The discovered value as a trimmed option key.
+   *
+   * @throws \InvalidArgumentException
+   *   When the value is not a key of $options.
+   */
+  protected function assertDiscoveredOption(string $label, mixed $value, array $options): string {
+    $key = is_scalar($value) ? trim((string) $value) : get_debug_type($value);
+
+    if (!array_key_exists($key, $options)) {
+      $available = $options === [] ? 'none' : implode(', ', array_keys($options));
+
+      throw new \InvalidArgumentException(sprintf('Discovered value "%s" for "%s" is not a valid option. Available options: %s.', $key, $label, $available));
+    }
+
+    return $key;
+  }
+
+  /**
+   * Validates discovered multiselect values against the declared options.
+   *
+   * Entries that are empty after trimming are dropped, so an empty value and a
+   * trailing comma both mean "nothing selected". Surviving entries are checked
+   * for membership and returned in option order without duplicates, matching
+   * what the interactive path returns.
+   *
+   * @param string $label
+   *   The widget label, used to identify the widget in the error message.
+   * @param mixed $value
+   *   The discovered value: a list of option keys, or a single option key.
+   * @param array<string, string> $options
+   *   Map of option key to display label.
+   *
+   * @return list<string>
+   *   The selected option keys, deduplicated and in option order.
+   *
+   * @throws \InvalidArgumentException
+   *   When any entry is not a key of $options.
+   */
+  protected function assertDiscoveredOptions(string $label, mixed $value, array $options): array {
+    $entries = is_array($value) ? $value : [$value];
+    $selected = [];
+
+    foreach ($entries as $entry) {
+      if (is_scalar($entry) && trim((string) $entry) === '') {
+        continue;
+      }
+
+      $selected[] = $this->assertDiscoveredOption($label, $entry, $options);
+    }
+
+    return array_values(array_filter(array_keys($options), fn(string $key): bool => in_array($key, $selected, TRUE)));
+  }
+
+  /**
+   * Coerces a discovered value to a boolean using the truthy/falsy lists.
+   *
+   * @param string $label
+   *   The widget label, used to identify the widget in the error message.
+   * @param mixed $value
+   *   The discovered value.
+   * @param list<string> $truthy
+   *   Values treated as TRUE.
+   * @param list<string> $falsy
+   *   Values treated as FALSE.
+   *
+   * @return bool
+   *   The coerced boolean.
+   *
+   * @throws \InvalidArgumentException
+   *   When the value appears in neither list.
+   */
+  protected function assertDiscoveredBool(string $label, mixed $value, array $truthy, array $falsy): bool {
+    if (is_bool($value)) {
+      return $value;
+    }
+
+    $display = is_scalar($value) ? (string) $value : get_debug_type($value);
+    $normalised = strtolower(trim($display));
+
+    if (in_array($normalised, $truthy, TRUE)) {
+      return TRUE;
+    }
+
+    if (in_array($normalised, $falsy, TRUE)) {
+      return FALSE;
+    }
+
+    $accepted = implode(', ', array_merge($truthy, $falsy));
+
+    throw new \InvalidArgumentException(sprintf('Discovered value "%s" for "%s" is not a valid answer. Accepted values: %s.', $display, $label, $accepted));
   }
 
   /**
