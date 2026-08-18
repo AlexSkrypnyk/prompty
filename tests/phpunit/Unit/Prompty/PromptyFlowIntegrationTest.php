@@ -329,7 +329,7 @@ final class PromptyFlowIntegrationTest extends PromptyTestCase {
     $this->assertNull($r['result']);
   }
 
-  #[DataProvider('dataProviderFlowThrowSites')]
+  #[DataProvider('dataProviderFlowResetsStateWhenCallbackThrows')]
   public function testFlowResetsStateWhenCallbackThrows(\Closure $run): void {
     $this->setEnvVars(['dish' => 'pear tart']);
 
@@ -349,7 +349,7 @@ final class PromptyFlowIntegrationTest extends PromptyTestCase {
     $this->assertFalse($this->getStaticProperty('inFlow'));
   }
 
-  public static function dataProviderFlowThrowSites(): \Iterator {
+  public static function dataProviderFlowResetsStateWhenCallbackThrows(): \Iterator {
     yield 'steps callable' => [
       fn(): mixed => Prompty::flow(fn(): array => throw new \RuntimeException('boom'), unicode: FALSE),
     ];
