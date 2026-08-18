@@ -561,6 +561,7 @@ class Prompty {
         $lines = array_merge($lines, $description !== '' ? $p->renderDescription($description) : [$p->bar()]);
         $lines[] = $p->bar() . $p->cfgSpacing['indent'] . $display;
         $lines[] = $p->bar();
+
         return $lines;
       }
 
@@ -736,6 +737,7 @@ class Prompty {
         }
 
         $lines[] = $p->bar();
+
         return $lines;
       }
 
@@ -927,6 +929,7 @@ class Prompty {
         }
 
         $lines[] = $p->bar();
+
         return $lines;
       }
 
@@ -1107,6 +1110,7 @@ class Prompty {
         $lines = array_merge($lines, $description !== '' ? $p->renderDescription($description) : [$p->bar()]);
         $lines[] = $p->bar() . $p->cfgSpacing['indent'] . $options_display;
         $lines[] = $p->bar();
+
         return $lines;
       }
 
@@ -1309,6 +1313,7 @@ class Prompty {
    */
   protected function printLines(array $lines): int {
     echo implode(PHP_EOL, $lines) . PHP_EOL;
+
     return count($lines);
   }
 
@@ -1388,6 +1393,7 @@ class Prompty {
     if (isset($ctx['number'])) {
       /** @var string $number */
       $number = $ctx['number'];
+
       return $label . ' ' . $this->color('(' . $number . ')', 'dim');
     }
 
@@ -1654,6 +1660,46 @@ class Prompty {
   }
 
   /**
+   * Extracts the condition callback a flow step was declared with.
+   *
+   * @param mixed $step
+   *   A flow step: a closure, or a step array carrying '__condition'.
+   *
+   * @return callable|null
+   *   The condition callback, or NULL when the step is unconditional.
+   */
+  protected function stepCondition(mixed $step): ?callable {
+    if (is_callable($step) || !is_array($step)) {
+      return NULL;
+    }
+
+    $condition = $step['__condition'] ?? NULL;
+
+    return is_callable($condition) ? $condition : NULL;
+  }
+
+  /**
+   * Checks whether any of the given steps would render against the results.
+   *
+   * @param array<array-key, mixed> $steps
+   *   Flow steps to test.
+   *
+   * @return bool
+   *   TRUE when at least one step is unconditional or its condition passes.
+   */
+  protected function hasVisibleStep(array $steps): bool {
+    foreach ($steps as $step) {
+      $condition = $this->stepCondition($step);
+
+      if ($condition === NULL || $condition($this->results)) {
+        return TRUE;
+      }
+    }
+
+    return FALSE;
+  }
+
+  /**
    * Recursively walks flow steps, executing each widget and collecting results.
    *
    * @param array<string, mixed> $steps
@@ -1671,20 +1717,23 @@ class Prompty {
    */
   protected function walkFlow(array $steps, int $depth, array $options, string $number_prefix): bool {
     $step_number = 0;
+    $index = 0;
 
     foreach ($steps as $key => $step) {
+      $index++;
+
       if (is_callable($step)) {
         $call = $step;
-        $condition = NULL;
         $children = [];
       }
       else {
         /** @var array<string, mixed> $step */
         $call = $step['__call'];
-        $condition = isset($step['__condition']) && is_callable($step['__condition']) ? $step['__condition'] : NULL;
         /** @var array<string, mixed> $children */
         $children = is_array($step['__children'] ?? NULL) ? $step['__children'] : [];
       }
+
+      $condition = $this->stepCondition($step);
 
       if ($condition !== NULL && !$condition($this->results)) {
         continue;
@@ -1692,32 +1741,7 @@ class Prompty {
 
       $step_number++;
 
-      // Determine if this is the last visible child at this depth.
-      $has_next_sibling = FALSE;
-      $found_current = FALSE;
-
-      foreach ($steps as $sibling_key => $sibling_step) {
-        if (!$found_current) {
-          if ($sibling_key === $key) {
-            $found_current = TRUE;
-          }
-          continue;
-        }
-
-        if (is_callable($sibling_step)) {
-          $has_next_sibling = TRUE;
-          break;
-        }
-
-        /** @var array<string, mixed> $sibling_step */
-        $sibling_condition = isset($sibling_step['__condition']) && is_callable($sibling_step['__condition']) ? $sibling_step['__condition'] : NULL;
-        if ($sibling_condition === NULL || $sibling_condition($this->results)) {
-          $has_next_sibling = TRUE;
-          break;
-        }
-      }
-
-      $is_last = $depth > 0 && !$has_next_sibling;
+      $is_last = $depth > 0 && !$this->hasVisibleStep(array_slice($steps, $index));
 
       // Update tree connector state before creating ctx so the widget sees
       // the correct open/closed state for its depth level.
@@ -1753,31 +1777,13 @@ class Prompty {
 
       $this->results[$key] = $value;
 
-      if ($children !== []) {
-        // Only render children separator if a visible child exists.
-        $has_visible_child = FALSE;
-        foreach ($children as $child) {
-          if (is_callable($child)) {
-            $child_condition = NULL;
-          }
-          else {
-            /** @var array<string, mixed> $child */
-            $child_condition = isset($child['__condition']) && is_callable($child['__condition']) ? $child['__condition'] : NULL;
-          }
-          if ($child_condition === NULL || $child_condition($this->results)) {
-            $has_visible_child = TRUE;
-            break;
-          }
-        }
+      if ($this->hasVisibleStep($children)) {
+        $child_depth = $depth + 1;
+        $sep = $this->bar() . $this->labelPrefix($child_depth, $this->open) . $this->bar();
+        $this->printLines([$sep]);
 
-        if ($has_visible_child) {
-          $child_depth = $depth + 1;
-          $sep = $this->bar() . $this->labelPrefix($child_depth, $this->open) . $this->bar();
-          $this->printLines([$sep]);
-
-          if (!$this->walkFlow($children, $child_depth, $options, $number)) {
-            return FALSE;
-          }
+        if (!$this->walkFlow($children, $child_depth, $options, $number)) {
+          return FALSE;
         }
       }
     }
