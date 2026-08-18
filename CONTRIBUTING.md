@@ -18,23 +18,25 @@ composer install
 
 ## Commands
 
-| Command                  | What it does                                          |
-|--------------------------|-------------------------------------------------------|
-| `composer lint`          | PHPCS, then PHPStan, then Rector in dry-run mode.      |
-| `composer lint-fix`      | Rector, then PHPCBF. Fixes what can be fixed.          |
-| `composer test`          | PHPUnit without coverage.                              |
-| `composer test-coverage` | PHPUnit with coverage, written to `.logs/`.            |
-| `composer reset`         | Removes `vendor/`, `vendor-bin/` and `composer.lock`.  |
+| Command                     | What it does                                          |
+|-----------------------------|-------------------------------------------------------|
+| `composer lint`             | PHPCS, PHPStan, Rector in dry-run mode, then the embedded playground demo check. |
+| `composer lint-fix`         | Rector, then PHPCBF. Fixes what can be fixed.          |
+| `composer test`             | PHPUnit without coverage.                              |
+| `composer test-coverage`    | PHPUnit with coverage, written to `.logs/`.            |
+| `composer embed-playground` | Regenerates `playground/flow-embed.dist.php`.          |
+| `composer reset`            | Removes `vendor/`, `vendor-bin/` and `composer.lock`.  |
 
 `composer reset` only deletes - run `composer install` afterwards to get back to a working tree.
 
 ## Code quality
 
-Three tools gate every change, and CI runs all of them:
+Four checks gate every change, and CI runs all of them through `composer lint`:
 
 - **PHPCS** - the Drupal standard plus DrevOps rules, with `strict_types` required in every file. Config in [`phpcs.xml`](phpcs.xml).
 - **PHPStan** - level 9, the strictest level. Config in [`phpstan.neon`](phpstan.neon).
 - **Rector** - PHP 8.2 modernisation plus dead-code, code-quality, coding-style, type-declaration, naming and early-return sets, run in dry-run mode during linting. Config in [`rector.php`](rector.php).
+- **Embedded demo check** - rebuilds `playground/flow-embed.dist.php` and fails if it no longer matches its source. See [The embedded demo](#the-embedded-demo).
 
 Coverage has a threshold in CI (80% by default, set via the `CI_CODE_COVERAGE_THRESHOLD` repository variable). New code needs tests.
 
@@ -81,6 +83,8 @@ The [`playground/`](playground) directory holds runnable demos - the quickest wa
 | `flow-nested.php`             | A nested flow with conditionals, 3 levels deep.     |
 | `flow-config.php`             | A flow with `configure()` applied beforehand.       |
 | `flow-multiple.php`           | Several flows, and a standalone widget between them.|
+| `flow-embed.php`              | The same flow as flow.php, before embedding.        |
+| `flow-embed.dist.php`         | The same flow after embedding - one file, no require.|
 
 ```bash
 php playground/flow-nested.php
@@ -93,6 +97,24 @@ php playground/flow.php --no-unicode --no-ansi
 ```
 
 `flow-config.php` and `flow-multiple.php` set their display mode in code instead, so the flags do nothing there.
+
+### The embedded demo
+
+`flow-embed.php` and `flow-embed.dist.php` are the same script before and after embedding. Run both and they behave identically - the second just carries the class inline instead of requiring it, so it runs from anywhere:
+
+```bash
+php playground/flow-embed.php
+cp playground/flow-embed.dist.php ~/order.php
+php ~/order.php
+```
+
+`flow-embed.dist.php` is generated, so treat it as build output: make the edit in `flow-embed.php` and regenerate.
+
+```bash
+composer embed-playground
+```
+
+`composer lint` runs [`.util/check-embed.php`](.util/check-embed.php), which rebuilds the demo into a temporary path and compares the bytes, so the two cannot drift apart unnoticed. It fails whenever `Prompty.php` or `flow-embed.php` changes without the regeneration, and names the command to run. The generated file is excluded from PHPCS, PHPStan and Rector, and is marked `linguist-generated` so it collapses in GitHub diffs.
 
 ## Demo content
 
