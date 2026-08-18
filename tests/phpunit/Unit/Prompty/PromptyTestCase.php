@@ -166,10 +166,12 @@ abstract class PromptyTestCase extends TestCase {
       $fn();
     }
     catch (\Throwable $throwable) {
+      $output = ob_get_clean();
+
       $this->assertInstanceOf($exception, $throwable);
       $this->assertSame($message, $throwable->getMessage());
 
-      return $this->promptyStripAnsi(ob_get_clean() ?: '');
+      return $this->promptyStripAnsi($output ?: '');
     }
 
     $this->fail(sprintf('Expected %s was not thrown. Output: %s', $exception, ob_get_clean() ?: ''));
