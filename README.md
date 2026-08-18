@@ -114,6 +114,10 @@ You may also use the [starter](#starter-script) as a template for your own scrip
 
 Four widget types cover the most common prompt patterns. Each returns the user's answer, or `null` if they cancel (Escape or Ctrl+C).
 
+<p align="center">
+  <img src=".util/assets/widgets.svg" width="100%" alt="Text, select, multiselect and confirm widgets in sequence">
+</p>
+
 ### Text
 
 Free-form text input with an optional editable `default` and placeholder.
