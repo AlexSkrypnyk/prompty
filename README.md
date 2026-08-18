@@ -662,7 +662,7 @@ Download `embed.php` from the [latest release](https://github.com/AlexSkrypnyk/p
 
 ### Setup
 
-Add `// @embed-start` and `// @embed-end` markers in your script around the `require_once` line:
+Add `// @embed-start` and `// @embed-end` markers in your script around the `require_once` line **and the import**:
 
 ```php
 <?php
@@ -672,13 +672,14 @@ declare(strict_types=1);
 // phpcs:disable
 // @embed-start
 require_once __DIR__ . '/Prompty.php';
+use AlexSkrypnyk\Prompty\Prompty;
 // @embed-end
 // phpcs:enable
 
-use AlexSkrypnyk\Prompty\Prompty;
-
 $dish = Prompty::text('Dish name');
 ```
+
+Both lines go inside the markers. The embedded class is emitted without a namespace, so an import left outside them collides with it and the embedded script fails to parse.
 
 ### Usage
 
@@ -779,11 +780,14 @@ BASE=https://github.com/AlexSkrypnyk/prompty/releases/latest/download
 curl -LO $BASE/Prompty.php
 curl -LO $BASE/embed.php
 
-# Add markers in your script around the require_once line:
+# Add markers in your script around the require_once line and the import.
+# Both must sit inside the markers - the embedded class has no namespace,
+# so an import left outside them collides with it:
 #
 #   // phpcs:disable
 #   // @embed-start
 #   require_once __DIR__ . '/Prompty.php';
+#   use AlexSkrypnyk\Prompty\Prompty;
 #   // @embed-end
 #   // phpcs:enable
 
