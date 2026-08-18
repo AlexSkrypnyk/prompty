@@ -2,24 +2,27 @@
 
 /**
  * @file
- * Playground - the flow from flow.php, prepared for embedding.
+ * Playground - the flow from flow.php, before and after embedding.
  *
- * The flow itself is identical to flow.php and runs the same way, loading
- * the class with require. What differs is the marker pair below, and the
- * kill switch further down.
+ * Two files hold this demo, and both run:
  *
- * embed.php replaces everything between the markers with a minified copy of
- * the Prompty class. The result is one file that carries the library inside
- * it and requires nothing:
+ * - flow-embed.php loads the class with require, like every other demo here.
+ * - flow-embed.dist.php carries the class inline and requires nothing. Copy
+ *   it anywhere and it still runs.
  *
- *   mkdir -p .artifacts
- *   php embed.php playground/flow-embed.php .artifacts/flow-embed.dist.php
- *   php .artifacts/flow-embed.dist.php
+ * flow-embed.dist.php is generated. Edit flow-embed.php, then regenerate:
  *
- * The second argument is an output path: this file is copied there and the
- * copy is rewritten, so the original stays as it is. Dropping that argument
- * embeds in place, which is wrong for this file - playground/ is checked by
- * PHPCS and PHPStan, and the minified class passes neither.
+ *   composer embed-playground
+ *
+ * which runs embed.php with an output path, so the source is copied there
+ * and the copy is rewritten:
+ *
+ *   php embed.php playground/flow-embed.php playground/flow-embed.dist.php
+ *
+ * embed.php replaces everything between the markers below with a minified
+ * copy of the Prompty class, and carries everything outside them across
+ * unchanged - which is why both files share this comment. composer lint
+ * fails when the two drift apart.
  *
  * Add --compact to shorten internal property and method names and strip
  * whitespace, for a smaller result.

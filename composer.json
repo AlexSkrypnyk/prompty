@@ -58,10 +58,13 @@
         "sort-packages": true
     },
     "scripts": {
+        "check-embed-playground": "php .util/check-embed.php",
+        "embed-playground": "php embed.php playground/flow-embed.php playground/flow-embed.dist.php",
         "lint": [
             "phpcs",
             "phpstan",
-            "rector --dry-run"
+            "rector --dry-run",
+            "@check-embed-playground"
         ],
         "lint-fix": [
             "rector",

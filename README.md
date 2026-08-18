@@ -696,7 +696,7 @@ php embed.php my-script.php dist/my-script.php
 
 Wrap the markers in `// phpcs:disable` / `// phpcs:enable` to suppress coding standard warnings on the minified code.
 
-See [`starter.php`](starter.php) for an example with markers already in place, and [`playground/flow-embed.php`](playground/flow-embed.php) for a runnable demo that explains each part of the process in comments.
+See [`starter.php`](starter.php) for an example with markers already in place. For a worked before-and-after, [`playground/flow-embed.php`](playground/flow-embed.php) and [`playground/flow-embed.dist.php`](playground/flow-embed.dist.php) are the same demo either side of the embedder - run both, then diff them to see exactly what changed.
 
 ### Options
 
