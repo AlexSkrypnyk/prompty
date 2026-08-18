@@ -493,6 +493,25 @@ final class PromptyWidgetResolvedTest extends PromptyTestCase {
     yield 'custom falsy via env' => [NULL, 'off', FALSE];
   }
 
+  #[DataProvider('dataProviderConfirmMatchesListsCaseInsensitively')]
+  public function testConfirmMatchesListsCaseInsensitively(string $discovered, bool $expected): void {
+    $ctx = $this->ctx(['truthy' => ['YES', ' On '], 'falsy' => ['NO', ' Off ']]);
+
+    $this->captureOutput(function () use ($discovered, $ctx, &$result): void {
+      $result = Prompty::confirm('Install?', discovered: $discovered, ctx: $ctx);
+    });
+
+    $this->assertSame($expected, $result);
+  }
+
+  public static function dataProviderConfirmMatchesListsCaseInsensitively(): \Iterator {
+    yield 'lowercase value against uppercase token' => ['yes', TRUE];
+    yield 'uppercase value against uppercase token' => ['YES', TRUE];
+    yield 'lowercase falsy against uppercase token' => ['no', FALSE];
+    yield 'value against padded truthy token' => ['on', TRUE];
+    yield 'value against padded falsy token' => ['off', FALSE];
+  }
+
   public function testConfirmRejectsDefaultListValueWhenListsAreCustom(): void {
     $ctx = $this->ctx(['truthy' => ['on'], 'falsy' => ['off']]);
 

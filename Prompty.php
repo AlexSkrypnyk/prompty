@@ -1482,13 +1482,14 @@ class Prompty {
     }
 
     $display = is_scalar($value) ? (string) $value : get_debug_type($value);
-    $normalised = strtolower(trim($display));
+    $normalise = fn(string $token): string => strtolower(trim($token));
+    $normalised = $normalise($display);
 
-    if (in_array($normalised, $truthy, TRUE)) {
+    if (in_array($normalised, array_map($normalise, $truthy), TRUE)) {
       return TRUE;
     }
 
-    if (in_array($normalised, $falsy, TRUE)) {
+    if (in_array($normalised, array_map($normalise, $falsy), TRUE)) {
       return FALSE;
     }
 
