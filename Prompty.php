@@ -891,10 +891,15 @@ class Prompty {
     ];
     $standalone = !static::$inFlow;
 
-    // Env values for multiselect arrive comma-separated (e.g., "a,b,c").
-    $ctx_discovered = $ctx['discovered'] ?? NULL;
-    /** @var int|float|string|bool|null $ctx_discovered */
-    $resolved = $discovered ?? ($ctx_discovered !== NULL ? explode(',', (string) $ctx_discovered) : NULL);
+    $resolved = $discovered ?? $ctx['discovered'] ?? NULL;
+
+    // An environment variable can only carry one string, so several answers
+    // arrive comma-separated. A scalar from either source is read the same
+    // way; a list is taken as given, which is how an option key holding a
+    // comma is selected.
+    if (is_scalar($resolved)) {
+      $resolved = explode(',', (string) $resolved);
+    }
 
     // Validate before raw mode is entered, so a rejected call cannot leave
     // the terminal unrestored.
