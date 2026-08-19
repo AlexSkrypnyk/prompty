@@ -75,7 +75,7 @@ function main(): void {
  *   When the embedder fails or writes nothing.
  */
 function build(string $project_dir, string $target): string {
-  $command = sprintf(
+  $cmd = sprintf(
     'php %s --no-verify %s %s 2>&1',
     escapeshellarg($project_dir . '/embed.php'),
     escapeshellarg($project_dir . '/' . SOURCE_SCRIPT),
@@ -84,7 +84,7 @@ function build(string $project_dir, string $target): string {
 
   $output = [];
   $exit = 0;
-  exec($command, $output, $exit);
+  exec($cmd, $output, $exit);
 
   if ($exit !== 0) {
     throw new RuntimeException(sprintf('The embedder exited with code %d:%s%s', $exit, PHP_EOL, implode(PHP_EOL, $output)));
