@@ -387,6 +387,15 @@ $results = Prompty::flow(fn(): array => [/* ... */], env_prefix: 'KITCHEN_');
 
 Multiselect values are read as a comma-separated list, so `PROMPTY_EXTRAS=bread,olives` selects both options. The result comes back deduplicated and in the order the options were declared, exactly as if the user had ticked them by hand - so `PROMPTY_EXTRAS=olives,bread,olives` also gives you `['bread', 'olives']`. An empty value means nothing is selected, and a stray trailing comma is ignored.
 
+The `discovered:` argument reads a string the same way, so the environment variable and the argument are interchangeable and one can stand in for the other in a test:
+
+```php
+Prompty::multiselect('Extras', options: $extras, discovered: 'bread,olives');
+Prompty::multiselect('Extras', options: $extras, discovered: ['bread', 'olives']);
+```
+
+The list form takes each entry literally, which is the way to select an option key that itself contains a comma - a comma-joined string would be split around it.
+
 For confirm widgets, env values are interpreted using configurable truthy/falsy lists (default: `1`/`true`/`yes` and `0`/`false`/`no`).
 
 ### Discovered and default values must be valid answers
