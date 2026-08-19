@@ -143,7 +143,6 @@ final class PromptyMultiselectInteractiveTest extends PromptyTestCase {
     yield 'all pre-checked' => [self::KEY_ENTER, ['ts', 'eslint', 'prettier'], ['ts', 'eslint', 'prettier']];
     yield 'toggle off yields empty' => [self::KEY_SPACE . self::KEY_ENTER, ['ts'], []];
     yield 'check another after default' => [self::KEY_DOWN . self::KEY_SPACE . self::KEY_ENTER, ['ts'], ['ts', 'eslint']];
-    yield 'unknown keys ignored' => [self::KEY_ENTER, ['nonexistent'], []];
   }
 
   public function testDefaultRendersPreCheckedSelection(): void {

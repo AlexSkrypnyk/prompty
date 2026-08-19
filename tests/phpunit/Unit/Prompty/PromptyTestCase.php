@@ -177,6 +177,54 @@ abstract class PromptyTestCase extends TestCase {
     $this->fail(sprintf('Expected %s was not thrown. Output: %s', $exception, ob_get_clean() ?: ''));
   }
 
+  /**
+   * Install a singleton whose input stream carries the given keystrokes.
+   *
+   * A widget reading past the end of the stream would otherwise fall through
+   * to STDIN and block, so any test that can reach an interactive loop feeds
+   * it from memory.
+   *
+   * @param string $keystrokes
+   *   Raw keystroke bytes to feed.
+   * @param bool $in_flow
+   *   Whether to mark a flow as already running.
+   *
+   * @return resource
+   *   The stream, positioned at the first keystroke.
+   */
+  protected function installKeystrokes(string $keystrokes, bool $in_flow = TRUE) {
+    $instance = $this->createAndSetInstance(['unicode' => FALSE], $in_flow);
+
+    $stream = fopen('php://memory', 'r+') ?: NULL;
+    $this->assertNotNull($stream);
+    fwrite($stream, $keystrokes);
+    rewind($stream);
+    $this->setProperty($instance, 'input', $stream);
+
+    return $stream;
+  }
+
+  /**
+   * Assert a widget call throws before it draws anything or reads a key.
+   *
+   * @param callable $run
+   *   The widget call under test.
+   * @param string $message
+   *   The expected exception message.
+   * @param string $keystrokes
+   *   Raw keystroke bytes made available to the widget.
+   */
+  protected function assertWidgetRejects(callable $run, string $message, string $keystrokes = self::KEY_ENTER): void {
+    $stream = $this->installKeystrokes($keystrokes);
+
+    $output = $this->captureOutputThrows(\InvalidArgumentException::class, $message, $run);
+
+    $this->assertSame('', $output);
+    $this->assertSame(0, ftell($stream));
+
+    fclose($stream);
+  }
+
   protected function tearDown(): void {
     array_map(putenv(...), $this->envKeys);
     $this->envKeys = [];

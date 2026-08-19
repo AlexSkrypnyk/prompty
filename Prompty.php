@@ -632,7 +632,8 @@ class Prompty {
    * @param array<int|string, string> $options
    *   Map of option key to display label. Must not be empty.
    * @param string $default
-   *   Option key to focus initially; falls back to the first option.
+   *   Option key to focus initially. An empty string focuses the first option;
+   *   anything else must be a key of $options.
    * @param string $description
    *   Optional description rendered below the label.
    * @param array<int|string, string> $hints
@@ -651,7 +652,8 @@ class Prompty {
    *   A closure in flow mode, or the selected option key in standalone mode.
    *
    * @throws \InvalidArgumentException
-   *   When $options is empty, or a discovered value is not a key of $options.
+   *   When $options is empty, or a default or discovered value is not a key of
+   *   $options.
    */
   public static function select(
     string $label,
@@ -692,8 +694,9 @@ class Prompty {
     // Validate before raw mode is entered, so a rejected call cannot leave
     // the terminal unrestored.
     $p->assertDeclaredOptions($label, $options);
+    $default_key = $default === '' ? NULL : $p->assertOptionKey('Default', $label, $default, $options);
     $resolved = $discovered ?? $ctx['discovered'] ?? NULL;
-    $resolved_key = $resolved === NULL ? NULL : $p->assertDiscoveredOption($label, $resolved, $options);
+    $resolved_key = $resolved === NULL ? NULL : $p->assertOptionKey('Discovered', $label, $resolved, $options);
 
     if ($standalone) {
       $p->setupTty();
@@ -766,10 +769,10 @@ class Prompty {
     };
 
     $focused = 0;
-    $default_index = $default !== '' ? array_search($default, $option_keys, TRUE) : FALSE;
 
-    if ($default_index !== FALSE) {
-      $focused = (int) $default_index;
+    if ($default_key !== NULL) {
+      // The default was checked against the same keys, so it is always found.
+      $focused = (int) array_search($default_key, $option_keys, TRUE);
     }
 
     $line_count = $p->printLines($render_active($focused));
@@ -818,7 +821,8 @@ class Prompty {
    * @param array<int|string, string> $options
    *   Map of option key to display label. Must not be empty.
    * @param list<int|string> $default
-   *   Option keys to pre-check when the widget is rendered interactively.
+   *   Option keys to pre-check when the widget is rendered interactively. Every
+   *   entry must be a key of $options; an empty list pre-checks nothing.
    * @param string $description
    *   Optional description rendered below the label.
    * @param array<int|string, string> $hints
@@ -838,7 +842,8 @@ class Prompty {
    *   deduplicated and in option order.
    *
    * @throws \InvalidArgumentException
-   *   When $options is empty, or a discovered entry is not a key of $options.
+   *   When $options is empty, or a default or discovered entry is not a key of
+   *   $options.
    */
   public static function multiselect(
     string $label,
@@ -884,7 +889,8 @@ class Prompty {
     // Validate before raw mode is entered, so a rejected call cannot leave
     // the terminal unrestored.
     $p->assertDeclaredOptions($label, $options);
-    $resolved_keys = $resolved === NULL ? NULL : $p->assertDiscoveredOptions($label, $resolved, $options);
+    $default_keys = $p->assertOptionKeys('Default', $label, $default, $options);
+    $resolved_keys = $resolved === NULL ? NULL : $p->assertOptionKeys('Discovered', $label, $resolved, $options);
 
     if ($standalone) {
       $p->setupTty();
@@ -960,9 +966,6 @@ class Prompty {
     };
 
     $focused = 0;
-    // $default may hold ints where $option_keys holds strings, so normalise
-    // before the strict comparison.
-    $default_keys = array_map(strval(...), $default);
     $checked = array_map(fn(string $key): bool => in_array($key, $default_keys, TRUE), $option_keys);
     $line_count = $p->printLines($render_active($focused, $checked));
 
@@ -1441,45 +1444,51 @@ class Prompty {
   }
 
   /**
-   * Validates a discovered value against a widget's declared options.
+   * Validates a supplied value against a widget's declared options.
    *
+   * @param string $parameter
+   *   The parameter that supplied the value, capitalised, opening the error
+   *   message: 'Discovered' or 'Default'.
    * @param string $label
    *   The widget label, used to identify the widget in the error message.
    * @param mixed $value
-   *   The discovered value.
+   *   The supplied value.
    * @param array<int|string, string> $options
    *   Map of option key to display label.
    *
    * @return string
-   *   The discovered value as a trimmed option key.
+   *   The supplied value as a trimmed option key.
    *
    * @throws \InvalidArgumentException
    *   When the value is not a key of $options.
    */
-  protected function assertDiscoveredOption(string $label, mixed $value, array $options): string {
+  protected function assertOptionKey(string $parameter, string $label, mixed $value, array $options): string {
     $key = is_scalar($value) ? trim((string) $value) : get_debug_type($value);
 
     if (!array_key_exists($key, $options)) {
       $available = $options === [] ? 'none' : implode(', ', $this->optionKeys($options));
 
-      throw new \InvalidArgumentException(sprintf('Discovered value "%s" for "%s" is not a valid option. Available options: %s.', $key, $label, $available));
+      throw new \InvalidArgumentException(sprintf('%s value "%s" for "%s" is not a valid option. Available options: %s.', $parameter, $key, $label, $available));
     }
 
     return $key;
   }
 
   /**
-   * Validates discovered multiselect values against the declared options.
+   * Validates supplied multiselect values against the declared options.
    *
    * Entries that are empty after trimming are dropped, so an empty value and a
    * trailing comma both mean "nothing selected". Surviving entries are checked
    * for membership and returned in option order without duplicates, matching
    * what the interactive path returns.
    *
+   * @param string $parameter
+   *   The parameter that supplied the value, capitalised, opening the error
+   *   message: 'Discovered' or 'Default'.
    * @param string $label
    *   The widget label, used to identify the widget in the error message.
    * @param mixed $value
-   *   The discovered value: a list of option keys, or a single option key.
+   *   The supplied value: a list of option keys, or a single option key.
    * @param array<int|string, string> $options
    *   Map of option key to display label.
    *
@@ -1489,7 +1498,7 @@ class Prompty {
    * @throws \InvalidArgumentException
    *   When any entry is not a key of $options.
    */
-  protected function assertDiscoveredOptions(string $label, mixed $value, array $options): array {
+  protected function assertOptionKeys(string $parameter, string $label, mixed $value, array $options): array {
     $entries = is_array($value) ? $value : [$value];
     $selected = [];
 
@@ -1498,7 +1507,7 @@ class Prompty {
         continue;
       }
 
-      $selected[] = $this->assertDiscoveredOption($label, $entry, $options);
+      $selected[] = $this->assertOptionKey($parameter, $label, $entry, $options);
     }
 
     return array_values(array_filter($this->optionKeys($options), fn(string $key): bool => in_array($key, $selected, TRUE)));
