@@ -369,7 +369,6 @@ final class PromptyWidgetResolvedTest extends PromptyTestCase {
     yield 'discovered argument' => ['unknown', NULL, $options, 'Discovered value "unknown" for "Pick" is not a valid option. Available options: a, b.'];
     yield 'env value' => [NULL, 'nope', $options, 'Discovered value "nope" for "Pick" is not a valid option. Available options: a, b.'];
     yield 'empty env value' => [NULL, '', $options, 'Discovered value "" for "Pick" is not a valid option. Available options: a, b.'];
-    yield 'no options declared' => ['a', NULL, [], 'Discovered value "a" for "Pick" is not a valid option. Available options: none.'];
     yield 'option label is not a key' => ['Alpha', NULL, $options, 'Discovered value "Alpha" for "Pick" is not a valid option. Available options: a, b.'];
   }
 
@@ -425,14 +424,6 @@ final class PromptyWidgetResolvedTest extends PromptyTestCase {
     yield 'doubled comma ignored' => [NULL, 'a,,b', ['a', 'b']];
     yield 'whitespace-only entry ignored' => [NULL, 'a, ,b', ['a', 'b']];
     yield 'empty argument list' => [[], NULL, []];
-  }
-
-  public function testMultiselectWithoutOptionsAcceptsEmptySelection(): void {
-    $this->captureOutput(function () use (&$result): void {
-      $result = Prompty::multiselect('Pick', options: [], discovered: [], ctx: $this->ctx());
-    });
-
-    $this->assertSame([], $result);
   }
 
   #[DataProvider('dataProviderConfirmCoercesDiscoveredArgument')]

@@ -630,7 +630,7 @@ class Prompty {
    * @param string $label
    *   The widget label shown to the user.
    * @param array<int|string, string> $options
-   *   Map of option key to display label.
+   *   Map of option key to display label. Must not be empty.
    * @param string $default
    *   Option key to focus initially; falls back to the first option.
    * @param string $description
@@ -651,7 +651,7 @@ class Prompty {
    *   A closure in flow mode, or the selected option key in standalone mode.
    *
    * @throws \InvalidArgumentException
-   *   When a discovered value is not a key of $options.
+   *   When $options is empty, or a discovered value is not a key of $options.
    */
   public static function select(
     string $label,
@@ -689,8 +689,9 @@ class Prompty {
     ];
     $standalone = !static::$inFlow;
 
-    // Validate before raw mode is entered, so a rejected value cannot leave
+    // Validate before raw mode is entered, so a rejected call cannot leave
     // the terminal unrestored.
+    $p->assertDeclaredOptions($label, $options);
     $resolved = $discovered ?? $ctx['discovered'] ?? NULL;
     $resolved_key = $resolved === NULL ? NULL : $p->assertDiscoveredOption($label, $resolved, $options);
 
@@ -815,7 +816,7 @@ class Prompty {
    * @param string $label
    *   The widget label shown to the user.
    * @param array<int|string, string> $options
-   *   Map of option key to display label.
+   *   Map of option key to display label. Must not be empty.
    * @param list<int|string> $default
    *   Option keys to pre-check when the widget is rendered interactively.
    * @param string $description
@@ -837,7 +838,7 @@ class Prompty {
    *   deduplicated and in option order.
    *
    * @throws \InvalidArgumentException
-   *   When a discovered entry is not a key of $options.
+   *   When $options is empty, or a discovered entry is not a key of $options.
    */
   public static function multiselect(
     string $label,
@@ -880,8 +881,9 @@ class Prompty {
     /** @var int|float|string|bool|null $ctx_discovered */
     $resolved = $discovered ?? ($ctx_discovered !== NULL ? explode(',', (string) $ctx_discovered) : NULL);
 
-    // Validate before raw mode is entered, so a rejected value cannot leave
+    // Validate before raw mode is entered, so a rejected call cannot leave
     // the terminal unrestored.
+    $p->assertDeclaredOptions($label, $options);
     $resolved_keys = $resolved === NULL ? NULL : $p->assertDiscoveredOptions($label, $resolved, $options);
 
     if ($standalone) {
@@ -1419,6 +1421,23 @@ class Prompty {
    */
   protected function optionKeys(array $options): array {
     return array_map(strval(...), array_keys($options));
+  }
+
+  /**
+   * Rejects a widget declared without options.
+   *
+   * @param string $label
+   *   The widget label, used to identify the widget in the error message.
+   * @param array<int|string, string> $options
+   *   Map of option key to display label.
+   *
+   * @throws \InvalidArgumentException
+   *   When $options is empty.
+   */
+  protected function assertDeclaredOptions(string $label, array $options): void {
+    if ($options === []) {
+      throw new \InvalidArgumentException(sprintf('No options declared for "%s". Provide at least one option.', $label));
+    }
   }
 
   /**

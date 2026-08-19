@@ -174,6 +174,12 @@ $course = Prompty::select('Course',
 );
 ```
 
+`options` must not be empty. A widget with nothing to choose from cannot ask a question, so it throws an `InvalidArgumentException` before it draws anything or reads a key - whether the answer would have come from the user, from `discovered`, or from an environment variable:
+
+```text
+No options declared for "Course". Provide at least one option.
+```
+
 <table>
   <tr>
     <td></td>
@@ -208,6 +214,8 @@ $extras = Prompty::multiselect('Extras',
     . 'Space to toggle, enter to confirm.',
 );
 ```
+
+As with [select](#select), `options` must not be empty - an empty map throws an `InvalidArgumentException` naming the widget, on every path.
 
 <table>
   <tr>
