@@ -17,6 +17,109 @@ use PHPUnit\Framework\Attributes\Group;
 #[Group('functional')]
 final class EmbedScriptTest extends FunctionalTestCase {
 
+  /**
+   * Copy starter.php to temp dir and return the path.
+   */
+  protected function prepareTarget(): string {
+    $target = self::$tmp . '/starter.php';
+    copy(self::$root . '/starter.php', $target);
+
+    return $target;
+  }
+
+  /**
+   * Copy starter.php to temp dir without the kill switch block.
+   */
+  protected function prepareTargetWithoutKillswitch(): string {
+    $content = file_get_contents(self::$root . '/starter.php');
+    $this->assertIsString($content);
+
+    $content = preg_replace('/\/\/ Kill switch.*?if \(!getenv\(\'SHOULD_PROCEED\'\)\) \{\s*return;\s*\}\n*/s', '', $content);
+    $this->assertIsString($content);
+
+    $target = self::$tmp . '/starter.no-killswitch.php';
+    file_put_contents($target, $content);
+
+    return $target;
+  }
+
+  /**
+   * Run embed.php and assert success (discard output).
+   */
+  protected function runEmbed(string ...$args): void {
+    $this->runEmbedWithOutput(...$args);
+  }
+
+  /**
+   * Run embed.php and assert success.
+   *
+   * @return string
+   *   Combined stdout+stderr output.
+   */
+  protected function runEmbedWithOutput(string ...$args): string {
+    $this->processRun('php', array_merge([self::$root . '/embed.php'], $args));
+    $this->assertProcessSuccessful();
+
+    return $this->processGet()->getOutput() . $this->processGet()->getErrorOutput();
+  }
+
+  /**
+   * Assert that a PHP file passes lint checking.
+   */
+  protected function assertPhpLintPasses(string $path): void {
+    $this->processRun('php', ['-l', $path]);
+    $this->assertProcessSuccessful('PHP lint failed');
+  }
+
+  /**
+   * Copy Prompty.php to the temp directory.
+   */
+  protected function copyPromptySource(): string {
+    $path = self::$tmp . '/Prompty.php';
+    copy(self::$root . '/Prompty.php', $path);
+
+    return $path;
+  }
+
+  /**
+   * Generate a minified Prompty.php via --stdout.
+   */
+  protected function generateMinified(): string {
+    $path = self::$tmp . '/Prompty.min.php';
+    $this->runEmbed('--stdout', $path);
+
+    return $path;
+  }
+
+  /**
+   * Generate a compacted Prompty.php via --compact --stdout.
+   */
+  protected function generateCompacted(): string {
+    $path = self::$tmp . '/Prompty.compact.php';
+    $this->runEmbed('--compact', '--stdout', $path);
+
+    return $path;
+  }
+
+  /**
+   * Create a rector config file suitable for testing embedded output.
+   */
+  protected function createRectorConfig(): string {
+    $config_path = self::$tmp . '/rector.php';
+    copy(self::$root . '/rector.php', $config_path);
+
+    return $config_path;
+  }
+
+  /**
+   * Assert rector --dry-run reports no changes needed.
+   */
+  protected function assertRectorClean(string $target): void {
+    $rector_config = $this->createRectorConfig();
+    $this->processRun('php', [self::$root . '/vendor/bin/rector', 'process', '--dry-run', '--config=' . $rector_config, $target]);
+    $this->assertProcessSuccessful('Rector would make further changes');
+  }
+
   public function testEmbed(): void {
     $target = $this->prepareTarget();
 
@@ -428,109 +531,6 @@ final class EmbedScriptTest extends FunctionalTestCase {
     $r = $this->runWithKeystrokes('php ' . escapeshellarg($target), $keystrokes);
     $this->assertSame(0, $r['exit_code'], 'Script failed: ' . $r['stderr']);
     $this->assertStringContainsString('VERSION:1.2.3', $r['stdout']);
-  }
-
-  /**
-   * Copy starter.php to temp dir and return the path.
-   */
-  protected function prepareTarget(): string {
-    $target = self::$tmp . '/starter.php';
-    copy(self::$root . '/starter.php', $target);
-
-    return $target;
-  }
-
-  /**
-   * Copy starter.php to temp dir without the kill switch block.
-   */
-  protected function prepareTargetWithoutKillswitch(): string {
-    $content = file_get_contents(self::$root . '/starter.php');
-    $this->assertIsString($content);
-
-    $content = preg_replace('/\/\/ Kill switch.*?if \(!getenv\(\'SHOULD_PROCEED\'\)\) \{\s*return;\s*\}\n*/s', '', $content);
-    $this->assertIsString($content);
-
-    $target = self::$tmp . '/starter.no-killswitch.php';
-    file_put_contents($target, $content);
-
-    return $target;
-  }
-
-  /**
-   * Run embed.php and assert success (discard output).
-   */
-  protected function runEmbed(string ...$args): void {
-    $this->runEmbedWithOutput(...$args);
-  }
-
-  /**
-   * Run embed.php and assert success.
-   *
-   * @return string
-   *   Combined stdout+stderr output.
-   */
-  protected function runEmbedWithOutput(string ...$args): string {
-    $this->processRun('php', array_merge([self::$root . '/embed.php'], $args));
-    $this->assertProcessSuccessful();
-
-    return $this->processGet()->getOutput() . $this->processGet()->getErrorOutput();
-  }
-
-  /**
-   * Assert that a PHP file passes lint checking.
-   */
-  protected function assertPhpLintPasses(string $path): void {
-    $this->processRun('php', ['-l', $path]);
-    $this->assertProcessSuccessful('PHP lint failed');
-  }
-
-  /**
-   * Copy Prompty.php to the temp directory.
-   */
-  protected function copyPromptySource(): string {
-    $path = self::$tmp . '/Prompty.php';
-    copy(self::$root . '/Prompty.php', $path);
-
-    return $path;
-  }
-
-  /**
-   * Generate a minified Prompty.php via --stdout.
-   */
-  protected function generateMinified(): string {
-    $path = self::$tmp . '/Prompty.min.php';
-    $this->runEmbed('--stdout', $path);
-
-    return $path;
-  }
-
-  /**
-   * Generate a compacted Prompty.php via --compact --stdout.
-   */
-  protected function generateCompacted(): string {
-    $path = self::$tmp . '/Prompty.compact.php';
-    $this->runEmbed('--compact', '--stdout', $path);
-
-    return $path;
-  }
-
-  /**
-   * Create a rector config file suitable for testing embedded output.
-   */
-  protected function createRectorConfig(): string {
-    $config_path = self::$tmp . '/rector.php';
-    copy(self::$root . '/rector.php', $config_path);
-
-    return $config_path;
-  }
-
-  /**
-   * Assert rector --dry-run reports no changes needed.
-   */
-  protected function assertRectorClean(string $target): void {
-    $rector_config = $this->createRectorConfig();
-    $this->processRun('php', [self::$root . '/vendor/bin/rector', 'process', '--dry-run', '--config=' . $rector_config, $target]);
-    $this->assertProcessSuccessful('Rector would make further changes');
   }
 
 }
