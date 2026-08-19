@@ -33,7 +33,7 @@ $extras = ['bread' => 'Bread', 'olives' => 'Olives', 'herbs' => 'Herbs'];
  * @param \Closure|array<string, mixed>|list<string>|null $result
  *   What the widget returned.
  */
-function show(\Closure|array|null $result): void {
+function show_selection(\Closure|array|null $result): void {
   $selection = is_array($result) ? array_filter($result, is_string(...)) : NULL;
   echo '  Result: ' . ($selection === NULL ? 'cancelled' : ($selection === [] ? 'none' : implode(', ', $selection))) . "\n";
 }
@@ -41,7 +41,7 @@ function show(\Closure|array|null $result): void {
 echo "\n--- Multiselect: answered by a command-line flag ---\n";
 $flag = is_string($opts['extras'] ?? NULL) ? $opts['extras'] : NULL;
 echo '  Source: ' . ($flag === NULL ? 'no --extras flag, so the widget asks' : '--extras=' . $flag) . "\n";
-show(Prompty::multiselect('Extras', options: $extras, discovered: $flag));
+show_selection(Prompty::multiselect('Extras', options: $extras, discovered: $flag));
 
 echo "\n--- Multiselect: answered by an environment variable ---\n";
 $env = getenv('PROMPTY_EXTRAS');
@@ -49,18 +49,18 @@ echo '  Source: ' . ($env === FALSE ? 'PROMPTY_EXTRAS unset, so the widget asks'
 $results = Prompty::flow(fn(): array => [
   'extras' => Prompty::multiselect('Extras', options: $extras),
 ]);
-show(is_array($results['extras'] ?? NULL) ? $results['extras'] : NULL);
+show_selection(is_array($results['extras'] ?? NULL) ? $results['extras'] : NULL);
 
 echo "\n--- Multiselect: answered from a config file ---\n";
 $config = json_decode('{"extras": ["bread", "herbs"]}', TRUE);
 echo '  Source: a decoded list, which needs no splitting' . "\n";
-show(Prompty::multiselect('Extras', options: $extras, discovered: $config['extras']));
+show_selection(Prompty::multiselect('Extras', options: $extras, discovered: $config['extras']));
 
 echo "\n--- Multiselect: spacing and stray commas are tidied ---\n";
-show(Prompty::multiselect('Extras', options: $extras, discovered: ' herbs , bread ,,'));
+show_selection(Prompty::multiselect('Extras', options: $extras, discovered: ' herbs , bread ,,'));
 
 echo "\n--- Multiselect: a key holding a comma needs the list form ---\n";
-show(Prompty::multiselect('Extras', options: ['salt,pepper' => 'Salt and pepper', 'herbs' => 'Herbs'], discovered: ['salt,pepper']));
+show_selection(Prompty::multiselect('Extras', options: ['salt,pepper' => 'Salt and pepper', 'herbs' => 'Herbs'], discovered: ['salt,pepper']));
 
 echo "\n--- Multiselect: one key of the answer is not an option ---\n";
 try {
