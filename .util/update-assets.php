@@ -265,8 +265,8 @@ function checkDependencies(): void {
 function installNodeDependencies(string $script_dir): void {
   info('Installing svg-term Node.js dependency...');
 
-  $node_modules = $script_dir . '/node_modules';
-  if (is_dir($node_modules . '/svg-term')) {
+  $node_modules_dir = $script_dir . '/node_modules';
+  if (is_dir($node_modules_dir . '/svg-term')) {
     info('svg-term already installed.');
 
     return;
@@ -274,7 +274,7 @@ function installNodeDependencies(string $script_dir): void {
 
   $cmd = sprintf('npm install --prefix %s svg-term@1.3.1 2>&1', escapeshellarg($script_dir));
   $output = shell_exec($cmd);
-  if (!is_dir($node_modules . '/svg-term')) {
+  if (!is_dir($node_modules_dir . '/svg-term')) {
     throw new \RuntimeException('Failed to install svg-term: ' . ($output ?? 'unknown error'));
   }
 
