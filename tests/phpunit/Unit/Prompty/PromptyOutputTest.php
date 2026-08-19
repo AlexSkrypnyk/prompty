@@ -108,9 +108,7 @@ final class PromptyOutputTest extends PromptyTestCase {
     $p = $this->createInstance();
 
     // Without a TTY attached, stty -g returns NULL.
-    ob_start();
-    $this->callProtected($p, 'setupTty');
-    ob_get_clean();
+    $this->captureOutput(fn(): mixed => $this->callProtected($p, 'setupTty'));
 
     $prev = $this->getProperty($p, 'prevTty');
     $this->assertTrue($prev === NULL || is_string($prev));

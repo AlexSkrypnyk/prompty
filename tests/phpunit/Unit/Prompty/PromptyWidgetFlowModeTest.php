@@ -122,9 +122,10 @@ final class PromptyWidgetFlowModeTest extends PromptyTestCase {
 
     $ctx = $this->defaultCtx();
 
-    ob_start();
-    $value = $result($ctx);
-    ob_end_clean();
+    $value = NULL;
+    $this->captureOutput(function () use ($result, $ctx, &$value): void {
+      $value = $result($ctx);
+    });
 
     $this->assertSame('pre-filled', $value);
   }

@@ -37,9 +37,9 @@ final class PromptyWalkFlowTest extends PromptyTestCase {
   protected function resolvedStep(string $value): \Closure {
     return function (array $ctx) use ($value): string {
       $p = $this->createInstance();
-      ob_start();
-      $this->callProtected($p, 'printLines', $this->callProtected($p, 'renderCompleted', 'label', $value, $ctx['depth'] ?? 0, $ctx['open'] ?? []));
-      ob_end_clean();
+      $this->captureOutput(function () use ($p, $value, $ctx): void {
+        $this->callProtected($p, 'printLines', $this->callProtected($p, 'renderCompleted', 'label', $value, $ctx['depth'] ?? 0, $ctx['open'] ?? []));
+      });
 
       return $value;
     };
