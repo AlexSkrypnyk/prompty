@@ -449,18 +449,7 @@ final class PromptyFlowIntegrationTest extends PromptyTestCase {
   }
 
   public function testFlowThrowLeavesWidgetsInStandaloneMode(): void {
-    $stream = fopen('php://memory', 'r+');
-
-    if ($stream === FALSE) {
-      $this->fail('Could not open the keystroke stream.');
-    }
-
-    fwrite($stream, 'pear tart' . self::KEY_ENTER);
-    rewind($stream);
-
-    $instance = $this->createInstance();
-    $this->setProperty($instance, 'input', $stream);
-    $this->setStaticProperty('instance', $instance);
+    $stream = $this->installKeystrokes('pear tart' . self::KEY_ENTER, FALSE);
 
     $value = NULL;
 
