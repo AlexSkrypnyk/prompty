@@ -356,11 +356,11 @@ final class PromptyWidgetResolvedTest extends PromptyTestCase {
 
   #[DataProvider('dataProviderSelectOutOfDomainThrows')]
   public function testSelectOutOfDomainThrows(?string $discovered, ?string $ctx_discovered, array $options, string $message): void {
-    $output = $this->captureOutputThrows(\InvalidArgumentException::class, $message, function () use ($discovered, $ctx_discovered, $options): void {
-      Prompty::select('Pick', options: $options, discovered: $discovered, ctx: $this->ctx(['discovered' => $ctx_discovered]));
-    });
-
-    $this->assertSame('', $output);
+    $this->assertWidgetRejects(fn(): mixed => Prompty::select('Pick',
+      options: $options,
+      discovered: $discovered,
+      ctx: $this->ctx(['discovered' => $ctx_discovered]),
+    ), $message);
   }
 
   public static function dataProviderSelectOutOfDomainThrows(): \Iterator {
@@ -382,15 +382,11 @@ final class PromptyWidgetResolvedTest extends PromptyTestCase {
 
   #[DataProvider('dataProviderMultiselectOutOfDomainThrows')]
   public function testMultiselectOutOfDomainThrows(?array $discovered, ?string $ctx_discovered, string $message): void {
-    $output = $this->captureOutputThrows(\InvalidArgumentException::class, $message, function () use ($discovered, $ctx_discovered): void {
-      Prompty::multiselect('Pick',
-        options: ['a' => 'Alpha', 'b' => 'Beta'],
-        discovered: $discovered,
-        ctx: $this->ctx(['discovered' => $ctx_discovered]),
-      );
-    });
-
-    $this->assertSame('', $output);
+    $this->assertWidgetRejects(fn(): mixed => Prompty::multiselect('Pick',
+      options: ['a' => 'Alpha', 'b' => 'Beta'],
+      discovered: $discovered,
+      ctx: $this->ctx(['discovered' => $ctx_discovered]),
+    ), $message);
   }
 
   public static function dataProviderMultiselectOutOfDomainThrows(): \Iterator {
@@ -450,11 +446,7 @@ final class PromptyWidgetResolvedTest extends PromptyTestCase {
 
   #[DataProvider('dataProviderConfirmOutOfDomainThrows')]
   public function testConfirmOutOfDomainThrows(mixed $discovered, ?string $ctx_discovered, string $message): void {
-    $output = $this->captureOutputThrows(\InvalidArgumentException::class, $message, function () use ($discovered, $ctx_discovered): void {
-      Prompty::confirm('Install?', discovered: $discovered, ctx: $this->ctx(['discovered' => $ctx_discovered]));
-    });
-
-    $this->assertSame('', $output);
+    $this->assertWidgetRejects(fn(): mixed => Prompty::confirm('Install?', discovered: $discovered, ctx: $this->ctx(['discovered' => $ctx_discovered])), $message);
   }
 
   public static function dataProviderConfirmOutOfDomainThrows(): \Iterator {
@@ -506,13 +498,7 @@ final class PromptyWidgetResolvedTest extends PromptyTestCase {
   public function testConfirmRejectsDefaultListValueWhenListsAreCustom(): void {
     $ctx = $this->ctx(['truthy' => ['on'], 'falsy' => ['off']]);
 
-    $this->captureOutputThrows(
-      \InvalidArgumentException::class,
-      'Discovered value "yes" for "Install?" is not a valid answer. Accepted values: on, off.',
-      function () use ($ctx): void {
-        Prompty::confirm('Install?', discovered: 'yes', ctx: $ctx);
-      },
-    );
+    $this->assertWidgetRejects(fn(): mixed => Prompty::confirm('Install?', discovered: 'yes', ctx: $ctx), 'Discovered value "yes" for "Install?" is not a valid answer. Accepted values: on, off.');
   }
 
   public function testWidgetsWithNumbering(): void {

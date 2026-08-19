@@ -198,23 +198,19 @@ final class PromptyNumericOptionKeysTest extends PromptyTestCase {
   }
 
   public function testSelectRejectsDiscoveredValueOutsideNumericDomain(): void {
-    $this->createAndSetInstance(['unicode' => FALSE], TRUE);
-
-    $this->captureOutputThrows(
-      \InvalidArgumentException::class,
-      'Discovered value "99" for "Table" is not a valid option. Available options: 4, 7, 12.',
-      fn(): mixed => Prompty::select('Table', options: self::TABLES, discovered: '99', ctx: $this->defaultCtx()),
-    );
+    $this->assertWidgetRejects(fn(): mixed => Prompty::select('Table',
+      options: self::TABLES,
+      discovered: '99',
+      ctx: $this->defaultCtx(),
+    ), 'Discovered value "99" for "Table" is not a valid option. Available options: 4, 7, 12.');
   }
 
   public function testMultiselectRejectsDiscoveredValueOutsideNumericDomain(): void {
-    $this->createAndSetInstance(['unicode' => FALSE], TRUE);
-
-    $this->captureOutputThrows(
-      \InvalidArgumentException::class,
-      'Discovered value "99" for "Tables" is not a valid option. Available options: 4, 7, 12.',
-      fn(): mixed => Prompty::multiselect('Tables', options: self::TABLES, discovered: ['4', '99'], ctx: $this->defaultCtx()),
-    );
+    $this->assertWidgetRejects(fn(): mixed => Prompty::multiselect('Tables',
+      options: self::TABLES,
+      discovered: ['4', '99'],
+      ctx: $this->defaultCtx(),
+    ), 'Discovered value "99" for "Tables" is not a valid option. Available options: 4, 7, 12.');
   }
 
 }
