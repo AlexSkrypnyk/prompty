@@ -327,7 +327,8 @@ function postProcessCast(string $cast_file): void {
 
   $lines = explode("\n", $content);
   $filtered = [$lines[0]];
-  for ($i = 1; $i < count($lines); $i++) {
+  $line_count = count($lines);
+  for ($i = 1; $i < $line_count; $i++) {
     if (str_contains($lines[$i], 'spawn ')) {
       continue;
     }
