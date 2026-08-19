@@ -65,7 +65,7 @@ function main(): void {
  *
  * @param string $project_dir
  *   Path to the project root.
- * @param string $target
+ * @param string $target_path
  *   Path to build into. Removed before returning.
  *
  * @return string
@@ -74,12 +74,12 @@ function main(): void {
  * @throws \RuntimeException
  *   When the embedder fails or writes nothing.
  */
-function build(string $project_dir, string $target): string {
+function build(string $project_dir, string $target_path): string {
   $cmd = sprintf(
     'php %s --no-verify %s %s 2>&1',
     escapeshellarg($project_dir . '/embed.php'),
     escapeshellarg($project_dir . '/' . SOURCE_SCRIPT),
-    escapeshellarg($target),
+    escapeshellarg($target_path),
   );
 
   $output = [];
@@ -90,11 +90,11 @@ function build(string $project_dir, string $target): string {
     throw new RuntimeException(sprintf('The embedder exited with code %d:%s%s', $exit, PHP_EOL, implode(PHP_EOL, $output)));
   }
 
-  $contents = file_get_contents($target);
-  unlink($target);
+  $contents = file_get_contents($target_path);
+  unlink($target_path);
 
   if ($contents === FALSE) {
-    throw new RuntimeException(sprintf('The embedder wrote nothing to %s.', $target));
+    throw new RuntimeException(sprintf('The embedder wrote nothing to %s.', $target_path));
   }
 
   return $contents;
