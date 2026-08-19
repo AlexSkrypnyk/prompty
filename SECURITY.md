@@ -52,9 +52,9 @@ The release workflow performs this same verification itself after uploading, so 
 
 ### What this does and does not prove
 
-Worth being clear about the limits. The key and the fingerprint above both live in this repository, so on their own they prove the release was signed by whoever controls the repository - not that it was signed by the maintainer. Anyone who compromised the repository or the maintainer's account could replace the key, the signature and this page together, and a first-time download would still verify.
+A passing check proves 2 things: the files you downloaded match the checksums that were signed, and the signature was made with the key whose public half is in this repository. It doesn't prove that key belongs to the maintainer. The key, its fingerprint and this page all live in the same repository, so anyone who took over the repository or the maintainer's account could replace all 3 at once, and a first-time download would verify just fine.
 
-What the fingerprint does buy you is continuity. Record it the first time, check it on every later download, and a key swap becomes visible immediately - which is the attack this actually defends against. If it ever changes without a corresponding note in the release notes, treat the release as suspect and [get in touch](#reporting-a-vulnerability) before running anything.
+What the check does defend against is a key swap after you've already trusted the key. Record the fingerprint the first time you download Prompty and compare it on every download after that. If it changes without a note in the release notes, treat that release as suspect and [get in touch](#reporting-a-vulnerability) before running anything from it.
 
 ## Scope
 
