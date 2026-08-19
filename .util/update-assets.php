@@ -174,9 +174,9 @@ function main(): void {
     fclose($pipes_list[$name][1]);
     fclose($pipes_list[$name][2]);
 
-    $exit_code = proc_close($process);
+    $exit = proc_close($process);
 
-    if ($exit_code !== 0) {
+    if ($exit !== 0) {
       $failed[$name] = trim($stdout . $stderr);
       info('  FAILED: ' . $name);
     }
