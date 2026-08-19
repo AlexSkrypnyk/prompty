@@ -231,7 +231,7 @@ final class EmbedScriptTest extends FunctionalTestCase {
   }
 
   #[DataProvider('dataProviderEmbedKillswitchAndVerification')]
-  public function testEmbedKillswitchAndVerification(bool $has_killswitch, string $flags, bool $expect_killswitch, bool $expect_verification): void {
+  public function testEmbedKillswitchAndVerification(bool $has_killswitch, string $flags, bool $expected_killswitch, bool $expected_verification): void {
     $target = $has_killswitch ? $this->prepareTarget() : $this->prepareTargetWithoutKillswitch();
 
     $args = $flags === '' ? [] : explode(' ', $flags);
@@ -242,9 +242,9 @@ final class EmbedScriptTest extends FunctionalTestCase {
     $content = file_get_contents($target);
     $this->assertIsString($content);
 
-    $this->assertSame($expect_killswitch ? 1 : 0, substr_count($content, "if (!getenv('SHOULD_PROCEED'))"), 'Kill switch count in the embedded file.');
-    $this->assertSame($expect_verification, str_contains($embed_output, 'Verifying'), 'Verification run in the embedder output.');
-    $this->assertSame(!$expect_killswitch, str_contains(strtolower($embed_output), 'no kill switch'), 'Missing kill switch warning in the embedder output.');
+    $this->assertSame($expected_killswitch ? 1 : 0, substr_count($content, "if (!getenv('SHOULD_PROCEED'))"), 'Kill switch count in the embedded file.');
+    $this->assertSame($expected_verification, str_contains($embed_output, 'Verifying'), 'Verification run in the embedder output.');
+    $this->assertSame(!$expected_killswitch, str_contains(strtolower($embed_output), 'no kill switch'), 'Missing kill switch warning in the embedder output.');
   }
 
   public static function dataProviderEmbedKillswitchAndVerification(): \Iterator {
