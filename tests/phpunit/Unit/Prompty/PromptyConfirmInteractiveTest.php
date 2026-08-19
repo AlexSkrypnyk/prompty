@@ -37,6 +37,20 @@ final class PromptyConfirmInteractiveTest extends PromptyTestCase {
     ), $keystrokes);
   }
 
+  /**
+   * Keystrokes that toggle the focused answer.
+   *
+   * @return \Iterator<string, array{string}>
+   *   One keystroke per case.
+   */
+  protected static function keystrokeCases(): \Iterator {
+    yield 'left' => [self::KEY_LEFT];
+    yield 'right' => [self::KEY_RIGHT];
+    yield 'up' => [self::KEY_UP];
+    yield 'down' => [self::KEY_DOWN];
+    yield 'tab' => [self::KEY_TAB];
+  }
+
   public function testSubmitDefaultYes(): void {
     $r = $this->runConfirmWidget(self::KEY_ENTER);
 
@@ -59,11 +73,7 @@ final class PromptyConfirmInteractiveTest extends PromptyTestCase {
   }
 
   public static function dataProviderToggleFromYesToNo(): \Iterator {
-    yield 'left' => [self::KEY_LEFT];
-    yield 'right' => [self::KEY_RIGHT];
-    yield 'up' => [self::KEY_UP];
-    yield 'down' => [self::KEY_DOWN];
-    yield 'tab' => [self::KEY_TAB];
+    yield from self::keystrokeCases();
   }
 
   #[DataProvider('dataProviderToggleFromNoToYes')]
@@ -74,11 +84,7 @@ final class PromptyConfirmInteractiveTest extends PromptyTestCase {
   }
 
   public static function dataProviderToggleFromNoToYes(): \Iterator {
-    yield 'left' => [self::KEY_LEFT];
-    yield 'right' => [self::KEY_RIGHT];
-    yield 'up' => [self::KEY_UP];
-    yield 'down' => [self::KEY_DOWN];
-    yield 'tab' => [self::KEY_TAB];
+    yield from self::keystrokeCases();
   }
 
   public function testDoubleToggleReturnsToOriginal(): void {
