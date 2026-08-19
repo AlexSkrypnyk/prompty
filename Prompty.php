@@ -629,13 +629,13 @@ class Prompty {
    *
    * @param string $label
    *   The widget label shown to the user.
-   * @param array<string, string> $options
+   * @param array<int|string, string> $options
    *   Map of option key to display label.
    * @param string $default
    *   Option key to focus initially; falls back to the first option.
    * @param string $description
    *   Optional description rendered below the label.
-   * @param array<string, string> $hints
+   * @param array<int|string, string> $hints
    *   Map of option key to hint text.
    * @param mixed $discovered
    *   Pre-filled value that bypasses interactive input. Must be a key of
@@ -704,9 +704,9 @@ class Prompty {
     $open = $ctx['open'] ?? [];
     $label = $p->numberLabel($label, $ctx);
 
-    $option_keys = array_keys($options);
+    $option_keys = $p->optionKeys($options);
     $option_labels = array_values($options);
-    $ordered_hints = array_map(fn(int|string $key) => $hints[$key] ?? '', $option_keys);
+    $ordered_hints = array_map(fn(string $key) => $hints[$key] ?? '', $option_keys);
 
     if ($resolved_key !== NULL) {
       $p->printLines($p->renderCompleted($label, $options[$resolved_key], $depth, $open));
@@ -814,13 +814,13 @@ class Prompty {
    *
    * @param string $label
    *   The widget label shown to the user.
-   * @param array<string, string> $options
+   * @param array<int|string, string> $options
    *   Map of option key to display label.
-   * @param list<string> $default
+   * @param list<int|string> $default
    *   Option keys to pre-check when the widget is rendered interactively.
    * @param string $description
    *   Optional description rendered below the label.
-   * @param array<string, string> $hints
+   * @param array<int|string, string> $hints
    *   Map of option key to hint text.
    * @param mixed $discovered
    *   Pre-filled value that bypasses interactive input. Every entry must be a
@@ -894,9 +894,9 @@ class Prompty {
     $open = $ctx['open'] ?? [];
     $label = $p->numberLabel($label, $ctx);
 
-    $option_keys = array_keys($options);
+    $option_keys = $p->optionKeys($options);
     $option_labels = array_values($options);
-    $ordered_hints = array_map(fn(int|string $key) => $hints[$key] ?? '', $option_keys);
+    $ordered_hints = array_map(fn(string $key) => $hints[$key] ?? '', $option_keys);
 
     if ($resolved_keys !== NULL) {
       $display = $resolved_keys !== [] ? implode(', ', array_map(fn(string $key): string => $options[$key], $resolved_keys)) : $p->cfgLabels['none'];
@@ -958,7 +958,10 @@ class Prompty {
     };
 
     $focused = 0;
-    $checked = array_map(fn(string $key): bool => in_array($key, $default, TRUE), $option_keys);
+    // $default may hold ints where $option_keys holds strings, so normalise
+    // before the strict comparison.
+    $default_keys = array_map(strval(...), $default);
+    $checked = array_map(fn(string $key): bool => in_array($key, $default_keys, TRUE), $option_keys);
     $line_count = $p->printLines($render_active($focused, $checked));
 
     while (TRUE) {
@@ -1401,13 +1404,31 @@ class Prompty {
   }
 
   /**
+   * Lists a widget's option keys as strings.
+   *
+   * PHP casts a canonical decimal-integer string array key to an int, so
+   * array_keys() over options such as ['10' => 'Table 10'] yields ints. Every
+   * option key in the class comes from here, so the widgets return and match
+   * the strings their contracts declare.
+   *
+   * @param array<int|string, string> $options
+   *   Map of option key to display label.
+   *
+   * @return list<string>
+   *   The option keys in declaration order.
+   */
+  protected function optionKeys(array $options): array {
+    return array_map(strval(...), array_keys($options));
+  }
+
+  /**
    * Validates a discovered value against a widget's declared options.
    *
    * @param string $label
    *   The widget label, used to identify the widget in the error message.
    * @param mixed $value
    *   The discovered value.
-   * @param array<string, string> $options
+   * @param array<int|string, string> $options
    *   Map of option key to display label.
    *
    * @return string
@@ -1420,7 +1441,7 @@ class Prompty {
     $key = is_scalar($value) ? trim((string) $value) : get_debug_type($value);
 
     if (!array_key_exists($key, $options)) {
-      $available = $options === [] ? 'none' : implode(', ', array_keys($options));
+      $available = $options === [] ? 'none' : implode(', ', $this->optionKeys($options));
 
       throw new \InvalidArgumentException(sprintf('Discovered value "%s" for "%s" is not a valid option. Available options: %s.', $key, $label, $available));
     }
@@ -1440,7 +1461,7 @@ class Prompty {
    *   The widget label, used to identify the widget in the error message.
    * @param mixed $value
    *   The discovered value: a list of option keys, or a single option key.
-   * @param array<string, string> $options
+   * @param array<int|string, string> $options
    *   Map of option key to display label.
    *
    * @return list<string>
@@ -1461,7 +1482,7 @@ class Prompty {
       $selected[] = $this->assertDiscoveredOption($label, $entry, $options);
     }
 
-    return array_values(array_filter(array_keys($options), fn(string $key): bool => in_array($key, $selected, TRUE)));
+    return array_values(array_filter($this->optionKeys($options), fn(string $key): bool => in_array($key, $selected, TRUE)));
   }
 
   /**

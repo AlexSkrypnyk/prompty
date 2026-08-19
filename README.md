@@ -419,12 +419,12 @@ Hints support multi-line text. They appear below the option list and change as t
 
 Every interactive widget can seed its starting state with `default`, so the user begins from a sensible answer and adjusts from there:
 
-| Widget        | `default` type        | Effect                                     |
-|---------------|-----------------------|--------------------------------------------|
-| `text`        | `string`              | Pre-fills the editable input buffer.       |
-| `select`      | `string` (option key) | Focuses that option instead of the first.  |
-| `multiselect` | `list<string>` (keys) | Pre-checks those options.                  |
-| `confirm`     | `bool`                | Starts on Yes (`true`) or No (`false`).    |
+| Widget        | `default` type             | Effect                                     |
+|---------------|----------------------------|--------------------------------------------|
+| `text`        | `string`                   | Pre-fills the editable input buffer.       |
+| `select`      | `string` (option key)      | Focuses that option instead of the first.  |
+| `multiselect` | `list<int\|string>` (keys) | Pre-checks those options.                  |
+| `confirm`     | `bool`                     | Starts on Yes (`true`) or No (`false`).    |
 
 ```php
 // Opt-out list: everything starts checked; the user unchecks what to drop.
