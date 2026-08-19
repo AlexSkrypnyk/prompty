@@ -48,6 +48,12 @@ Composing an order for a kitchen: name the dish, pick its course, choose extras,
 
 **Specials**: Pear Tart, Onion Soup, Lentil Stew, Herb Omelette
 
+**Tables**: 4, 7, 12
+
+**Seats**: 1, 2, 3, 4
+
+Tables and seats are the theme's numeric-keyed fields: their option keys are numbers rather than words, which is what a demo needs to show a widget handling numeric keys.
+
 ## Canonical fields
 
 Use these exact labels, keys, values and hints. Keys are lowercase single words wherever possible. Descriptions and hints longer than one sentence may render across two lines in a demo, split at the sentence boundary.
@@ -109,6 +115,26 @@ Use these exact labels, keys, values and hints. Keys are lowercase single words 
 - Longer demos extend the options with `lemon` => `Lemon` and `honey` => `Honey`:
   - `lemon`: `Sharpens rich dishes.`
   - `honey`: `Runny, spooned over to finish.`
+
+### Table (select, numeric keys)
+
+- Label: `Table`
+- Key: `table`
+- Options: `4` => `Table 4`, `7` => `Table 7`, `12` => `Table 12`
+- Description: `Where the order is going.`
+- Default: `7`
+- Hints:
+  - `4`: `By the window, seats two.`
+  - `7`: `The long one near the pass.`
+  - `12`: `Corner booth, seats six.`
+
+### Seats (multiselect, numeric keys)
+
+- Label: `Seats`
+- Key: `seats`
+- Options: `1` => `Seat 1`, `2` => `Seat 2`, `3` => `Seat 3`, `4` => `Seat 4`
+- Description: `Who at the table is having this dish.`
+- Default: `[2, 4]`
 
 ### Send order (confirm)
 
@@ -267,6 +293,8 @@ $results = Prompty::flow(fn(): array => [
   'send' => Prompty::confirm('Send order?'),
 ], intro: 'Compose an order', outro: 'Order sent!');
 ```
+
+`flow.php` extends this shape with `table` and `seats` between `extras` and `send`, so the linear demo covers numeric option keys.
 
 ## Flow framing
 

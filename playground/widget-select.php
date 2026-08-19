@@ -43,3 +43,16 @@ $r = Prompty::select('Course',
   description: 'Main is focused by default.',
 );
 echo '  Result: ' . (is_string($r) ? $r : 'cancelled') . "\n";
+
+echo "\n--- Select: numeric option keys ---\n";
+$r = Prompty::select('Table',
+  options: ['4' => 'Table 4', '7' => 'Table 7', '12' => 'Table 12'],
+  default: '7',
+  description: 'Where the order is going.',
+  hints: [
+    '4' => 'By the window, seats two.',
+    '7' => 'The long one near the pass.',
+    '12' => 'Corner booth, seats six.',
+  ],
+);
+echo '  Result: ' . (is_string($r) ? var_export($r, TRUE) : 'cancelled') . "\n";

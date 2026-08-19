@@ -39,6 +39,23 @@ $results = Prompty::flow(fn(): array => [
       'honey' => 'Runny, spooned over to finish.',
     ],
   ),
+  'table' => Prompty::select('Table',
+    options: ['4' => 'Table 4', '7' => 'Table 7', '12' => 'Table 12'],
+    default: '7',
+    description: 'Where the order is going.',
+    hints: [
+      '4' => 'By the window, seats two.',
+      '7' => 'The long one near the pass.',
+      '12' => 'Corner booth, seats six.',
+    ],
+  ),
+  // The default is written with ints to show that they pre-check the same
+  // options string keys would.
+  'seats' => Prompty::multiselect('Seats',
+    options: ['1' => 'Seat 1', '2' => 'Seat 2', '3' => 'Seat 3', '4' => 'Seat 4'],
+    default: [2, 4],
+    description: 'Who at the table is having this dish.',
+  ),
   'send' => Prompty::confirm('Send order?', description: 'Passes the order to the kitchen.'),
 ],
   intro: 'Compose an order',

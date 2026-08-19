@@ -528,6 +528,20 @@ expect "Extras" {
     wait_and_enter
 }
 
+# Select: Table - arrow down to Table 12, press enter.
+expect "Table" {
+    sleep {$delay}
+    arrow_down
+    wait_and_enter
+}
+
+# Multiselect: Seats - add Seat 1 to the pre-checked Seat 2 and Seat 4.
+expect "Seats" {
+    sleep {$delay}
+    toggle_space
+    wait_and_enter
+}
+
 # Confirm: Send order - type "y".
 expect "Send order" {
     sleep {$delay}
@@ -774,6 +788,16 @@ expect "Method" {
     wait_and_enter
 }
 
+# Select: Course with default - press enter (Main, pre-focused).
+expect "Course" {
+    wait_and_enter
+}
+
+# Select: Table - press enter (Table 7, pre-focused by a numeric default).
+expect "Table" {
+    wait_and_enter
+}
+
 expect eof
 EXPECT;
 
@@ -833,6 +857,16 @@ expect "Drinks" {
 expect "Finishes" {
     sleep {$delay}
     toggle_space
+    wait_and_enter
+}
+
+# Multiselect: Extras opt-out - press enter (all pre-checked).
+expect "Extras" {
+    wait_and_enter
+}
+
+# Multiselect: Seats - press enter (pre-checked by an integer default).
+expect "Seats" {
     wait_and_enter
 }
 
