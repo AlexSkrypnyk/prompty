@@ -75,7 +75,6 @@ trait PromptyTestTrait {
    *   - output: ANSI-stripped terminal output.
    */
   protected function promptyRun(callable $callback, string $keystrokes = '', array $config = []): array {
-    $config = array_merge(['unicode' => FALSE, 'ansi' => TRUE], $config);
     $stream = NULL;
 
     if ($keystrokes !== '') {
