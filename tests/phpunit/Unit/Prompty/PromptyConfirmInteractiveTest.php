@@ -30,11 +30,11 @@ final class PromptyConfirmInteractiveTest extends PromptyTestCase {
    *   The widget return value and captured output.
    */
   protected function runConfirmWidget(string $keystrokes, array $ctx_overrides = [], bool $default = TRUE): array {
-    return $this->promptyRun(function () use ($default, $ctx_overrides): mixed {
-      $default_ctx = $this->defaultCtx(['truthy' => ['1', 'true', 'yes'], 'falsy' => ['0', 'false', 'no']]);
-
-      return Prompty::confirm('Install?', default: $default, description: 'Install dependencies.', ctx: array_merge($default_ctx, $ctx_overrides));
-    }, $keystrokes);
+    return $this->promptyRun(fn(): mixed => Prompty::confirm('Install?',
+      default: $default,
+      description: 'Install dependencies.',
+      ctx: $this->defaultCtx(array_merge(['truthy' => ['1', 'true', 'yes'], 'falsy' => ['0', 'false', 'no']], $ctx_overrides)),
+    ), $keystrokes);
   }
 
   public function testSubmitDefaultYes(): void {

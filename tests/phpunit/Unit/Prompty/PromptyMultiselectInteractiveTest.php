@@ -42,7 +42,7 @@ final class PromptyMultiselectInteractiveTest extends PromptyTestCase {
       options: $options,
       default: $default,
       hints: $hints,
-      ctx: array_merge($this->defaultCtx(), $ctx_overrides),
+      ctx: $this->defaultCtx($ctx_overrides),
     ), $keystrokes);
   }
 

@@ -36,7 +36,7 @@ final class PromptyTextInteractiveTest extends PromptyTestCase {
       default: $default,
       placeholder: 'my-app',
       description: 'Enter a name.',
-      ctx: array_merge($this->defaultCtx(), $ctx_overrides),
+      ctx: $this->defaultCtx($ctx_overrides),
     ), $keystrokes);
   }
 
