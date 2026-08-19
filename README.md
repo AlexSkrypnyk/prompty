@@ -227,6 +227,18 @@ $extras = Prompty::multiselect('Extras',
   </tr>
 </table>
 
+#### Numeric option keys
+
+PHP stores an array key like `'12'` as the integer `12`, so an option set keyed by numbers arrives at the widget with integer keys. `select` and `multiselect` normalise them back, and both widgets always return strings:
+
+```php
+$table = Prompty::select('Table', options: ['4' => 'Table 4', '12' => 'Table 12'], default: '12');
+// '12', never 12.
+
+$tables = Prompty::multiselect('Tables', options: ['4' => 'Table 4', '12' => 'Table 12'], default: [12]);
+// ['12'] - a `default` written as `[12]` or `['12']` pre-checks the same option.
+```
+
 ### Confirm
 
 Yes/No toggle. Arrow keys or `y`/`n` to switch, Enter to confirm.
@@ -423,7 +435,7 @@ Every interactive widget can seed its starting state with `default`, so the user
 |---------------|-----------------------|--------------------------------------------|
 | `text`        | `string`              | Pre-fills the editable input buffer.       |
 | `select`      | `string` (option key) | Focuses that option instead of the first.  |
-| `multiselect` | `list<string>` (keys) | Pre-checks those options.                  |
+| `multiselect` | `list<string>` (keys) | Pre-checks those options. Integer keys accepted. |
 | `confirm`     | `bool`                | Starts on Yes (`true`) or No (`false`).    |
 
 ```php
