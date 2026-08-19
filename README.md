@@ -133,7 +133,18 @@ $dish = Prompty::text('Dish name',
 
 `default` pre-fills the input with an editable value; `placeholder` is the gray hint shown only while the input is empty.
 
-Submitting an empty input returns the `placeholder` string as the answer, so a placeholder doubles as a non-editable fallback value. Leave `placeholder` unset if an empty answer should stay empty.
+Submitting an empty input returns the `placeholder` string as the answer, so a placeholder doubles as a non-editable fallback value. With a `default` seeded, the buffer is not empty, so submitting without typing returns the default. Leave both unset if an empty answer should stay empty.
+
+An empty answer means the same thing however it arrives. A discovered value is trimmed, and an empty result is read as "nothing typed", so it takes the `default`, or the `placeholder` when no default was seeded:
+
+```php
+// All three answer 'pear tart'.
+Prompty::text('Dish name', placeholder: 'pear tart');                  // user presses enter
+Prompty::text('Dish name', placeholder: 'pear tart', discovered: '');
+Prompty::text('Dish name', placeholder: 'pear tart', discovered: '  ');
+```
+
+An empty `PROMPTY_DISH=` takes that fallback straight away. An unset `PROMPTY_DISH` prompts instead, and submitting without typing takes the same fallback - so a variable populated by a command that returned nothing lands on the answer a user would have accepted, rather than on an empty string.
 
 <table>
   <tr>
@@ -386,7 +397,7 @@ A discovered value has to be an answer the widget would have accepted interactiv
 Discovered value "pudding" for "Course" is not a valid option. Available options: starter, main, dessert.
 ```
 
-This applies to both sources - a `discovered:` argument and a `PROMPTY_*` variable - and it holds whether or not a terminal is attached. `text` has no fixed set of answers, so nothing is checked there.
+This applies to both sources - a `discovered:` argument and a `PROMPTY_*` variable - and it holds whether or not a terminal is attached. `text` has no fixed set of answers, so nothing is checked there; its discovered value is trimmed instead, and an empty one falls back to the [default or placeholder](#text).
 
 `default` names an option key too, so `select` and `multiselect` hold it to the same list, with the parameter named in the message:
 
