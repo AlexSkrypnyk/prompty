@@ -305,7 +305,7 @@ function recordSession(string $expect_script, string $cast_file, int $rows = TER
 
   $output = shell_exec($cmd);
 
-  if (!file_exists($cast_file)) {
+  if (!is_file($cast_file)) {
     throw new \RuntimeException('Failed to record session: ' . $cast_file . "\n" . ($output ?? ''));
   }
 }
@@ -372,7 +372,7 @@ function convertToSvg(string $cast_file, string $svg_file, string $script_dir, ?
 
   $output = shell_exec($cmd);
 
-  if (!file_exists($svg_file) || filesize($svg_file) === 0) {
+  if (!is_file($svg_file) || filesize($svg_file) === 0) {
     throw new \RuntimeException('Failed to convert cast to SVG: ' . $cast_file . "\n" . ($output ?? ''));
   }
 }
