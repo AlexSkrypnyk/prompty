@@ -148,8 +148,7 @@ final class EmbedScriptTest extends FunctionalTestCase {
     $this->assertStringNotContainsString('use AlexSkrypnyk\Prompty\Prompty', $content);
 
     // Entire class is on a single line.
-    $matched = preg_match('/^(class Prompty \{.+\})$/m', $content, $matches);
-    $this->assertSame(1, $matched);
+    $this->assertMatchesRegularExpression('/^(class Prompty \{.+\})$/m', $content);
 
     // ANSI escape sequences preserved.
     $this->assertStringContainsString('\033[', $content);
