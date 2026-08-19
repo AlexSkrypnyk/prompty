@@ -8,7 +8,7 @@ Prompty is pre-1.0, and only the [latest release](https://github.com/AlexSkrypny
 
 Please don't open a public issue for a security problem.
 
-Use GitHub's private reporting instead - go to the [Security tab](https://github.com/AlexSkrypnyk/prompty/security/advisories/new) and choose "Report a vulnerability". That opens a private thread visible only to the maintainers. If that isn't available to you, email <prompty@alexskrypnyk.com>.
+Use GitHub's private reporting instead - go to the [Security tab](https://github.com/AlexSkrypnyk/prompty/security/advisories/new) and choose "Report a vulnerability". That opens a private thread visible only to the maintainers. If that isn't available to you, email <alex@drevops.com>.
 
 Helpful things to include:
 
@@ -52,9 +52,9 @@ The release workflow performs this same verification itself after uploading, so 
 
 ### What this does and does not prove
 
-Worth being clear about the limits. The key and the fingerprint above both live in this repository, so on their own they prove the release was signed by whoever controls the repository - not that it was signed by the maintainer. Anyone who compromised the repository or the maintainer's account could replace the key, the signature and this page together, and a first-time download would still verify.
+A passing check proves 2 things: the files you downloaded match the checksums that were signed, and the signature was made with the key whose public half is in this repository. It doesn't prove that key belongs to the maintainer. The key, its fingerprint and this page all live in the same repository, so anyone who took over the repository or the maintainer's account could replace all 3 at once, and a first-time download would verify just fine.
 
-What the fingerprint does buy you is continuity. Record it the first time, check it on every later download, and a key swap becomes visible immediately - which is the attack this actually defends against. If it ever changes without a corresponding note in the release notes, treat the release as suspect and [get in touch](#reporting-a-vulnerability) before running anything.
+What the check does defend against is a key swap after you've already trusted the key. Record the fingerprint the first time you download Prompty and compare it on every download after that. If it changes without a note in the release notes, treat that release as suspect and [get in touch](#reporting-a-vulnerability) before running anything from it.
 
 ## Scope
 
@@ -64,4 +64,4 @@ The library performs no network access, writes no files, and evaluates no user i
 
 `embed.php` is a build-time tool with a wider footprint. It reads a class file, rewrites it, writes the result to a path you name, and then shells out: to Rector if it's installed, to `php -l` to check the output parses, and to `php <your-script>` to confirm the embedded result actually runs. That last step executes the target script, so only point `embed.php` at scripts you trust. The run is guarded by the [kill switch](README.md#kill-switch): `embed.php` only runs a script that has one, and the kill switch returns before the script's real work unless `SHOULD_PROCEED` is set.
 
-Everything under `.util/` is maintainer tooling, not part of the library: the drift check that `composer lint` runs against the embedded playground demo, and the scripts that record and render the README demos. It's marked `export-ignore` in `.gitattributes`, so it's left out of source archives and, with them, out of a normal Composer install. These scripts shell out too - to `php`, and for the recordings to `asciinema`, `expect` and `node` - but only with paths derived from their own location and job names checked against a fixed list, each passed through `escapeshellarg()`.
+Everything under `.util/` is maintainer tooling, not part of the library: the drift check that `composer lint` runs against the embedded playground demo, and the scripts that record and render the README demos. It's marked `export-ignore` in `.gitattributes`, so it's left out of source archives and of the dist installs Composer does by default; a `--prefer-source` install clones the whole repository and gets it too. These scripts shell out too - to `php`, and for the recordings to `asciinema`, `expect` and `node` - but only with paths derived from their own location and job names checked against a fixed list, each passed through `escapeshellarg()`.
