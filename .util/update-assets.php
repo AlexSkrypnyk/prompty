@@ -170,7 +170,7 @@ function main(): void {
 
   $failed = [];
   foreach ($processes as $name => $process) {
-    [$stdout, $stderr] = drainPipes($pipes_list[$name][1], $pipes_list[$name][2]);
+    ['stdout' => $stdout, 'stderr' => $stderr] = drainPipes($pipes_list[$name][1], $pipes_list[$name][2]);
     fclose($pipes_list[$name][1]);
     fclose($pipes_list[$name][2]);
 
@@ -954,7 +954,7 @@ EXPECT;
  * @param resource $stderr_pipe
  *   The worker's stderr pipe.
  *
- * @return array{0: string, 1: string}
+ * @return array{stdout: string, stderr: string}
  *   The captured stdout and stderr.
  */
 function drainPipes($stdout_pipe, $stderr_pipe): array {
@@ -991,7 +991,7 @@ function drainPipes($stdout_pipe, $stderr_pipe): array {
     }
   }
 
-  return [$stdout, $stderr];
+  return ['stdout' => $stdout, 'stderr' => $stderr];
 }
 
 /**
