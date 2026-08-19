@@ -192,7 +192,7 @@ function main(): void {
   info('Cleaning up: ' . $tmp_dir);
   removeDir($tmp_dir);
 
-  if (!empty($failed)) {
+  if ($failed !== []) {
     error('');
     error('Errors:');
     foreach ($failed as $name => $output) {
@@ -249,7 +249,7 @@ function checkDependencies(): void {
     }
   }
 
-  if (!empty($missing)) {
+  if ($missing !== []) {
     throw new \RuntimeException('Missing required dependencies: ' . implode(', ', $missing));
   }
 
