@@ -66,6 +66,6 @@ echo "\n--- Multiselect: one key of the answer is not an option ---\n";
 try {
   Prompty::multiselect('Extras', options: $extras, discovered: 'bread,pickles');
 }
-catch (InvalidArgumentException $exception) {
+catch (\InvalidArgumentException $exception) {
   echo '  Rejected: ' . $exception->getMessage() . "\n";
 }

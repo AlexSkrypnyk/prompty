@@ -34,7 +34,7 @@ echo "\n--- Select: default outside the options ---\n";
 try {
   Prompty::select('Course', options: $courses, default: 'pudding');
 }
-catch (InvalidArgumentException $exception) {
+catch (\InvalidArgumentException $exception) {
   echo '  Rejected: ' . $exception->getMessage() . "\n";
 }
 
@@ -42,6 +42,6 @@ echo "\n--- Multiselect: one default outside the options ---\n";
 try {
   Prompty::multiselect('Extras', options: $extras, default: ['bread', 'pickles']);
 }
-catch (InvalidArgumentException $exception) {
+catch (\InvalidArgumentException $exception) {
   echo '  Rejected: ' . $exception->getMessage() . "\n";
 }

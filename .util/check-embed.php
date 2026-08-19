@@ -36,13 +36,13 @@ function main(): void {
   $dist_path = $project_dir . '/' . DIST_SCRIPT;
 
   if (!is_file($dist_path)) {
-    throw new RuntimeException(sprintf('%s does not exist. Run `%s` to create it.', DIST_SCRIPT, REGENERATE_COMMAND));
+    throw new \RuntimeException(sprintf('%s does not exist. Run `%s` to create it.', DIST_SCRIPT, REGENERATE_COMMAND));
   }
 
   $tmp_dir = $project_dir . '/.artifacts/tmp';
 
   if (!is_dir($tmp_dir) && !mkdir($tmp_dir, 0755, TRUE) && !is_dir($tmp_dir)) {
-    throw new RuntimeException(sprintf('Could not create %s.', $tmp_dir));
+    throw new \RuntimeException(sprintf('Could not create %s.', $tmp_dir));
   }
 
   $tmp_path = $tmp_dir . '/flow-embed.check.php';
@@ -50,11 +50,11 @@ function main(): void {
   $actual = file_get_contents($dist_path);
 
   if ($actual === FALSE) {
-    throw new RuntimeException(sprintf('Could not read %s.', DIST_SCRIPT));
+    throw new \RuntimeException(sprintf('Could not read %s.', DIST_SCRIPT));
   }
 
   if ($expected !== $actual) {
-    throw new RuntimeException(sprintf('%s is out of date. Run `%s` and commit the result.', DIST_SCRIPT, REGENERATE_COMMAND));
+    throw new \RuntimeException(sprintf('%s is out of date. Run `%s` and commit the result.', DIST_SCRIPT, REGENERATE_COMMAND));
   }
 
   info(sprintf('%s matches %s.', DIST_SCRIPT, SOURCE_SCRIPT));
@@ -87,14 +87,14 @@ function build(string $project_dir, string $target_path): string {
   exec($cmd, $output, $exit);
 
   if ($exit !== 0) {
-    throw new RuntimeException(sprintf('The embedder exited with code %d:%s%s', $exit, PHP_EOL, implode(PHP_EOL, $output)));
+    throw new \RuntimeException(sprintf('The embedder exited with code %d:%s%s', $exit, PHP_EOL, implode(PHP_EOL, $output)));
   }
 
   $contents = file_get_contents($target_path);
   unlink($target_path);
 
   if ($contents === FALSE) {
-    throw new RuntimeException(sprintf('The embedder wrote nothing to %s.', $target_path));
+    throw new \RuntimeException(sprintf('The embedder wrote nothing to %s.', $target_path));
   }
 
   return $contents;
