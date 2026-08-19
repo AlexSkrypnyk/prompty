@@ -41,7 +41,7 @@ final class PromptyNumericOptionKeysTest extends PromptyTestCase {
    * @return array{result: mixed, output: string}
    *   The widget return value and captured output.
    */
-  protected function runSelect(string $keystrokes, string $default = '', array $options = self::TABLES, array $hints = []): array {
+  protected function runSelectWidget(string $keystrokes, string $default = '', array $options = self::TABLES, array $hints = []): array {
     return $this->promptyRun(fn(): mixed => Prompty::select('Table',
       options: $options,
       default: $default,
@@ -65,7 +65,7 @@ final class PromptyNumericOptionKeysTest extends PromptyTestCase {
    * @return array{result: mixed, output: string}
    *   The widget return value and captured output.
    */
-  protected function runMultiselect(string $keystrokes, array $default = [], array $options = self::TABLES, array $hints = []): array {
+  protected function runMultiselectWidget(string $keystrokes, array $default = [], array $options = self::TABLES, array $hints = []): array {
     return $this->promptyRun(fn(): mixed => Prompty::multiselect('Tables',
       options: $options,
       default: $default,
@@ -76,7 +76,7 @@ final class PromptyNumericOptionKeysTest extends PromptyTestCase {
 
   #[DataProvider('dataProviderSelectInteractiveReturnsString')]
   public function testSelectInteractiveReturnsString(string $keystrokes, string $expected): void {
-    $r = $this->runSelect($keystrokes);
+    $r = $this->runSelectWidget($keystrokes);
 
     $this->assertSame($expected, $r['result']);
   }
@@ -90,7 +90,7 @@ final class PromptyNumericOptionKeysTest extends PromptyTestCase {
 
   #[DataProvider('dataProviderSelectDefaultFocusesOption')]
   public function testSelectDefaultFocusesOption(string $default, string $expected_label, string $expected): void {
-    $r = $this->runSelect(self::KEY_ENTER, $default);
+    $r = $this->runSelectWidget(self::KEY_ENTER, $default);
 
     $this->assertSame($expected, $r['result']);
     $this->assertStringContainsString('> (*) ' . $expected_label, $r['output']);
@@ -102,7 +102,7 @@ final class PromptyNumericOptionKeysTest extends PromptyTestCase {
   }
 
   public function testSelectDiscoveredAndInteractiveAgree(): void {
-    $interactive = $this->runSelect(self::KEY_DOWN . self::KEY_ENTER);
+    $interactive = $this->runSelectWidget(self::KEY_DOWN . self::KEY_ENTER);
 
     $discovered = $this->promptyRun(fn(): mixed => Prompty::select('Table',
       options: self::TABLES,
@@ -115,14 +115,14 @@ final class PromptyNumericOptionKeysTest extends PromptyTestCase {
   }
 
   public function testSelectHintsResolveForNumericKeys(): void {
-    $r = $this->runSelect(self::KEY_DOWN . self::KEY_ENTER, '', self::TABLES, ['4' => 'By the window.', '7' => 'Near the pass.']);
+    $r = $this->runSelectWidget(self::KEY_DOWN . self::KEY_ENTER, '', self::TABLES, ['4' => 'By the window.', '7' => 'Near the pass.']);
 
     $this->assertStringContainsString('Near the pass.', $r['output']);
   }
 
   #[DataProvider('dataProviderMultiselectInteractiveReturnsStrings')]
   public function testMultiselectInteractiveReturnsStrings(string $keystrokes, array $expected): void {
-    $r = $this->runMultiselect($keystrokes);
+    $r = $this->runMultiselectWidget($keystrokes);
 
     $this->assertSame($expected, $r['result']);
   }
@@ -156,7 +156,7 @@ final class PromptyNumericOptionKeysTest extends PromptyTestCase {
   #[DataProvider('dataProviderMultiselectDefaultPreChecks')]
   public function testMultiselectDefaultPreChecks(array $default, array $expected): void {
     /** @var list<int|string> $default */
-    $r = $this->runMultiselect(self::KEY_ENTER, $default);
+    $r = $this->runMultiselectWidget(self::KEY_ENTER, $default);
 
     $this->assertSame($expected, $r['result']);
   }
@@ -169,7 +169,7 @@ final class PromptyNumericOptionKeysTest extends PromptyTestCase {
   }
 
   public function testMultiselectIntDefaultRendersChecked(): void {
-    $r = $this->runMultiselect(self::KEY_ENTER, [7]);
+    $r = $this->runMultiselectWidget(self::KEY_ENTER, [7]);
 
     $this->assertStringContainsString('[x] Table 7', $r['output']);
     $this->assertStringContainsString('Tables', $r['output']);
@@ -178,7 +178,7 @@ final class PromptyNumericOptionKeysTest extends PromptyTestCase {
   #[DataProvider('dataProviderKeysPhpDoesNotCastSurviveUnchanged')]
   public function testKeysPhpDoesNotCastSurviveUnchanged(string $keystrokes, array $options, string $expected): void {
     /** @var array<int|string, string> $options */
-    $r = $this->runSelect($keystrokes, '', $options);
+    $r = $this->runSelectWidget($keystrokes, '', $options);
 
     $this->assertSame($expected, $r['result']);
   }
@@ -192,29 +192,25 @@ final class PromptyNumericOptionKeysTest extends PromptyTestCase {
   public function testMixedNumericAndTextualKeys(): void {
     $options = ['4' => 'Table 4', 'bar' => 'Bar', '12' => 'Table 12'];
 
-    $r = $this->runMultiselect(self::KEY_SPACE . self::KEY_DOWN . self::KEY_SPACE . self::KEY_DOWN . self::KEY_SPACE . self::KEY_ENTER, [], $options);
+    $r = $this->runMultiselectWidget(self::KEY_SPACE . self::KEY_DOWN . self::KEY_SPACE . self::KEY_DOWN . self::KEY_SPACE . self::KEY_ENTER, [], $options);
 
     $this->assertSame(['4', 'bar', '12'], $r['result']);
   }
 
   public function testSelectRejectsDiscoveredValueOutsideNumericDomain(): void {
-    $this->createAndSetInstance(['unicode' => FALSE], TRUE);
-
-    $this->captureOutputThrows(
-      \InvalidArgumentException::class,
-      'Discovered value "99" for "Table" is not a valid option. Available options: 4, 7, 12.',
-      fn(): mixed => Prompty::select('Table', options: self::TABLES, discovered: '99', ctx: $this->defaultCtx()),
-    );
+    $this->assertWidgetRejects(fn(): mixed => Prompty::select('Table',
+      options: self::TABLES,
+      discovered: '99',
+      ctx: $this->defaultCtx(),
+    ), 'Discovered value "99" for "Table" is not a valid option. Available options: 4, 7, 12.');
   }
 
   public function testMultiselectRejectsDiscoveredValueOutsideNumericDomain(): void {
-    $this->createAndSetInstance(['unicode' => FALSE], TRUE);
-
-    $this->captureOutputThrows(
-      \InvalidArgumentException::class,
-      'Discovered value "99" for "Tables" is not a valid option. Available options: 4, 7, 12.',
-      fn(): mixed => Prompty::multiselect('Tables', options: self::TABLES, discovered: ['4', '99'], ctx: $this->defaultCtx()),
-    );
+    $this->assertWidgetRejects(fn(): mixed => Prompty::multiselect('Tables',
+      options: self::TABLES,
+      discovered: ['4', '99'],
+      ctx: $this->defaultCtx(),
+    ), 'Discovered value "99" for "Tables" is not a valid option. Available options: 4, 7, 12.');
   }
 
 }

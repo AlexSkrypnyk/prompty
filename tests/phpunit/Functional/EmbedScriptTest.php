@@ -10,12 +10,86 @@ use PHPUnit\Framework\Attributes\Group;
 
 /**
  * Functional tests for embed.php.
- *
- * Embeds Prompty into starter.php and verifies the result works correctly.
  */
 #[CoversNothing]
 #[Group('functional')]
 final class EmbedScriptTest extends FunctionalTestCase {
+
+  protected function prepareTarget(): string {
+    $target = self::$tmp . '/starter.php';
+    copy(self::$root . '/starter.php', $target);
+
+    return $target;
+  }
+
+  protected function prepareTargetWithoutKillswitch(): string {
+    $content = file_get_contents(self::$root . '/starter.php');
+    $this->assertIsString($content);
+
+    $content = preg_replace('/\/\/ Kill switch.*?if \(!getenv\(\'SHOULD_PROCEED\'\)\) \{\s*return;\s*\}\n*/s', '', $content);
+    $this->assertIsString($content);
+
+    $target = self::$tmp . '/starter.no-killswitch.php';
+    file_put_contents($target, $content);
+
+    return $target;
+  }
+
+  protected function runEmbed(string ...$args): void {
+    $this->runEmbedWithOutput(...$args);
+  }
+
+  /**
+   * Run embed.php and assert success.
+   *
+   * @return string
+   *   Combined stdout+stderr output.
+   */
+  protected function runEmbedWithOutput(string ...$args): string {
+    $this->processRun('php', array_merge([self::$root . '/embed.php'], $args));
+    $this->assertProcessSuccessful();
+
+    return $this->processGet()->getOutput() . $this->processGet()->getErrorOutput();
+  }
+
+  protected function assertPhpLintPasses(string $path): void {
+    $this->processRun('php', ['-l', $path]);
+    $this->assertProcessSuccessful('PHP lint failed');
+  }
+
+  protected function copyPromptySource(): string {
+    $path = self::$tmp . '/Prompty.php';
+    copy(self::$root . '/Prompty.php', $path);
+
+    return $path;
+  }
+
+  protected function generateMinified(): string {
+    $path = self::$tmp . '/Prompty.min.php';
+    $this->runEmbed('--stdout', $path);
+
+    return $path;
+  }
+
+  protected function generateCompacted(): string {
+    $path = self::$tmp . '/Prompty.compact.php';
+    $this->runEmbed('--compact', '--stdout', $path);
+
+    return $path;
+  }
+
+  protected function createRectorConfig(): string {
+    $config_path = self::$tmp . '/rector.php';
+    copy(self::$root . '/rector.php', $config_path);
+
+    return $config_path;
+  }
+
+  protected function assertRectorClean(string $target): void {
+    $rector_config = $this->createRectorConfig();
+    $this->processRun('php', [self::$root . '/vendor/bin/rector', 'process', '--dry-run', '--config=' . $rector_config, $target]);
+    $this->assertProcessSuccessful('Rector would make further changes');
+  }
 
   public function testEmbed(): void {
     $target = $this->prepareTarget();
@@ -27,7 +101,6 @@ final class EmbedScriptTest extends FunctionalTestCase {
     $content = file_get_contents($target);
     $this->assertIsString($content);
 
-    // Markers preserved.
     $this->assertStringContainsString('// @embed-start', $content);
     $this->assertStringContainsString('// @embed-end', $content);
 
@@ -39,22 +112,17 @@ final class EmbedScriptTest extends FunctionalTestCase {
     $this->assertStringNotContainsString('Singleton instance', $content);
     $this->assertStringNotContainsString('Stored TTY settings', $content);
 
-    // require_once replaced by embedded class.
     $this->assertStringNotContainsString('require_once', $content);
 
     $this->assertStringNotContainsString('use AlexSkrypnyk\Prompty\Prompty', $content);
 
     // Entire class is on a single line.
-    $matched = preg_match('/^(class Prompty \{.+\})$/m', $content, $matches);
-    $this->assertSame(1, $matched);
+    $this->assertMatchesRegularExpression('/^(class Prompty \{.+\})$/m', $content);
 
-    // ANSI escape sequences preserved.
     $this->assertStringContainsString('\033[', $content);
 
-    // Namespace removed from embedded output.
     $this->assertDoesNotMatchRegularExpression('/^namespace\s+AlexSkrypnyk\\\\Prompty\s*;/m', $content);
 
-    // PHPStan ignore comment added before class declaration.
     $this->assertMatchesRegularExpression('/\/\/ @phpstan-ignore-next-line\nclass Prompty/', $content);
 
     $this->assertStarterFlowWorks($target);
@@ -70,22 +138,18 @@ final class EmbedScriptTest extends FunctionalTestCase {
     $content = file_get_contents($target);
     $this->assertIsString($content);
 
-    // ANSI escape sequences preserved.
     $this->assertStringContainsString('\033[', $content);
 
-    // Public API preserved.
     $this->assertStringContainsString('function flow', $content);
     $this->assertStringContainsString('function text', $content);
     $this->assertStringContainsString('function select', $content);
     $this->assertStringContainsString('function confirm', $content);
     $this->assertStringContainsString('function configure', $content);
 
-    // Internal names shortened.
     $this->assertStringNotContainsString('cfgSymbolsUnicode', $content);
     $this->assertStringNotContainsString('renderCompleted', $content);
     $this->assertStringNotContainsString('renderCancelled', $content);
 
-    // Compact output is smaller than normal.
     $normal_target = self::$tmp . '/normal.php';
     copy(self::$root . '/starter.php', $normal_target);
     $this->runEmbed($normal_target);
@@ -100,7 +164,6 @@ final class EmbedScriptTest extends FunctionalTestCase {
 
     $this->runEmbed($source, $output_path);
 
-    // Source unchanged.
     $source_content = file_get_contents($source);
     $this->assertIsString($source_content);
     $this->assertStringContainsString('require_once', $source_content);
@@ -137,14 +200,11 @@ final class EmbedScriptTest extends FunctionalTestCase {
 
     $this->assertPhpLintPasses($target);
 
-    // User's edit preserved.
     $this->assertStringContainsString("intro: 'Compose an ORDER'", $re_embedded);
 
-    // Markers still present.
     $this->assertStringContainsString('// @embed-start', $re_embedded);
     $this->assertStringContainsString('// @embed-end', $re_embedded);
 
-    // Class still embedded.
     $this->assertStringContainsString('class Prompty', $re_embedded);
     $this->assertStringNotContainsString('require_once', $re_embedded);
 
@@ -159,17 +219,14 @@ final class EmbedScriptTest extends FunctionalTestCase {
     $content = file_get_contents($output_path);
     $this->assertIsString($content);
 
-    // Standalone PHP file with proper preamble.
     $this->assertStringContainsString('<?php', $content);
     $this->assertStringContainsString('declare(strict_types=1)', $content);
     $this->assertStringContainsString('namespace AlexSkrypnyk\Prompty', $content);
     $this->assertStringContainsString('class Prompty', $content);
 
-    // Header docblock preserved, ANSI preserved.
     $this->assertStringContainsString('Zero-dependency interactive CLI prompt library', $content);
     $this->assertStringContainsString('\033[', $content);
 
-    // Smaller than original.
     $this->assertLessThan(filesize(self::$root . '/Prompty.php'), filesize($output_path));
   }
 
@@ -179,16 +236,13 @@ final class EmbedScriptTest extends FunctionalTestCase {
 
     $this->assertPhpLintPasses($compact_path);
 
-    // Compact is smaller than minified.
     $this->assertLessThan(filesize($min_path), filesize($compact_path));
 
-    // Public API preserved in compact.
     $content = file_get_contents($compact_path);
     $this->assertIsString($content);
     $this->assertStringContainsString('function flow', $content);
     $this->assertStringContainsString('function text', $content);
 
-    // Internal names shortened.
     $this->assertStringNotContainsString('cfgSymbolsUnicode', $content);
     $this->assertStringNotContainsString('renderCompleted', $content);
   }
@@ -222,7 +276,6 @@ final class EmbedScriptTest extends FunctionalTestCase {
 
     $this->assertStringContainsString("if (!getenv('SHOULD_PROCEED'))", $content);
 
-    // The kill switch appears after the @embed-end marker.
     $embed_end_pos = strpos($content, '@embed-end');
     $killswitch_pos = strpos($content, "if (!getenv('SHOULD_PROCEED'))");
     $this->assertNotFalse($embed_end_pos);
@@ -231,7 +284,7 @@ final class EmbedScriptTest extends FunctionalTestCase {
   }
 
   #[DataProvider('dataProviderEmbedKillswitchAndVerification')]
-  public function testEmbedKillswitchAndVerification(bool $has_killswitch, string $flags, bool $expect_killswitch, bool $expect_verification): void {
+  public function testEmbedKillswitchAndVerification(bool $has_killswitch, string $flags, bool $expected_killswitch, bool $expected_verification): void {
     $target = $has_killswitch ? $this->prepareTarget() : $this->prepareTargetWithoutKillswitch();
 
     $args = $flags === '' ? [] : explode(' ', $flags);
@@ -242,9 +295,9 @@ final class EmbedScriptTest extends FunctionalTestCase {
     $content = file_get_contents($target);
     $this->assertIsString($content);
 
-    $this->assertSame($expect_killswitch ? 1 : 0, substr_count($content, "if (!getenv('SHOULD_PROCEED'))"), 'Kill switch count in the embedded file.');
-    $this->assertSame($expect_verification, str_contains($embed_output, 'Verifying'), 'Verification run in the embedder output.');
-    $this->assertSame(!$expect_killswitch, str_contains(strtolower($embed_output), 'no kill switch'), 'Missing kill switch warning in the embedder output.');
+    $this->assertSame($expected_killswitch ? 1 : 0, substr_count($content, "if (!getenv('SHOULD_PROCEED'))"), 'Kill switch count in the embedded file.');
+    $this->assertSame($expected_verification, str_contains($embed_output, 'Verifying'), 'Verification run in the embedder output.');
+    $this->assertSame(!$expected_killswitch, str_contains(strtolower($embed_output), 'no kill switch'), 'Missing kill switch warning in the embedder output.');
   }
 
   public static function dataProviderEmbedKillswitchAndVerification(): \Iterator {
@@ -373,12 +426,10 @@ final class EmbedScriptTest extends FunctionalTestCase {
   }
 
   public function testEmbedErrors(): void {
-    // Missing argument.
     $this->processRun('php', [self::$root . '/embed.php']);
     $this->assertProcessFailed();
     $this->assertProcessAnyOutputContains('Usage');
 
-    // Missing markers.
     $target = self::$tmp . '/target.no-markers.php';
     file_put_contents($target, "<?php\necho 'hello';\n");
 
@@ -386,23 +437,19 @@ final class EmbedScriptTest extends FunctionalTestCase {
     $this->assertProcessFailed();
     $this->assertProcessAnyOutputContains('marker');
 
-    // Target script does not exist.
     $this->processRun('php', [self::$root . '/embed.php', self::$tmp . '/missing.php']);
     $this->assertProcessFailed();
     $this->assertProcessAnyOutputContains('Target script not found');
 
-    // Output path inside a directory that does not exist.
     $target = $this->prepareTarget();
     $this->processRun('php', [self::$root . '/embed.php', $target, self::$tmp . '/no-such-dir/output.php']);
     $this->assertProcessFailed();
     $this->assertProcessAnyOutputContains('Could not copy target script to output');
 
-    // --source without path.
     $this->processRun('php', [self::$root . '/embed.php', '--source']);
     $this->assertProcessFailed();
     $this->assertProcessAnyOutputContains('--source requires a path');
 
-    // --source with non-existent file.
     $target = $this->prepareTarget();
     $this->processRun('php', [self::$root . '/embed.php', '--source', '/nonexistent/Prompty.php', $target]);
     $this->assertProcessFailed();
@@ -419,7 +466,6 @@ final class EmbedScriptTest extends FunctionalTestCase {
     $this->assertIsString($content);
     $content = str_replace('__PROMPTY_VERSION__', '1.2.3', $content);
 
-    // Inject version output before the kill switch.
     $content = str_replace("if (!getenv('SHOULD_PROCEED'))", "echo 'VERSION:' . Prompty::version() . PHP_EOL;\nif (!getenv('SHOULD_PROCEED'))", $content);
     file_put_contents($target, $content);
 
@@ -428,109 +474,6 @@ final class EmbedScriptTest extends FunctionalTestCase {
     $r = $this->runWithKeystrokes('php ' . escapeshellarg($target), $keystrokes);
     $this->assertSame(0, $r['exit_code'], 'Script failed: ' . $r['stderr']);
     $this->assertStringContainsString('VERSION:1.2.3', $r['stdout']);
-  }
-
-  /**
-   * Copy starter.php to temp dir and return the path.
-   */
-  protected function prepareTarget(): string {
-    $target = self::$tmp . '/starter.php';
-    copy(self::$root . '/starter.php', $target);
-
-    return $target;
-  }
-
-  /**
-   * Copy starter.php to temp dir without the kill switch block.
-   */
-  protected function prepareTargetWithoutKillswitch(): string {
-    $content = file_get_contents(self::$root . '/starter.php');
-    $this->assertIsString($content);
-
-    $content = preg_replace('/\/\/ Kill switch.*?if \(!getenv\(\'SHOULD_PROCEED\'\)\) \{\s*return;\s*\}\n*/s', '', $content);
-    $this->assertIsString($content);
-
-    $target = self::$tmp . '/starter.no-killswitch.php';
-    file_put_contents($target, $content);
-
-    return $target;
-  }
-
-  /**
-   * Run embed.php and assert success (discard output).
-   */
-  protected function runEmbed(string ...$args): void {
-    $this->runEmbedWithOutput(...$args);
-  }
-
-  /**
-   * Run embed.php and assert success.
-   *
-   * @return string
-   *   Combined stdout+stderr output.
-   */
-  protected function runEmbedWithOutput(string ...$args): string {
-    $this->processRun('php', array_merge([self::$root . '/embed.php'], $args));
-    $this->assertProcessSuccessful();
-
-    return $this->processGet()->getOutput() . $this->processGet()->getErrorOutput();
-  }
-
-  /**
-   * Assert that a PHP file passes lint checking.
-   */
-  protected function assertPhpLintPasses(string $path): void {
-    $this->processRun('php', ['-l', $path]);
-    $this->assertProcessSuccessful('PHP lint failed');
-  }
-
-  /**
-   * Copy Prompty.php to the temp directory.
-   */
-  protected function copyPromptySource(): string {
-    $path = self::$tmp . '/Prompty.php';
-    copy(self::$root . '/Prompty.php', $path);
-
-    return $path;
-  }
-
-  /**
-   * Generate a minified Prompty.php via --stdout.
-   */
-  protected function generateMinified(): string {
-    $path = self::$tmp . '/Prompty.min.php';
-    $this->runEmbed('--stdout', $path);
-
-    return $path;
-  }
-
-  /**
-   * Generate a compacted Prompty.php via --compact --stdout.
-   */
-  protected function generateCompacted(): string {
-    $path = self::$tmp . '/Prompty.compact.php';
-    $this->runEmbed('--compact', '--stdout', $path);
-
-    return $path;
-  }
-
-  /**
-   * Create a rector config file suitable for testing embedded output.
-   */
-  protected function createRectorConfig(): string {
-    $config_path = self::$tmp . '/rector.php';
-    copy(self::$root . '/rector.php', $config_path);
-
-    return $config_path;
-  }
-
-  /**
-   * Assert rector --dry-run reports no changes needed.
-   */
-  protected function assertRectorClean(string $target): void {
-    $rector_config = $this->createRectorConfig();
-    $this->processRun('php', [self::$root . '/vendor/bin/rector', 'process', '--dry-run', '--config=' . $rector_config, $target]);
-    $this->assertProcessSuccessful('Rector would make further changes');
   }
 
 }

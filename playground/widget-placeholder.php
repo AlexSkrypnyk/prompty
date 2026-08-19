@@ -5,7 +5,7 @@
  * Playground - what an empty answer to a text widget means.
  *
  * A text answer can arrive from a flag or from the environment, and either can
- * turn up empty when the command that produced it returned nothing:
+ * be empty when the command that produced it returned nothing:
  *
  * @code
  * php playground/widget-placeholder.php --dish='onion soup'
@@ -13,8 +13,8 @@
  * PROMPTY_DISH= php playground/widget-placeholder.php
  * @endcode
  *
- * Run it with no flag and the first widget asks, which is the answer the empty
- * cases fall back to.
+ * With no flag, the first widget asks, and the empty cases fall back to the
+ * answer it gives.
  */
 
 declare(strict_types=1);

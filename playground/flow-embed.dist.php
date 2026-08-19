@@ -7,8 +7,8 @@
  * Two files hold this demo, and both run:
  *
  * - flow-embed.php loads the class with require, like every other demo here.
- * - flow-embed.dist.php carries the class inline and requires nothing. Copy
- *   it anywhere and it still runs.
+ * - flow-embed.dist.php carries the class inline and requires nothing, so it
+ *   runs from any location.
  *
  * flow-embed.dist.php is generated. Edit flow-embed.php, then regenerate:
  *
@@ -20,16 +20,12 @@
  *   php embed.php playground/flow-embed.php playground/flow-embed.dist.php
  *
  * embed.php replaces everything between the markers below with a minified
- * copy of the Prompty class, and carries everything outside them across
- * unchanged - which is why both files share this comment. composer lint
- * fails when the two drift apart.
- *
- * Add --compact to shorten internal property and method names and strip
- * whitespace, for a smaller result.
+ * copy of the Prompty class and copies everything outside them unchanged.
+ * Both files therefore share this docblock.
  *
  * Running embed.php again on an embedded script replaces the marker region
- * with the current class and preserves everything outside it. That is how an
- * embedded script picks up a newer version of Prompty.
+ * with the current class and preserves everything outside it. That second
+ * run updates an embedded script to a newer version of Prompty.
  *
  * phpcs:disable Drupal.Arrays.Array.LongLineDeclaration
  */
@@ -104,8 +100,8 @@ if ($results === NULL) {
   exit(0);
 }
 
-// Kill switch. Without one, embed.php injects it directly after the marker
-// region, ahead of the flow; declared here, it gates only the work below.
+// Without a kill switch, embed.php injects one directly after the marker
+// region, ahead of the flow. Declared here, it gates only the work below.
 if (!getenv('SHOULD_PROCEED')) {
   echo PHP_EOL . 'Stopped at the kill switch. Set SHOULD_PROCEED=1 to run the work below it.' . PHP_EOL;
 

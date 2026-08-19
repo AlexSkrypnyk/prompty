@@ -30,11 +30,25 @@ final class PromptyConfirmInteractiveTest extends PromptyTestCase {
    *   The widget return value and captured output.
    */
   protected function runConfirmWidget(string $keystrokes, array $ctx_overrides = [], bool $default = TRUE): array {
-    return $this->promptyRun(function () use ($default, $ctx_overrides): mixed {
-      $default_ctx = $this->defaultCtx(['truthy' => ['1', 'true', 'yes'], 'falsy' => ['0', 'false', 'no']]);
+    return $this->promptyRun(fn(): mixed => Prompty::confirm('Install?',
+      default: $default,
+      description: 'Install dependencies.',
+      ctx: $this->defaultCtx(array_merge(['truthy' => ['1', 'true', 'yes'], 'falsy' => ['0', 'false', 'no']], $ctx_overrides)),
+    ), $keystrokes);
+  }
 
-      return Prompty::confirm('Install?', default: $default, description: 'Install dependencies.', ctx: array_merge($default_ctx, $ctx_overrides));
-    }, $keystrokes);
+  /**
+   * Keystrokes that toggle the focused answer.
+   *
+   * @return \Iterator<string, array{string}>
+   *   One keystroke per case.
+   */
+  protected static function keystrokeCases(): \Iterator {
+    yield 'left' => [self::KEY_LEFT];
+    yield 'right' => [self::KEY_RIGHT];
+    yield 'up' => [self::KEY_UP];
+    yield 'down' => [self::KEY_DOWN];
+    yield 'tab' => [self::KEY_TAB];
   }
 
   public function testSubmitDefaultYes(): void {
@@ -59,11 +73,7 @@ final class PromptyConfirmInteractiveTest extends PromptyTestCase {
   }
 
   public static function dataProviderToggleFromYesToNo(): \Iterator {
-    yield 'left' => [self::KEY_LEFT];
-    yield 'right' => [self::KEY_RIGHT];
-    yield 'up' => [self::KEY_UP];
-    yield 'down' => [self::KEY_DOWN];
-    yield 'tab' => [self::KEY_TAB];
+    yield from self::keystrokeCases();
   }
 
   #[DataProvider('dataProviderToggleFromNoToYes')]
@@ -74,11 +84,7 @@ final class PromptyConfirmInteractiveTest extends PromptyTestCase {
   }
 
   public static function dataProviderToggleFromNoToYes(): \Iterator {
-    yield 'left' => [self::KEY_LEFT];
-    yield 'right' => [self::KEY_RIGHT];
-    yield 'up' => [self::KEY_UP];
-    yield 'down' => [self::KEY_DOWN];
-    yield 'tab' => [self::KEY_TAB];
+    yield from self::keystrokeCases();
   }
 
   public function testDoubleToggleReturnsToOriginal(): void {

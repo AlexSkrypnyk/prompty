@@ -60,7 +60,6 @@ final class PromptyOutputTest extends PromptyTestCase {
       $this->assertSame(3, $new_count);
     });
 
-    // Output should contain the escape sequence for moving cursor up.
     $this->assertStringContainsString('new line 1', $output);
   }
 
@@ -108,9 +107,7 @@ final class PromptyOutputTest extends PromptyTestCase {
     $p = $this->createInstance();
 
     // Without a TTY attached, stty -g returns NULL.
-    ob_start();
-    $this->callProtected($p, 'setupTty');
-    ob_get_clean();
+    $this->captureOutput(fn(): mixed => $this->callProtected($p, 'setupTty'));
 
     $prev = $this->getProperty($p, 'prevTty');
     $this->assertTrue($prev === NULL || is_string($prev));
@@ -145,7 +142,6 @@ final class PromptyOutputTest extends PromptyTestCase {
 
     $stream = fopen('php://memory', 'r+');
     $this->assertNotFalse($stream);
-    // Write nothing - stream is at EOF.
     $this->setProperty($p, 'input', $stream);
 
     $key = $this->callProtected($p, 'readKey');

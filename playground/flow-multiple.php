@@ -36,8 +36,8 @@ $dish = is_string($basics['dish']) ? $basics['dish'] : '';
 $course = is_string($basics['course']) ? $basics['course'] : '';
 echo "\nOrder: " . $dish . ' + ' . $course . "\n\n";
 
-$extra = Prompty::text('Kitchen note', placeholder: 'no onions');
-echo 'Note: ' . (is_string($extra) ? $extra : 'cancelled') . "\n\n";
+$r = Prompty::text('Kitchen note', placeholder: 'no onions');
+echo 'Note: ' . (is_string($r) ? $r : 'cancelled') . "\n\n";
 
 $options = Prompty::flow(fn(): array => [
   'extras' => Prompty::multiselect('Extras', options: ['bread' => 'Bread', 'olives' => 'Olives', 'herbs' => 'Herbs']),

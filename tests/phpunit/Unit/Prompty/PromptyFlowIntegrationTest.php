@@ -240,19 +240,8 @@ final class PromptyFlowIntegrationTest extends PromptyTestCase {
   public function testFlowRejectsOutOfDomainEnv(array $env, \Closure $run, string $message): void {
     $this->setEnvVars($env);
 
-    $caught = NULL;
+    $this->captureOutputThrows(\InvalidArgumentException::class, $message, $run);
 
-    $this->captureOutput(function () use ($run, &$caught): void {
-      try {
-        $run();
-      }
-      catch (\InvalidArgumentException $exception) {
-        $caught = $exception;
-      }
-    });
-
-    $this->assertInstanceOf(\InvalidArgumentException::class, $caught);
-    $this->assertSame($message, $caught->getMessage());
     $this->assertFalse($this->getStaticProperty('inFlow'));
   }
 
@@ -405,19 +394,8 @@ final class PromptyFlowIntegrationTest extends PromptyTestCase {
   public function testFlowResetsStateWhenCallbackThrows(\Closure $run): void {
     $this->setEnvVars(['dish' => 'pear tart']);
 
-    $caught = NULL;
+    $this->captureOutputThrows(\RuntimeException::class, 'boom', $run);
 
-    $this->captureOutput(function () use ($run, &$caught): void {
-      try {
-        $run();
-      }
-      catch (\RuntimeException $exception) {
-        $caught = $exception;
-      }
-    });
-
-    $this->assertInstanceOf(\RuntimeException::class, $caught);
-    $this->assertSame('boom', $caught->getMessage());
     $this->assertFalse($this->getStaticProperty('inFlow'));
   }
 
@@ -449,18 +427,7 @@ final class PromptyFlowIntegrationTest extends PromptyTestCase {
   }
 
   public function testFlowThrowLeavesWidgetsInStandaloneMode(): void {
-    $stream = fopen('php://memory', 'r+');
-
-    if ($stream === FALSE) {
-      $this->fail('Could not open the keystroke stream.');
-    }
-
-    fwrite($stream, 'pear tart' . self::KEY_ENTER);
-    rewind($stream);
-
-    $instance = $this->createInstance();
-    $this->setProperty($instance, 'input', $stream);
-    $this->setStaticProperty('instance', $instance);
+    $stream = $this->installKeystrokes('pear tart' . self::KEY_ENTER, FALSE);
 
     $value = NULL;
 
@@ -469,7 +436,8 @@ final class PromptyFlowIntegrationTest extends PromptyTestCase {
         Prompty::flow(fn(): array => throw new \RuntimeException('boom'));
       }
       catch (\RuntimeException) {
-        // Swallowed, as a caller that catches and carries on would.
+        // The exception is swallowed, as a caller that catches it and
+        // continues would.
       }
 
       $value = Prompty::text('Dish name');

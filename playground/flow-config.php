@@ -28,10 +28,12 @@ $results = Prompty::flow(fn(): array => [
   labels: ['yes' => 'Yep', 'no' => 'Nope'],
 );
 
-if ($results !== NULL) {
-  echo "\nCollected answers:\n";
-  foreach ($results as $key => $value) {
-    $display = is_bool($value) ? ($value ? 'yes' : 'no') : (is_array($value) ? implode(', ', $value) : $value);
-    echo sprintf('  %s: %s%s', $key, $display, PHP_EOL);
-  }
+if ($results === NULL) {
+  exit(0);
+}
+
+echo "\nCollected answers:\n";
+foreach ($results as $key => $value) {
+  $display = is_array($value) ? (count($value) > 0 ? implode(', ', array_filter($value, is_string(...))) : 'none') : (is_bool($value) ? ($value ? 'yes' : 'no') : $value);
+  echo sprintf('  %s: %s%s', $key, $display, PHP_EOL);
 }

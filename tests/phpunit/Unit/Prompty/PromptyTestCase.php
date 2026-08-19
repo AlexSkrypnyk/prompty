@@ -10,8 +10,6 @@ use PHPUnit\Framework\TestCase;
 
 /**
  * Base test case for Prompty unit tests.
- *
- * Delegates to PromptyTestTrait for reflection and output helpers.
  */
 abstract class PromptyTestCase extends TestCase {
 
@@ -193,13 +191,13 @@ abstract class PromptyTestCase extends TestCase {
    *   The stream, positioned at the first keystroke.
    */
   protected function installKeystrokes(string $keystrokes, bool $in_flow = TRUE) {
-    $instance = $this->createAndSetInstance(['unicode' => FALSE], $in_flow);
+    $p = $this->createAndSetInstance(['unicode' => FALSE], $in_flow);
 
     $stream = fopen('php://memory', 'r+') ?: NULL;
     $this->assertNotNull($stream);
     fwrite($stream, $keystrokes);
     rewind($stream);
-    $this->setProperty($instance, 'input', $stream);
+    $this->setProperty($p, 'input', $stream);
 
     return $stream;
   }

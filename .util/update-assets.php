@@ -8,7 +8,7 @@
  * Records terminal sessions for seven playground scripts in four flag
  * variants each. The widgets, flow and flow-nested recordings render as
  * animated SVGs; the widget-* recordings render as static single-frame
- * SVGs. README.md references all of them except the widgets*.svg files.
+ * SVGs.
  *
  * Supports parallel execution: when run without arguments, launches all
  * recordings as parallel worker processes for faster generation.
@@ -50,7 +50,6 @@ define('END_PAUSE', 10);
  *   optionally at and cols (for static screenshots).
  */
 function getJobs(string $project_dir): array {
-  // Flag variants applied to both the animated and static bases.
   $variants = ['' => '', '-ascii' => ' --no-unicode', '-no-ansi' => ' --no-ansi', '-ascii-no-ansi' => ' --no-unicode --no-ansi'];
 
   $animated_bases = [
@@ -67,7 +66,6 @@ function getJobs(string $project_dir): array {
     }
   }
 
-  // Static screenshots - capture a single frame showing the widget.
   $static_bases = [
     'widget-text' => [
       'script' => $project_dir . '/playground/widget-text.php',
@@ -170,13 +168,13 @@ function main(): void {
 
   $failed = [];
   foreach ($processes as $name => $process) {
-    [$stdout, $stderr] = drainPipes($pipes_list[$name][1], $pipes_list[$name][2]);
+    ['stdout' => $stdout, 'stderr' => $stderr] = drainPipes($pipes_list[$name][1], $pipes_list[$name][2]);
     fclose($pipes_list[$name][1]);
     fclose($pipes_list[$name][2]);
 
-    $exit_code = proc_close($process);
+    $exit = proc_close($process);
 
-    if ($exit_code !== 0) {
+    if ($exit !== 0) {
       $failed[$name] = trim($stdout . $stderr);
       info('  FAILED: ' . $name);
     }
@@ -192,7 +190,7 @@ function main(): void {
   info('Cleaning up: ' . $tmp_dir);
   removeDir($tmp_dir);
 
-  if (!empty($failed)) {
+  if ($failed !== []) {
     error('');
     error('Errors:');
     foreach ($failed as $name => $output) {
@@ -249,7 +247,7 @@ function checkDependencies(): void {
     }
   }
 
-  if (!empty($missing)) {
+  if ($missing !== []) {
     throw new \RuntimeException('Missing required dependencies: ' . implode(', ', $missing));
   }
 
@@ -265,8 +263,8 @@ function checkDependencies(): void {
 function installNodeDependencies(string $script_dir): void {
   info('Installing svg-term Node.js dependency...');
 
-  $node_modules = $script_dir . '/node_modules';
-  if (is_dir($node_modules . '/svg-term')) {
+  $node_modules_dir = $script_dir . '/node_modules';
+  if (is_dir($node_modules_dir . '/svg-term')) {
     info('svg-term already installed.');
 
     return;
@@ -274,7 +272,7 @@ function installNodeDependencies(string $script_dir): void {
 
   $cmd = sprintf('npm install --prefix %s svg-term@1.3.1 2>&1', escapeshellarg($script_dir));
   $output = shell_exec($cmd);
-  if (!is_dir($node_modules . '/svg-term')) {
+  if (!is_dir($node_modules_dir . '/svg-term')) {
     throw new \RuntimeException('Failed to install svg-term: ' . ($output ?? 'unknown error'));
   }
 
@@ -305,7 +303,7 @@ function recordSession(string $expect_script, string $cast_file, int $rows = TER
 
   $output = shell_exec($cmd);
 
-  if (!file_exists($cast_file)) {
+  if (!is_file($cast_file)) {
     throw new \RuntimeException('Failed to record session: ' . $cast_file . "\n" . ($output ?? ''));
   }
 }
@@ -327,7 +325,8 @@ function postProcessCast(string $cast_file): void {
 
   $lines = explode("\n", $content);
   $filtered = [$lines[0]];
-  for ($i = 1; $i < count($lines); $i++) {
+  $line_count = count($lines);
+  for ($i = 1; $i < $line_count; $i++) {
     if (str_contains($lines[$i], 'spawn ')) {
       continue;
     }
@@ -372,7 +371,7 @@ function convertToSvg(string $cast_file, string $svg_file, string $script_dir, ?
 
   $output = shell_exec($cmd);
 
-  if (!file_exists($svg_file) || filesize($svg_file) === 0) {
+  if (!is_file($svg_file) || filesize($svg_file) === 0) {
     throw new \RuntimeException('Failed to convert cast to SVG: ' . $cast_file . "\n" . ($output ?? ''));
   }
 }
@@ -942,18 +941,20 @@ EXPECT;
 /**
  * Read a worker's stdout and stderr until both reach EOF.
  *
- * Both pipes are polled together rather than read one after the other, so a
- * worker that fills one pipe buffer cannot block while this waits on the
- * other. Returns once the worker has closed both ends, so the captured output
- * is complete enough to diagnose a failure. A stream_select() failure ends the
- * loop early and returns whatever was read up to that point.
+ * Both pipes are polled together, so a worker that fills one pipe buffer
+ * cannot block while this waits on the other. Returns once the worker has
+ * closed both ends, so the captured output is complete enough to diagnose a
+ * failure.
+ *
+ * A stream_select() failure ends the loop early and returns whatever was
+ * read up to that point.
  *
  * @param resource $stdout_pipe
  *   The worker's stdout pipe.
  * @param resource $stderr_pipe
  *   The worker's stderr pipe.
  *
- * @return array{0: string, 1: string}
+ * @return array{stdout: string, stderr: string}
  *   The captured stdout and stderr.
  */
 function drainPipes($stdout_pipe, $stderr_pipe): array {
@@ -990,7 +991,7 @@ function drainPipes($stdout_pipe, $stderr_pipe): array {
     }
   }
 
-  return [$stdout, $stderr];
+  return ['stdout' => $stdout, 'stderr' => $stderr];
 }
 
 /**

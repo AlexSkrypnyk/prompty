@@ -11,8 +11,6 @@ use PHPUnit\Framework\Attributes\Group;
 
 /**
  * In-process tests for the text widget's interactive loop.
- *
- * Uses PromptyTestTrait::promptyRun() to inject keystrokes and capture output.
  */
 #[CoversClass(Prompty::class)]
 #[Group('unit')]
@@ -36,7 +34,7 @@ final class PromptyTextInteractiveTest extends PromptyTestCase {
       default: $default,
       placeholder: 'my-app',
       description: 'Enter a name.',
-      ctx: array_merge($this->defaultCtx(), $ctx_overrides),
+      ctx: $this->defaultCtx($ctx_overrides),
     ), $keystrokes);
   }
 
@@ -108,14 +106,14 @@ final class PromptyTextInteractiveTest extends PromptyTestCase {
     $this->assertStringContainsString('Enter a name.', $r['output']);
   }
 
-  public function testCompletedStateRendered(): void {
+  public function testCompletedStateShowsLabel(): void {
     $r = $this->runTextWidget('hello' . self::KEY_ENTER);
 
     $this->assertStringContainsString('Project name', $r['output']);
     $this->assertStringContainsString('hello', $r['output']);
   }
 
-  public function testCancelledStateRendered(): void {
+  public function testCancelledStateShowsTypedValue(): void {
     $r = $this->runTextWidget('partial' . self::KEY_CTRL_C);
 
     $this->assertStringContainsString('partial', $r['output']);

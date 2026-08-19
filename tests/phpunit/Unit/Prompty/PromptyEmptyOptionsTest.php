@@ -11,11 +11,6 @@ use PHPUnit\Framework\Attributes\Group;
 
 /**
  * Tests select and multiselect against an empty options map.
- *
- * A widget with nothing to choose from cannot ask a question, so both widgets
- * reject the map before the terminal is set up or anything is drawn. These
- * cases pin that rejection across the interactive, discovered and flow paths,
- * which reached different outcomes for the same input.
  */
 #[CoversClass(Prompty::class)]
 #[Group('unit')]
@@ -34,8 +29,8 @@ final class PromptyEmptyOptionsTest extends PromptyTestCase {
   /**
    * Keystrokes that would reach a widget's interactive loop.
    *
-   * Shared by both widgets: the guard fires ahead of the loop, so every key
-   * that navigates or answers an option list must fail the same way.
+   * The guard fires before the loop, so every navigation or answer key must
+   * fail the same way for both widgets.
    *
    * @return \Iterator<string, array{string}>
    *   One keystroke sequence per case.
@@ -103,7 +98,7 @@ final class PromptyEmptyOptionsTest extends PromptyTestCase {
     yield 'empty env value' => [NULL, ''];
   }
 
-  public function testStandaloneSelectRejectsEmptyOptions(): void {
+  public function testSelectStandaloneRejectsEmptyOptions(): void {
     $this->createAndSetInstance(['unicode' => FALSE]);
 
     $output = $this->captureOutputThrows(\InvalidArgumentException::class, self::MESSAGE_SELECT, fn(): mixed => Prompty::select('Course', options: []));
@@ -111,7 +106,7 @@ final class PromptyEmptyOptionsTest extends PromptyTestCase {
     $this->assertSame('', $output);
   }
 
-  public function testStandaloneMultiselectRejectsEmptyOptions(): void {
+  public function testMultiselectStandaloneRejectsEmptyOptions(): void {
     $this->createAndSetInstance(['unicode' => FALSE]);
 
     $output = $this->captureOutputThrows(\InvalidArgumentException::class, self::MESSAGE_MULTISELECT, fn(): mixed => Prompty::multiselect('Extras', options: []));

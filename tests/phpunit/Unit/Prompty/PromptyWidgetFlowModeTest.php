@@ -49,7 +49,7 @@ final class PromptyWidgetFlowModeTest extends PromptyTestCase {
 
     $this->assertIsArray($result);
     $this->assertSame($condition, $result['__condition']);
-    $this->assertEmpty($result['__children']);
+    $this->assertSame([], $result['__children']);
   }
 
   public function testSelectFlowMode(): void {
@@ -122,9 +122,10 @@ final class PromptyWidgetFlowModeTest extends PromptyTestCase {
 
     $ctx = $this->defaultCtx();
 
-    ob_start();
-    $value = $result($ctx);
-    ob_end_clean();
+    $value = NULL;
+    $this->captureOutput(function () use ($result, $ctx, &$value): void {
+      $value = $result($ctx);
+    });
 
     $this->assertSame('pre-filled', $value);
   }

@@ -17,6 +17,11 @@ use PHPUnit\Framework\Attributes\Group;
 final class PromptySelectInteractiveTest extends PromptyTestCase {
 
   /**
+   * Option set for the select cases.
+   */
+  protected const FRAMEWORKS = ['react' => 'React', 'vue' => 'Vue', 'svelte' => 'Svelte'];
+
+  /**
    * Run the select widget with injected keystrokes.
    *
    * @param string $keystrokes
@@ -33,11 +38,7 @@ final class PromptySelectInteractiveTest extends PromptyTestCase {
    * @return array{result: mixed, output: string}
    *   The widget return value and captured output.
    */
-  protected function runSelectWidget(string $keystrokes, array $options = [], array $hints = [], array $ctx_overrides = [], string $default = ''): array {
-    if ($options === []) {
-      $options = ['react' => 'React', 'vue' => 'Vue', 'svelte' => 'Svelte'];
-    }
-
+  protected function runSelectWidget(string $keystrokes, array $options = self::FRAMEWORKS, array $hints = [], array $ctx_overrides = [], string $default = ''): array {
     return $this->promptyRun(fn(): mixed => Prompty::select('Framework',
       options: $options,
       default: $default,
@@ -125,21 +126,21 @@ final class PromptySelectInteractiveTest extends PromptyTestCase {
   }
 
   public function testInteractiveAtDepth(): void {
-    $r = $this->runSelectWidget(self::KEY_DOWN . self::KEY_ENTER, [], [], ['depth' => 1, 'is_last' => FALSE, 'open' => [1 => TRUE]]);
+    $r = $this->runSelectWidget(self::KEY_DOWN . self::KEY_ENTER, self::FRAMEWORKS, [], ['depth' => 1, 'is_last' => FALSE, 'open' => [1 => TRUE]]);
 
     $this->assertSame('vue', $r['result']);
     $this->assertStringContainsString('Framework', $r['output']);
   }
 
   public function testHintAtDepth(): void {
-    $r = $this->runSelectWidget(self::KEY_ENTER, [], ['react' => 'Meta library'], ['depth' => 1, 'is_last' => FALSE, 'open' => [1 => TRUE]]);
+    $r = $this->runSelectWidget(self::KEY_ENTER, self::FRAMEWORKS, ['react' => 'Meta library'], ['depth' => 1, 'is_last' => FALSE, 'open' => [1 => TRUE]]);
 
     $this->assertSame('react', $r['result']);
     $this->assertStringContainsString('Meta library', $r['output']);
   }
 
   public function testInteractiveAtDepthCancelled(): void {
-    $r = $this->runSelectWidget(self::KEY_CTRL_C, [], [], ['depth' => 1, 'is_last' => TRUE, 'open' => []]);
+    $r = $this->runSelectWidget(self::KEY_CTRL_C, self::FRAMEWORKS, [], ['depth' => 1, 'is_last' => TRUE, 'open' => []]);
 
     $this->assertNull($r['result']);
     $this->assertStringContainsString('(cancelled)', $r['output']);
@@ -147,7 +148,7 @@ final class PromptySelectInteractiveTest extends PromptyTestCase {
 
   #[DataProvider('dataProviderDefault')]
   public function testDefault(string $keystrokes, string $default, string $expected): void {
-    $r = $this->runSelectWidget($keystrokes, [], [], [], $default);
+    $r = $this->runSelectWidget($keystrokes, self::FRAMEWORKS, [], [], $default);
 
     $this->assertSame($expected, $r['result']);
   }
@@ -182,7 +183,7 @@ final class PromptySelectInteractiveTest extends PromptyTestCase {
   }
 
   public function testPointerRendersAtDepth(): void {
-    $r = $this->runSelectWidget(self::KEY_ENTER, [], [], ['depth' => 1, 'is_last' => FALSE, 'open' => [1 => TRUE]]);
+    $r = $this->runSelectWidget(self::KEY_ENTER, self::FRAMEWORKS, [], ['depth' => 1, 'is_last' => FALSE, 'open' => [1 => TRUE]]);
 
     $this->assertStringContainsString('> (*) React', $r['output']);
   }

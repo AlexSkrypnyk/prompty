@@ -21,13 +21,11 @@
 
 declare(strict_types=1);
 
-// Configuration - adjust these when reusing for a different project.
 define('EMBED_SOURCE', __DIR__ . '/Prompty.php');
 
 define('EMBED_MARKER_START', '@embed-start');
 define('EMBED_MARKER_END', '@embed-end');
 
-// Argument parsing.
 $compact = FALSE;
 $stdout = FALSE;
 $no_killswitch = FALSE;
@@ -277,10 +275,8 @@ $minified = implode("\n", $result_lines);
 
 // Compact mode: rename internals and reduce whitespace.
 if ($compact && $class_start !== NULL) {
-  // Work on the class line only.
   $class_line = end($result_lines);
 
-  // Wrap in <?php for tokenization.
   $php_code = '<?php ' . $class_line;
   $compact_tokens = token_get_all($php_code);
   $compact_token_count = count($compact_tokens);
@@ -559,7 +555,6 @@ if ($compact && $class_start !== NULL) {
         $after = is_array($whitespace_tokens[$i + 1]) ? $whitespace_tokens[$i + 1][1] : $whitespace_tokens[$i + 1];
       }
 
-      // Remove the space when either neighbour is a non-word character.
       $before_last = $before !== '' ? $before[strlen($before) - 1] : '';
       $after_first = $after !== '' ? $after[0] : '';
 
@@ -589,7 +584,6 @@ $payload = trim($minified) . "\n";
 
 $payload = preg_replace('/^(class\s)/m', "// @phpstan-ignore-next-line\n$1", $payload, 1);
 
-// Run Rector on the processed class content if available.
 $rector_bin = __DIR__ . '/vendor/bin/rector';
 $rector_config = __DIR__ . '/rector.php';
 
@@ -627,7 +621,6 @@ if (is_file($rector_bin) && is_file($rector_config)) {
 }
 
 if ($stdout) {
-  // --stdout mode: write a standalone PHP file.
   $standalone = "<?php\n\ndeclare(strict_types=1);\n\n";
   if ($namespace !== '') {
     $standalone .= "namespace {$namespace};\n\n";
@@ -650,7 +643,6 @@ if ($stdout) {
   exit(0);
 }
 
-// Build and inject the embedded block.
 $embedded = '// ' . EMBED_MARKER_START . "\n";
 $embedded .= $payload;
 $embedded .= '// ' . EMBED_MARKER_END;
@@ -682,7 +674,6 @@ if ($result === NULL) {
 
 $result = preg_replace('/\n{3,}/', "\n\n", $result);
 
-// Inject kill switch if not present and not opted out.
 $has_killswitch = str_contains((string) $result, "if (!getenv('SHOULD_PROCEED'))");
 
 if (!$has_killswitch && !$no_killswitch) {
