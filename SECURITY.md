@@ -8,7 +8,7 @@ Prompty is pre-1.0, and only the [latest release](https://github.com/AlexSkrypny
 
 Please don't open a public issue for a security problem.
 
-Use GitHub's private reporting instead - go to the [Security tab](https://github.com/AlexSkrypnyk/prompty/security/advisories/new) and choose "Report a vulnerability". That opens a private thread visible only to the maintainers. If that isn't available to you, email <prompty@alexskrypnyk.com>.
+Use GitHub's private reporting instead - go to the [Security tab](https://github.com/AlexSkrypnyk/prompty/security/advisories/new) and choose "Report a vulnerability". That opens a private thread visible only to the maintainers. If that isn't available to you, email <alex@drevops.com>.
 
 Helpful things to include:
 
