@@ -79,7 +79,7 @@ The [`playground/`](playground) directory holds runnable demos - the quickest wa
 | `widget-multiselect.php`      | Multiselect widget variants.                        |
 | `widget-confirm.php`          | Confirm widget variants.                            |
 | `widget-placeholder.php`      | What an empty answer to a text widget means.        |
-| `widget-discovered.php`       | The forms a discovered value can take.              |
+| `widget-discovered.php`       | Where a discovered value comes from, and its forms. |
 | `widget-default.php`          | Defaults, and the option keys they are held to.     |
 | `widgets-config.php`          | Standalone widgets with custom configuration.       |
 | `flow.php`                    | A linear flow with descriptions and hints.          |

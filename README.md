@@ -387,7 +387,7 @@ $results = Prompty::flow(fn(): array => [/* ... */], env_prefix: 'KITCHEN_');
 
 Multiselect values are read as a comma-separated list, so `PROMPTY_EXTRAS=bread,olives` selects both options. The result comes back deduplicated and in the order the options were declared, exactly as if the user had ticked them by hand - so `PROMPTY_EXTRAS=olives,bread,olives` also gives you `['bread', 'olives']`. An empty value means nothing is selected, and a stray trailing comma is ignored.
 
-The `discovered:` argument reads a string the same way, so the environment variable and the argument are interchangeable and one can stand in for the other in a test:
+The `discovered:` argument reads a string the same way. That matters because the argument is how a script passes on an answer it already holds - a parsed `--extras=bread,olives` flag, a value read from a config file, an answer carried over from a previous run - and `getopt()` hands a flag over as one string, exactly as `getenv()` does. Either source can therefore stand in for the other:
 
 ```php
 Prompty::multiselect('Extras', options: $extras, discovered: 'bread,olives');
