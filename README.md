@@ -144,7 +144,7 @@ Prompty::text('Dish name', placeholder: 'pear tart', discovered: '');
 Prompty::text('Dish name', placeholder: 'pear tart', discovered: '  ');
 ```
 
-That keeps an unset `PROMPTY_DISH` and an empty `PROMPTY_DISH=` from giving different answers, which matters when the variable is populated by another command that may return nothing.
+An empty `PROMPTY_DISH=` takes that fallback straight away. An unset `PROMPTY_DISH` prompts instead, and submitting without typing takes the same fallback - so a variable populated by a command that returned nothing lands on the answer a user would have accepted, rather than on an empty string.
 
 <table>
   <tr>
