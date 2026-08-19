@@ -13,8 +13,8 @@ use PHPUnit\Framework\Attributes\Group;
  * Tests what an empty answer to the text widget means.
  *
  * Pressing enter on an empty buffer accepts the seeded default, or the
- * placeholder when no default was seeded. A discovered value that is empty
- * says the same thing, so an unset environment variable and an empty one
+ * placeholder when no default was seeded. An empty discovered value is
+ * treated the same way, so an unset environment variable and an empty one
  * produce the same answer as a user who typed nothing.
  */
 #[CoversClass(Prompty::class)]

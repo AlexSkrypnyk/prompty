@@ -436,7 +436,8 @@ final class PromptyFlowIntegrationTest extends PromptyTestCase {
         Prompty::flow(fn(): array => throw new \RuntimeException('boom'));
       }
       catch (\RuntimeException) {
-        // Swallowed, as a caller that catches and carries on would.
+        // The exception is swallowed, as a caller that catches it and
+        // continues would.
       }
 
       $value = Prompty::text('Dish name');

@@ -11,9 +11,6 @@ use PHPUnit\Framework\Attributes\Group;
 
 /**
  * Tests for Prompty walkFlow() internal method.
- *
- * Uses reflection to call the protected walkFlow() directly, feeding it
- * pre-built step arrays (closures that return resolved values).
  */
 #[CoversClass(Prompty::class)]
 #[Group('unit')]
@@ -45,9 +42,6 @@ final class PromptyWalkFlowTest extends PromptyTestCase {
     };
   }
 
-  /**
-   * Create a step closure that returns NULL (simulating cancellation).
-   */
   protected function cancelledStep(): \Closure {
     return fn(array $ctx): null => NULL;
   }
@@ -176,7 +170,7 @@ final class PromptyWalkFlowTest extends PromptyTestCase {
       $this->assertTrue($result);
     });
 
-    // A visible child draws a separator line between parent and child.
+    // A separator line is drawn between the parent and a visible child.
     $this->assertSame("|  |\n", $output);
 
     /** @var array<string, mixed> $results */
@@ -318,7 +312,6 @@ final class PromptyWalkFlowTest extends PromptyTestCase {
   public function testWalkFlowSiblingDetectionWithConditionPass(): void {
     $p = $this->createAndSetInstance();
 
-    // Two steps at depth 1. The second has a __condition that passes.
     $steps = [
       'first' => $this->resolvedStep('val1'),
       'second' => [

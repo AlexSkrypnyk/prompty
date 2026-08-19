@@ -40,9 +40,6 @@ abstract class FunctionalTestCase extends TestCase {
     return '';
   }
 
-  /**
-   * Concatenate key constants into a keystroke string.
-   */
   protected function keys(string ...$keys): string {
     return implode('', $keys);
   }
@@ -50,8 +47,8 @@ abstract class FunctionalTestCase extends TestCase {
   /**
    * Run a command in a subprocess with raw keystroke input.
    *
-   * Unlike processRun() which joins inputs with newlines, this method
-   * passes raw bytes directly to stdin - required for TUI escape sequences.
+   * TUI escape sequences must reach stdin as raw bytes, so this method
+   * bypasses processRun(), which joins inputs with newlines.
    *
    * @param string $command
    *   The command to execute.
@@ -81,16 +78,10 @@ abstract class FunctionalTestCase extends TestCase {
     return ['stdout' => $stdout ?: '', 'stderr' => $stderr ?: '', 'exit_code' => $exit_code];
   }
 
-  /**
-   * Strip ANSI escape codes from a string.
-   */
   protected function stripAnsi(string $text): string {
     return (string) preg_replace('/\x1b\[[0-9;]*[A-Za-z]|\x1b\[\?[0-9;]*[A-Za-z]/', '', $text);
   }
 
-  /**
-   * Run a PHP script with keystrokes and return stripped stdout.
-   */
   protected function runScript(string $script_path, string $keystrokes): string {
     $r = $this->runWithKeystrokes('php ' . escapeshellarg($script_path), $keystrokes);
     $this->assertSame(0, $r['exit_code'], 'Script failed: ' . $r['stderr']);

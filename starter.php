@@ -38,7 +38,6 @@ if (!getenv('SHOULD_PROCEED')) {
   return;
 }
 
-// === Real work below - only runs when SHOULD_PROCEED=1 ===
 /** @var array{dish: string, course: string, extras: list<string>, send: bool}|null $results */
 echo 'Dish: ' . ($results['dish'] ?? '') . PHP_EOL;
 echo 'Course: ' . ($results['course'] ?? '') . PHP_EOL;

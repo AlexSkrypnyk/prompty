@@ -5,15 +5,15 @@
  * Playground - where a discovered value comes from, and the forms it takes.
  *
  * A discovered value is an answer the script already has, so the widget
- * records it instead of asking. Both sources hand the script a string:
+ * records it instead of asking. Both sources supply a string:
  *
  * @code
  * php playground/widget-discovered.php --extras=bread,olives
  * PROMPTY_EXTRAS=bread,olives php playground/widget-discovered.php
  * @endcode
  *
- * Run it with neither and every widget asks, which is the same script serving
- * an operator at a terminal and a scripted run with the answers to hand.
+ * Without either source, every widget asks, so one script serves an operator
+ * at a terminal and a scripted run that already has the answers.
  */
 
 declare(strict_types=1);

@@ -11,11 +11,6 @@ use PHPUnit\Framework\Attributes\Group;
 
 /**
  * Tests the forms a multiselect accepts as a discovered value.
- *
- * An environment variable can only carry a string, so a multiple-choice answer
- * arrives comma-separated. The discovered argument accepts the same string, so
- * one source can stand in for the other, and a list for the cases a comma
- * cannot express.
  */
 #[CoversClass(Prompty::class)]
 #[Group('unit')]

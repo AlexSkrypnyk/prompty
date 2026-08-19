@@ -8,7 +8,7 @@
  * playground/flow-embed.dist.php is generated from playground/flow-embed.php
  * and holds a minified copy of the Prompty class, so it goes stale whenever
  * either file changes. This regenerates it into a temporary path and compares
- * the bytes, and is run by composer lint.
+ * the bytes.
  *
  * Environment variables:
  * - SCRIPT_QUIET: Set to '1' to suppress informational messages.
@@ -29,7 +29,7 @@ define('REGENERATE_COMMAND', 'composer embed-playground');
  * Compare the committed embedded demo against a fresh build.
  *
  * @throws \RuntimeException
- *   When the demo is missing, cannot be rebuilt, or has drifted.
+ *   When the demo is missing, cannot be rebuilt, or is out of date.
  */
 function main(): void {
   $project_dir = dirname(__DIR__);

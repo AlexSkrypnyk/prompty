@@ -11,8 +11,6 @@ use PHPUnit\Framework\Attributes\Group;
 
 /**
  * In-process tests for the text widget's interactive loop.
- *
- * Uses PromptyTestTrait::promptyRun() to inject keystrokes and capture output.
  */
 #[CoversClass(Prompty::class)]
 #[Group('unit')]

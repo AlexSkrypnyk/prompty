@@ -10,8 +10,6 @@ use PHPUnit\Framework\TestCase;
 
 /**
  * Base test case for Prompty unit tests.
- *
- * Delegates to PromptyTestTrait for reflection and output helpers.
  */
 abstract class PromptyTestCase extends TestCase {
 

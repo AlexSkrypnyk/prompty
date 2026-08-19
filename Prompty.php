@@ -421,7 +421,6 @@ class Prompty {
     static::$inFlow = TRUE;
 
     try {
-      // Evaluate the steps callable now that $inFlow is TRUE.
       $steps = $steps();
 
       $options = [
@@ -893,10 +892,10 @@ class Prompty {
 
     $resolved = $discovered ?? $ctx['discovered'] ?? NULL;
 
-    // An environment variable can only carry one string, so several answers
-    // arrive comma-separated. A scalar from either source is read the same
-    // way; a list is taken as given, which is how an option key holding a
-    // comma is selected.
+    // An environment variable carries only one string, so several answers
+    // arrive comma-separated. A scalar from either source is split the same
+    // way; a list is taken as given, so an option key holding a comma is
+    // selected as a list entry.
     if (is_scalar($resolved)) {
       $resolved = explode(',', (string) $resolved);
     }
@@ -1427,9 +1426,7 @@ class Prompty {
    * Lists a widget's option keys as strings.
    *
    * PHP casts a canonical decimal-integer string array key to an int, so
-   * array_keys() over options such as ['10' => 'Table 10'] yields ints. Every
-   * option key in the class comes from here, so the widgets return and match
-   * the strings their contracts declare.
+   * array_keys() over options such as ['10' => 'Table 10'] yields ints.
    *
    * @param array<int|string, string> $options
    *   Map of option key to display label.
@@ -1771,8 +1768,7 @@ class Prompty {
    * @param int $depth
    *   The current nesting depth.
    * @param array<string, mixed> $options
-   *   Flow options; only the 'numbering' key is read. Env prefix, truthy
-   *   and falsy values come from the cfg* properties.
+   *   Flow options; only the 'numbering' key is read.
    * @param string $number_prefix
    *   Dot-separated prefix for hierarchical step numbering.
    *
@@ -1807,8 +1803,8 @@ class Prompty {
 
       $is_last = $depth > 0 && !$this->hasVisibleStep(array_slice($steps, $index));
 
-      // Update tree connector state before creating ctx so the widget sees
-      // the correct open/closed state for its depth level.
+      // Update the tree connector state before building $ctx, so the widget
+      // receives the current open/closed state for its depth level.
       if ($depth > 0) {
         if ($is_last) {
           unset($this->open[$depth]);

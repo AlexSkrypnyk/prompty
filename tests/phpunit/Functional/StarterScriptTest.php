@@ -9,9 +9,6 @@ use PHPUnit\Framework\Attributes\Group;
 
 /**
  * Functional tests for starter.php.
- *
- * Runs starter.php in a subprocess with simulated keystrokes and asserts
- * on stdout output.
  */
 #[CoversNothing]
 #[Group('functional')]

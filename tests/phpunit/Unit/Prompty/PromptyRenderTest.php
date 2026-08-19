@@ -11,8 +11,6 @@ use PHPUnit\Framework\Attributes\Group;
 
 /**
  * Tests for Prompty rendering methods.
- *
- * All expectations use heredocs with ANSI-stripped output for readability.
  */
 #[CoversClass(Prompty::class)]
 #[Group('unit')]
@@ -117,7 +115,7 @@ EXPECTED,
       'Server-side rendering framework.',
       1,
       [1 => TRUE],
-      // bodyPrefix(1, [1=>TRUE]) = '  |  ' → trailing line has trailing spaces.
+      // bodyPrefix(1, [1=>TRUE]) = '  |  ', so the last line ends in spaces.
       "|  |  Server-side rendering framework.\n|  |  ",
     ];
 
@@ -125,7 +123,7 @@ EXPECTED,
       'Static site generator.',
       1,
       [],
-      // bodyPrefix(1, []) = '     ' → trailing line has trailing spaces.
+      // bodyPrefix(1, []) = '     ', so the last line ends in spaces.
       "|     Static site generator.\n|     ",
     ];
 

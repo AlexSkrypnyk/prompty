@@ -98,7 +98,6 @@ if (lines.length > 0) {
   }
 }
 
-// Define custom theme with lineHeight from the --line-height option.
 // Based on Atom One Dark theme colors.
 // Note: svg-term 1.3.1 expects RGB arrays, not hex strings.
 const theme = {

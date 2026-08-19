@@ -8,7 +8,7 @@
  * Records terminal sessions for seven playground scripts in four flag
  * variants each. The widgets, flow and flow-nested recordings render as
  * animated SVGs; the widget-* recordings render as static single-frame
- * SVGs. README.md references all of them except the widgets*.svg files.
+ * SVGs.
  *
  * Supports parallel execution: when run without arguments, launches all
  * recordings as parallel worker processes for faster generation.
@@ -50,7 +50,6 @@ define('END_PAUSE', 10);
  *   optionally at and cols (for static screenshots).
  */
 function getJobs(string $project_dir): array {
-  // Flag variants applied to both the animated and static bases.
   $variants = ['' => '', '-ascii' => ' --no-unicode', '-no-ansi' => ' --no-ansi', '-ascii-no-ansi' => ' --no-unicode --no-ansi'];
 
   $animated_bases = [
@@ -67,7 +66,6 @@ function getJobs(string $project_dir): array {
     }
   }
 
-  // Static screenshots - capture a single frame showing the widget.
   $static_bases = [
     'widget-text' => [
       'script' => $project_dir . '/playground/widget-text.php',
@@ -943,11 +941,13 @@ EXPECT;
 /**
  * Read a worker's stdout and stderr until both reach EOF.
  *
- * Both pipes are polled together rather than read one after the other, so a
- * worker that fills one pipe buffer cannot block while this waits on the
- * other. Returns once the worker has closed both ends, so the captured output
- * is complete enough to diagnose a failure. A stream_select() failure ends the
- * loop early and returns whatever was read up to that point.
+ * Both pipes are polled together, so a worker that fills one pipe buffer
+ * cannot block while this waits on the other. Returns once the worker has
+ * closed both ends, so the captured output is complete enough to diagnose a
+ * failure.
+ *
+ * A stream_select() failure ends the loop early and returns whatever was
+ * read up to that point.
  *
  * @param resource $stdout_pipe
  *   The worker's stdout pipe.

@@ -11,10 +11,6 @@ use PHPUnit\Framework\Attributes\Group;
 
 /**
  * Tests the default parameter against a widget's declared options.
- *
- * A default names an option key, so it is held to the same domain as a
- * discovered value: an entry that matches nothing is a caller mistake, not a
- * widget that quietly opens on the first option with nothing checked.
  */
 #[CoversClass(Prompty::class)]
 #[Group('unit')]
