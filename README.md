@@ -174,7 +174,7 @@ $course = Prompty::select('Course',
 );
 ```
 
-`options` must not be empty. A widget with nothing to choose from cannot ask a question, so it throws an `InvalidArgumentException` before the terminal is touched or anything is drawn - whether the answer would have come from the user, from `discovered`, or from an environment variable:
+`options` must not be empty. A widget with nothing to choose from cannot ask a question, so it throws an `InvalidArgumentException` before it draws anything or reads a key - whether the answer would have come from the user, from `discovered`, or from an environment variable:
 
 ```text
 No options declared for "Course". Provide at least one option.
