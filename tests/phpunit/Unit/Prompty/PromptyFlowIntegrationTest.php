@@ -240,19 +240,8 @@ final class PromptyFlowIntegrationTest extends PromptyTestCase {
   public function testFlowRejectsOutOfDomainEnv(array $env, \Closure $run, string $message): void {
     $this->setEnvVars($env);
 
-    $caught = NULL;
+    $this->captureOutputThrows(\InvalidArgumentException::class, $message, $run);
 
-    $this->captureOutput(function () use ($run, &$caught): void {
-      try {
-        $run();
-      }
-      catch (\InvalidArgumentException $exception) {
-        $caught = $exception;
-      }
-    });
-
-    $this->assertInstanceOf(\InvalidArgumentException::class, $caught);
-    $this->assertSame($message, $caught->getMessage());
     $this->assertFalse($this->getStaticProperty('inFlow'));
   }
 
@@ -405,19 +394,8 @@ final class PromptyFlowIntegrationTest extends PromptyTestCase {
   public function testFlowResetsStateWhenCallbackThrows(\Closure $run): void {
     $this->setEnvVars(['dish' => 'pear tart']);
 
-    $caught = NULL;
+    $this->captureOutputThrows(\RuntimeException::class, 'boom', $run);
 
-    $this->captureOutput(function () use ($run, &$caught): void {
-      try {
-        $run();
-      }
-      catch (\RuntimeException $exception) {
-        $caught = $exception;
-      }
-    });
-
-    $this->assertInstanceOf(\RuntimeException::class, $caught);
-    $this->assertSame('boom', $caught->getMessage());
     $this->assertFalse($this->getStaticProperty('inFlow'));
   }
 
