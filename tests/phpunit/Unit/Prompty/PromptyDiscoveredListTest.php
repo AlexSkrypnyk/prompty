@@ -39,7 +39,7 @@ final class PromptyDiscoveredListTest extends PromptyTestCase {
    * @return array{result: mixed, output: string}
    *   The widget return value and captured output.
    */
-  protected function runMultiselect(mixed $discovered = NULL, ?string $ctx_discovered = NULL, array $options = self::EXTRAS): array {
+  protected function runMultiselectWidget(mixed $discovered = NULL, ?string $ctx_discovered = NULL, array $options = self::EXTRAS): array {
     return $this->promptyRun(fn(): mixed => Prompty::multiselect('Extras',
       options: $options,
       discovered: $discovered,
@@ -49,7 +49,7 @@ final class PromptyDiscoveredListTest extends PromptyTestCase {
 
   #[DataProvider('dataProviderDiscoveredArgumentAcceptsCommaSeparatedKeys')]
   public function testDiscoveredArgumentAcceptsCommaSeparatedKeys(string $discovered, array $expected): void {
-    $r = $this->runMultiselect($discovered);
+    $r = $this->runMultiselectWidget($discovered);
 
     $this->assertSame($expected, $r['result']);
   }
@@ -68,8 +68,8 @@ final class PromptyDiscoveredListTest extends PromptyTestCase {
 
   #[DataProvider('dataProviderBothSourcesAgree')]
   public function testBothSourcesAgree(string $value): void {
-    $argument = $this->runMultiselect($value);
-    $env = $this->runMultiselect(NULL, $value);
+    $argument = $this->runMultiselectWidget($value);
+    $env = $this->runMultiselectWidget(NULL, $value);
 
     $this->assertSame($env['result'], $argument['result']);
   }
@@ -91,13 +91,13 @@ final class PromptyDiscoveredListTest extends PromptyTestCase {
   }
 
   public function testListArgumentStillTakesEntriesLiterally(): void {
-    $r = $this->runMultiselect(['bread', 'herbs']);
+    $r = $this->runMultiselectWidget(['bread', 'herbs']);
 
     $this->assertSame(['bread', 'herbs'], $r['result']);
   }
 
   public function testListArgumentReachesOptionKeyHoldingComma(): void {
-    $r = $this->runMultiselect(['salt,pepper'], NULL, ['salt,pepper' => 'Salt and pepper', 'herbs' => 'Herbs']);
+    $r = $this->runMultiselectWidget(['salt,pepper'], NULL, ['salt,pepper' => 'Salt and pepper', 'herbs' => 'Herbs']);
 
     $this->assertSame(['salt,pepper'], $r['result']);
   }

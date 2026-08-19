@@ -36,7 +36,7 @@ final class PromptyTextEmptyAnswerTest extends PromptyTestCase {
    * @return array{result: mixed, output: string}
    *   The widget return value and captured output.
    */
-  protected function runText(mixed $discovered = NULL, string $default = '', string $placeholder = '', ?string $ctx_discovered = NULL): array {
+  protected function runTextWidget(mixed $discovered = NULL, string $default = '', string $placeholder = '', ?string $ctx_discovered = NULL): array {
     return $this->promptyRun(fn(): mixed => Prompty::text('Dish name',
       default: $default,
       placeholder: $placeholder,
@@ -47,7 +47,7 @@ final class PromptyTextEmptyAnswerTest extends PromptyTestCase {
 
   #[DataProvider('dataProviderEmptyDiscoveredTakesTheUnansweredValue')]
   public function testEmptyDiscoveredTakesTheUnansweredValue(string $discovered, string $default, string $placeholder, string $expected): void {
-    $r = $this->runText($discovered, $default, $placeholder);
+    $r = $this->runTextWidget($discovered, $default, $placeholder);
 
     $this->assertSame($expected, $r['result']);
   }
@@ -63,7 +63,7 @@ final class PromptyTextEmptyAnswerTest extends PromptyTestCase {
 
   #[DataProvider('dataProviderDiscoveredValueIsTrimmed')]
   public function testDiscoveredValueIsTrimmed(string $discovered, string $expected): void {
-    $r = $this->runText($discovered, '', 'pear tart');
+    $r = $this->runTextWidget($discovered, '', 'pear tart');
 
     $this->assertSame($expected, $r['result']);
   }
@@ -77,14 +77,14 @@ final class PromptyTextEmptyAnswerTest extends PromptyTestCase {
   }
 
   public function testTrimmedValueIsRendered(): void {
-    $r = $this->runText('  onion soup  ', '', 'pear tart');
+    $r = $this->runTextWidget('  onion soup  ', '', 'pear tart');
 
     $this->assertStringContainsString('onion soup', $r['output']);
     $this->assertStringNotContainsString('  onion soup  ', $r['output']);
   }
 
   public function testEmptyDiscoveredRendersTheUnansweredValue(): void {
-    $r = $this->runText('', '', 'pear tart');
+    $r = $this->runTextWidget('', '', 'pear tart');
 
     $this->assertStringContainsString('pear tart', $r['output']);
   }
@@ -97,7 +97,7 @@ final class PromptyTextEmptyAnswerTest extends PromptyTestCase {
       ctx: $this->defaultCtx(),
     ), self::KEY_ENTER);
 
-    $discovered = $this->runText('', $default, $placeholder);
+    $discovered = $this->runTextWidget('', $default, $placeholder);
 
     $this->assertSame($interactive['result'], $discovered['result']);
   }
@@ -110,13 +110,13 @@ final class PromptyTextEmptyAnswerTest extends PromptyTestCase {
   }
 
   public function testEmptyEnvValueTakesTheUnansweredValue(): void {
-    $r = $this->runText(NULL, '', 'pear tart', '');
+    $r = $this->runTextWidget(NULL, '', 'pear tart', '');
 
     $this->assertSame('pear tart', $r['result']);
   }
 
   public function testEnvValueIsTrimmed(): void {
-    $r = $this->runText(NULL, '', 'pear tart', '  walnut loaf  ');
+    $r = $this->runTextWidget(NULL, '', 'pear tart', '  walnut loaf  ');
 
     $this->assertSame('walnut loaf', $r['result']);
   }
@@ -136,7 +136,7 @@ final class PromptyTextEmptyAnswerTest extends PromptyTestCase {
   }
 
   public function testNonStringDiscoveredValueSurvives(): void {
-    $r = $this->runText(42, '', 'pear tart');
+    $r = $this->runTextWidget(42, '', 'pear tart');
 
     $this->assertSame('42', $r['result']);
   }
