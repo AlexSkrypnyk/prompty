@@ -156,7 +156,6 @@ final class PromptySelectInteractiveTest extends PromptyTestCase {
     yield 'focuses option' => [self::KEY_ENTER, 'vue', 'vue'];
     yield 'focuses last option' => [self::KEY_ENTER, 'svelte', 'svelte'];
     yield 'navigable after focus' => [self::KEY_DOWN . self::KEY_ENTER, 'vue', 'svelte'];
-    yield 'unknown falls back to first' => [self::KEY_ENTER, 'nonexistent', 'react'];
   }
 
   public function testDefaultThreadsThroughFlowClosure(): void {

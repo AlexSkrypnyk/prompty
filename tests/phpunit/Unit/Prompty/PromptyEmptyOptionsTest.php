@@ -32,33 +32,6 @@ final class PromptyEmptyOptionsTest extends PromptyTestCase {
   protected const MESSAGE_MULTISELECT = 'No options declared for "Extras". Provide at least one option.';
 
   /**
-   * Assert a widget call throws before it reads a key or draws anything.
-   *
-   * @param callable $run
-   *   The widget call under test.
-   * @param string $message
-   *   The expected exception message.
-   * @param string $keystrokes
-   *   Raw keystroke bytes made available to the widget.
-   */
-  protected function assertRejectsEmptyOptions(callable $run, string $message, string $keystrokes = self::KEY_ENTER): void {
-    $instance = $this->createAndSetInstance(['unicode' => FALSE], TRUE);
-
-    $stream = fopen('php://memory', 'r+') ?: NULL;
-    $this->assertNotNull($stream);
-    fwrite($stream, $keystrokes);
-    rewind($stream);
-    $this->setProperty($instance, 'input', $stream);
-
-    $output = $this->captureOutputThrows(\InvalidArgumentException::class, $message, $run);
-
-    $this->assertSame('', $output);
-    $this->assertSame(0, ftell($stream));
-
-    fclose($stream);
-  }
-
-  /**
    * Keystrokes that would reach a widget's interactive loop.
    *
    * Shared by both widgets: the guard fires ahead of the loop, so every key
@@ -78,7 +51,7 @@ final class PromptyEmptyOptionsTest extends PromptyTestCase {
 
   #[DataProvider('dataProviderSelectInteractiveRejectsEmptyOptions')]
   public function testSelectInteractiveRejectsEmptyOptions(string $keystrokes): void {
-    $this->assertRejectsEmptyOptions(fn(): mixed => Prompty::select('Course',
+    $this->assertWidgetRejects(fn(): mixed => Prompty::select('Course',
       options: [],
       ctx: $this->defaultCtx(),
     ), self::MESSAGE_SELECT, $keystrokes);
@@ -90,7 +63,7 @@ final class PromptyEmptyOptionsTest extends PromptyTestCase {
 
   #[DataProvider('dataProviderMultiselectInteractiveRejectsEmptyOptions')]
   public function testMultiselectInteractiveRejectsEmptyOptions(string $keystrokes): void {
-    $this->assertRejectsEmptyOptions(fn(): mixed => Prompty::multiselect('Extras',
+    $this->assertWidgetRejects(fn(): mixed => Prompty::multiselect('Extras',
       options: [],
       ctx: $this->defaultCtx(),
     ), self::MESSAGE_MULTISELECT, $keystrokes);
@@ -102,7 +75,7 @@ final class PromptyEmptyOptionsTest extends PromptyTestCase {
 
   #[DataProvider('dataProviderSelectDiscoveredRejectsEmptyOptions')]
   public function testSelectDiscoveredRejectsEmptyOptions(?string $discovered, ?string $ctx_discovered): void {
-    $this->assertRejectsEmptyOptions(fn(): mixed => Prompty::select('Course',
+    $this->assertWidgetRejects(fn(): mixed => Prompty::select('Course',
       options: [],
       discovered: $discovered,
       ctx: $this->defaultCtx(['discovered' => $ctx_discovered]),
@@ -116,7 +89,7 @@ final class PromptyEmptyOptionsTest extends PromptyTestCase {
 
   #[DataProvider('dataProviderMultiselectDiscoveredRejectsEmptyOptions')]
   public function testMultiselectDiscoveredRejectsEmptyOptions(?array $discovered, ?string $ctx_discovered): void {
-    $this->assertRejectsEmptyOptions(fn(): mixed => Prompty::multiselect('Extras',
+    $this->assertWidgetRejects(fn(): mixed => Prompty::multiselect('Extras',
       options: [],
       discovered: $discovered,
       ctx: $this->defaultCtx(['discovered' => $ctx_discovered]),

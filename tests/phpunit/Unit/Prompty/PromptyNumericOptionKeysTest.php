@@ -99,7 +99,6 @@ final class PromptyNumericOptionKeysTest extends PromptyTestCase {
   public static function dataProviderSelectDefaultFocusesOption(): \Iterator {
     yield 'second option' => ['7', 'Table 7', '7'];
     yield 'third option' => ['12', 'Table 12', '12'];
-    yield 'unknown falls back to first' => ['99', 'Table 4', '4'];
   }
 
   public function testSelectDiscoveredAndInteractiveAgree(): void {
@@ -167,7 +166,6 @@ final class PromptyNumericOptionKeysTest extends PromptyTestCase {
     yield 'int keys' => [[7, 12], ['7', '12']];
     yield 'mixed keys' => [[7, '12'], ['7', '12']];
     yield 'all pre-checked as ints' => [[4, 7, 12], ['4', '7', '12']];
-    yield 'unknown keys ignored' => [[99], []];
   }
 
   public function testMultiselectIntDefaultRendersChecked(): void {

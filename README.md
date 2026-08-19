@@ -378,7 +378,7 @@ Multiselect values are read as a comma-separated list, so `PROMPTY_EXTRAS=bread,
 
 For confirm widgets, env values are interpreted using configurable truthy/falsy lists (default: `1`/`true`/`yes` and `0`/`false`/`no`).
 
-### Discovered values must be valid answers
+### Discovered and default values must be valid answers
 
 A discovered value has to be an answer the widget would have accepted interactively. For `select` and `multiselect` that means a key of `options`; for `confirm`, a value in the truthy or falsy list. Anything else throws an `InvalidArgumentException` naming the widget, the offending value, and what was allowed:
 
@@ -388,9 +388,15 @@ Discovered value "pudding" for "Course" is not a valid option. Available options
 
 This applies to both sources - a `discovered:` argument and a `PROMPTY_*` variable - and it holds whether or not a terminal is attached. `text` has no fixed set of answers, so nothing is checked there.
 
-That strictness earns its keep where discovery is actually used. A typo in a CI variable or an installer script fails at the widget that would have consumed it, with a message you can act on, instead of landing in your results and turning into something odd much further downstream.
+`default` names an option key too, so `select` and `multiselect` hold it to the same list, with the parameter named in the message:
 
-`default` is a different thing and is *not* validated: it only seeds the interactive starting state, and the user still confirms it. An unknown `default` simply focuses the first option (`select`) or pre-checks nothing (`multiselect`).
+```text
+Default value "pudding" for "Course" is not a valid option. Available options: starter, main, dessert.
+```
+
+An empty default means "no default" and is always valid: `''` for `select` focuses the first option, `[]` for `multiselect` pre-checks nothing. Both values are checked before the widget draws, so a mistyped key fails at the widget that declared it rather than opening a prompt that quietly ignores it.
+
+That strictness earns its keep where discovery is actually used. A typo in a CI variable or an installer script fails at the widget that would have consumed it, with a message you can act on, instead of landing in your results and turning into something odd much further downstream.
 
 ## Descriptions and hints
 
@@ -445,7 +451,7 @@ $extras = Prompty::multiselect('Extras', options: [
 
 `default` only seeds the *interactive* starting state. A value supplied via `discovered` or a `PROMPTY_*` environment variable still takes precedence and skips the prompt entirely, so explicit input always wins over the default.
 
-That difference is also why `default` is not validated against `options` while a discovered value is - see [Discovered values must be valid answers](#discovered-values-must-be-valid-answers).
+For `select` and `multiselect`, every key in `default` has to be a key of `options` - see [Discovered and default values must be valid answers](#discovered-and-default-values-must-be-valid-answers).
 
 ## Unicode and ASCII
 

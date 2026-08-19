@@ -78,6 +78,7 @@ The [`playground/`](playground) directory holds runnable demos - the quickest wa
 | `widget-select.php`           | Select widget variants.                             |
 | `widget-multiselect.php`      | Multiselect widget variants.                        |
 | `widget-confirm.php`          | Confirm widget variants.                            |
+| `widget-default.php`          | Defaults, and the option keys they are held to.     |
 | `widgets-config.php`          | Standalone widgets with custom configuration.       |
 | `flow.php`                    | A linear flow with descriptions and hints.          |
 | `flow-nested.php`             | A nested flow with conditionals, 3 levels deep.     |
