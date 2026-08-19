@@ -476,13 +476,16 @@ class Prompty {
    * @param string $label
    *   The widget label shown to the user.
    * @param string $default
-   *   Pre-filled, editable initial value seeded into the input buffer.
+   *   Pre-filled, editable initial value seeded into the input buffer. It is
+   *   also the answer when nothing is typed.
    * @param string $placeholder
-   *   Placeholder text shown when the input is empty.
+   *   Placeholder text shown when the input is empty. It is the answer when
+   *   nothing is typed and no default was seeded.
    * @param string $description
    *   Optional description rendered below the label.
    * @param mixed $discovered
-   *   Pre-filled value that bypasses interactive input.
+   *   Pre-filled value that bypasses interactive input. It is trimmed, and an
+   *   empty result is an empty answer: it takes $default, or $placeholder.
    * @param callable|null $condition
    *   Optional condition callback; skips the step when it returns FALSE.
    * @param array<string, mixed> $children
@@ -541,7 +544,14 @@ class Prompty {
 
     if ($resolved !== NULL) {
       /** @var int|float|string|bool $resolved */
-      $display = (string) $resolved;
+      $display = trim((string) $resolved);
+
+      // An empty answer resolves as it does interactively: the seeded default,
+      // or the placeholder when nothing was seeded.
+      if ($display === '') {
+        $display = $default !== '' ? $default : $placeholder;
+      }
+
       $p->printLines($p->renderCompleted($label, $display, $depth, $open));
       if ($standalone) {
         // @codeCoverageIgnoreStart
