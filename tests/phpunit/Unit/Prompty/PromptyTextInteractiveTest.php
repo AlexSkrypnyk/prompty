@@ -108,14 +108,14 @@ final class PromptyTextInteractiveTest extends PromptyTestCase {
     $this->assertStringContainsString('Enter a name.', $r['output']);
   }
 
-  public function testCompletedStateRendered(): void {
+  public function testCompletedStateShowsLabel(): void {
     $r = $this->runTextWidget('hello' . self::KEY_ENTER);
 
     $this->assertStringContainsString('Project name', $r['output']);
     $this->assertStringContainsString('hello', $r['output']);
   }
 
-  public function testCancelledStateRendered(): void {
+  public function testCancelledStateShowsTypedValue(): void {
     $r = $this->runTextWidget('partial' . self::KEY_CTRL_C);
 
     $this->assertStringContainsString('partial', $r['output']);
