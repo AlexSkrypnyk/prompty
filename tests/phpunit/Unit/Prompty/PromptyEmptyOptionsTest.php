@@ -103,7 +103,7 @@ final class PromptyEmptyOptionsTest extends PromptyTestCase {
     yield 'empty env value' => [NULL, ''];
   }
 
-  public function testStandaloneSelectRejectsEmptyOptions(): void {
+  public function testSelectStandaloneRejectsEmptyOptions(): void {
     $this->createAndSetInstance(['unicode' => FALSE]);
 
     $output = $this->captureOutputThrows(\InvalidArgumentException::class, self::MESSAGE_SELECT, fn(): mixed => Prompty::select('Course', options: []));
@@ -111,7 +111,7 @@ final class PromptyEmptyOptionsTest extends PromptyTestCase {
     $this->assertSame('', $output);
   }
 
-  public function testStandaloneMultiselectRejectsEmptyOptions(): void {
+  public function testMultiselectStandaloneRejectsEmptyOptions(): void {
     $this->createAndSetInstance(['unicode' => FALSE]);
 
     $output = $this->captureOutputThrows(\InvalidArgumentException::class, self::MESSAGE_MULTISELECT, fn(): mixed => Prompty::multiselect('Extras', options: []));
