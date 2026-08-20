@@ -7,11 +7,13 @@
  * A step's key is uppercased behind the prefix to make the name discovery
  * reads, so a step keyed 'dish_name' is pre-filled by PROMPTY_DISH_NAME.
  *
- * A key holding anything but letters, digits and underscores makes a name a
- * shell cannot export: 'ci-provider' becomes PROMPTY_CI-PROVIDER, which
- * 'export' rejects as a syntax error and most .env parsers will not accept.
- * Such a step could never be pre-filled - the lookup found nothing and the
- * flow prompted instead, saying nothing about why. It is turned down now.
+ * A name outside letters, digits and underscores can still be set by a parent
+ * process - env 'PROMPTY_CI-PROVIDER=x' php script.php works - but 'export'
+ * rejects it as a syntax error and most .env parsers will not accept it. A
+ * step named that way could never be filled by the means callers reach for:
+ * the lookup found nothing and the flow prompted instead, saying nothing
+ * about why. It is turned down now, and the name is what is checked, so a
+ * prefix that cannot be exported is caught the same way.
  *
  * The first flow is turned down and prints the message. The second is
  * accepted, and its answers come from the environment.

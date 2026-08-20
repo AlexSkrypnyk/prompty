@@ -22,16 +22,18 @@ final class PromptyStepKeyTest extends PromptyTestCase {
   }
 
   /**
-   * The message a rejected key produces.
+   * The message a rejected step produces.
    *
    * @param string $key
    *   The offending key.
+   * @param string $prefix
+   *   The environment prefix in force.
    *
    * @return string
    *   The expected exception message.
    */
-  protected function rejection(string $key): string {
-    return sprintf('Step key "%s" is not valid. A step key is uppercased into an environment variable name, so it may hold only letters, digits and underscores.', $key);
+  protected function rejection(string $key, string $prefix = 'PROMPTY_'): string {
+    return sprintf('Step "%s" is looked up as the environment variable "%s", which cannot be exported. A variable name may hold only letters, digits and underscores, and may not start with a digit.', $key, $prefix . strtoupper($key));
   }
 
   #[DataProvider('dataProviderRejectsKey')]
@@ -48,7 +50,12 @@ final class PromptyStepKeyTest extends PromptyTestCase {
     yield 'dot' => ['ci.provider'];
     yield 'space' => ['ci provider'];
     yield 'bracket' => ['ci[provider]'];
-    yield 'empty' => [''];
+  }
+
+  public function testRejectsEmptyKey(): void {
+    $this->captureOutputThrows(\InvalidArgumentException::class, 'A step must have a key: it names the answer in the results and the variable the answer can come from.', function (): void {
+      Prompty::flow(fn(): array => ['' => Prompty::text('Dish name', discovered: 'plum compote')], unicode: FALSE);
+    });
   }
 
   public function testRejectsChildKey(): void {
@@ -71,6 +78,31 @@ final class PromptyStepKeyTest extends PromptyTestCase {
     });
 
     $this->assertSame([$key => 'plum compote'], $result);
+  }
+
+  public function testRejectsKeyThatWouldStartTheNameWithDigit(): void {
+    // An empty prefix leaves the key to start the name on its own, and a name
+    // cannot start with a digit.
+    $this->captureOutputThrows(\InvalidArgumentException::class, $this->rejection('2nd', ''), function (): void {
+      Prompty::flow(fn(): array => ['2nd' => Prompty::text('Second course', discovered: 'main')], unicode: FALSE, env_prefix: '');
+    });
+  }
+
+  public function testRejectsPrefixThatCannotBeExported(): void {
+    $this->captureOutputThrows(\InvalidArgumentException::class, $this->rejection('dish', 'MY-APP_'), function (): void {
+      Prompty::flow(fn(): array => ['dish' => Prompty::text('Dish name', discovered: 'plum compote')], unicode: FALSE, env_prefix: 'MY-APP_');
+    });
+  }
+
+  public function testAcceptsKeyStartingWithDigitBehindPrefix(): void {
+    $this->setEnvVars(['2nd' => 'main']);
+
+    $result = NULL;
+    $this->captureOutput(function () use (&$result): void {
+      $result = Prompty::flow(fn(): array => ['2nd' => Prompty::text('Second course')], unicode: FALSE);
+    });
+
+    $this->assertSame(['2nd' => 'main'], $result);
   }
 
   public static function dataProviderAcceptsKey(): \Iterator {

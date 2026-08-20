@@ -1637,18 +1637,31 @@ class Prompty {
   }
 
   /**
-   * Rejects step keys that cannot be written as an environment variable name.
+   * Rejects steps whose environment variable name cannot be exported.
+   *
+   * A step is looked up as its key uppercased behind the prefix. A name that
+   * is not a shell identifier can still be set by a parent process, but it
+   * cannot be exported from a shell or written in most .env files, so a step
+   * named that way could never be filled by the means callers actually use.
    *
    * @param array<array-key, mixed> $steps
    *   Flow steps, keyed by step name.
    *
    * @throws \InvalidArgumentException
-   *   When a key holds a character outside letters, digits and underscores.
+   *   When the name a step resolves through is not a valid variable name.
    */
   protected function assertStepKeys(array $steps): void {
     foreach ($steps as $key => $step) {
-      if (preg_match('/^[A-Za-z0-9_]+$/', (string) $key) !== 1) {
-        throw new \InvalidArgumentException(sprintf('Step key "%s" is not valid. A step key is uppercased into an environment variable name, so it may hold only letters, digits and underscores.', $key));
+      if ((string) $key === '') {
+        throw new \InvalidArgumentException('A step must have a key: it names the answer in the results and the variable the answer can come from.');
+      }
+
+      $name = $this->cfgEnvPrefix . strtoupper((string) $key);
+
+      // The name is checked rather than the key, so a prefix that cannot be
+      // exported is caught as well as a key that cannot.
+      if (preg_match('/^[A-Za-z_][A-Za-z0-9_]*$/', $name) !== 1) {
+        throw new \InvalidArgumentException(sprintf('Step "%s" is looked up as the environment variable "%s", which cannot be exported. A variable name may hold only letters, digits and underscores, and may not start with a digit.', $key, $name));
       }
 
       $children = is_array($step) ? $step['__children'] ?? NULL : NULL;

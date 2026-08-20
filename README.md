@@ -400,11 +400,13 @@ The list form takes each entry literally, which is the way to select an option k
 
 For confirm widgets, env values are interpreted using configurable truthy/falsy lists (default: `1`/`true`/`yes` and `0`/`false`/`no`).
 
-Step keys become part of the variable name, so they may hold only letters, digits and underscores. `ci_provider` reads `PROMPTY_CI_PROVIDER`, which any shell can export; `ci-provider` would read `PROMPTY_CI-PROVIDER`, which is not a valid shell identifier and so could never be set with `export` or written in most `.env` files. A key holding anything else is rejected when the flow starts, rather than quietly never resolving:
+A step is looked up as its key uppercased behind the prefix, so `ci_provider` reads `PROMPTY_CI_PROVIDER`. A name outside letters, digits and underscores can still be set by a parent process - `env 'PROMPTY_CI-PROVIDER=x' php your-script.php` works - but it is not a shell identifier, so `export PROMPTY_CI-PROVIDER=x` is a syntax error in bash, zsh and sh, and most `.env` parsers will not accept it. A step named that way could never be filled by the means callers actually reach for, so it is turned down when the flow starts rather than quietly never resolving:
 
 ```text
-Step key "ci-provider" is not valid. A step key is uppercased into an environment variable name, so it may hold only letters, digits and underscores.
+Step "ci-provider" is looked up as the environment variable "PROMPTY_CI-PROVIDER", which cannot be exported. A variable name may hold only letters, digits and underscores, and may not start with a digit.
 ```
+
+The name is what is checked, not the key alone, so an `env_prefix` that cannot be exported is caught the same way - and with an empty prefix, a key starting with a digit is too, since a name cannot.
 
 ### Discovered and default values must be valid answers
 
