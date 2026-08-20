@@ -133,6 +133,33 @@ final class PromptyControlCharactersTest extends PromptyTestCase {
     $this->assertStringContainsString('|  And on the board.', $r['output']);
   }
 
+  public function testTypedTextIsPrintable(): void {
+    // A paste delivers a character as its bytes, the same way typing does, so
+    // a control character can arrive through the input buffer.
+    $r = $this->promptyRun(fn(): mixed => Prompty::text('Dish name', ctx: $this->ctx()), "pear\u{0085}tart" . self::KEY_ENTER);
+
+    $this->assertSame('peartart', $r['result']);
+    $this->assertStringNotContainsString("\u{0085}", $r['output']);
+  }
+
+  public function testConfiguredCancelLabelIsPrintable(): void {
+    $p = $this->createAndSetInstance(['labels' => ['yes' => 'Yes', 'no' => 'No', 'cancelled' => "cancel\nled", 'none' => 'None', 'separator' => '/']]);
+
+    $lines = $this->callProtectedLines($p, 'renderCancelled', 'Dish name', 'plum compote', 0, []);
+
+    $this->assertSame('|  plum compote cancel led', $this->stripAnsi($lines[1]));
+  }
+
+  public function testConfiguredConfirmLabelsArePrintable(): void {
+    $this->createAndSetInstance(['labels' => ['yes' => "A\nye", 'no' => "N\033[2Kay", 'cancelled' => '(cancelled)', 'none' => 'None', 'separator' => '/']]);
+
+    $r = $this->promptyRun(fn(): mixed => Prompty::confirm('Send order?', ctx: $this->ctx()), self::KEY_ENTER, ['labels' => ['yes' => "A\nye", 'no' => "N\033[2Kay", 'cancelled' => '(cancelled)', 'none' => 'None', 'separator' => '/']]);
+
+    $this->assertStringContainsString('A ye', $r['output']);
+    $this->assertStringContainsString('Nay', $r['output']);
+    $this->assertStringNotContainsString("A\nye", $r['output']);
+  }
+
   public function testIntroAndOutroArePrintable(): void {
     $output = $this->captureOutput(function (): void {
       Prompty::intro("Kitchen\norder");

@@ -649,6 +649,9 @@ class Prompty {
     }
 
     $render_active = function (string $value) use ($p, $label, $placeholder, $description, $depth, $open): array {
+      // Typed bytes reach here as they were typed, and a paste can carry a
+      // control character among them.
+      $value = $p->printable($value);
       $cursor = $p->color('█', 'cyan');
       $display = $value === '' ? $p->color($placeholder, 'gray') . $cursor : $p->color($value, 'white') . $cursor;
 
@@ -690,6 +693,7 @@ class Prompty {
       }
 
       if ($key === 'enter') {
+        $value = $p->printable($value);
         $display = $value !== '' ? $value : $placeholder;
         $open = $p->settleOpen($display, $open);
         $p->redraw($line_count, $p->renderCompleted($label, $display, $depth, $open));
@@ -1012,7 +1016,7 @@ class Prompty {
     $ordered_hints = array_map(fn(string $key) => $hints[$key] ?? '', $option_keys);
 
     if ($resolved_keys !== NULL) {
-      $display = $resolved_keys !== [] ? implode(', ', array_map(fn(string $key): string => $options[$key], $resolved_keys)) : $p->cfgLabels['none'];
+      $display = $resolved_keys !== [] ? implode(', ', array_map(fn(string $key): string => $options[$key], $resolved_keys)) : $p->label('none');
       $open = $p->settleOpen($resolved_keys, $open);
       $p->printLines($p->renderCompleted($label, $display, $depth, $open));
       if ($standalone) {
@@ -1101,7 +1105,7 @@ class Prompty {
         }
 
         $open = $p->settleOpen($selected_keys, $open);
-        $p->redraw($line_count, $p->renderCompleted($label, $selected_labels !== [] ? implode(', ', $selected_labels) : $p->cfgLabels['none'], $depth, $open));
+        $p->redraw($line_count, $p->renderCompleted($label, $selected_labels !== [] ? implode(', ', $selected_labels) : $p->label('none'), $depth, $open));
         if ($standalone) {
           // @codeCoverageIgnoreStart
           $p->teardownTty();
@@ -1205,7 +1209,7 @@ class Prompty {
 
     if ($resolved_bool !== NULL) {
       $open = $p->settleOpen($resolved_bool, $open);
-      $p->printLines($p->renderCompleted($label, $resolved_bool ? $p->cfgLabels['yes'] : $p->cfgLabels['no'], $depth, $open));
+      $p->printLines($p->renderCompleted($label, $resolved_bool ? $p->label('yes') : $p->label('no'), $depth, $open));
       if ($standalone) {
         // @codeCoverageIgnoreStart
         $p->teardownTty();
@@ -1217,10 +1221,10 @@ class Prompty {
 
     $render_active = function (bool $focused_yes) use ($p, $label, $description, $depth, $open): array {
       $options_display = $focused_yes
-        ? $p->color($p->cfgSymbols['radio_on'], 'green') . ' ' . $p->cfgLabels['yes'] . ' ' . $p->color($p->cfgLabels['separator'], 'dim')
-          . ' ' . $p->color($p->cfgSymbols['radio_off'], 'dim') . ' ' . $p->color($p->cfgLabels['no'], 'dim')
-        : $p->color($p->cfgSymbols['radio_off'], 'dim') . ' ' . $p->color($p->cfgLabels['yes'], 'dim') . ' ' . $p->color($p->cfgLabels['separator'], 'dim')
-          . ' ' . $p->color($p->cfgSymbols['radio_on'], 'green') . ' ' . $p->cfgLabels['no'];
+        ? $p->color($p->cfgSymbols['radio_on'], 'green') . ' ' . $p->label('yes') . ' ' . $p->color($p->label('separator'), 'dim')
+          . ' ' . $p->color($p->cfgSymbols['radio_off'], 'dim') . ' ' . $p->color($p->label('no'), 'dim')
+        : $p->color($p->cfgSymbols['radio_off'], 'dim') . ' ' . $p->color($p->label('yes'), 'dim') . ' ' . $p->color($p->label('separator'), 'dim')
+          . ' ' . $p->color($p->cfgSymbols['radio_on'], 'green') . ' ' . $p->label('no');
 
       if ($depth === 0) {
         $lines = [$p->color($p->cfgSymbols['active'], 'cyan') . $p->cfgSpacing['indent'] . $label];
@@ -1249,7 +1253,7 @@ class Prompty {
       $key = $p->readKey();
 
       if ($p->isCancelKey($key)) {
-        $p->redraw($line_count, $p->renderCancelled($label, $yes ? $p->cfgLabels['yes'] : $p->cfgLabels['no'], $depth, $open));
+        $p->redraw($line_count, $p->renderCancelled($label, $yes ? $p->label('yes') : $p->label('no'), $depth, $open));
         if ($standalone) {
           // @codeCoverageIgnoreStart
           $p->teardownTty();
@@ -1261,7 +1265,7 @@ class Prompty {
 
       if ($key === 'enter') {
         $open = $p->settleOpen($yes, $open);
-        $p->redraw($line_count, $p->renderCompleted($label, $yes ? $p->cfgLabels['yes'] : $p->cfgLabels['no'], $depth, $open));
+        $p->redraw($line_count, $p->renderCompleted($label, $yes ? $p->label('yes') : $p->label('no'), $depth, $open));
         if ($standalone) {
           // @codeCoverageIgnoreStart
           $p->teardownTty();
@@ -1345,6 +1349,19 @@ class Prompty {
     // character such as 'ą' whole. Text that is not valid UTF-8 has no
     // characters to match, and keeps what the passes above left it.
     return preg_replace('/\p{Cc}/u', '', $text) ?? $text;
+  }
+
+  /**
+   * Returns a configured label as printable text.
+   *
+   * @param string $name
+   *   The label to read.
+   *
+   * @return string
+   *   The label, safe to compose into a rendered line.
+   */
+  protected function label(string $name): string {
+    return $this->printable($this->cfgLabels[$name] ?? '');
   }
 
   /**
@@ -1855,7 +1872,7 @@ class Prompty {
     if ($depth === 0) {
       return [
         $this->color($this->cfgSymbols['active'], 'red') . $this->cfgSpacing['indent'] . $label,
-        $this->bar() . $this->cfgSpacing['indent'] . $this->color($value, 'dim') . $this->color(' ' . $this->cfgLabels['cancelled'], 'red'),
+        $this->bar() . $this->cfgSpacing['indent'] . $this->color($value, 'dim') . $this->color(' ' . $this->label('cancelled'), 'red'),
         $this->bar(),
       ];
     }
@@ -1865,7 +1882,7 @@ class Prompty {
 
     return [
       $label_prefix . $this->color($this->cfgSymbols['active'], 'red') . $this->cfgSpacing['indent'] . $label,
-      $this->bar() . $body_prefix . $this->color($value, 'dim') . $this->color(' ' . $this->cfgLabels['cancelled'], 'red'),
+      $this->bar() . $body_prefix . $this->color($value, 'dim') . $this->color(' ' . $this->label('cancelled'), 'red'),
       $this->bar() . $body_prefix,
     ];
   }
