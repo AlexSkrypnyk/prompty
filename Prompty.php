@@ -1297,7 +1297,7 @@ class Prompty {
    *   TRUE for the two cancel keys and for the end of the input stream.
    */
   protected function isCancelKey(string $key): bool {
-    return $key === 'ctrl-c' || $key === 'escape' || $key === 'eof';
+    return in_array($key, ['ctrl-c', 'escape', 'eof'], TRUE);
   }
 
   /**
