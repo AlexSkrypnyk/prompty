@@ -609,7 +609,7 @@ $results = Prompty::flow(fn(): array => [/* ... */],
 
 ### Unknown keys are rejected
 
-`labels`, `spacing`, `colors`, `symbols_unicode` and `symbols_ascii` each accept a fixed set of keys, listed above. A key outside that set is rejected rather than merged in, so a misspelling fails at the call instead of quietly doing nothing:
+`labels`, `spacing`, `colors`, `symbols_unicode` and `symbols_ascii` each accept a fixed set of keys - whichever ones the defaults declare, which `Prompty::config()` prints. A key outside that set is rejected rather than merged in, so a misspelling fails at the call instead of quietly doing nothing, and the message lists the keys that would have worked:
 
 ```text
 Configuration key "bogus" for "labels" is not valid. Available keys: yes, no, cancelled, none, separator.
@@ -618,6 +618,7 @@ Configuration key "bogus" for "labels" is not valid. Available keys: yes, no, ca
 `truthy` and `falsy` must each list at least one value, since a `confirm` widget that cannot resolve half its domain would reject every value it was given.
 
 An empty `env_prefix` is accepted, and makes discovery read the bare uppercased step key. A step named `path`, `home` or `user` then reads `PATH`, `HOME` or `USER` from the ambient environment, so keep a prefix unless you mean exactly that.
+
 ### Other methods
 
 Besides the four widgets and `flow()`, the class exposes:
