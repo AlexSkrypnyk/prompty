@@ -501,6 +501,7 @@ class Prompty {
 
     try {
       $steps = $steps();
+      $p->assertStepKeys($steps);
 
       $options = [
         'numbering' => $numbering,
@@ -1633,6 +1634,29 @@ class Prompty {
     }
 
     return array_values(array_filter($this->optionKeys($options), fn(string $key): bool => in_array($key, $selected, TRUE)));
+  }
+
+  /**
+   * Rejects step keys that cannot be written as an environment variable name.
+   *
+   * @param array<array-key, mixed> $steps
+   *   Flow steps, keyed by step name.
+   *
+   * @throws \InvalidArgumentException
+   *   When a key holds a character outside letters, digits and underscores.
+   */
+  protected function assertStepKeys(array $steps): void {
+    foreach ($steps as $key => $step) {
+      if (preg_match('/^[A-Za-z0-9_]+$/', (string) $key) !== 1) {
+        throw new \InvalidArgumentException(sprintf('Step key "%s" is not valid. A step key is uppercased into an environment variable name, so it may hold only letters, digits and underscores.', $key));
+      }
+
+      $children = is_array($step) ? $step['__children'] ?? NULL : NULL;
+
+      if (is_array($children)) {
+        $this->assertStepKeys($children);
+      }
+    }
   }
 
   /**
