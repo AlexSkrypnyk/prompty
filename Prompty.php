@@ -23,6 +23,19 @@ namespace AlexSkrypnyk\Prompty;
  *
  * This notice must be included in all copies of this file, including when
  * used as a part of other files.
+ *
+ * @phpstan-type PromptyConfig array{
+ *   symbols_unicode: array<string, string>,
+ *   symbols_ascii: array<string, string>,
+ *   colors: array<string, string>,
+ *   spacing: array<string, string>,
+ *   labels: array<string, string>,
+ *   unicode: bool|null,
+ *   ansi: bool|null,
+ *   env_prefix: string,
+ *   truthy: list<string>,
+ *   falsy: list<string>,
+ * }
  */
 class Prompty {
 
@@ -232,6 +245,58 @@ class Prompty {
   }
 
   /**
+   * Resolves the symbol and colour sets from the unicode and ANSI settings.
+   */
+  protected function resolveDisplay(): void {
+    $this->cfgSymbols = $this->cfgUnicode ? $this->cfgSymbolsUnicode : $this->cfgSymbolsAscii;
+    $this->cfgColors = $this->cfgAnsi ? $this->cfgColorsDefault : array_fill_keys(array_keys($this->cfgColorsDefault), '');
+  }
+
+  /**
+   * Captures the configuration a flow can override.
+   *
+   * @return PromptyConfig
+   *   The values in force, keyed as configure() names them.
+   */
+  protected function configSnapshot(): array {
+    return [
+      'symbols_unicode' => $this->cfgSymbolsUnicode,
+      'symbols_ascii' => $this->cfgSymbolsAscii,
+      'colors' => $this->cfgColorsDefault,
+      'spacing' => $this->cfgSpacing,
+      'labels' => $this->cfgLabels,
+      'unicode' => $this->cfgUnicode,
+      'ansi' => $this->cfgAnsi,
+      'env_prefix' => $this->cfgEnvPrefix,
+      'truthy' => $this->cfgTruthy,
+      'falsy' => $this->cfgFalsy,
+    ];
+  }
+
+  /**
+   * Puts a captured configuration back in force.
+   *
+   * The values are assigned rather than merged, so a key a flow added is gone
+   * as well as one it changed.
+   *
+   * @param PromptyConfig $snapshot
+   *   A snapshot from configSnapshot().
+   */
+  protected function configRestore(array $snapshot): void {
+    $this->cfgSymbolsUnicode = $snapshot['symbols_unicode'];
+    $this->cfgSymbolsAscii = $snapshot['symbols_ascii'];
+    $this->cfgColorsDefault = $snapshot['colors'];
+    $this->cfgSpacing = $snapshot['spacing'];
+    $this->cfgLabels = $snapshot['labels'];
+    $this->cfgUnicode = $snapshot['unicode'];
+    $this->cfgAnsi = $snapshot['ansi'];
+    $this->cfgEnvPrefix = $snapshot['env_prefix'];
+    $this->cfgTruthy = $snapshot['truthy'];
+    $this->cfgFalsy = $snapshot['falsy'];
+    $this->resolveDisplay();
+  }
+
+  /**
    * Get the resolved configuration array.
    *
    * @return array<string, mixed>
@@ -350,8 +415,7 @@ class Prompty {
     if ($falsy !== NULL) {
       $p->cfgFalsy = $falsy;
     }
-    $p->cfgSymbols = $p->cfgUnicode ? $p->cfgSymbolsUnicode : $p->cfgSymbolsAscii;
-    $p->cfgColors = $p->cfgAnsi ? $p->cfgColorsDefault : array_fill_keys(array_keys($p->cfgColorsDefault), '');
+    $p->resolveDisplay();
   }
 
   /**
@@ -415,6 +479,9 @@ class Prompty {
     ?array $truthy = NULL,
     ?array $falsy = NULL,
   ): ?array {
+    $p = static::instance();
+    $snapshot = NULL;
+
     if ($symbols_unicode !== NULL
       || $symbols_ascii !== NULL
       || $colors !== NULL
@@ -425,9 +492,10 @@ class Prompty {
       || $env_prefix !== NULL
       || $truthy !== NULL
       || $falsy !== NULL) {
+      $snapshot = $p->configSnapshot();
       static::configure($symbols_unicode, $symbols_ascii, $colors, $spacing, $labels, $unicode, $ansi, $env_prefix, $truthy, $falsy);
     }
-    $p = static::instance();
+
     $p->results = [];
     static::$inFlow = TRUE;
 
@@ -478,6 +546,10 @@ class Prompty {
       $p->teardownTty();
       $p->pending = NULL;
       static::$inFlow = FALSE;
+
+      if ($snapshot !== NULL) {
+        $p->configRestore($snapshot);
+      }
     }
   }
 

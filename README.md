@@ -574,6 +574,8 @@ And a nested flow:
 
 Configure globally with `Prompty::configure()` or per-flow via named arguments on `Prompty::flow()`. All parameters are optional — pass only what you want to override. Per-flow config merges on top of global.
 
+A per-flow argument lasts as long as the flow. Whether the flow completes, is cancelled, or throws, the configuration it found is back in force when it returns, so the next flow sees the global settings rather than the last flow's. `Prompty::configure()` is the way to change something for the rest of the process.
+
 ```php
 // Global.
 Prompty::configure(
