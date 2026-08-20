@@ -100,6 +100,13 @@ final class PromptyFlowConfigScopeTest extends PromptyTestCase {
       'symbols_unicode',
     ];
 
+    yield 'ascii symbols' => [
+      static function () use ($steps): void {
+        Prompty::flow($steps, symbols_ascii: ['bar' => '!']);
+      },
+      'symbols_ascii',
+    ];
+
     yield 'colors' => [
       static function () use ($steps): void {
         Prompty::flow($steps, colors: ['cyan' => '']);
