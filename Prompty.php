@@ -649,7 +649,8 @@ class Prompty {
    *   Map of option key to hint text.
    * @param mixed $discovered
    *   Pre-filled value that bypasses interactive input. Must be a key of
-   *   $options.
+   *   $options. A blank value is rejected: a single choice has no answer that
+   *   means "nothing chosen".
    * @param callable|null $condition
    *   Optional condition callback; skips the step when it returns FALSE.
    * @param array<string, mixed> $children
@@ -838,7 +839,7 @@ class Prompty {
    *   Map of option key to hint text.
    * @param mixed $discovered
    *   Pre-filled value that bypasses interactive input. Every entry must be a
-   *   key of $options.
+   *   key of $options. A blank value selects nothing.
    * @param callable|null $condition
    *   Optional condition callback; skips the step when it returns FALSE.
    * @param array<string, mixed> $children
@@ -1043,7 +1044,8 @@ class Prompty {
    *   Optional description rendered below the label.
    * @param mixed $discovered
    *   Pre-filled value that bypasses interactive input. A boolean is taken as
-   *   is; anything else must appear in the truthy or falsy list.
+   *   is; anything else must appear in the truthy or falsy list. A blank value
+   *   is rejected: yes and no are the only answers.
    * @param callable|null $condition
    *   Optional condition callback; skips the step when it returns FALSE.
    * @param array<string, mixed> $children
@@ -1564,7 +1566,7 @@ class Prompty {
       return $value;
     }
 
-    $display = is_scalar($value) ? (string) $value : get_debug_type($value);
+    $display = is_scalar($value) ? trim((string) $value) : get_debug_type($value);
     $normalise = fn(string $token): string => strtolower(trim($token));
     $normalised = $normalise($display);
 
