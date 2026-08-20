@@ -86,6 +86,7 @@ The [`playground/`](playground) directory holds runnable demos - the quickest wa
 | `flow-config.php`             | A flow with `configure()` applied beforehand.       |
 | `flow-multiple.php`           | Several flows, and a standalone widget between them.|
 | `flow-config-scope.php`       | How long a flow's own configuration lasts.          |
+| `flow-step-keys.php`          | What a step key becomes, and which are turned down. |
 | `flow-embed.php`              | The flow the embedder is tested against.            |
 
 ```bash

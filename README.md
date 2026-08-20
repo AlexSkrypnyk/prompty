@@ -400,6 +400,12 @@ The list form takes each entry literally, which is the way to select an option k
 
 For confirm widgets, env values are interpreted using configurable truthy/falsy lists (default: `1`/`true`/`yes` and `0`/`false`/`no`).
 
+Step keys become part of the variable name, so they may hold only letters, digits and underscores. `ci_provider` reads `PROMPTY_CI_PROVIDER`, which any shell can export; `ci-provider` would read `PROMPTY_CI-PROVIDER`, which is not a valid shell identifier and so could never be set with `export` or written in most `.env` files. A key holding anything else is rejected when the flow starts, rather than quietly never resolving:
+
+```text
+Step key "ci-provider" is not valid. A step key is uppercased into an environment variable name, so it may hold only letters, digits and underscores.
+```
+
 ### Discovered and default values must be valid answers
 
 A discovered value has to be an answer the widget would have accepted interactively. For `select` and `multiselect` that means a key of `options`; for `confirm`, a value in the truthy or falsy list. Anything else throws an `InvalidArgumentException` naming the widget, the offending value, and what was allowed:
