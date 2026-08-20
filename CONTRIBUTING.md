@@ -80,6 +80,7 @@ The [`playground/`](playground) directory holds runnable demos - the quickest wa
 | `widget-placeholder.php`      | What an empty answer to a text widget means.        |
 | `widget-discovered.php`       | Where a discovered value comes from, and its forms. |
 | `widget-default.php`          | Defaults, and the option keys they are held to.     |
+| `widget-control-chars.php`    | What a control character in a value draws as.       |
 | `widgets-config.php`          | Standalone widgets with custom configuration.       |
 | `flow.php`                    | A linear flow with descriptions and hints.          |
 | `flow-nested.php`             | A nested flow with conditionals, 3 levels deep.     |

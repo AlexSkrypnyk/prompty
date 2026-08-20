@@ -623,11 +623,13 @@ class Prompty {
     $open = $ctx['open'] ?? [];
     $label = $p->numberLabel($label, $ctx);
 
+    $default = $p->printable($default);
+    $placeholder = $p->printable($placeholder);
     $resolved = $discovered ?? $ctx['discovered'] ?? NULL;
 
     if ($resolved !== NULL) {
       /** @var int|float|string|bool $resolved */
-      $display = trim((string) $resolved);
+      $display = trim($p->printable((string) $resolved));
 
       // An empty answer resolves as it does interactively: the seeded default,
       // or the placeholder when nothing was seeded.
@@ -647,6 +649,9 @@ class Prompty {
     }
 
     $render_active = function (string $value) use ($p, $label, $placeholder, $description, $depth, $open): array {
+      // Typed bytes reach here as they were typed, and a paste can carry a
+      // control character among them.
+      $value = $p->printable($value);
       $cursor = $p->color('█', 'cyan');
       $display = $value === '' ? $p->color($placeholder, 'gray') . $cursor : $p->color($value, 'white') . $cursor;
 
@@ -688,6 +693,7 @@ class Prompty {
       }
 
       if ($key === 'enter') {
+        $value = $p->printable($value);
         $display = $value !== '' ? $value : $placeholder;
         $open = $p->settleOpen($display, $open);
         $p->redraw($line_count, $p->renderCompleted($label, $display, $depth, $open));
@@ -805,7 +811,7 @@ class Prompty {
     $label = $p->numberLabel($label, $ctx);
 
     $option_keys = $p->optionKeys($options);
-    $option_labels = array_values($options);
+    $option_labels = array_map($p->printable(...), array_values($options));
     $ordered_hints = array_map(fn(string $key) => $hints[$key] ?? '', $option_keys);
 
     if ($resolved_key !== NULL) {
@@ -1006,11 +1012,11 @@ class Prompty {
     $label = $p->numberLabel($label, $ctx);
 
     $option_keys = $p->optionKeys($options);
-    $option_labels = array_values($options);
+    $option_labels = array_map($p->printable(...), array_values($options));
     $ordered_hints = array_map(fn(string $key) => $hints[$key] ?? '', $option_keys);
 
     if ($resolved_keys !== NULL) {
-      $display = $resolved_keys !== [] ? implode(', ', array_map(fn(string $key): string => $options[$key], $resolved_keys)) : $p->cfgLabels['none'];
+      $display = $resolved_keys !== [] ? implode(', ', array_map(fn(string $key): string => $options[$key], $resolved_keys)) : $p->label('none');
       $open = $p->settleOpen($resolved_keys, $open);
       $p->printLines($p->renderCompleted($label, $display, $depth, $open));
       if ($standalone) {
@@ -1099,7 +1105,7 @@ class Prompty {
         }
 
         $open = $p->settleOpen($selected_keys, $open);
-        $p->redraw($line_count, $p->renderCompleted($label, $selected_labels !== [] ? implode(', ', $selected_labels) : $p->cfgLabels['none'], $depth, $open));
+        $p->redraw($line_count, $p->renderCompleted($label, $selected_labels !== [] ? implode(', ', $selected_labels) : $p->label('none'), $depth, $open));
         if ($standalone) {
           // @codeCoverageIgnoreStart
           $p->teardownTty();
@@ -1203,7 +1209,7 @@ class Prompty {
 
     if ($resolved_bool !== NULL) {
       $open = $p->settleOpen($resolved_bool, $open);
-      $p->printLines($p->renderCompleted($label, $resolved_bool ? $p->cfgLabels['yes'] : $p->cfgLabels['no'], $depth, $open));
+      $p->printLines($p->renderCompleted($label, $resolved_bool ? $p->label('yes') : $p->label('no'), $depth, $open));
       if ($standalone) {
         // @codeCoverageIgnoreStart
         $p->teardownTty();
@@ -1215,10 +1221,10 @@ class Prompty {
 
     $render_active = function (bool $focused_yes) use ($p, $label, $description, $depth, $open): array {
       $options_display = $focused_yes
-        ? $p->color($p->cfgSymbols['radio_on'], 'green') . ' ' . $p->cfgLabels['yes'] . ' ' . $p->color($p->cfgLabels['separator'], 'dim')
-          . ' ' . $p->color($p->cfgSymbols['radio_off'], 'dim') . ' ' . $p->color($p->cfgLabels['no'], 'dim')
-        : $p->color($p->cfgSymbols['radio_off'], 'dim') . ' ' . $p->color($p->cfgLabels['yes'], 'dim') . ' ' . $p->color($p->cfgLabels['separator'], 'dim')
-          . ' ' . $p->color($p->cfgSymbols['radio_on'], 'green') . ' ' . $p->cfgLabels['no'];
+        ? $p->color($p->cfgSymbols['radio_on'], 'green') . ' ' . $p->label('yes') . ' ' . $p->color($p->label('separator'), 'dim')
+          . ' ' . $p->color($p->cfgSymbols['radio_off'], 'dim') . ' ' . $p->color($p->label('no'), 'dim')
+        : $p->color($p->cfgSymbols['radio_off'], 'dim') . ' ' . $p->color($p->label('yes'), 'dim') . ' ' . $p->color($p->label('separator'), 'dim')
+          . ' ' . $p->color($p->cfgSymbols['radio_on'], 'green') . ' ' . $p->label('no');
 
       if ($depth === 0) {
         $lines = [$p->color($p->cfgSymbols['active'], 'cyan') . $p->cfgSpacing['indent'] . $label];
@@ -1247,7 +1253,7 @@ class Prompty {
       $key = $p->readKey();
 
       if ($p->isCancelKey($key)) {
-        $p->redraw($line_count, $p->renderCancelled($label, $yes ? $p->cfgLabels['yes'] : $p->cfgLabels['no'], $depth, $open));
+        $p->redraw($line_count, $p->renderCancelled($label, $yes ? $p->label('yes') : $p->label('no'), $depth, $open));
         if ($standalone) {
           // @codeCoverageIgnoreStart
           $p->teardownTty();
@@ -1259,7 +1265,7 @@ class Prompty {
 
       if ($key === 'enter') {
         $open = $p->settleOpen($yes, $open);
-        $p->redraw($line_count, $p->renderCompleted($label, $yes ? $p->cfgLabels['yes'] : $p->cfgLabels['no'], $depth, $open));
+        $p->redraw($line_count, $p->renderCompleted($label, $yes ? $p->label('yes') : $p->label('no'), $depth, $open));
         if ($standalone) {
           // @codeCoverageIgnoreStart
           $p->teardownTty();
@@ -1317,6 +1323,45 @@ class Prompty {
    */
   protected function color(string $text, string $color): string {
     return isset($this->cfgColors[$color]) ? $this->cfgColors[$color] . $text . $this->cfgColors['reset'] : $text;
+  }
+
+  /**
+   * Neutralises control characters that would break a rendered line.
+   *
+   * A newline or tab becomes a space, so text stays on the line the tree drew
+   * for it. Escape sequences and the remaining control characters are removed,
+   * since a terminal acts on them rather than showing them.
+   *
+   * @param string $text
+   *   Text supplied by the caller or discovered from the environment.
+   *
+   * @return string
+   *   Text safe to compose into a rendered line.
+   */
+  protected function printable(string $text): string {
+    $text = preg_replace('/\033\[\??[0-9;]*[A-Za-z]/', '', $text) ?? $text;
+    $text = preg_replace('/[\t\n\x0b\x0c\r]+/', ' ', $text) ?? $text;
+    $text = preg_replace('/[\x00-\x1f\x7f]/', '', $text) ?? $text;
+
+    // The rest of the control characters are the C1 range, which UTF-8 encodes
+    // in two bytes whose second one is also a continuation byte of ordinary
+    // characters. Matching characters rather than bytes is what keeps a
+    // character such as 'ą' whole. Text that is not valid UTF-8 has no
+    // characters to match, and keeps what the passes above left it.
+    return preg_replace('/\p{Cc}/u', '', $text) ?? $text;
+  }
+
+  /**
+   * Returns a configured label as printable text.
+   *
+   * @param string $name
+   *   The label to read.
+   *
+   * @return string
+   *   The label, safe to compose into a rendered line.
+   */
+  protected function label(string $name): string {
+    return $this->printable($this->cfgLabels[$name] ?? '');
   }
 
   /**
@@ -1522,6 +1567,8 @@ class Prompty {
    *   The label with an optional step number suffix.
    */
   protected function numberLabel(string $label, array $ctx): string {
+    $label = $this->printable($label);
+
     if (isset($ctx['number'])) {
       /** @var string $number */
       $number = $ctx['number'];
@@ -1685,6 +1732,8 @@ class Prompty {
    *   The rendered intro lines.
    */
   protected function renderIntro(string $message): array {
+    $message = $this->printable($message);
+
     return [
       '',
       $this->color($this->cfgSymbols['intro'], 'gray') . $this->cfgSpacing['indent'] . $this->color($message, 'bold'),
@@ -1702,6 +1751,8 @@ class Prompty {
    *   The rendered outro lines.
    */
   protected function renderOutro(string $message): array {
+    $message = $this->printable($message);
+
     return [
       $this->bar(),
       $this->color($this->cfgSymbols['outro'], 'gray') . $this->cfgSpacing['indent'] . $this->color($message, 'green'),
@@ -1726,7 +1777,7 @@ class Prompty {
     $body_prefix = $depth > 0 ? $this->bodyPrefix($depth, $open) : $this->cfgSpacing['indent'];
 
     $lines = array_map(
-      fn(string $text_line): string => $this->bar() . $body_prefix . $this->color($text_line, 'dim_italic'),
+      fn(string $text_line): string => $this->bar() . $body_prefix . $this->color($this->printable($text_line), 'dim_italic'),
       explode("\n", $description),
     );
 
@@ -1750,7 +1801,7 @@ class Prompty {
    */
   protected function renderHint(string $hint, int $depth = 0, array $open = []): array {
     $body_prefix = $depth > 0 ? $this->bodyPrefix($depth, $open) : '';
-    $hint_lines = explode("\n", $hint);
+    $hint_lines = array_map($this->printable(...), explode("\n", $hint));
 
     return array_map(
       fn(string $text_line, int $index): string => $this->bar() . $body_prefix . ($index === 0
@@ -1778,6 +1829,9 @@ class Prompty {
    *   The rendered completed-state lines.
    */
   protected function renderCompleted(string $label, string $value, int $depth = 0, array $open = []): array {
+    $label = $this->printable($label);
+    $value = $this->printable($value);
+
     if ($depth === 0) {
       return [
         $this->color($this->cfgSymbols['completed'], 'cyan') . $this->cfgSpacing['indent'] . $label,
@@ -1812,10 +1866,13 @@ class Prompty {
    *   The rendered cancelled-state lines.
    */
   protected function renderCancelled(string $label, string $value, int $depth = 0, array $open = []): array {
+    $label = $this->printable($label);
+    $value = $this->printable($value);
+
     if ($depth === 0) {
       return [
         $this->color($this->cfgSymbols['active'], 'red') . $this->cfgSpacing['indent'] . $label,
-        $this->bar() . $this->cfgSpacing['indent'] . $this->color($value, 'dim') . $this->color(' ' . $this->cfgLabels['cancelled'], 'red'),
+        $this->bar() . $this->cfgSpacing['indent'] . $this->color($value, 'dim') . $this->color(' ' . $this->label('cancelled'), 'red'),
         $this->bar(),
       ];
     }
@@ -1825,7 +1882,7 @@ class Prompty {
 
     return [
       $label_prefix . $this->color($this->cfgSymbols['active'], 'red') . $this->cfgSpacing['indent'] . $label,
-      $this->bar() . $body_prefix . $this->color($value, 'dim') . $this->color(' ' . $this->cfgLabels['cancelled'], 'red'),
+      $this->bar() . $body_prefix . $this->color($value, 'dim') . $this->color(' ' . $this->label('cancelled'), 'red'),
       $this->bar() . $body_prefix,
     ];
   }
