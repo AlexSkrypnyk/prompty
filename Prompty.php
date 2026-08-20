@@ -385,19 +385,24 @@ class Prompty {
   ): void {
     $p = static::instance();
     if ($symbols_unicode !== NULL) {
+      $p->assertConfigKeys('symbols_unicode', $symbols_unicode, $p->cfgSymbolsUnicode);
       $p->cfgSymbolsUnicode = array_replace($p->cfgSymbolsUnicode, $symbols_unicode);
     }
     if ($symbols_ascii !== NULL) {
+      $p->assertConfigKeys('symbols_ascii', $symbols_ascii, $p->cfgSymbolsAscii);
       $p->cfgSymbolsAscii = array_replace($p->cfgSymbolsAscii, $symbols_ascii);
     }
     if ($colors !== NULL) {
+      $p->assertConfigKeys('colors', $colors, $p->cfgColorsDefault);
       $p->cfgColorsDefault = array_replace($p->cfgColorsDefault, $colors);
       $p->cfgColors = array_replace($p->cfgColors, $colors);
     }
     if ($spacing !== NULL) {
+      $p->assertConfigKeys('spacing', $spacing, $p->cfgSpacing);
       $p->cfgSpacing = array_replace($p->cfgSpacing, $spacing);
     }
     if ($labels !== NULL) {
+      $p->assertConfigKeys('labels', $labels, $p->cfgLabels);
       $p->cfgLabels = array_replace($p->cfgLabels, $labels);
     }
     if ($unicode !== NULL) {
@@ -410,9 +415,11 @@ class Prompty {
       $p->cfgEnvPrefix = $env_prefix;
     }
     if ($truthy !== NULL) {
+      $p->assertConfigList('truthy', $truthy);
       $p->cfgTruthy = $truthy;
     }
     if ($falsy !== NULL) {
+      $p->assertConfigList('falsy', $falsy);
       $p->cfgFalsy = $falsy;
     }
     $p->resolveDisplay();
@@ -722,6 +729,44 @@ class Prompty {
       }
 
       $line_count = $p->redraw($line_count, $render_active($value));
+    }
+  }
+
+  /**
+   * Rejects configuration keys outside the set the default declares.
+   *
+   * @param string $parameter
+   *   The configure() parameter that supplied the values.
+   * @param array<string, string> $values
+   *   The supplied overrides.
+   * @param array<string, string> $declared
+   *   The defaults, whose keys are the valid set.
+   *
+   * @throws \InvalidArgumentException
+   *   When a key is not part of the declared set.
+   */
+  protected function assertConfigKeys(string $parameter, array $values, array $declared): void {
+    foreach (array_keys($values) as $key) {
+      if (!array_key_exists($key, $declared)) {
+        throw new \InvalidArgumentException(sprintf('Configuration key "%s" for "%s" is not valid. Available keys: %s.', $key, $parameter, implode(', ', array_keys($declared))));
+      }
+    }
+  }
+
+  /**
+   * Rejects a configuration list that holds nothing.
+   *
+   * @param string $parameter
+   *   The configure() parameter that supplied the values.
+   * @param list<string> $values
+   *   The supplied values.
+   *
+   * @throws \InvalidArgumentException
+   *   When the list is empty.
+   */
+  protected function assertConfigList(string $parameter, array $values): void {
+    if ($values === []) {
+      throw new \InvalidArgumentException(sprintf('No values declared for "%s". Provide at least one value.', $parameter));
     }
   }
 

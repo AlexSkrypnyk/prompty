@@ -82,6 +82,7 @@ The [`playground/`](playground) directory holds runnable demos - the quickest wa
 | `widget-default.php`          | Defaults, and the option keys they are held to.     |
 | `widget-control-chars.php`    | What a control character in a value draws as.       |
 | `widgets-config.php`          | Standalone widgets with custom configuration.       |
+| `widgets-config-keys.php`     | What `configure()` accepts, and what it turns down. |
 | `flow.php`                    | A linear flow with descriptions and hints.          |
 | `flow-nested.php`             | A nested flow with conditionals, 3 levels deep.     |
 | `flow-config.php`             | A flow with `configure()` applied beforehand.       |
