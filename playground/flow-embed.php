@@ -9,12 +9,8 @@
  * loads the class with require, like every other demo here, and the embedder
  * rewrites it into a copy that carries the class inline and requires nothing.
  *
- * Build that copy with:
- *
- *   composer embed-playground
- *
- * which runs the embedder with an output path, so the source is copied there
- * and the copy is rewritten:
+ * Build that copy by running the embedder with an output path, so the source
+ * is copied there and the copy is rewritten:
  *
  *   php embed.php playground/flow-embed.php playground/flow-embed.dist.php
  *

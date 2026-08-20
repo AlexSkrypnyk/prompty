@@ -24,7 +24,6 @@ composer install
 | `composer lint-fix`         | Rector, then PHPCBF. Fixes what can be fixed.          |
 | `composer test`             | PHPUnit without coverage.                              |
 | `composer test-coverage`    | PHPUnit with coverage, written to `.logs/`.            |
-| `composer embed-playground` | Builds `playground/flow-embed.dist.php`, which is not committed. |
 | `composer reset`            | Removes `vendor/`, `vendor-bin/` and `composer.lock`.  |
 
 `composer reset` only deletes - run `composer install` afterwards to get back to a working tree.
@@ -105,7 +104,7 @@ php playground/flow.php --no-unicode --no-ansi
 Prompty is meant to be copied into a consumer script, so the copy is the thing that has to keep working. `flow-embed.php` is the script that proves it does. Embedding rewrites it into `flow-embed.dist.php`, which carries the class inline and requires nothing, so it runs from anywhere:
 
 ```bash
-composer embed-playground
+php embed.php --no-verify playground/flow-embed.php playground/flow-embed.dist.php
 php playground/flow-embed.php
 cp playground/flow-embed.dist.php ~/order.php
 php ~/order.php
