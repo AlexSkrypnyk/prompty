@@ -1831,7 +1831,8 @@ class Prompty {
    *
    * The flow settles again from the value it stores, so a step whose stored
    * result differs from the one its widget drew still leaves the exact state
-   * behind for whatever renders next.
+   * behind for whatever renders next. The widget's own lines keep the state it
+   * settled, since they were drawn before the step returned a different value.
    *
    * @param mixed $value
    *   The answer the step resolved to.
