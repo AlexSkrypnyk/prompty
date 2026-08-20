@@ -58,6 +58,18 @@ class Prompty {
   protected array $open = [];
 
   /**
+   * The step being rendered, and what settling its connector needs.
+   *
+   * @var array{
+   *   key: int|string,
+   *   depth: int,
+   *   rest: array<array-key, mixed>,
+   *   open: array<int, bool>|null,
+   * }|null
+   */
+  protected ?array $pending = NULL;
+
+  /**
    * Input stream for reading keystrokes (defaults to STDIN).
    *
    * @var resource|null
@@ -465,6 +477,7 @@ class Prompty {
     }
     finally {
       $p->teardownTty();
+      $p->pending = NULL;
       static::$inFlow = FALSE;
     }
   }
@@ -551,6 +564,7 @@ class Prompty {
         $display = $default !== '' ? $default : $placeholder;
       }
 
+      $open = $p->settleOpen($display, $open);
       $p->printLines($p->renderCompleted($label, $display, $depth, $open));
       if ($standalone) {
         // @codeCoverageIgnoreStart
@@ -604,6 +618,7 @@ class Prompty {
 
       if ($key === 'enter') {
         $display = $value !== '' ? $value : $placeholder;
+        $open = $p->settleOpen($display, $open);
         $p->redraw($line_count, $p->renderCompleted($label, $display, $depth, $open));
         if ($standalone) {
           // @codeCoverageIgnoreStart
@@ -723,6 +738,7 @@ class Prompty {
     $ordered_hints = array_map(fn(string $key) => $hints[$key] ?? '', $option_keys);
 
     if ($resolved_key !== NULL) {
+      $open = $p->settleOpen($resolved_key, $open);
       $p->printLines($p->renderCompleted($label, $options[$resolved_key], $depth, $open));
       if ($standalone) {
         // @codeCoverageIgnoreStart
@@ -802,6 +818,7 @@ class Prompty {
       }
 
       if ($key === 'enter') {
+        $open = $p->settleOpen($option_keys[$focused], $open);
         $p->redraw($line_count, $p->renderCompleted($label, $option_labels[$focused], $depth, $open));
         if ($standalone) {
           // @codeCoverageIgnoreStart
@@ -923,6 +940,7 @@ class Prompty {
 
     if ($resolved_keys !== NULL) {
       $display = $resolved_keys !== [] ? implode(', ', array_map(fn(string $key): string => $options[$key], $resolved_keys)) : $p->cfgLabels['none'];
+      $open = $p->settleOpen($resolved_keys, $open);
       $p->printLines($p->renderCompleted($label, $display, $depth, $open));
       if ($standalone) {
         // @codeCoverageIgnoreStart
@@ -1009,6 +1027,7 @@ class Prompty {
           }
         }
 
+        $open = $p->settleOpen($selected_keys, $open);
         $p->redraw($line_count, $p->renderCompleted($label, $selected_labels !== [] ? implode(', ', $selected_labels) : $p->cfgLabels['none'], $depth, $open));
         if ($standalone) {
           // @codeCoverageIgnoreStart
@@ -1112,6 +1131,7 @@ class Prompty {
     $label = $p->numberLabel($label, $ctx);
 
     if ($resolved_bool !== NULL) {
+      $open = $p->settleOpen($resolved_bool, $open);
       $p->printLines($p->renderCompleted($label, $resolved_bool ? $p->cfgLabels['yes'] : $p->cfgLabels['no'], $depth, $open));
       if ($standalone) {
         // @codeCoverageIgnoreStart
@@ -1167,6 +1187,7 @@ class Prompty {
       }
 
       if ($key === 'enter') {
+        $open = $p->settleOpen($yes, $open);
         $p->redraw($line_count, $p->renderCompleted($label, $yes ? $p->cfgLabels['yes'] : $p->cfgLabels['no'], $depth, $open));
         if ($standalone) {
           // @codeCoverageIgnoreStart
@@ -1762,20 +1783,82 @@ class Prompty {
    *
    * @param array<array-key, mixed> $steps
    *   Flow steps to test.
+   * @param array<string, mixed> $results
+   *   The answers each condition is tested against.
    *
    * @return bool
    *   TRUE when at least one step is unconditional or its condition passes.
    */
-  protected function hasVisibleStep(array $steps): bool {
+  protected function hasVisibleStep(array $steps, array $results): bool {
     foreach ($steps as $step) {
       $condition = $this->stepCondition($step);
 
-      if ($condition === NULL || $condition($this->results)) {
+      if ($condition === NULL || $condition($results)) {
         return TRUE;
       }
     }
 
     return FALSE;
+  }
+
+  /**
+   * Marks whether a depth level still has siblings to come.
+   *
+   * @param int $depth
+   *   The nesting depth to mark. Depth zero has no connector.
+   * @param bool $is_last
+   *   Whether the step being rendered is the last visible one at that depth.
+   */
+  protected function markOpen(int $depth, bool $is_last): void {
+    if ($depth < 1) {
+      return;
+    }
+
+    if ($is_last) {
+      unset($this->open[$depth]);
+
+      return;
+    }
+
+    $this->open[$depth] = TRUE;
+  }
+
+  /**
+   * Settles the tree connector once the step's answer is known.
+   *
+   * Each later sibling's condition is evaluated against the results it will
+   * see when its own step is reached, so no condition observes an answer that
+   * has not been collected yet. Repeated calls for one step return the
+   * settled state without evaluating anything again.
+   *
+   * @param mixed $value
+   *   The answer the step resolved to.
+   * @param array<int, bool> $open
+   *   The state to return when no flow step is being rendered.
+   *
+   * @return array<int, bool>
+   *   The connector state for the step's own lines.
+   */
+  protected function settleOpen(mixed $value, array $open): array {
+    $pending = $this->pending;
+
+    if ($pending === NULL) {
+      return $open;
+    }
+
+    if ($pending['open'] !== NULL) {
+      return $pending['open'];
+    }
+
+    $results = $this->results;
+    $results[(string) $pending['key']] = $value;
+
+    $this->markOpen($pending['depth'], !$this->hasVisibleStep($pending['rest'], $results));
+
+    $pending['open'] = $this->open;
+    $this->pending = $pending;
+
+    return $this->open;
   }
 
   /**
@@ -1819,25 +1902,20 @@ class Prompty {
 
       $step_number++;
 
-      $is_last = $depth > 0 && !$this->hasVisibleStep(array_slice($steps, $index));
+      $rest = array_slice($steps, $index);
 
-      // Update the tree connector state before building $ctx, so the widget
-      // receives the current open/closed state for its depth level.
-      if ($depth > 0) {
-        if ($is_last) {
-          unset($this->open[$depth]);
-        }
-        else {
-          $this->open[$depth] = TRUE;
-        }
-      }
+      // A later sibling's condition cannot be decided until this step is
+      // answered, so every remaining step counts as one that may render. The
+      // widget settles the connector from its answer before it draws.
+      $this->markOpen($depth, $rest === []);
+      $this->pending = ['key' => $key, 'depth' => $depth, 'rest' => $rest, 'open' => NULL];
 
       $number = $number_prefix !== '' ? $number_prefix . '.' . $step_number : (string) $step_number;
       $env_value = getenv($this->cfgEnvPrefix . strtoupper((string) $key));
 
       $ctx = [
         'depth' => $depth,
-        'is_last' => $is_last,
+        'is_last' => $rest === [],
         'open' => $this->open,
         'results' => $this->results,
         'number' => ($options['numbering'] ?? FALSE) ? $number : NULL,
@@ -1850,12 +1928,19 @@ class Prompty {
       $value = $call($ctx);
 
       if ($value === NULL) {
+        $this->pending = NULL;
+
         return FALSE;
       }
 
       $this->results[$key] = $value;
 
-      if ($this->hasVisibleStep($children)) {
+      // A widget settles the connector before it draws; this settles a step
+      // whose widget did not, so its children still see the exact state.
+      $this->settleOpen($value, $this->open);
+      $this->pending = NULL;
+
+      if ($this->hasVisibleStep($children, $this->results)) {
         $child_depth = $depth + 1;
         $sep = $this->bar() . $this->labelPrefix($child_depth, $this->open) . $this->bar();
         $this->printLines([$sep]);
