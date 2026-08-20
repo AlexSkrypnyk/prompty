@@ -10,13 +10,15 @@
  * animated SVGs; the widget-* recordings render as static single-frame
  * SVGs.
  *
- * Supports parallel execution: when run without arguments, launches all
- * recordings as parallel worker processes for faster generation.
+ * Recordings run in small batches: enough of them at once to finish in
+ * reasonable time, few enough that the machine does not stall a session
+ * being recorded and change where its frames fall.
  *
  * Dependencies: asciinema, expect, node, npm
  *
  * Environment variables:
  * - SCRIPT_QUIET: Set to '1' to suppress verbose messages.
+ * - SCRIPT_KEEP_CASTS: Set to '1' to keep the recordings for inspection.
  *
  * Usage:
  * @code
@@ -32,6 +34,31 @@ define('TERMINAL_ROWS', 24);
 
 // Delay before interacting with prompts in expect scripts (seconds).
 define('PROMPT_DELAY', 1);
+
+// Delay between typed characters (seconds). Fixed rather than humanised, so
+// the recording splits into the same frames on every run.
+define('TYPE_DELAY', 0.02);
+
+// Sleep before a keypress that moves within a widget (seconds). Long enough
+// to sit clear of MERGE_WINDOW; the rendered pacing does not depend on it.
+define('RECORD_STEP_SLEEP', 0.7);
+
+// Recordings running at the same time.
+define('MAX_WORKERS', 4);
+
+// Output arriving within this many seconds of the previous event belongs to
+// the same step, and is merged into it. It sits well above the gap between
+// typed characters and well below the shortest sleep between steps, so the
+// same steps survive however the terminal happened to chunk the output.
+define('MERGE_WINDOW', 0.35);
+
+// Rendered gap between one step and the next (seconds). Long enough to read
+// the prompt that was just answered.
+define('STEP_DELAY', 1.0);
+
+// Rendered gap between the redraws within one step (seconds), which is the
+// speed typing plays back at.
+define('FRAME_DELAY', 0.1);
 
 // Maximum idle time in recordings (seconds).
 define('MAX_IDLE_TIME', 3);
@@ -129,57 +156,57 @@ function main(): void {
     mkdir($tmp_dir, 0700, TRUE);
   }
 
-  foreach ($jobs as $name => $job) {
-    $expect_script = $tmp_dir . '/' . $name . '.exp';
-    $create_fn = $job['expect_fn'];
-    $create_fn($job['script'], $expect_script);
-  }
-
   $script_path = __FILE__;
-  $processes = [];
-  $pipes_list = [];
-
-  info('Launching ' . count($jobs) . ' workers in parallel...');
-  info('');
-
-  foreach ($jobs as $name => $job) {
-    $cmd = sprintf('php %s --record %s', escapeshellarg($script_path), escapeshellarg($name));
-
-    $descriptors = [0 => ['pipe', 'r'], 1 => ['pipe', 'w'], 2 => ['pipe', 'w']];
-
-    $pipes = [];
-    $process = proc_open($cmd, $descriptors, $pipes, $project_dir);
-
-    if (!is_resource($process)) {
-      throw new \RuntimeException('Failed to launch worker for: ' . $name);
-    }
-
-    fclose($pipes[0]);
-    stream_set_blocking($pipes[1], FALSE);
-    stream_set_blocking($pipes[2], FALSE);
-
-    $processes[$name] = $process;
-    $pipes_list[$name] = $pipes;
-
-    info('  Started: ' . $name);
-  }
-
-  info('');
 
   $failed = [];
-  foreach ($processes as $name => $process) {
-    ['stdout' => $stdout, 'stderr' => $stderr] = drainPipes($pipes_list[$name][1], $pipes_list[$name][2]);
-    fclose($pipes_list[$name][1]);
-    fclose($pipes_list[$name][2]);
 
-    $exit = proc_close($process);
+  // A recording is timed against the machine it runs on, and a machine running
+  // every recording at once stalls each of them unpredictably. Batches keep
+  // the load low enough for the pauses in a session to stay apart from the
+  // gaps within one, which is what makes the output reproducible.
+  info(sprintf('Recording %d sessions, %d at a time...', count($jobs), MAX_WORKERS));
+  info('');
 
-    if ($exit !== 0) {
-      $failed[$name] = trim($stdout . $stderr);
-      info('  FAILED: ' . $name);
+  foreach (array_chunk($jobs, MAX_WORKERS, TRUE) as $batch) {
+    $processes = [];
+    $pipes_list = [];
+
+    foreach ($batch as $name => $job) {
+      $cmd = sprintf('php %s --record %s', escapeshellarg($script_path), escapeshellarg($name));
+
+      $descriptors = [0 => ['pipe', 'r'], 1 => ['pipe', 'w'], 2 => ['pipe', 'w']];
+
+      $pipes = [];
+      $process = proc_open($cmd, $descriptors, $pipes, $project_dir);
+
+      if (!is_resource($process)) {
+        throw new \RuntimeException('Failed to launch worker for: ' . $name);
+      }
+
+      fclose($pipes[0]);
+      stream_set_blocking($pipes[1], FALSE);
+      stream_set_blocking($pipes[2], FALSE);
+
+      $processes[$name] = $process;
+      $pipes_list[$name] = $pipes;
+
+      info('  Started: ' . $name);
     }
-    else {
-      info('  Done: ' . $name);
+
+    foreach ($processes as $name => $process) {
+      ['stdout' => $stdout, 'stderr' => $stderr] = drainPipes($pipes_list[$name][1], $pipes_list[$name][2]);
+      fclose($pipes_list[$name][1]);
+      fclose($pipes_list[$name][2]);
+
+      $exit = proc_close($process);
+
+      if ($exit !== 0) {
+        $failed[$name] = trim($stdout . $stderr);
+        info('  FAILED: ' . $name);
+      }
+      else {
+        info('  Done: ' . $name);
+      }
     }
   }
 
@@ -187,8 +214,14 @@ function main(): void {
   shell_exec('stty sane 2>/dev/null');
 
   info('');
-  info('Cleaning up: ' . $tmp_dir);
-  removeDir($tmp_dir);
+
+  if (getenv('SCRIPT_KEEP_CASTS') === '1') {
+    info('Keeping recordings: ' . $tmp_dir);
+  }
+  else {
+    info('Cleaning up: ' . $tmp_dir);
+    removeDir($tmp_dir);
+  }
 
   if ($failed !== []) {
     error('');
@@ -227,6 +260,13 @@ function processOne(string $name): void {
   $rows = $job['rows'] ?? TERMINAL_ROWS;
   $cols = $job['cols'] ?? TERMINAL_COLS;
   $at = $job['at'] ?? NULL;
+
+  if (!is_dir($tmp_dir) && !mkdir($tmp_dir, 0700, TRUE) && !is_dir($tmp_dir)) {
+    throw new \RuntimeException('Could not create ' . $tmp_dir);
+  }
+
+  $create_fn = $job['expect_fn'];
+  $create_fn($job['script'], $expect_script);
 
   recordSession($expect_script, $cast_file, $rows, $cols);
   postProcessCast($cast_file);
@@ -292,6 +332,10 @@ function installNodeDependencies(string $script_dir): void {
  *   Number of terminal columns.
  */
 function recordSession(string $expect_script, string $cast_file, int $rows = TERMINAL_ROWS, int $cols = TERMINAL_COLS): void {
+  if (!is_file($expect_script)) {
+    throw new \RuntimeException('Missing expect script: ' . $expect_script);
+  }
+
   $cmd = sprintf(
     'asciinema rec --command=%s --window-size=%dx%d --idle-time-limit=%d --overwrite %s 2>&1',
     escapeshellarg($expect_script),
@@ -311,8 +355,9 @@ function recordSession(string $expect_script, string $cast_file, int $rows = TER
 /**
  * Post-process a cast file.
  *
- * Removes the spawn command line, appends an END_PAUSE event so the
- * animation pauses before looping, and sanitizes paths.
+ * Removes the spawn command line, rewrites the events onto a canonical
+ * timeline, appends an END_PAUSE event so the animation pauses before
+ * looping, and sanitizes paths.
  *
  * @param string $cast_file
  *   Path to the cast file.
@@ -333,6 +378,8 @@ function postProcessCast(string $cast_file): void {
     $filtered[] = $lines[$i];
   }
 
+  $filtered = canonicaliseCast($filtered);
+
   // Add a pause at the end of the recording before the animation loops.
   // In asciicast v3, timestamps are relative (delta from previous event),
   // so the pause is added as an empty output event with that duration.
@@ -346,6 +393,110 @@ function postProcessCast(string $cast_file): void {
   }
 
   file_put_contents($cast_file, $content);
+}
+
+/**
+ * Rewrite a recording's events onto a canonical timeline.
+ *
+ * A recording carries whatever chunks the terminal happened to deliver, at
+ * whatever moment the scheduler delivered them, so two runs of one session
+ * produce different frames and different durations even when nothing about
+ * the session changed. The output is therefore treated as one stream and cut
+ * into frames where the session itself redrew, which no longer depends on how
+ * the chunks fell. The recorded times survive only as a two-way choice: a
+ * frame that follows within MERGE_WINDOW continues the step before it and
+ * plays at FRAME_DELAY, and anything slower begins a step and plays at
+ * STEP_DELAY.
+ *
+ * @param array<int, string> $lines
+ *   Cast lines, the header first.
+ *
+ * @return array<int, string>
+ *   Canonical cast lines, the header first.
+ */
+function canonicaliseCast(array $lines): array {
+  $header = array_shift($lines) ?? '';
+  $stream = '';
+  $arrivals = [];
+  $time = 0.0;
+
+  foreach ($lines as $line) {
+    $event = json_decode(trim($line), TRUE);
+
+    if (!is_array($event) || count($event) < 3 || !is_numeric($event[0]) || !is_string($event[2])) {
+      continue;
+    }
+
+    // A non-output event draws nothing, but the time before it still passed.
+    $time += (float) $event[0];
+
+    if ($event[1] !== 'o') {
+      continue;
+    }
+
+    $arrivals[strlen($stream)] = $time;
+    $stream .= $event[2];
+  }
+
+  $canonical = [$header];
+  $offset = 0;
+  $previous = 0.0;
+
+  foreach (splitRedraws($stream) as $index => $frame) {
+    $arrival = arrivalAt($arrivals, $offset);
+    $delay = $arrival - $previous < MERGE_WINDOW ? FRAME_DELAY : STEP_DELAY;
+    $canonical[] = json_encode([$index === 0 ? 0 : $delay, 'o', $frame]);
+    $previous = $arrival;
+    $offset += strlen($frame);
+  }
+
+  return $canonical;
+}
+
+/**
+ * Return the time the chunk holding an offset arrived.
+ *
+ * @param array<int, float> $arrivals
+ *   Times the recording captured, keyed by the offset each chunk starts at.
+ * @param int $offset
+ *   Offset into the stream.
+ *
+ * @return float
+ *   Seconds from the start of the recording.
+ */
+function arrivalAt(array $arrivals, int $offset): float {
+  $time = 0.0;
+
+  foreach ($arrivals as $start => $at) {
+    if ($start > $offset) {
+      break;
+    }
+
+    $time = $at;
+  }
+
+  return $time;
+}
+
+/**
+ * Split a session's output into the redraws it is made of.
+ *
+ * A renderer only paints the state an event ends in, so the frames have to be
+ * cut where the session redrew. A widget starts every redraw by moving the
+ * cursor up, so the sequence that does it marks where one frame ends and the
+ * next begins - a boundary the output itself carries, rather than one the
+ * recording timings happened to fall on.
+ *
+ * @param string $data
+ *   The session's output.
+ *
+ * @return list<string>
+ *   One entry per redraw, in order.
+ */
+function splitRedraws(string $data): array {
+  $frames = preg_split('/(?=\x1b\[[0-9]+A)/', $data, -1, PREG_SPLIT_NO_EMPTY);
+
+  return $frames === FALSE ? [$data] : array_values($frames);
 }
 
 /**
@@ -386,6 +537,8 @@ function convertToSvg(string $cast_file, string $svg_file, string $script_dir, ?
  */
 function createWidgetsExpectScript(string $playground_script, string $expect_script): void {
   $delay = PROMPT_DELAY;
+  $type_delay = TYPE_DELAY;
+  $step_delay = RECORD_STEP_SLEEP;
   $content = <<<EXPECT
 #!/usr/bin/env expect
 
@@ -404,17 +557,19 @@ proc wait_and_enter {} {
 }
 
 proc type_text {text} {
-    set send_human {.1 .3 1 .05 2 .1 .2 0 .4 0 .6 0 .8 0 1}
-    send -h \$text
+    foreach ch [split \$text ""] {
+        safe_send \$ch
+        sleep {$type_delay}
+    }
 }
 
 proc arrow_down {} {
-    sleep 0.3
+    sleep {$step_delay}
     safe_send "\\033\[B"
 }
 
 proc toggle_space {} {
-    sleep 0.3
+    sleep {$step_delay}
     safe_send " "
 }
 
@@ -468,6 +623,8 @@ EXPECT;
  */
 function createFlowExpectScript(string $playground_script, string $expect_script): void {
   $delay = PROMPT_DELAY;
+  $type_delay = TYPE_DELAY;
+  $step_delay = RECORD_STEP_SLEEP;
   $content = <<<EXPECT
 #!/usr/bin/env expect
 
@@ -486,17 +643,19 @@ proc wait_and_enter {} {
 }
 
 proc type_text {text} {
-    set send_human {.1 .3 1 .05 2 .1 .2 0 .4 0 .6 0 .8 0 1}
-    send -h \$text
+    foreach ch [split \$text ""] {
+        safe_send \$ch
+        sleep {$type_delay}
+    }
 }
 
 proc arrow_down {} {
-    sleep 0.3
+    sleep {$step_delay}
     safe_send "\\033\[B"
 }
 
 proc toggle_space {} {
-    sleep 0.3
+    sleep {$step_delay}
     safe_send " "
 }
 
@@ -565,6 +724,8 @@ EXPECT;
  */
 function createFlowNestedExpectScript(string $playground_script, string $expect_script): void {
   $delay = PROMPT_DELAY;
+  $type_delay = TYPE_DELAY;
+  $step_delay = RECORD_STEP_SLEEP;
   $content = <<<EXPECT
 #!/usr/bin/env expect
 
@@ -583,17 +744,19 @@ proc wait_and_enter {} {
 }
 
 proc type_text {text} {
-    set send_human {.1 .3 1 .05 2 .1 .2 0 .4 0 .6 0 .8 0 1}
-    send -h \$text
+    foreach ch [split \$text ""] {
+        safe_send \$ch
+        sleep {$type_delay}
+    }
 }
 
 proc arrow_down {} {
-    sleep 0.3
+    sleep {$step_delay}
     safe_send "\\033\[B"
 }
 
 proc toggle_space {} {
-    sleep 0.3
+    sleep {$step_delay}
     safe_send " "
 }
 
@@ -691,6 +854,7 @@ EXPECT;
  */
 function createWidgetTextExpectScript(string $playground_script, string $expect_script): void {
   $delay = PROMPT_DELAY;
+  $type_delay = TYPE_DELAY;
   $content = <<<EXPECT
 #!/usr/bin/env expect
 
@@ -709,8 +873,10 @@ proc wait_and_enter {} {
 }
 
 proc type_text {text} {
-    set send_human {.1 .3 1 .05 2 .1 .2 0 .4 0 .6 0 .8 0 1}
-    send -h \$text
+    foreach ch [split \$text ""] {
+        safe_send \$ch
+        sleep {$type_delay}
+    }
 }
 
 spawn php {$playground_script}
@@ -753,6 +919,7 @@ EXPECT;
  */
 function createWidgetSelectExpectScript(string $playground_script, string $expect_script): void {
   $delay = PROMPT_DELAY;
+  $step_delay = RECORD_STEP_SLEEP;
   $content = <<<EXPECT
 #!/usr/bin/env expect
 
@@ -814,6 +981,7 @@ EXPECT;
  */
 function createWidgetMultiselectExpectScript(string $playground_script, string $expect_script): void {
   $delay = PROMPT_DELAY;
+  $step_delay = RECORD_STEP_SLEEP;
   $content = <<<EXPECT
 #!/usr/bin/env expect
 
@@ -832,7 +1000,7 @@ proc wait_and_enter {} {
 }
 
 proc toggle_space {} {
-    sleep 0.3
+    sleep {$step_delay}
     safe_send " "
 }
 
@@ -886,6 +1054,7 @@ EXPECT;
  */
 function createWidgetConfirmExpectScript(string $playground_script, string $expect_script): void {
   $delay = PROMPT_DELAY;
+  $type_delay = TYPE_DELAY;
   $content = <<<EXPECT
 #!/usr/bin/env expect
 
@@ -904,8 +1073,10 @@ proc wait_and_enter {} {
 }
 
 proc type_text {text} {
-    set send_human {.1 .3 1 .05 2 .1 .2 0 .4 0 .6 0 .8 0 1}
-    send -h \$text
+    foreach ch [split \$text ""] {
+        safe_send \$ch
+        sleep {$type_delay}
+    }
 }
 
 spawn php {$playground_script}

@@ -133,13 +133,21 @@ The SVGs under `.util/assets/` are recorded from the playground scripts. Regener
 php .util/update-assets.php
 ```
 
-That records all 7 scripts in 4 flag variants each, in parallel. To redo just one:
+That records all 7 scripts in 4 flag variants each, a few at a time. To redo just one:
 
 ```bash
 php .util/update-assets.php --record widgets
 ```
 
-It needs `asciinema`, `expect`, `node` and `npm` on your PATH. Set `SCRIPT_QUIET=1` to suppress progress output.
+It needs `asciinema`, `expect`, `node` and `npm` on your PATH. Set `SCRIPT_QUIET=1` to suppress progress output, or `SCRIPT_KEEP_CASTS=1` to keep the recordings under `.artifacts/tmp/asciinema` for inspection.
+
+**Regeneration is reproducible.** Recording the same session twice produces the same SVG, byte for byte, so `git status` after a regeneration answers whether the rendering changed: a clean tree means it did not, and any diff is a real change worth reading. Three things make that hold, and a change to any of them can break it:
+
+- Sessions type at a fixed rate rather than expect's humanised one, which varies its delays by design.
+- The recorded output is treated as one stream and cut into frames where a widget redrew, so a frame is never created by the terminal happening to split a write.
+- Every gap is rewritten to one of two durations before rendering, so the wall clock the recording ran against does not reach the SVG.
+
+Recordings run a few at a time rather than all at once, because a machine running 28 sessions together stalls them enough to blur the gap between a pause in a session and the gaps within one.
 
 ## Releases
 
