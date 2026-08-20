@@ -115,7 +115,7 @@ Both render the same flow, so anything that differs between them is a fault in t
 Two things compare the pair without being asked:
 
 - `composer lint` runs [`.util/check-embed.php`](.util/check-embed.php), which embeds the demo into a temporary path, runs both with every answer supplied through the environment, and fails if they print anything different. It reports both outputs when they diverge, so the difference is readable from the failure.
-- `.util/assets/flow-embed.svg` records the embedded copy being driven by hand. Nothing embeds that asset and it is deliberately kept out of the README: it exists so that a change in what an embedded script *draws* shows up as a diff in the frames, which comparing text cannot catch.
+- `.util/assets/flow-embed.svg` records the embedded copy being driven through its prompts by the expect script the recorder generates for it. Nothing embeds that asset and it is deliberately kept out of the README: it exists so that a change in what an embedded script *draws* shows up as a diff in the frames, which comparing text cannot catch.
 
 ## Demo content
 

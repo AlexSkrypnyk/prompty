@@ -23,10 +23,11 @@
  *
  * Two things do that comparison without being asked. `composer lint` runs
  * .util/check-embed.php, which builds the copy and fails if the two print
- * anything different. And .util/assets/flow-embed.svg is a recording of the
- * embedded copy being driven by hand, kept out of the README on purpose: it
- * is there so that a change in what the embedded script draws shows up as a
- * diff, in the frames rather than only in the text.
+ * anything different. And .util/assets/flow-embed.svg records the embedded
+ * copy being driven through its prompts by the expect script the recorder
+ * generates for it, kept out of the README on purpose: it is there so that a
+ * change in what the embedded script draws shows up as a diff, in the frames
+ * rather than only in the text.
  *
  * flow-embed.dist.php is generated and is not committed. Build it whenever
  * it is wanted; nothing depends on a copy of it being in the repository.
