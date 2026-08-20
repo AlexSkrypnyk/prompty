@@ -4,8 +4,12 @@
  * @file
  * Playground - multiple flows in the same script.
  *
- * Demonstrates that the singleton is reused across flows. Each flow()
- * call resets results but preserves the instance and its configuration.
+ * Demonstrates that the singleton is reused across flows. Each flow() call
+ * resets the results but keeps the instance, so anything configure() set is
+ * still in force. A flow's own configuration arguments are not: they last as
+ * long as that flow, which is why the ASCII mode both flows here render in is
+ * set with configure() rather than passed to the first of them. See
+ * flow-config-scope.php for that difference on its own.
  *
  * Standalone widgets can be called between flows too.
  *
@@ -18,6 +22,8 @@ require __DIR__ . '/../Prompty.php';
 
 use AlexSkrypnyk\Prompty\Prompty;
 
+Prompty::configure(unicode: FALSE);
+
 $basics = Prompty::flow(fn(): array => [
   'dish' => Prompty::text('Dish name', placeholder: 'pear tart'),
   'course' => Prompty::select('Course', options: ['starter' => 'Starter', 'main' => 'Main', 'dessert' => 'Dessert']),
@@ -25,7 +31,6 @@ $basics = Prompty::flow(fn(): array => [
   intro: 'Step 1: The dish',
   outro: 'Dish noted.',
   cancelled: 'Dish selection cancelled.',
-  unicode: FALSE,
 );
 
 if ($basics === NULL) {
