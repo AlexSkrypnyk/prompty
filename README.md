@@ -114,6 +114,8 @@ You may also use the [starter](#starter-script) as a template for your own scrip
 
 Four widget types cover the most common prompt patterns. Each returns the user's answer, or `null` if they cancel (Escape or Ctrl+C).
 
+Everything a widget draws is rendered as printable text. A newline or tab in a value, a label or an option label becomes a space, and escape sequences and other control characters are removed, so a value carrying them cannot break the tree or drive the terminal. `text` returns the printable form, so a caller gets the same text that was drawn.
+
 <p align="center">
   <img src=".util/assets/widgets.svg" width="100%" alt="Text, select, multiselect and confirm widgets in sequence">
 </p>

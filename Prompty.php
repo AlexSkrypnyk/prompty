@@ -623,11 +623,13 @@ class Prompty {
     $open = $ctx['open'] ?? [];
     $label = $p->numberLabel($label, $ctx);
 
+    $default = $p->printable($default);
+    $placeholder = $p->printable($placeholder);
     $resolved = $discovered ?? $ctx['discovered'] ?? NULL;
 
     if ($resolved !== NULL) {
       /** @var int|float|string|bool $resolved */
-      $display = trim((string) $resolved);
+      $display = trim($p->printable((string) $resolved));
 
       // An empty answer resolves as it does interactively: the seeded default,
       // or the placeholder when nothing was seeded.
@@ -805,7 +807,7 @@ class Prompty {
     $label = $p->numberLabel($label, $ctx);
 
     $option_keys = $p->optionKeys($options);
-    $option_labels = array_values($options);
+    $option_labels = array_map($p->printable(...), array_values($options));
     $ordered_hints = array_map(fn(string $key) => $hints[$key] ?? '', $option_keys);
 
     if ($resolved_key !== NULL) {
@@ -1006,7 +1008,7 @@ class Prompty {
     $label = $p->numberLabel($label, $ctx);
 
     $option_keys = $p->optionKeys($options);
-    $option_labels = array_values($options);
+    $option_labels = array_map($p->printable(...), array_values($options));
     $ordered_hints = array_map(fn(string $key) => $hints[$key] ?? '', $option_keys);
 
     if ($resolved_keys !== NULL) {
@@ -1320,6 +1322,26 @@ class Prompty {
   }
 
   /**
+   * Neutralises control characters that would break a rendered line.
+   *
+   * A newline or tab becomes a space, so text stays on the line the tree drew
+   * for it. Escape sequences and the remaining control bytes are removed,
+   * since a terminal acts on them rather than showing them.
+   *
+   * @param string $text
+   *   Text supplied by the caller or discovered from the environment.
+   *
+   * @return string
+   *   Text safe to compose into a rendered line.
+   */
+  protected function printable(string $text): string {
+    $text = preg_replace('/\033\[\??[0-9;]*[A-Za-z]/', '', $text) ?? $text;
+    $text = preg_replace('/[\t\n\x0b\x0c\r]+/', ' ', $text) ?? $text;
+
+    return preg_replace('/[\x00-\x1f\x7f]/', '', $text) ?? $text;
+  }
+
+  /**
    * Returns the styled vertical bar character for the tree connector.
    */
   protected function bar(): string {
@@ -1522,6 +1544,8 @@ class Prompty {
    *   The label with an optional step number suffix.
    */
   protected function numberLabel(string $label, array $ctx): string {
+    $label = $this->printable($label);
+
     if (isset($ctx['number'])) {
       /** @var string $number */
       $number = $ctx['number'];
@@ -1685,6 +1709,8 @@ class Prompty {
    *   The rendered intro lines.
    */
   protected function renderIntro(string $message): array {
+    $message = $this->printable($message);
+
     return [
       '',
       $this->color($this->cfgSymbols['intro'], 'gray') . $this->cfgSpacing['indent'] . $this->color($message, 'bold'),
@@ -1702,6 +1728,8 @@ class Prompty {
    *   The rendered outro lines.
    */
   protected function renderOutro(string $message): array {
+    $message = $this->printable($message);
+
     return [
       $this->bar(),
       $this->color($this->cfgSymbols['outro'], 'gray') . $this->cfgSpacing['indent'] . $this->color($message, 'green'),
@@ -1726,7 +1754,7 @@ class Prompty {
     $body_prefix = $depth > 0 ? $this->bodyPrefix($depth, $open) : $this->cfgSpacing['indent'];
 
     $lines = array_map(
-      fn(string $text_line): string => $this->bar() . $body_prefix . $this->color($text_line, 'dim_italic'),
+      fn(string $text_line): string => $this->bar() . $body_prefix . $this->color($this->printable($text_line), 'dim_italic'),
       explode("\n", $description),
     );
 
@@ -1750,7 +1778,7 @@ class Prompty {
    */
   protected function renderHint(string $hint, int $depth = 0, array $open = []): array {
     $body_prefix = $depth > 0 ? $this->bodyPrefix($depth, $open) : '';
-    $hint_lines = explode("\n", $hint);
+    $hint_lines = array_map($this->printable(...), explode("\n", $hint));
 
     return array_map(
       fn(string $text_line, int $index): string => $this->bar() . $body_prefix . ($index === 0
@@ -1778,6 +1806,9 @@ class Prompty {
    *   The rendered completed-state lines.
    */
   protected function renderCompleted(string $label, string $value, int $depth = 0, array $open = []): array {
+    $label = $this->printable($label);
+    $value = $this->printable($value);
+
     if ($depth === 0) {
       return [
         $this->color($this->cfgSymbols['completed'], 'cyan') . $this->cfgSpacing['indent'] . $label,
@@ -1812,6 +1843,9 @@ class Prompty {
    *   The rendered cancelled-state lines.
    */
   protected function renderCancelled(string $label, string $value, int $depth = 0, array $open = []): array {
+    $label = $this->printable($label);
+    $value = $this->printable($value);
+
     if ($depth === 0) {
       return [
         $this->color($this->cfgSymbols['active'], 'red') . $this->cfgSpacing['indent'] . $label,
