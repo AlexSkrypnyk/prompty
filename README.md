@@ -422,7 +422,7 @@ That strictness earns its keep where discovery is actually used. A typo in a CI 
 
 ### A blank value means no answer was supplied
 
-An empty or whitespace-only value - what an exported but never populated shell variable produces, or a `DISH="$(some-command)"` where the command printed nothing - is read as "no answer was supplied". Each widget then resolves it the way it resolves a value it never received:
+An empty or whitespace-only value - what an exported but never populated shell variable produces, or a `DISH="$(some-command)"` where the command printed nothing - is read as "no answer was supplied". Where a widget has an answer that means exactly that, a blank value takes it; where it has none, a blank value is rejected:
 
 | Widget        | A blank value resolves to                                       |
 |---------------|-----------------------------------------------------------------|
@@ -431,13 +431,13 @@ An empty or whitespace-only value - what an exported but never populated shell v
 | `select`      | Rejected - one choice has no answer that means "nothing chosen" |
 | `confirm`     | Rejected - yes and no are the only answers                      |
 
-Selecting nothing is a real answer for `multiselect`, so a blank value and a stray trailing comma both give `[]`. `select` and `confirm` have no such state, so a blank value fails the same check as any other invalid value, with the value reported trimmed:
+A blank value is still a value that was supplied, so it is not the same as leaving the variable unset: an unset `PROMPTY_COURSE` opens the prompt, while `PROMPTY_COURSE=` fails the same check as any other invalid value, with the value reported trimmed:
 
 ```text
 Discovered value "" for "Course" is not a valid option. Available options: starter, main, dessert.
 ```
 
-The rule holds for both sources - a `discovered:` argument and a `PROMPTY_*` variable.
+Selecting nothing is a real answer for `multiselect`, so a blank value and a stray trailing comma both give `[]`. The rule holds for both sources - a `discovered:` argument and a `PROMPTY_*` variable.
 
 ## Descriptions and hints
 

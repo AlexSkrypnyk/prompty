@@ -116,20 +116,40 @@ final class PromptyBlankDiscoveredTest extends PromptyTestCase {
     );
   }
 
-  public function testBlankEnvValueFollowsTheSameRule(): void {
-    $result = NULL;
-    $this->captureOutput(function () use (&$result): void {
-      $result = Prompty::text('Dish name', placeholder: 'pear tart', ctx: $this->ctx(['discovered' => '']));
-    });
-
-    $this->assertSame('pear tart', $result);
+  public function testBlankEnvValueTakesTheSameFallback(): void {
+    $this->setEnvVars(['dish' => '', 'extras' => '']);
 
     $result = NULL;
     $this->captureOutput(function () use (&$result): void {
-      $result = Prompty::multiselect('Extras', options: self::EXTRAS, ctx: $this->ctx(['discovered' => '']));
+      $result = Prompty::flow(fn(): array => [
+        'dish' => Prompty::text('Dish name', placeholder: 'pear tart'),
+        'extras' => Prompty::multiselect('Extras', options: self::EXTRAS),
+      ], unicode: FALSE);
     });
 
-    $this->assertSame([], $result);
+    $this->assertSame(['dish' => 'pear tart', 'extras' => []], $result);
+  }
+
+  public function testBlankEnvValueIsRejectedWhereNothingMeansNoAnswer(): void {
+    $this->setEnvVars(['course' => '']);
+
+    $this->captureOutputThrows(
+      \InvalidArgumentException::class,
+      'Discovered value "" for "Course" is not a valid option. Available options: starter, main.',
+      function (): void {
+        Prompty::flow(fn(): array => ['course' => Prompty::select('Course', options: self::COURSES)], unicode: FALSE);
+      },
+    );
+  }
+
+  public function testUnsetEnvValueIsNotAnAnswerAtAll(): void {
+    $this->clearEnvVars(['course']);
+
+    $r = $this->promptyRun(fn(): mixed => Prompty::flow(fn(): array => [
+      'course' => Prompty::select('Course', options: self::COURSES),
+    ], unicode: FALSE), self::KEY_ENTER);
+
+    $this->assertSame(['course' => 'starter'], $r['result']);
   }
 
 }
