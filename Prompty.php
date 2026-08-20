@@ -1325,7 +1325,7 @@ class Prompty {
    * Neutralises control characters that would break a rendered line.
    *
    * A newline or tab becomes a space, so text stays on the line the tree drew
-   * for it. Escape sequences and the remaining control bytes are removed,
+   * for it. Escape sequences and the remaining control characters are removed,
    * since a terminal acts on them rather than showing them.
    *
    * @param string $text
@@ -1337,8 +1337,14 @@ class Prompty {
   protected function printable(string $text): string {
     $text = preg_replace('/\033\[\??[0-9;]*[A-Za-z]/', '', $text) ?? $text;
     $text = preg_replace('/[\t\n\x0b\x0c\r]+/', ' ', $text) ?? $text;
+    $text = preg_replace('/[\x00-\x1f\x7f]/', '', $text) ?? $text;
 
-    return preg_replace('/[\x00-\x1f\x7f]/', '', $text) ?? $text;
+    // The rest of the control characters are the C1 range, which UTF-8 encodes
+    // in two bytes whose second one is also a continuation byte of ordinary
+    // characters. Matching characters rather than bytes is what keeps a
+    // character such as 'ą' whole. Text that is not valid UTF-8 has no
+    // characters to match, and keeps what the passes above left it.
+    return preg_replace('/\p{Cc}/u', '', $text) ?? $text;
   }
 
   /**

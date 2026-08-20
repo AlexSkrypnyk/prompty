@@ -53,6 +53,11 @@ final class PromptyControlCharactersTest extends PromptyTestCase {
     yield 'lone escape' => ["a\033b", 'ab'];
     yield 'bell' => ["a\x07b", 'ab'];
     yield 'delete' => ["a\x7fb", 'ab'];
+    yield 'c1 sequence introducer' => ["pear\u{009B}2Ktart", 'pear2Ktart'];
+    yield 'c1 next line' => ["pear\u{0085}tart", 'peartart'];
+    yield 'multibyte character holding a c1 byte' => ["pi\u{0105}tek", "pi\u{0105}tek"];
+    yield 'multibyte character holding a csi byte' => ["\u{069B}tart", "\u{069B}tart"];
+    yield 'text that is not valid utf8' => ["pear\xC3\x28tart\x07", "pear\xC3\x28tart"];
     yield 'nothing to strip' => ['', ''];
   }
 
