@@ -9,6 +9,9 @@
 # Code coverage and test logs.
 /.logs
 
+# Built by 'composer embed-playground' whenever the embedding is exercised.
+/playground/flow-embed.dist.php
+
 # Temporary AI agent and developer artifacts (plans, scratch output, reports).
 /.artifacts/
 

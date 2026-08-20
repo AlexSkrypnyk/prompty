@@ -6,9 +6,9 @@
  * Generate SVG assets from asciinema recordings.
  *
  * Records terminal sessions for seven playground scripts in four flag
- * variants each. The widgets, flow and flow-nested recordings render as
- * animated SVGs; the widget-* recordings render as static single-frame
- * SVGs.
+ * variants each, plus the embedded copy of the flow. The widgets, flow,
+ * flow-nested and flow-embed recordings render as animated SVGs; the
+ * widget-* recordings render as static single-frame SVGs.
  *
  * Recordings run in small batches: enough of them at once to finish in
  * reasonable time, few enough that the machine does not stall a session
@@ -129,6 +129,16 @@ function getJobs(string $project_dir): array {
       $jobs[$base_name . $suffix] = array_merge($base_job, ['script' => $base_job['script'] . $flags]);
     }
   }
+
+  // The embedded copy of the flow, recorded so that a change in what an
+  // embedded script draws shows up as a diff. Nothing embeds this asset; it
+  // is kept for the comparison rather than for the README.
+  $jobs['flow-embed'] = [
+    'script' => $project_dir . '/playground/flow-embed.dist.php',
+    'expect_fn' => 'createFlowEmbedExpectScript',
+    'prepare_fn' => 'buildEmbeddedPlayground',
+    'rows' => 20,
+  ];
 
   return $jobs;
 }
@@ -265,6 +275,11 @@ function processOne(string $name): void {
     throw new \RuntimeException('Could not create ' . $tmp_dir);
   }
 
+  if (isset($job['prepare_fn'])) {
+    $prepare_fn = $job['prepare_fn'];
+    $prepare_fn($project_dir);
+  }
+
   $create_fn = $job['expect_fn'];
   $create_fn($job['script'], $expect_script);
 
@@ -273,6 +288,34 @@ function processOne(string $name): void {
   convertToSvg($cast_file, $svg_file, $script_dir, $at);
 }
 
+/**
+ * Build the embedded copy of the flow playground.
+ *
+ * The copy is generated and is not committed, so the recording builds it
+ * rather than assuming a copy is lying around.
+ *
+ * @param string $project_dir
+ *   Path to the project root.
+ *
+ * @throws \RuntimeException
+ *   When the embedder fails.
+ */
+function buildEmbeddedPlayground(string $project_dir): void {
+  $cmd = sprintf(
+    'php %s --no-verify %s %s 2>&1',
+    escapeshellarg($project_dir . '/embed.php'),
+    escapeshellarg($project_dir . '/playground/flow-embed.php'),
+    escapeshellarg($project_dir . '/playground/flow-embed.dist.php'),
+  );
+
+  $output = [];
+  $exit = 0;
+  exec($cmd, $output, $exit);
+
+  if ($exit !== 0) {
+    throw new \RuntimeException('Could not build the embedded playground: ' . implode(PHP_EOL, $output));
+  }
+}
 /**
  * Check that all required dependencies are installed.
  */
@@ -714,6 +757,95 @@ EXPECT;
   chmod($expect_script, 0700);
 }
 
+/**
+ * Create an expect script for the embedded flow playground.
+ *
+ * The embedded copy runs the same four prompts as flow-embed.php, so what it
+ * draws is what that flow draws unless the embedder changed something.
+ *
+ * @param string $playground_script
+ *   Path to the playground PHP script.
+ * @param string $expect_script
+ *   Path to write the expect script.
+ */
+function createFlowEmbedExpectScript(string $playground_script, string $expect_script): void {
+  $delay = PROMPT_DELAY;
+  $type_delay = TYPE_DELAY;
+  $step_delay = RECORD_STEP_SLEEP;
+  $content = <<<EXPECT
+#!/usr/bin/env expect
+
+set timeout 60
+log_user 1
+
+proc safe_send {s} {
+    if {[exp_pid] > 0} {
+        send -- \$s
+    }
+}
+
+proc wait_and_enter {} {
+    sleep {$delay}
+    safe_send "\\r"
+}
+
+proc type_text {text} {
+    foreach ch [split \$text ""] {
+        safe_send \$ch
+        sleep {$type_delay}
+    }
+}
+
+proc arrow_down {} {
+    sleep {$step_delay}
+    safe_send "\\033\[B"
+}
+
+proc toggle_space {} {
+    sleep {$step_delay}
+    safe_send " "
+}
+
+spawn php {$playground_script}
+
+# Text: Dish name - type "plum compote" and press enter.
+expect "Dish name" {
+    sleep {$delay}
+    type_text "plum compote"
+    wait_and_enter
+}
+
+# Select: Course - arrow down to Main, press enter.
+expect "Course" {
+    sleep {$delay}
+    arrow_down
+    wait_and_enter
+}
+
+# Multiselect: Extras - select Olives and Lemon.
+expect "Extras" {
+    sleep {$delay}
+    arrow_down
+    toggle_space
+    arrow_down
+    arrow_down
+    toggle_space
+    wait_and_enter
+}
+
+# Confirm: Send order - type "y".
+expect "Send order" {
+    sleep {$delay}
+    type_text "y"
+    wait_and_enter
+}
+
+expect eof
+EXPECT;
+
+  file_put_contents($expect_script, $content);
+  chmod($expect_script, 0700);
+}
 /**
  * Create an expect script for the flow-nested.php playground.
  *

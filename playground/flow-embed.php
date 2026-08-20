@@ -2,30 +2,43 @@
 
 /**
  * @file
- * Playground - the flow from flow.php, before and after embedding.
+ * Playground - this is how embedding is tested.
  *
- * Two files hold this demo, and both run:
+ * Prompty is meant to be copied into a consumer script, so the thing that has
+ * to keep working is the copy. This file is the script that proves it: it
+ * loads the class with require, like every other demo here, and the embedder
+ * rewrites it into a copy that carries the class inline and requires nothing.
  *
- * - flow-embed.php loads the class with require, like every other demo here.
- * - flow-embed.dist.php carries the class inline and requires nothing, so it
- *   runs from any location.
- *
- * flow-embed.dist.php is generated. Edit flow-embed.php, then regenerate:
- *
- *   composer embed-playground
- *
- * which runs embed.php with an output path, so the source is copied there
- * and the copy is rewritten:
+ * Build that copy by running the embedder with an output path, so the source
+ * is copied there and the copy is rewritten:
  *
  *   php embed.php playground/flow-embed.php playground/flow-embed.dist.php
  *
- * embed.php replaces everything between the markers below with a minified
- * copy of the Prompty class and copies everything outside them unchanged.
- * Both files therefore share this docblock.
+ * Then run both and compare what they draw. They render the same flow, so
+ * anything that differs between them is a fault in the embedder rather than
+ * in the flow:
  *
- * Running embed.php again on an embedded script replaces the marker region
- * with the current class and preserves everything outside it. That second
- * run updates an embedded script to a newer version of Prompty.
+ *   php playground/flow-embed.php
+ *   php playground/flow-embed.dist.php
+ *
+ * Two things do that comparison without being asked. `composer lint` runs
+ * .util/check-embed.php, which builds the copy and fails if the two print
+ * anything different. And .util/assets/flow-embed.svg records the embedded
+ * copy being driven through its prompts by the expect script the recorder
+ * generates for it, kept out of the README on purpose: it is there so that a
+ * change in what the embedded script draws shows up as a diff, in the frames
+ * rather than only in the text.
+ *
+ * flow-embed.dist.php is generated and is not committed. Build it whenever
+ * it is wanted; nothing depends on a copy of it being in the repository.
+ *
+ * The embedder replaces everything between the markers below with a minified
+ * copy of the Prompty class and copies everything outside them unchanged, so
+ * both files share this docblock.
+ *
+ * Running the embedder again on an embedded script replaces the marker region
+ * with the current class and preserves everything outside it. That second run
+ * updates an embedded script to a newer version of Prompty.
  *
  * phpcs:disable Drupal.Arrays.Array.LongLineDeclaration
  */

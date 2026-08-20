@@ -13,7 +13,3 @@
 /rector.php      export-ignore
 /renovate.json   export-ignore
 /tests           export-ignore
-
-# Collapse generated files in diffs.
-
-/playground/flow-embed.dist.php linguist-generated=true
