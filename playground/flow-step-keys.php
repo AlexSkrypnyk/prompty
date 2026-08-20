@@ -8,7 +8,7 @@
  * reads, so a step keyed 'dish_name' is pre-filled by PROMPTY_DISH_NAME.
  *
  * A name outside letters, digits and underscores can still be set by a parent
- * process - env 'PROMPTY_CI-PROVIDER=x' php script.php works - but 'export'
+ * process - env 'PROMPTY_DISH-NAME=x' php script.php works - but 'export'
  * rejects it as a syntax error and most .env parsers will not accept it. A
  * step named that way could never be filled by the means callers reach for:
  * the lookup found nothing and the flow prompted instead, saying nothing
@@ -28,11 +28,11 @@ require __DIR__ . '/../Prompty.php';
 use AlexSkrypnyk\Prompty\Prompty;
 
 echo '--- A key a shell cannot export ---' . PHP_EOL;
-echo 'Trying a flow with a step keyed "ci-provider".' . PHP_EOL;
+echo 'Trying a flow with a step keyed "dish-name".' . PHP_EOL;
 
 try {
   Prompty::flow(fn(): array => [
-    'ci-provider' => Prompty::text('Provider'),
+    'dish-name' => Prompty::text('Dish name'),
   ]);
   echo 'Accepted.' . PHP_EOL;
 }

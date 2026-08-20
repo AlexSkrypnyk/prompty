@@ -46,10 +46,10 @@ final class PromptyStepKeyTest extends PromptyTestCase {
   }
 
   public static function dataProviderRejectsKey(): \Iterator {
-    yield 'hyphen' => ['ci-provider'];
-    yield 'dot' => ['ci.provider'];
-    yield 'space' => ['ci provider'];
-    yield 'bracket' => ['ci[provider]'];
+    yield 'hyphen' => ['dish-name'];
+    yield 'dot' => ['dish.name'];
+    yield 'space' => ['dish name'];
+    yield 'bracket' => ['dish[name]'];
   }
 
   public function testRejectsEmptyKey(): void {
