@@ -591,7 +591,7 @@ class Prompty {
     while (TRUE) {
       $key = $p->readKey();
 
-      if ($key === 'ctrl-c' || $key === 'escape') {
+      if ($p->isCancelKey($key)) {
         $p->redraw($line_count, $p->renderCancelled($label, $value, $depth, $open));
         if ($standalone) {
           // @codeCoverageIgnoreStart
@@ -789,7 +789,7 @@ class Prompty {
     while (TRUE) {
       $key = $p->readKey();
 
-      if ($key === 'ctrl-c' || $key === 'escape') {
+      if ($p->isCancelKey($key)) {
         $p->redraw($line_count, $p->renderCancelled($label, $option_labels[$focused], $depth, $open));
         if ($standalone) {
           // @codeCoverageIgnoreStart
@@ -986,7 +986,7 @@ class Prompty {
     while (TRUE) {
       $key = $p->readKey();
 
-      if ($key === 'ctrl-c' || $key === 'escape') {
+      if ($p->isCancelKey($key)) {
         $p->redraw($line_count, $p->renderCancelled($label, '', $depth, $open));
         if ($standalone) {
           // @codeCoverageIgnoreStart
@@ -1153,7 +1153,7 @@ class Prompty {
     while (TRUE) {
       $key = $p->readKey();
 
-      if ($key === 'ctrl-c' || $key === 'escape') {
+      if ($p->isCancelKey($key)) {
         $p->redraw($line_count, $p->renderCancelled($label, $yes ? $p->cfgLabels['yes'] : $p->cfgLabels['no'], $depth, $open));
         if ($standalone) {
           // @codeCoverageIgnoreStart
@@ -1258,13 +1258,16 @@ class Prompty {
 
   /**
    * Reads a single keypress from the input stream and returns its name.
+   *
+   * A stream that is exhausted or cannot be read yields 'eof', which ends the
+   * widget instead of being retried.
    */
   protected function readKey(): string {
     $stream = $this->input ?? STDIN;
     $char = fread($stream, 1);
 
     if ($char === FALSE || $char === '') {
-      return '';
+      return 'eof';
     }
 
     return match ($char) {
@@ -1282,6 +1285,19 @@ class Prompty {
       },
       default => $char,
     };
+  }
+
+  /**
+   * Checks whether a key leaves the widget without an answer.
+   *
+   * @param string $key
+   *   A key name returned by readKey().
+   *
+   * @return bool
+   *   TRUE for the two cancel keys and for the end of the input stream.
+   */
+  protected function isCancelKey(string $key): bool {
+    return in_array($key, ['ctrl-c', 'escape', 'eof'], TRUE);
   }
 
   /**

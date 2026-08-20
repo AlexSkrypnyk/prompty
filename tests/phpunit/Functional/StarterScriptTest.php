@@ -62,6 +62,14 @@ final class StarterScriptTest extends FunctionalTestCase {
     $this->assertStringContainsString('No', $output);
   }
 
+  public function testStarterCancelsWithoutInput(): void {
+    $output = $this->runScriptWithoutInput($this->starterScript);
+
+    $this->assertStringContainsString('(cancelled)', $output);
+    $this->assertStringContainsString('Order cancelled.', $output);
+    $this->assertStringNotContainsString('Order sent!', $output);
+  }
+
   public function testStarterOutputContainsIntroOutro(): void {
     $keystrokes = $this->keys(self::KEYS['ENTER'], self::KEYS['ENTER'], self::KEYS['ENTER'], self::KEYS['ENTER']);
 

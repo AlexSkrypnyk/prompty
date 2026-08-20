@@ -137,18 +137,4 @@ final class PromptyOutputTest extends PromptyTestCase {
     $this->assertNull($this->getProperty($p, 'prevTty'));
   }
 
-  public function testReadKeyReturnsEmptyOnEof(): void {
-    $p = $this->createInstance();
-
-    $stream = fopen('php://memory', 'r+');
-    $this->assertNotFalse($stream);
-    $this->setProperty($p, 'input', $stream);
-
-    $key = $this->callProtected($p, 'readKey');
-
-    $this->assertSame('', $key);
-
-    fclose($stream);
-  }
-
 }

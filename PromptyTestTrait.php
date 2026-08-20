@@ -66,7 +66,8 @@ trait PromptyTestTrait {
    *   The code to run. Typically a closure that calls Prompty widgets or
    *   requires a consumer script.
    * @param string $keystrokes
-   *   Raw keystroke bytes to feed (use KEY_* constants).
+   *   Raw keystroke bytes to feed (use KEY_* constants). A widget that reads
+   *   past the last byte reaches the end of the stream and cancels.
    * @param array<string, mixed> $config
    *   Prompty configuration overrides. Defaults to ASCII mode.
    *
@@ -75,14 +76,11 @@ trait PromptyTestTrait {
    *   - output: ANSI-stripped terminal output.
    */
   protected function promptyRun(callable $callback, string $keystrokes = '', array $config = []): array {
-    $stream = NULL;
+    $stream = fopen('php://memory', 'r+') ?: NULL;
 
-    if ($keystrokes !== '') {
-      $stream = fopen('php://memory', 'r+') ?: NULL;
-      if ($stream !== NULL) {
-        fwrite($stream, $keystrokes);
-        rewind($stream);
-      }
+    if ($stream !== NULL) {
+      fwrite($stream, $keystrokes);
+      rewind($stream);
     }
 
     $instance = $this->promptyCreateInstance($config);
@@ -128,14 +126,11 @@ trait PromptyTestTrait {
    *   ANSI-stripped terminal output.
    */
   protected function promptyRunScript(callable $callback, string $keystrokes = ''): array {
-    $stream = NULL;
+    $stream = fopen('php://memory', 'r+') ?: NULL;
 
-    if ($keystrokes !== '') {
-      $stream = fopen('php://memory', 'r+') ?: NULL;
-      if ($stream !== NULL) {
-        fwrite($stream, $keystrokes);
-        rewind($stream);
-      }
+    if ($stream !== NULL) {
+      fwrite($stream, $keystrokes);
+      rewind($stream);
     }
 
     $instance = $this->promptyCreateInstance();

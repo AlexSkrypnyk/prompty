@@ -297,6 +297,8 @@ $results = Prompty::flow(fn(): array => [
 
 `flow()` returns the collected answers keyed by step name, or `null` if the user cancels any step.
 
+An input stream with nothing left to read counts as a cancellation. A script run from a pipe, from `/dev/null`, or from a CI step with no terminal attached stops at the first prompt it cannot read and returns `null`, rather than waiting for input that will never arrive.
+
 Flows support intro, outro, and cancellation messages — as strings or callables:
 
 ```php
@@ -672,6 +674,8 @@ public function testMyScript(): void {
 ```
 
 Both helpers return an array with an ANSI-stripped `output` key; `promptyRun()` adds a `result` key holding the callback's return value.
+
+A widget that reads past the last queued keystroke reaches the end of the stream and cancels, so a test with too few keystrokes gets a `null` result its assertions can catch, rather than blocking on the terminal.
 
 ### Available key constants
 

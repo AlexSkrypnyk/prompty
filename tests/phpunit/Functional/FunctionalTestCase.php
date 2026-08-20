@@ -78,6 +78,28 @@ abstract class FunctionalTestCase extends TestCase {
     return ['stdout' => $stdout ?: '', 'stderr' => $stderr ?: '', 'exit_code' => $exit_code];
   }
 
+  /**
+   * Run a script with no input and return its ANSI-stripped stdout.
+   *
+   * Symfony's process leaves the child with a closed stdin, so every widget
+   * reads at the end of the stream. The timeout bounds a script that does not
+   * terminate, which fails the test instead of holding the suite open.
+   *
+   * @param string $script_path
+   *   Path to the script to run.
+   * @param int $timeout
+   *   Seconds to wait for the script to finish.
+   *
+   * @return string
+   *   ANSI-stripped stdout.
+   */
+  protected function runScriptWithoutInput(string $script_path, int $timeout = 15): string {
+    $this->processRun('php', [$script_path], [], [], $timeout, $timeout);
+    $this->assertProcessSuccessful();
+
+    return $this->stripAnsi($this->processGet()->getOutput());
+  }
+
   protected function stripAnsi(string $text): string {
     return (string) preg_replace('/\x1b\[[0-9;]*[A-Za-z]|\x1b\[\?[0-9;]*[A-Za-z]/', '', $text);
   }
