@@ -111,6 +111,51 @@ final class PromptyStepConditionTest extends PromptyTestCase {
     $this->assertStringNotContainsString('|  |  z', $output);
   }
 
+  public function testStoredResultSettlesTheConnector(): void {
+    $p = $this->createAndSetInstance(['unicode' => FALSE], TRUE);
+    $this->setEnvVars(['childa' => 'x', 'grandchild' => 'g']);
+
+    // A step may be any callable, so the value the flow stores is not always
+    // the one the widget inside it returned.
+    $steps = [
+      'childa' => [
+        '__call' => function (array $ctx): string {
+          $value = Prompty::text('Dish name', ctx: $ctx);
+
+          return strtoupper(is_string($value) ? $value : '');
+        },
+        '__children' => [
+          'grandchild' => function (array $ctx): string {
+            $value = Prompty::text('Garnish', ctx: $ctx);
+
+            return is_string($value) ? $value : '';
+          },
+        ],
+        '__condition' => NULL,
+      ],
+      'childb' => [
+        '__call' => fn(array $ctx): string => 'y',
+        '__children' => [],
+        '__condition' => fn(array $results): bool => $results['childa'] === 'X',
+      ],
+    ];
+
+    $options = ['numbering' => FALSE];
+
+    $output = $this->captureOutput(function () use ($p, $steps, $options): void {
+      $this->callProtected($p, 'walkFlow', $steps, 1, $options, '');
+    });
+
+    /** @var array<string, mixed> $results */
+    $results = $this->getProperty($p, 'results');
+    $this->assertSame('X', $results['childa']);
+    $this->assertSame('y', $results['childb']);
+
+    // The stored 'X' makes the later sibling visible, so the child group is
+    // drawn with the bar that carries on to it.
+    $this->assertStringContainsString('|  |  +  Garnish', $output);
+  }
+
   public function testChildConditionReadingHiddenStepIsTheCallersToGuard(): void {
     $this->setEnvVars(['course' => 'yes', 'childa' => 'z', 'childc' => 'c']);
 

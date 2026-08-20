@@ -64,7 +64,6 @@ class Prompty {
    *   key: int|string,
    *   depth: int,
    *   rest: array<array-key, mixed>,
-   *   open: array<int, bool>|null,
    * }|null
    */
   protected ?array $pending = NULL;
@@ -1828,8 +1827,11 @@ class Prompty {
    *
    * Each later sibling's condition is evaluated against the results it will
    * see when its own step is reached, so no condition observes an answer that
-   * has not been collected yet. Repeated calls for one step return the
-   * settled state without evaluating anything again.
+   * has not been collected yet.
+   *
+   * The flow settles again from the value it stores, so a step whose stored
+   * result differs from the one its widget drew still leaves the exact state
+   * behind for whatever renders next.
    *
    * @param mixed $value
    *   The answer the step resolved to.
@@ -1846,17 +1848,10 @@ class Prompty {
       return $open;
     }
 
-    if ($pending['open'] !== NULL) {
-      return $pending['open'];
-    }
-
     $results = $this->results;
     $results[(string) $pending['key']] = $value;
 
     $this->markOpen($pending['depth'], !$this->hasVisibleStep($pending['rest'], $results));
-
-    $pending['open'] = $this->open;
-    $this->pending = $pending;
 
     return $this->open;
   }
@@ -1908,7 +1903,7 @@ class Prompty {
       // answered, so every remaining step counts as one that may render. The
       // widget settles the connector from its answer before it draws.
       $this->markOpen($depth, $rest === []);
-      $this->pending = ['key' => $key, 'depth' => $depth, 'rest' => $rest, 'open' => NULL];
+      $this->pending = ['key' => $key, 'depth' => $depth, 'rest' => $rest];
 
       $number = $number_prefix !== '' ? $number_prefix . '.' . $step_number : (string) $step_number;
       $env_value = getenv($this->cfgEnvPrefix . strtoupper((string) $key));
