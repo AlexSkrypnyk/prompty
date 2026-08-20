@@ -85,6 +85,7 @@ The [`playground/`](playground) directory holds runnable demos - the quickest wa
 | `flow-nested.php`             | A nested flow with conditionals, 3 levels deep.     |
 | `flow-config.php`             | A flow with `configure()` applied beforehand.       |
 | `flow-multiple.php`           | Several flows, and a standalone widget between them.|
+| `flow-config-scope.php`       | How long a flow's own configuration lasts.          |
 | `flow-embed.php`              | The flow the embedder is tested against.            |
 
 ```bash
@@ -97,7 +98,7 @@ Most of them accept `--no-unicode` and `--no-ansi` to force a display mode:
 php playground/flow.php --no-unicode --no-ansi
 ```
 
-`flow-config.php` and `flow-multiple.php` set their display mode in code instead, so the flags do nothing there.
+`flow-config.php` and `flow-multiple.php` set their display mode in code instead, and `flow-config-scope.php` is about configuration lifetime rather than display, so the flags do nothing in those three.
 
 ### The embedded demo
 
