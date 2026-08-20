@@ -420,6 +420,25 @@ An empty default means "no default" and is always valid: `''` for `select` focus
 
 That strictness earns its keep where discovery is actually used. A typo in a CI variable or an installer script fails at the widget that would have consumed it, with a message you can act on, instead of landing in your results and turning into something odd much further downstream.
 
+### A blank value means no answer was supplied
+
+An empty or whitespace-only value - what an exported but never populated shell variable produces, or a `DISH="$(some-command)"` where the command printed nothing - is read as "no answer was supplied". Each widget then resolves it the way it resolves a value it never received:
+
+| Widget        | A blank value resolves to                                       |
+|---------------|-----------------------------------------------------------------|
+| `text`        | The `default`, or the `placeholder` when no default was seeded  |
+| `multiselect` | An empty selection, `[]`                                        |
+| `select`      | Rejected - one choice has no answer that means "nothing chosen" |
+| `confirm`     | Rejected - yes and no are the only answers                      |
+
+Selecting nothing is a real answer for `multiselect`, so a blank value and a stray trailing comma both give `[]`. `select` and `confirm` have no such state, so a blank value fails the same check as any other invalid value, with the value reported trimmed:
+
+```text
+Discovered value "" for "Course" is not a valid option. Available options: starter, main, dessert.
+```
+
+The rule holds for both sources - a `discovered:` argument and a `PROMPTY_*` variable.
+
 ## Descriptions and hints
 
 Every widget accepts a `description` — multi-line text rendered below the label:
