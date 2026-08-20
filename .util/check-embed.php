@@ -109,6 +109,9 @@ function build(string $project_dir, string $target_path): void {
  *
  * @return string
  *   Everything the script printed.
+ *
+ * @throws \RuntimeException
+ *   When the script exits with a failure.
  */
 function run(string $script_path): string {
   $prefix = '';
@@ -118,7 +121,12 @@ function run(string $script_path): string {
   }
 
   $output = [];
-  exec($prefix . 'php ' . escapeshellarg($script_path) . ' --no-ansi 2>&1', $output);
+  $exit = 0;
+  exec($prefix . 'php ' . escapeshellarg($script_path) . ' --no-ansi 2>&1', $output, $exit);
+
+  if ($exit !== 0) {
+    throw new \RuntimeException(sprintf('%s exited with code %d:%s%s', $script_path, $exit, PHP_EOL, implode(PHP_EOL, $output)));
+  }
 
   return implode(PHP_EOL, $output);
 }
