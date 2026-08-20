@@ -398,9 +398,8 @@ function recordSession(string $expect_script, string $cast_file, int $rows = TER
 /**
  * Post-process a cast file.
  *
- * Removes the spawn command line, rewrites the events onto a canonical
- * timeline, appends an END_PAUSE event so the animation pauses before
- * looping, and sanitizes paths.
+ * Rewrites the events onto a canonical timeline, appends an END_PAUSE event
+ * so the animation pauses before looping, and sanitizes paths.
  *
  * @param string $cast_file
  *   Path to the cast file.
@@ -411,17 +410,7 @@ function postProcessCast(string $cast_file): void {
     return;
   }
 
-  $lines = explode("\n", $content);
-  $filtered = [$lines[0]];
-  $line_count = count($lines);
-  for ($i = 1; $i < $line_count; $i++) {
-    if (str_contains($lines[$i], 'spawn ')) {
-      continue;
-    }
-    $filtered[] = $lines[$i];
-  }
-
-  $filtered = canonicaliseCast($filtered);
+  $filtered = canonicaliseCast(explode("\n", $content));
 
   // Add a pause at the end of the recording before the animation loops.
   // In asciicast v3, timestamps are relative (delta from previous event),
@@ -450,6 +439,11 @@ function postProcessCast(string $cast_file): void {
  * frame that follows within MERGE_WINDOW continues the step before it and
  * plays at FRAME_DELAY, and anything slower begins a step and plays at
  * STEP_DELAY.
+ *
+ * The spawn echo is dropped from that stream rather than from the events it
+ * arrived in, so a terminal that splits the echo, or delivers it joined to
+ * the output after it, cannot leave part of it in the render or take real
+ * output out with it.
  *
  * @param array<int, string> $lines
  *   Cast lines, the header first.
@@ -481,6 +475,8 @@ function canonicaliseCast(array $lines): array {
     $stream .= $event[2];
   }
 
+  [$stream, $arrivals] = stripSpawnEcho($stream, $arrivals);
+
   $canonical = [$header];
   $offset = 0;
   $previous = 0.0;
@@ -494,6 +490,44 @@ function canonicaliseCast(array $lines): array {
   }
 
   return $canonical;
+}
+
+/**
+ * Remove the spawn echo from the head of a session's output.
+ *
+ * Expect announces the command it spawns, so a recording opens with a line
+ * that belongs to the harness rather than to the session. The echo runs to
+ * the first line break after it.
+ *
+ * @param string $stream
+ *   The session's output.
+ * @param array<int, float> $arrivals
+ *   Times the recording captured, keyed by the offset each chunk starts at.
+ *
+ * @return array{string, array<int, float>}
+ *   The output past the echo, and the arrival times rebased onto it.
+ */
+function stripSpawnEcho(string $stream, array $arrivals): array {
+  if (!str_starts_with($stream, 'spawn ')) {
+    return [$stream, $arrivals];
+  }
+
+  $break = strpos($stream, "\n");
+
+  if ($break === FALSE) {
+    return [$stream, $arrivals];
+  }
+
+  $cut = $break + 1;
+  $rebased = [];
+
+  // A chunk that starts inside the echo holds the first output after it, so
+  // that chunk's time becomes the arrival of the rebased stream.
+  foreach ($arrivals as $start => $at) {
+    $rebased[max(0, $start - $cut)] = $at;
+  }
+
+  return [substr($stream, $cut), $rebased];
 }
 
 /**
