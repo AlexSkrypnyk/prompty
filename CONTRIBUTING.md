@@ -24,7 +24,7 @@ composer install
 | `composer lint-fix`         | Rector, then PHPCBF. Fixes what can be fixed.          |
 | `composer test`             | PHPUnit without coverage.                              |
 | `composer test-coverage`    | PHPUnit with coverage, written to `.logs/`.            |
-| `composer embed-playground` | Regenerates `playground/flow-embed.dist.php`.          |
+| `composer embed-playground` | Builds `playground/flow-embed.dist.php`, which is not committed. |
 | `composer reset`            | Removes `vendor/`, `vendor-bin/` and `composer.lock`.  |
 
 `composer reset` only deletes - run `composer install` afterwards to get back to a working tree.
@@ -36,7 +36,7 @@ Four checks gate every change, and CI runs all of them through `composer lint`:
 - **PHPCS** - the Drupal standard plus DrevOps rules, with `strict_types` required in every file. Config in [`phpcs.xml`](phpcs.xml).
 - **PHPStan** - level 9, the strictest level. Config in [`phpstan.neon`](phpstan.neon).
 - **Rector** - PHP 8.2 modernisation plus dead-code, code-quality, coding-style, type-declaration, naming and early-return sets, run in dry-run mode during linting. Config in [`rector.php`](rector.php).
-- **Embedded demo check** - rebuilds `playground/flow-embed.dist.php` and fails if it no longer matches its source. See [The embedded demo](#the-embedded-demo).
+- **Embedded demo check** - embeds `playground/flow-embed.php` and fails if the copy prints anything different from the original. See [The embedded demo](#the-embedded-demo).
 
 Coverage has a threshold in CI (80% by default, set via the `CI_CODE_COVERAGE_THRESHOLD` repository variable). New code needs tests.
 
@@ -86,8 +86,7 @@ The [`playground/`](playground) directory holds runnable demos - the quickest wa
 | `flow-nested.php`             | A nested flow with conditionals, 3 levels deep.     |
 | `flow-config.php`             | A flow with `configure()` applied beforehand.       |
 | `flow-multiple.php`           | Several flows, and a standalone widget between them.|
-| `flow-embed.php`              | The same flow as flow.php, before embedding.        |
-| `flow-embed.dist.php`         | The same flow after embedding - one file, no require.|
+| `flow-embed.php`              | The flow the embedder is tested against.            |
 
 ```bash
 php playground/flow-nested.php
@@ -103,21 +102,21 @@ php playground/flow.php --no-unicode --no-ansi
 
 ### The embedded demo
 
-`flow-embed.php` and `flow-embed.dist.php` are the same script before and after embedding. Run both and they behave identically - the second just carries the class inline instead of requiring it, so it runs from anywhere:
+Prompty is meant to be copied into a consumer script, so the copy is the thing that has to keep working. `flow-embed.php` is the script that proves it does. Embedding rewrites it into `flow-embed.dist.php`, which carries the class inline and requires nothing, so it runs from anywhere:
 
 ```bash
+composer embed-playground
 php playground/flow-embed.php
 cp playground/flow-embed.dist.php ~/order.php
 php ~/order.php
 ```
 
-`flow-embed.dist.php` is generated, so treat it as build output: make the edit in `flow-embed.php` and regenerate.
+Both render the same flow, so anything that differs between them is a fault in the embedder rather than in the flow. Make edits in `flow-embed.php`; the built copy is output, and it is not committed - build it whenever it is wanted.
 
-```bash
-composer embed-playground
-```
+Two things compare the pair without being asked:
 
-`composer lint` runs [`.util/check-embed.php`](.util/check-embed.php), which rebuilds the demo into a temporary path and compares the bytes, so the two cannot drift apart unnoticed. It fails whenever `Prompty.php` or `flow-embed.php` changes without the regeneration, and names the command to run. The generated file is excluded from PHPCS, PHPStan and Rector, and is marked `linguist-generated` so it collapses in GitHub diffs.
+- `composer lint` runs [`.util/check-embed.php`](.util/check-embed.php), which embeds the demo into a temporary path, runs both with every answer supplied through the environment, and fails if they print anything different. It reports both outputs when they diverge, so the difference is readable from the failure.
+- `.util/assets/flow-embed.svg` records the embedded copy being driven by hand. Nothing embeds that asset and it is deliberately kept out of the README: it exists so that a change in what an embedded script *draws* shows up as a diff in the frames, which comparing text cannot catch.
 
 ## Demo content
 
@@ -133,7 +132,7 @@ The SVGs under `.util/assets/` are recorded from the playground scripts. Regener
 php .util/update-assets.php
 ```
 
-That records all 7 scripts in 4 flag variants each, a few at a time. To redo just one:
+That records all 7 scripts in 4 flag variants each, plus the embedded copy of the flow, a few at a time. To redo just one:
 
 ```bash
 php .util/update-assets.php --record widgets
@@ -147,7 +146,7 @@ It needs `asciinema`, `expect`, `node` and `npm` on your PATH. Set `SCRIPT_QUIET
 - The recorded output is treated as one stream and cut into frames where a widget redrew, so a frame is never created by the terminal happening to split a write.
 - Every gap is rewritten to one of two durations before rendering, so the wall clock the recording ran against does not reach the SVG.
 
-Recordings run a few at a time rather than all at once, because a machine running 28 sessions together stalls them enough to blur the gap between a pause in a session and the gaps within one.
+Recordings run a few at a time rather than all at once, because a machine running every session together stalls them enough to blur the gap between a pause in a session and the gaps within one.
 
 ## Releases
 

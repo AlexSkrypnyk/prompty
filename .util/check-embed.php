@@ -3,12 +3,15 @@
 
 /**
  * @file
- * Check that the embedded playground demo matches its source.
+ * Check that embedding does not change what a script does.
  *
- * playground/flow-embed.dist.php is generated from playground/flow-embed.php
- * and holds a minified copy of the Prompty class, so it goes stale whenever
- * either file changes. This regenerates it into a temporary path and compares
- * the bytes.
+ * playground/flow-embed.php loads the class with require; embedding rewrites
+ * it into a copy that carries the class inline and requires nothing. The two
+ * run the same flow, so anything that differs between what they print is a
+ * fault in the embedder.
+ *
+ * This builds that copy into a temporary path, runs both with the same
+ * answers supplied through the environment, and compares the output.
  *
  * Environment variables:
  * - SCRIPT_QUIET: Set to '1' to suppress informational messages.
@@ -22,59 +25,62 @@
 declare(strict_types=1);
 
 define('SOURCE_SCRIPT', 'playground/flow-embed.php');
-define('DIST_SCRIPT', 'playground/flow-embed.dist.php');
-define('REGENERATE_COMMAND', 'composer embed-playground');
+
+// Answers for every step of the flow, so neither run waits for a keypress.
+define('ANSWERS', [
+  'PROMPTY_DISH' => 'plum compote',
+  'PROMPTY_COURSE' => 'main',
+  'PROMPTY_EXTRAS' => 'bread,olives',
+  'PROMPTY_SEND' => 'yes',
+]);
 
 /**
- * Compare the committed embedded demo against a fresh build.
+ * Compare the source script against a freshly embedded copy of it.
  *
  * @throws \RuntimeException
- *   When the demo is missing, cannot be rebuilt, or is out of date.
+ *   When the copy cannot be built, either run prints nothing, or the two
+ *   runs print something different.
  */
 function main(): void {
   $project_dir = dirname(__DIR__);
-  $dist_path = $project_dir . '/' . DIST_SCRIPT;
-
-  if (!is_file($dist_path)) {
-    throw new \RuntimeException(sprintf('%s does not exist. Run `%s` to create it.', DIST_SCRIPT, REGENERATE_COMMAND));
-  }
-
   $tmp_dir = $project_dir . '/.artifacts/tmp';
 
   if (!is_dir($tmp_dir) && !mkdir($tmp_dir, 0755, TRUE) && !is_dir($tmp_dir)) {
     throw new \RuntimeException(sprintf('Could not create %s.', $tmp_dir));
   }
 
-  $tmp_path = $tmp_dir . '/flow-embed.check.php';
-  $expected = build($project_dir, $tmp_path);
-  $actual = file_get_contents($dist_path);
+  $embedded_path = $tmp_dir . '/flow-embed.check.php';
+  build($project_dir, $embedded_path);
 
-  if ($actual === FALSE) {
-    throw new \RuntimeException(sprintf('Could not read %s.', DIST_SCRIPT));
+  $source = run($project_dir . '/' . SOURCE_SCRIPT);
+  $embedded = run($embedded_path);
+  unlink($embedded_path);
+
+  // A script that prints nothing would otherwise match one that prints
+  // nothing, so the runs have to reach the end of the flow to count.
+  if (!str_contains($source, 'Order sent!')) {
+    throw new \RuntimeException(sprintf("%s did not complete its flow. It printed:%s%s", SOURCE_SCRIPT, PHP_EOL, $source));
   }
 
-  if ($expected !== $actual) {
-    throw new \RuntimeException(sprintf('%s is out of date. Run `%s` and commit the result.', DIST_SCRIPT, REGENERATE_COMMAND));
+  if ($source !== $embedded) {
+    throw new \RuntimeException(sprintf("Embedding changed what the script prints.%s%s--- %s%s%s%s--- embedded copy%s%s", PHP_EOL, PHP_EOL, SOURCE_SCRIPT, PHP_EOL, $source, PHP_EOL, PHP_EOL, $embedded));
   }
 
-  info(sprintf('%s matches %s.', DIST_SCRIPT, SOURCE_SCRIPT));
+  info(sprintf('An embedded %s prints what it printed before embedding.', SOURCE_SCRIPT));
 }
 
 /**
- * Build the embedded demo at a temporary path.
+ * Build an embedded copy of the source script.
  *
  * @param string $project_dir
  *   Path to the project root.
  * @param string $target_path
- *   Path to build into. Removed before returning.
- *
- * @return string
- *   Contents of the built file.
+ *   Path to build into.
  *
  * @throws \RuntimeException
  *   When the embedder fails or writes nothing.
  */
-function build(string $project_dir, string $target_path): string {
+function build(string $project_dir, string $target_path): void {
   $cmd = sprintf(
     'php %s --no-verify %s %s 2>&1',
     escapeshellarg($project_dir . '/embed.php'),
@@ -90,14 +96,31 @@ function build(string $project_dir, string $target_path): string {
     throw new \RuntimeException(sprintf('The embedder exited with code %d:%s%s', $exit, PHP_EOL, implode(PHP_EOL, $output)));
   }
 
-  $contents = file_get_contents($target_path);
-  unlink($target_path);
-
-  if ($contents === FALSE) {
+  if (!is_file($target_path)) {
     throw new \RuntimeException(sprintf('The embedder wrote nothing to %s.', $target_path));
   }
+}
 
-  return $contents;
+/**
+ * Run a playground script with every answer supplied.
+ *
+ * @param string $script_path
+ *   Path to the script to run.
+ *
+ * @return string
+ *   Everything the script printed.
+ */
+function run(string $script_path): string {
+  $prefix = '';
+
+  foreach (ANSWERS as $name => $value) {
+    $prefix .= $name . '=' . escapeshellarg($value) . ' ';
+  }
+
+  $output = [];
+  exec($prefix . 'php ' . escapeshellarg($script_path) . ' --no-ansi 2>&1', $output);
+
+  return implode(PHP_EOL, $output);
 }
 
 /**
