@@ -410,7 +410,7 @@ function postProcessCast(string $cast_file): void {
     return;
   }
 
-  $filtered = canonicaliseCast(explode("\n", $content));
+  $filtered = canonicalizeCast(explode("\n", $content));
 
   // Add a pause at the end of the recording before the animation loops.
   // In asciicast v3, timestamps are relative (delta from previous event),
@@ -451,7 +451,7 @@ function postProcessCast(string $cast_file): void {
  * @return array<int, string>
  *   Canonical cast lines, the header first.
  */
-function canonicaliseCast(array $lines): array {
+function canonicalizeCast(array $lines): array {
   $header = array_shift($lines) ?? '';
   $stream = '';
   $arrivals = [];

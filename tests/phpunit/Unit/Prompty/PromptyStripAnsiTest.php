@@ -24,7 +24,7 @@ final class PromptyStripAnsiTest extends PromptyTestCase {
   public static function dataProviderStripAnsi(): \Iterator {
     yield 'plain text' => ['hello', 'hello'];
     yield 'reset' => ["\033[0mhello", 'hello'];
-    yield 'colour' => ["\033[36mhello\033[0m", 'hello'];
+    yield 'color' => ["\033[36mhello\033[0m", 'hello'];
     yield 'multi parameter' => ["\033[2;3mhello\033[0m", 'hello'];
     yield 'cursor up' => ["\033[2Ahello", 'hello'];
     yield 'hide cursor' => ["\033[?25lhello", 'hello'];

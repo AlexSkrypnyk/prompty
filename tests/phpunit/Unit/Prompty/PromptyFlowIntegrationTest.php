@@ -220,7 +220,7 @@ final class PromptyFlowIntegrationTest extends PromptyTestCase {
     $this->assertSame(['ts', 'eslint'], $result['features']);
   }
 
-  public function testFlowMultiselectEnvNormalisesOrderAndDuplicates(): void {
+  public function testFlowMultiselectEnvNormalizesOrderAndDuplicates(): void {
     $this->setEnvVars(['features' => 'prettier, ts ,prettier']);
 
     $result = NULL;

@@ -49,7 +49,7 @@ final class PromptyControlCharactersTest extends PromptyTestCase {
     yield 'tab' => ["first\tsecond", 'first second'];
     yield 'run of newlines' => ["first\n\n\nsecond", 'first second'];
     yield 'erase line sequence' => ["a\033[2Kb", 'ab'];
-    yield 'colour sequence' => ["\033[31mred\033[0m", 'red'];
+    yield 'color sequence' => ["\033[31mred\033[0m", 'red'];
     yield 'lone escape' => ["a\033b", 'ab'];
     yield 'bell' => ["a\x07b", 'ab'];
     yield 'delete' => ["a\x7fb", 'ab'];

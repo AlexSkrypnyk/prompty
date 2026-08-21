@@ -1788,14 +1788,14 @@ class Prompty {
     }
 
     $display = is_scalar($value) ? trim((string) $value) : get_debug_type($value);
-    $normalise = fn(string $token): string => strtolower(trim($token));
-    $normalised = $normalise($display);
+    $normalize = fn(string $token): string => strtolower(trim($token));
+    $normalized = $normalize($display);
 
-    if (in_array($normalised, array_map($normalise, $truthy), TRUE)) {
+    if (in_array($normalized, array_map($normalize, $truthy), TRUE)) {
       return TRUE;
     }
 
-    if (in_array($normalised, array_map($normalise, $falsy), TRUE)) {
+    if (in_array($normalized, array_map($normalize, $falsy), TRUE)) {
       return FALSE;
     }
 

@@ -396,8 +396,8 @@ final class PromptyWidgetResolvedTest extends PromptyTestCase {
     yield 'option label is not a key' => [['Alpha'], NULL, 'Discovered value "Alpha" for "Pick" is not a valid option. Available options: a, b.'];
   }
 
-  #[DataProvider('dataProviderMultiselectNormalisesDiscovered')]
-  public function testMultiselectNormalisesDiscovered(mixed $discovered, ?string $ctx_discovered, array $expected): void {
+  #[DataProvider('dataProviderMultiselectNormalizesDiscovered')]
+  public function testMultiselectNormalizesDiscovered(mixed $discovered, ?string $ctx_discovered, array $expected): void {
     $this->captureOutput(function () use ($discovered, $ctx_discovered, &$result): void {
       $result = Prompty::multiselect('Pick',
         options: ['a' => 'Alpha', 'b' => 'Beta', 'c' => 'Gamma'],
@@ -409,7 +409,7 @@ final class PromptyWidgetResolvedTest extends PromptyTestCase {
     $this->assertSame($expected, $result);
   }
 
-  public static function dataProviderMultiselectNormalisesDiscovered(): \Iterator {
+  public static function dataProviderMultiselectNormalizesDiscovered(): \Iterator {
     yield 'argument reordered to option order' => [['c', 'a'], NULL, ['a', 'c']];
     yield 'argument duplicates removed' => [['b', 'a', 'b'], NULL, ['a', 'b']];
     yield 'env reordered to option order' => [NULL, 'c,a', ['a', 'c']];
@@ -458,8 +458,8 @@ final class PromptyWidgetResolvedTest extends PromptyTestCase {
     yield 'out of range int' => [2, NULL, 'Discovered value "2" for "Install?" is not a valid answer. ' . $accepted];
   }
 
-  #[DataProvider('dataProviderConfirmHonoursCustomTruthyFalsy')]
-  public function testConfirmHonoursCustomTruthyFalsy(?string $discovered, ?string $ctx_discovered, bool $expected): void {
+  #[DataProvider('dataProviderConfirmHonorsCustomTruthyFalsy')]
+  public function testConfirmHonorsCustomTruthyFalsy(?string $discovered, ?string $ctx_discovered, bool $expected): void {
     $ctx = $this->ctx(['truthy' => ['on'], 'falsy' => ['off'], 'discovered' => $ctx_discovered]);
 
     $this->captureOutput(function () use ($discovered, $ctx, &$result): void {
@@ -469,7 +469,7 @@ final class PromptyWidgetResolvedTest extends PromptyTestCase {
     $this->assertSame($expected, $result);
   }
 
-  public static function dataProviderConfirmHonoursCustomTruthyFalsy(): \Iterator {
+  public static function dataProviderConfirmHonorsCustomTruthyFalsy(): \Iterator {
     yield 'custom truthy via argument' => ['on', NULL, TRUE];
     yield 'custom falsy via argument' => ['off', NULL, FALSE];
     yield 'custom truthy via env' => [NULL, 'on', TRUE];
