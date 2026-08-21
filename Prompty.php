@@ -258,7 +258,7 @@ class Prompty {
    * @return PromptyConfig
    *   The values in force, keyed as configure() names them.
    */
-  protected function configSnapshot(): array {
+  protected function snapshotConfig(): array {
     return [
       'symbols_unicode' => $this->cfgSymbolsUnicode,
       'symbols_ascii' => $this->cfgSymbolsAscii,
@@ -280,9 +280,9 @@ class Prompty {
    * as well as one it changed.
    *
    * @param PromptyConfig $snapshot
-   *   A snapshot from configSnapshot().
+   *   A snapshot from snapshotConfig().
    */
-  protected function configRestore(array $snapshot): void {
+  protected function restoreConfig(array $snapshot): void {
     $this->cfgSymbolsUnicode = $snapshot['symbols_unicode'];
     $this->cfgSymbolsAscii = $snapshot['symbols_ascii'];
     $this->cfgColorsDefault = $snapshot['colors'];
@@ -499,7 +499,7 @@ class Prompty {
       || $env_prefix !== NULL
       || $truthy !== NULL
       || $falsy !== NULL) {
-      $snapshot = $p->configSnapshot();
+      $snapshot = $p->snapshotConfig();
       static::configure($symbols_unicode, $symbols_ascii, $colors, $spacing, $labels, $unicode, $ansi, $env_prefix, $truthy, $falsy);
     }
 
@@ -556,7 +556,7 @@ class Prompty {
       static::$inFlow = FALSE;
 
       if ($snapshot !== NULL) {
-        $p->configRestore($snapshot);
+        $p->restoreConfig($snapshot);
       }
     }
   }
