@@ -10,9 +10,9 @@
  * flow-nested and flow-embed recordings render as animated SVGs; the
  * widget-* recordings render as static single-frame SVGs.
  *
- * Recordings run in small batches: enough of them at once to finish in
- * reasonable time, few enough that the machine does not stall a session
- * being recorded and change where its frames fall.
+ * Recordings run in small batches: enough at once to finish in reasonable
+ * time, few enough that the machine does not stall a session. A stalled
+ * session changes where its frames fall.
  *
  * Dependencies: asciinema, expect, node, npm
  *
@@ -35,7 +35,7 @@ define('TERMINAL_ROWS', 24);
 // Delay before interacting with prompts in expect scripts (seconds).
 define('PROMPT_DELAY', 1);
 
-// Delay between typed characters (seconds). Fixed rather than humanised, so
+// Delay between typed characters (seconds). Fixed rather than humanized, so
 // the recording splits into the same frames on every run.
 define('TYPE_DELAY', 0.02);
 
@@ -48,8 +48,8 @@ define('MAX_WORKERS', 4);
 
 // Output arriving within this many seconds of the previous event belongs to
 // the same step, and is merged into it. It sits well above the gap between
-// typed characters and well below the shortest sleep between steps, so the
-// same steps survive however the terminal happened to chunk the output.
+// typed characters and well below the shortest sleep between steps, so any
+// chunking yields the same steps.
 define('MERGE_WINDOW', 0.35);
 
 // Rendered gap between one step and the next (seconds). Long enough to read
@@ -131,8 +131,7 @@ function getJobs(string $project_dir): array {
   }
 
   // The embedded copy of the flow, recorded so that a change in what an
-  // embedded script draws shows up as a diff. Nothing embeds this asset; it
-  // is kept for the comparison rather than for the README.
+  // embedded script draws shows up as a diff.
   $jobs['flow-embed'] = [
     'script' => $project_dir . '/playground/flow-embed.dist.php',
     'expect_fn' => 'createFlowEmbedExpectScript',
@@ -170,10 +169,10 @@ function main(): void {
 
   $failed = [];
 
-  // A recording is timed against the machine it runs on, and a machine running
-  // every recording at once stalls each of them unpredictably. Batches keep
-  // the load low enough for the pauses in a session to stay apart from the
-  // gaps within one, which is what makes the output reproducible.
+  // A recording is timed against the machine it runs on, and a machine
+  // running every recording at once stalls each of them unpredictably.
+  // Batches keep the load low enough that the pauses in a session stay
+  // apart from the gaps within one, so the output is reproducible.
   info(sprintf('Recording %d sessions, %d at a time...', count($jobs), MAX_WORKERS));
   info('');
 
@@ -292,7 +291,7 @@ function processOne(string $name): void {
  * Build the embedded copy of the flow playground.
  *
  * The copy is generated and is not committed, so the recording builds it
- * rather than assuming a copy is lying around.
+ * rather than assuming it exists.
  *
  * @param string $project_dir
  *   Path to the project root.
@@ -412,7 +411,6 @@ function postProcessCast(string $cast_file): void {
 
   $filtered = canonicalizeCast(explode("\n", $content));
 
-  // Add a pause at the end of the recording before the animation loops.
   // In asciicast v3, timestamps are relative (delta from previous event),
   // so the pause is added as an empty output event with that duration.
   $filtered[] = json_encode([END_PAUSE, 'o', ' ']);
@@ -431,19 +429,21 @@ function postProcessCast(string $cast_file): void {
  * Rewrite a recording's events onto a canonical timeline.
  *
  * A recording carries whatever chunks the terminal happened to deliver, at
- * whatever moment the scheduler delivered them, so two runs of one session
+ * whatever moment the scheduler delivered them. Two runs of one session
  * produce different frames and different durations even when nothing about
- * the session changed. The output is therefore treated as one stream and cut
- * into frames where the session itself redrew, which no longer depends on how
- * the chunks fell. The recorded times survive only as a two-way choice: a
- * frame that follows within MERGE_WINDOW continues the step before it and
- * plays at FRAME_DELAY, and anything slower begins a step and plays at
- * STEP_DELAY.
+ * the session changed.
+ *
+ * The output is therefore treated as one stream and cut into frames where
+ * the session itself redrew. That cut does not depend on how the chunks
+ * fell.
+ *
+ * The recorded times reduce to a two-way choice: a frame that follows
+ * within MERGE_WINDOW continues the step before it and plays at
+ * FRAME_DELAY. Anything slower begins a step and plays at STEP_DELAY.
  *
  * The spawn echo is dropped from that stream rather than from the events it
- * arrived in, so a terminal that splits the echo, or delivers it joined to
- * the output after it, cannot leave part of it in the render or take real
- * output out with it.
+ * arrived in. However the terminal chunked the echo, no part of it is left
+ * in the render and no real output is dropped with it.
  *
  * @param array<int, string> $lines
  *   Cast lines, the header first.
@@ -558,11 +558,13 @@ function arrivalAt(array $arrivals, int $offset): float {
 /**
  * Split a session's output into the redraws it is made of.
  *
- * A renderer only paints the state an event ends in, so the frames have to be
- * cut where the session redrew. A widget starts every redraw by moving the
- * cursor up, so the sequence that does it marks where one frame ends and the
- * next begins - a boundary the output itself carries, rather than one the
- * recording timings happened to fall on.
+ * A renderer only paints the state an event ends in, so the frames have to
+ * be cut where the session redrew. A widget starts every redraw by moving
+ * the cursor up, so that sequence marks where one frame ends and the next
+ * begins.
+ *
+ * The boundary comes from the output itself, not from where the recording
+ * timings fell.
  *
  * @param string $data
  *   The session's output.

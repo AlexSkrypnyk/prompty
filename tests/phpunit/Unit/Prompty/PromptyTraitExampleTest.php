@@ -11,8 +11,8 @@ use PHPUnit\Framework\Attributes\Group;
 /**
  * Guards the usage example in PromptyTestTrait's class docblock.
  *
- * The example ships to consumers as the first thing they copy, so it is
- * mirrored here to keep it executable.
+ * The example is the first code a consumer copies, so it is mirrored here
+ * to keep it executable.
  */
 #[CoversClass(Prompty::class)]
 #[Group('unit')]

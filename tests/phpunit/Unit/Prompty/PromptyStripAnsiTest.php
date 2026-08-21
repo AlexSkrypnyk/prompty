@@ -10,7 +10,7 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Group;
 
 /**
- * Tests for the ANSI stripper shipped in PromptyTestTrait.
+ * Tests for the ANSI stripper in PromptyTestTrait.
  */
 #[CoversClass(Prompty::class)]
 #[Group('unit')]

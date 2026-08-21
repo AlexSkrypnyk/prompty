@@ -50,7 +50,7 @@ $results = Prompty::flow(fn(): array => [
     ],
   ),
   // The default is written with ints to show that they pre-check the same
-  // options string keys would.
+  // options that string keys would.
   'seats' => Prompty::multiselect('Seats',
     options: ['1' => 'Seat 1', '2' => 'Seat 2', '3' => 'Seat 3', '4' => 'Seat 4'],
     default: [2, 4],

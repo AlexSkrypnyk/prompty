@@ -9,7 +9,7 @@ use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Group;
 
 /**
- * Tests for what a step condition observes, and when.
+ * Tests for the results a step condition receives, and when.
  */
 #[CoversClass(Prompty::class)]
 #[Group('unit')]
@@ -21,10 +21,10 @@ final class PromptyStepConditionTest extends PromptyTestCase {
   }
 
   /**
-   * A flow whose second child is shown only when the first answered 'x'.
+   * A flow whose second child is shown only when the first answer is 'x'.
    *
-   * The condition reads the earlier answer directly, the way a caller writes
-   * it when the step it depends on always runs before it.
+   * The condition reads the earlier answer directly, as a caller would when
+   * the step it depends on always runs first.
    *
    * @param callable|null $spy
    *   Optional callback receiving the results the condition was given.
@@ -152,7 +152,7 @@ final class PromptyStepConditionTest extends PromptyTestCase {
     $this->assertSame('y', $results['childb']);
 
     // The stored 'X' makes the later sibling visible, so the child group is
-    // drawn with the bar that carries on to it.
+    // drawn with the bar that continues to it.
     $this->assertStringContainsString('|  |  +  Garnish', $output);
   }
 

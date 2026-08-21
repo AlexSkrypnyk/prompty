@@ -16,9 +16,6 @@ use PHPUnit\Framework\Attributes\Group;
 #[Group('unit')]
 final class PromptyDiscoveredListTest extends PromptyTestCase {
 
-  /**
-   * Option set for the multiselect cases.
-   */
   protected const EXTRAS = ['bread' => 'Bread', 'olives' => 'Olives', 'herbs' => 'Herbs'];
 
   /**

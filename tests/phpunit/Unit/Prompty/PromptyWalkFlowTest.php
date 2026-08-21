@@ -265,8 +265,8 @@ final class PromptyWalkFlowTest extends PromptyTestCase {
   public function testWalkFlowSiblingDetection(): void {
     $p = $this->createAndSetInstance();
 
-    // Three children at depth 1. The condition on child3 always fails,
-    // so child2 should be detected as the last visible child.
+    // The condition on child3 always fails, so child2 is detected as the
+    // last visible child.
     $steps = [
       'child1' => $this->resolvedStep('val1'),
       'child2' => $this->resolvedStep('val2'),

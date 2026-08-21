@@ -4,9 +4,9 @@
  * @file
  * Playground - flow with pre-configured instance.
  *
- * Demonstrates calling Prompty::configure() before a flow. The flow's
- * own config parameter merges on top, so both configure() and flow()
- * config are combined.
+ * Demonstrates calling Prompty::configure() before a flow. The flow's own
+ * configuration arguments merge on top, so both configure() and flow()
+ * configuration are combined.
  */
 
 declare(strict_types=1);

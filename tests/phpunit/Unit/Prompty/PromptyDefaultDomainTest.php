@@ -16,14 +16,8 @@ use PHPUnit\Framework\Attributes\Group;
 #[Group('unit')]
 final class PromptyDefaultDomainTest extends PromptyTestCase {
 
-  /**
-   * Option set for the select cases.
-   */
   protected const COURSES = ['starter' => 'Starter', 'main' => 'Main', 'dessert' => 'Dessert'];
 
-  /**
-   * Option set for the multiselect cases.
-   */
   protected const EXTRAS = ['bread' => 'Bread', 'olives' => 'Olives', 'herbs' => 'Herbs'];
 
   #[DataProvider('dataProviderSelectRejectsDefaultOutsideOptions')]

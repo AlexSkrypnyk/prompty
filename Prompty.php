@@ -71,7 +71,7 @@ class Prompty {
   protected array $open = [];
 
   /**
-   * The step being rendered, and what settling its connector needs.
+   * The step being rendered, and the data needed to settle its connector.
    *
    * @var array{
    *   key: int|string,
@@ -242,7 +242,7 @@ class Prompty {
   }
 
   /**
-   * Resolves the symbol and colour sets from the unicode and ANSI settings.
+   * Resolves the symbol and color sets from the unicode and ANSI settings.
    */
   protected function resolveDisplay(): void {
     $this->cfgSymbols = $this->cfgUnicode ? $this->cfgSymbolsUnicode : $this->cfgSymbolsAscii;
@@ -345,7 +345,7 @@ class Prompty {
    * Configure the singleton instance.
    *
    * Creates the singleton if it does not exist yet. Call before any widgets
-   * or flows to customise symbols, colors, env prefix, truthy/falsy values.
+   * or flows to customize symbols, colors, env prefix, truthy/falsy values.
    *
    * @param array<string, string>|null $symbols_unicode
    *   Partial unicode symbol overrides.
@@ -573,7 +573,7 @@ class Prompty {
    *   Optional description rendered below the label.
    * @param mixed $discovered
    *   Pre-filled value that bypasses interactive input. It is trimmed, and an
-   *   empty result is an empty answer: it takes $default, or $placeholder.
+   *   empty result resolves as an empty answer: $default, or $placeholder.
    * @param callable|null $condition
    *   Optional condition callback; skips the step when it returns FALSE.
    * @param array<string, mixed> $children
@@ -1331,7 +1331,7 @@ class Prompty {
   }
 
   /**
-   * Neutralises control characters that would break a rendered line.
+   * Neutralizes control characters that would break a rendered line.
    *
    * A newline or tab becomes a space, so text stays on the line the tree drew
    * for it. Escape sequences and the remaining control characters are removed,
@@ -1349,10 +1349,10 @@ class Prompty {
     $text = preg_replace('/[\x00-\x1f\x7f]/', '', $text) ?? $text;
 
     // The rest of the control characters are the C1 range, which UTF-8 encodes
-    // in two bytes whose second one is also a continuation byte of ordinary
-    // characters. Matching characters rather than bytes is what keeps a
-    // character such as 'ą' whole. Text that is not valid UTF-8 has no
-    // characters to match, and keeps what the passes above left it.
+    // in two bytes whose second is also a continuation byte of ordinary
+    // characters. Matching characters rather than bytes keeps a character
+    // such as 'ą' whole. Text that is not valid UTF-8 has no characters to
+    // match, and keeps the result of the passes above.
     return preg_replace('/\p{Cc}/u', '', $text) ?? $text;
   }
 
@@ -1659,7 +1659,7 @@ class Prompty {
    * Validates a supplied value against a widget's declared options.
    *
    * @param string $parameter
-   *   The parameter that supplied the value, capitalised, opening the error
+   *   The parameter that supplied the value, capitalized, opening the error
    *   message: 'Discovered' or 'Default'.
    * @param string $label
    *   The widget label, used to identify the widget in the error message.
@@ -1695,7 +1695,7 @@ class Prompty {
    * what the interactive path returns.
    *
    * @param string $parameter
-   *   The parameter that supplied the value, capitalised, opening the error
+   *   The parameter that supplied the value, capitalized, opening the error
    *   message: 'Discovered' or 'Default'.
    * @param string $label
    *   The widget label, used to identify the widget in the error message.
@@ -1730,8 +1730,8 @@ class Prompty {
    *
    * A step is looked up as its key uppercased behind the prefix. A name that
    * is not a shell identifier can still be set by a parent process, but it
-   * cannot be exported from a shell or written in most .env files, so a step
-   * named that way could never be filled by the means callers actually use.
+   * cannot be exported from a shell or written in most .env files. A step
+   * named that way could never be filled by the means callers use.
    *
    * @param array<array-key, mixed> $steps
    *   Flow steps, keyed by step name.

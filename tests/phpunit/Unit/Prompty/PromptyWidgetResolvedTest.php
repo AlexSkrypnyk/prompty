@@ -21,7 +21,6 @@ final class PromptyWidgetResolvedTest extends PromptyTestCase {
 
   protected function setUp(): void {
     parent::setUp();
-    // Ensure the singleton uses ASCII mode for all tests.
     $this->createAndSetInstance();
   }
 

@@ -56,8 +56,8 @@ function main(): void {
   $embedded = run($embedded_path);
   unlink($embedded_path);
 
-  // A script that prints nothing would otherwise match one that prints
-  // nothing, so the runs have to reach the end of the flow to count.
+  // Two runs that print nothing would otherwise match, so the runs have to
+  // reach the end of the flow to count.
   if (!str_contains($source, 'Order sent!')) {
     throw new \RuntimeException(sprintf("%s did not complete its flow. It printed:%s%s", SOURCE_SCRIPT, PHP_EOL, $source));
   }

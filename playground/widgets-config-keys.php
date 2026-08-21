@@ -2,16 +2,15 @@
 
 /**
  * @file
- * Playground - what configure() accepts, and what it turns down.
+ * Playground - what configure() accepts, and what it rejects.
  *
- * The symbol, colour, label and spacing arguments each take a fixed set of
- * keys. A key outside that set used to be merged in and then never read, so a
- * misspelling changed nothing and said nothing. It is rejected now, and the
- * message names the key and lists the ones that would have worked.
+ * The symbol, color, label and spacing arguments each take a fixed set of
+ * keys. A key outside that set is rejected, and the message names the key
+ * and lists the ones that would have worked. Merged in and never read, a
+ * misspelled key would change nothing and report nothing.
  *
- * Each call below is made for real: the ones that are turned down print the
- * message they were turned down with, and the one that is accepted then shows
- * the symbol it changed.
+ * Each call below runs. The rejected ones print the message they were
+ * rejected with, and the accepted one then shows the symbol it changed.
  *
  * phpcs:disable Drupal.Arrays.Array.LongLineDeclaration
  */

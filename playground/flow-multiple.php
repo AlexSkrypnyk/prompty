@@ -7,7 +7,7 @@
  * Demonstrates that the singleton is reused across flows. Each flow() call
  * resets the results but keeps the instance, so anything configure() set is
  * still in force. A flow's own configuration arguments are not: they last as
- * long as that flow, which is why the ASCII mode both flows here render in is
+ * long as that flow. The ASCII mode both flows here render in is therefore
  * set with configure() rather than passed to the first of them. See
  * flow-config-scope.php for that difference on its own.
  *

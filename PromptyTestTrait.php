@@ -145,7 +145,6 @@ trait PromptyTestTrait {
 
     $output = $this->promptyStripAnsi($raw_output ?: '');
 
-    // Clean up stream but leave singleton intact so results() works.
     if ($stream !== NULL) {
       fclose($stream);
     }

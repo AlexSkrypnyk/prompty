@@ -16,9 +16,6 @@ use PHPUnit\Framework\Attributes\Group;
 #[Group('unit')]
 final class PromptySelectInteractiveTest extends PromptyTestCase {
 
-  /**
-   * Option set for the select cases.
-   */
   protected const FRAMEWORKS = ['react' => 'React', 'vue' => 'Vue', 'svelte' => 'Svelte'];
 
   /**

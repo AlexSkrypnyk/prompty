@@ -16,14 +16,8 @@ use PHPUnit\Framework\Attributes\Group;
 #[Group('unit')]
 final class PromptyEmptyOptionsTest extends PromptyTestCase {
 
-  /**
-   * Message the select widget throws for an empty options map.
-   */
   protected const MESSAGE_SELECT = 'No options declared for "Course". Provide at least one option.';
 
-  /**
-   * Message the multiselect widget throws for an empty options map.
-   */
   protected const MESSAGE_MULTISELECT = 'No options declared for "Extras". Provide at least one option.';
 
   /**

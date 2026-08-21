@@ -11,7 +11,7 @@
  * Run the script without arguments to see the usage, arguments and options.
  *
  * The target script must contain // @embed-start and // @embed-end markers.
- * The minified class will be inserted between these markers.
+ * The minified class is inserted between these markers.
  *
  * Before embedding, if Rector is available (vendor/bin/rector), it is run
  * on the processed class content. A kill switch block is injected after
@@ -96,7 +96,7 @@ USAGE;
 }
 
 if ($stdout) {
-  // --stdout mode: no target script needed, just an output file.
+  // --stdout mode takes an output file, not a target script.
   $stdout_path = $positional[0];
 }
 else {
@@ -740,7 +740,7 @@ else {
   $verify_proc = proc_open('php ' . escapeshellarg($target_path), $descriptors, $verify_pipes);
 
   if (is_resource($verify_proc)) {
-    // Send minimal input to get through the flow, then close stdin.
+    // Send minimal input to get through the flow.
     fwrite($verify_pipes[0], "\n\n\n\n");
     fclose($verify_pipes[0]);
 

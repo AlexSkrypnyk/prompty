@@ -2,12 +2,12 @@
 
 /**
  * @file
- * Playground - this is how embedding is tested.
+ * Playground - how embedding is tested.
  *
- * Prompty is meant to be copied into a consumer script, so the thing that has
- * to keep working is the copy. This file is the script that proves it: it
- * loads the class with require, like every other demo here, and the embedder
- * rewrites it into a copy that carries the class inline and requires nothing.
+ * Prompty is meant to be copied into a consumer script, so the copy must
+ * keep working; this file tests that. Like every other demo here, it loads
+ * the class with require, and the embedder rewrites it into a copy that
+ * carries the class inline and requires nothing.
  *
  * Build that copy by running the embedder with an output path, so the source
  * is copied there and the copy is rewritten:
@@ -21,13 +21,14 @@
  *   php playground/flow-embed.php
  *   php playground/flow-embed.dist.php
  *
- * Two things do that comparison without being asked. `composer lint` runs
- * .util/check-embed.php, which builds the copy and fails if the two print
- * anything different. And .util/assets/flow-embed.svg records the embedded
- * copy being driven through its prompts by the expect script the recorder
- * generates for it, kept out of the README on purpose: it is there so that a
- * change in what the embedded script draws shows up as a diff, in the frames
- * rather than only in the text.
+ * That comparison also happens automatically in two places. `composer lint`
+ * runs .util/check-embed.php, which builds the copy and fails if the two
+ * print anything different.
+ *
+ * .util/assets/flow-embed.svg records the embedded copy driven through its
+ * prompts by the expect script the recorder generates for it. The asset is
+ * kept out of the README on purpose. A change in what the embedded script
+ * draws then shows up as a diff in the frames rather than only in the text.
  *
  * flow-embed.dist.php is generated and is not committed. Build it whenever
  * it is wanted; nothing depends on a copy of it being in the repository.
@@ -48,7 +49,7 @@ declare(strict_types=1);
 // phpcs:disable
 // @embed-start
 // The import sits inside the markers together with the require. The embedded
-// class is emitted without a namespace, so both lines have to go.
+// class is emitted without a namespace, so both lines must be removed.
 require_once __DIR__ . '/../Prompty.php';
 use AlexSkrypnyk\Prompty\Prompty;
 // @embed-end
