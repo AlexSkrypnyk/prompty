@@ -280,8 +280,8 @@ function processOne(string $name): void {
     $prepare_fn($project_dir);
   }
 
-  $create_fn = $job['expect_fn'];
-  $create_fn($job['script'], $expect_script);
+  $expect_fn = $job['expect_fn'];
+  $expect_fn($job['script'], $expect_script);
 
   recordSession($expect_script, $cast_file, $rows, $cols);
   postProcessCast($cast_file);
