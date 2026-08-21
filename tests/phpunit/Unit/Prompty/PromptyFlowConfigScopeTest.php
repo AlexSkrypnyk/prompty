@@ -164,6 +164,26 @@ final class PromptyFlowConfigScopeTest extends PromptyTestCase {
     $this->assertSame($before['unicode'], Prompty::config()['unicode']);
   }
 
+  public function testConfigIsUntouchedWhenFlowArgumentIsRejected(): void {
+    $before = Prompty::config();
+
+    $thrown = NULL;
+
+    try {
+      $this->captureOutput(function (): void {
+        Prompty::flow(self::steps(), env_prefix: 'OTHER_', truthy: []);
+      });
+    }
+    catch (\InvalidArgumentException $exception) {
+      $thrown = $exception->getMessage();
+    }
+
+    $this->assertSame('No values declared for "truthy". Provide at least one value.', $thrown);
+    $this->assertSame($before['env_prefix'], Prompty::config()['env_prefix']);
+    $this->assertSame($before['truthy'], Prompty::config()['truthy']);
+    $this->assertFalse($this->getStaticProperty('inFlow'));
+  }
+
   public function testGlobalConfigureStillPersists(): void {
     Prompty::configure(env_prefix: 'KITCHEN_');
     $this->setEnvVars(['dish' => 'plum compote'], 'KITCHEN_');

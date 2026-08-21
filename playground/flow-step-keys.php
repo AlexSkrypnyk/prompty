@@ -2,21 +2,24 @@
 
 /**
  * @file
- * Playground - what a step key becomes, and which ones are turned down.
+ * Playground - what a step key becomes, and which keys are rejected.
  *
- * A step's key is uppercased behind the prefix to make the name discovery
- * reads, so a step keyed 'dish_name' is pre-filled by PROMPTY_DISH_NAME.
+ * A step's key is uppercased behind the prefix to make the name that
+ * discovery reads, so a step keyed 'dish_name' is pre-filled by
+ * PROMPTY_DISH_NAME.
  *
- * A name outside letters, digits and underscores can still be set by a parent
- * process - env 'PROMPTY_DISH-NAME=x' php script.php works - but 'export'
- * rejects it as a syntax error and most .env parsers will not accept it. A
- * step named that way could never be filled by the means callers reach for:
- * the lookup found nothing and the flow prompted instead, saying nothing
- * about why. It is turned down now, and the name is what is checked, so a
- * prefix that cannot be exported is caught the same way.
+ * A name outside letters, digits and underscores can still be set by a
+ * parent process: env 'PROMPTY_DISH-NAME=x' php script.php works. 'export'
+ * rejects such a name as a syntax error, and most .env parsers will not
+ * accept it. A step named that way could never be pre-filled through export
+ * or a .env file: the lookup would find nothing and the flow would prompt
+ * instead, with no indication of why.
  *
- * The first flow is turned down and prints the message. The second is
- * accepted, and its answers come from the environment.
+ * Such a key is rejected. The check runs on the full name, so a prefix that
+ * cannot be exported is caught the same way.
+ *
+ * The first two flows are rejected and print their messages. The third
+ * is accepted, and its answers come from the environment.
  *
  * phpcs:disable Drupal.Arrays.Array.LongLineDeclaration
  */
@@ -37,7 +40,7 @@ try {
   echo 'Accepted.' . PHP_EOL;
 }
 catch (\InvalidArgumentException $exception) {
-  echo 'Turned down: ' . $exception->getMessage() . PHP_EOL;
+  echo 'Rejected: ' . $exception->getMessage() . PHP_EOL;
 }
 
 echo PHP_EOL . '--- The same key inside children ---' . PHP_EOL;
@@ -51,7 +54,7 @@ try {
   echo 'Accepted.' . PHP_EOL;
 }
 catch (\InvalidArgumentException $exception) {
-  echo 'Turned down: ' . $exception->getMessage() . PHP_EOL;
+  echo 'Rejected: ' . $exception->getMessage() . PHP_EOL;
 }
 
 echo PHP_EOL . '--- Keys that are fine ---' . PHP_EOL;
@@ -73,7 +76,7 @@ if ($results === NULL) {
   exit(0);
 }
 
-echo PHP_EOL . 'Collected:' . PHP_EOL;
+echo PHP_EOL . 'Collected answers:' . PHP_EOL;
 
 foreach ($results as $key => $value) {
   echo '  ' . $key . ': ' . (is_string($value) ? $value : json_encode($value)) . PHP_EOL;

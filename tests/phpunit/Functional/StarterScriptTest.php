@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace AlexSkrypnyk\Prompty\Tests\Functional;
 
 use PHPUnit\Framework\Attributes\CoversNothing;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Group;
 
 /**
@@ -28,38 +29,43 @@ final class StarterScriptTest extends FunctionalTestCase {
     $this->assertStarterFlowWorks($this->starterScript);
   }
 
-  public function testStarterSelectThirdCourse(): void {
-    $keystrokes = $this->keys(
-      'walnut loaf', self::KEYS['ENTER'],
-      self::KEYS['DOWN'], self::KEYS['DOWN'], self::KEYS['ENTER'],
-      self::KEYS['ENTER'],
-      self::KEYS['ENTER'],
-    );
+  /**
+   * Run starter.php with keystrokes and assert the output contains strings.
+   *
+   * @param array<int, string> $keystrokes
+   *   Keys fed to the script, joined into one raw input string.
+   * @param array<int, string> $expected_strings
+   *   Strings the ANSI-stripped output must contain.
+   */
+  #[DataProvider('dataProviderStarterOutput')]
+  public function testStarterOutput(array $keystrokes, array $expected_strings): void {
+    $output = $this->runScript($this->starterScript, $this->keys(...$keystrokes));
 
-    $output = $this->runScript($this->starterScript, $keystrokes);
-
-    $this->assertStringContainsString('walnut loaf', $output);
-    $this->assertStringContainsString('Dessert', $output);
-    $this->assertStringContainsString('None', $output);
-    $this->assertStringContainsString('Yes', $output);
+    foreach ($expected_strings as $expected_string) {
+      $this->assertStringContainsString($expected_string, $output);
+    }
   }
 
-  public function testStarterEmptyDishUsesPlaceholder(): void {
-    $keystrokes = $this->keys(self::KEYS['ENTER'], self::KEYS['ENTER'], self::KEYS['ENTER'], self::KEYS['ENTER']);
+  public static function dataProviderStarterOutput(): \Iterator {
+    yield 'third course selected' => [
+      ['walnut loaf', self::KEYS['ENTER'], self::KEYS['DOWN'], self::KEYS['DOWN'], self::KEYS['ENTER'], self::KEYS['ENTER'], self::KEYS['ENTER']],
+      ['walnut loaf', 'Dessert', 'None', 'Yes'],
+    ];
 
-    $output = $this->runScript($this->starterScript, $keystrokes);
+    yield 'empty dish uses placeholder' => [
+      [self::KEYS['ENTER'], self::KEYS['ENTER'], self::KEYS['ENTER'], self::KEYS['ENTER']],
+      ['pear tart', 'Starter'],
+    ];
 
-    $this->assertStringContainsString('pear tart', $output);
-    $this->assertStringContainsString('Starter', $output);
-  }
+    yield 'all defaults reach intro and outro' => [
+      [self::KEYS['ENTER'], self::KEYS['ENTER'], self::KEYS['ENTER'], self::KEYS['ENTER']],
+      ['Compose an order', 'Order sent!'],
+    ];
 
-  public function testStarterDeclineSend(): void {
-    $keystrokes = $this->keys('onion soup', self::KEYS['ENTER'], self::KEYS['ENTER'], self::KEYS['ENTER'], self::KEYS['LEFT'], self::KEYS['ENTER']);
-
-    $output = $this->runScript($this->starterScript, $keystrokes);
-
-    $this->assertStringContainsString('onion soup', $output);
-    $this->assertStringContainsString('No', $output);
+    yield 'declined send' => [
+      ['onion soup', self::KEYS['ENTER'], self::KEYS['ENTER'], self::KEYS['ENTER'], self::KEYS['LEFT'], self::KEYS['ENTER']],
+      ['onion soup', 'No'],
+    ];
   }
 
   public function testStarterCancelsWithoutInput(): void {
@@ -68,15 +74,6 @@ final class StarterScriptTest extends FunctionalTestCase {
     $this->assertStringContainsString('(cancelled)', $output);
     $this->assertStringContainsString('Order cancelled.', $output);
     $this->assertStringNotContainsString('Order sent!', $output);
-  }
-
-  public function testStarterOutputContainsIntroOutro(): void {
-    $keystrokes = $this->keys(self::KEYS['ENTER'], self::KEYS['ENTER'], self::KEYS['ENTER'], self::KEYS['ENTER']);
-
-    $output = $this->runScript($this->starterScript, $keystrokes);
-
-    $this->assertStringContainsString('Compose an order', $output);
-    $this->assertStringContainsString('Order sent!', $output);
   }
 
 }

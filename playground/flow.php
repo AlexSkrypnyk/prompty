@@ -50,7 +50,7 @@ $results = Prompty::flow(fn(): array => [
     ],
   ),
   // The default is written with ints to show that they pre-check the same
-  // options string keys would.
+  // options that string keys would.
   'seats' => Prompty::multiselect('Seats',
     options: ['1' => 'Seat 1', '2' => 'Seat 2', '3' => 'Seat 3', '4' => 'Seat 4'],
     default: [2, 4],
@@ -61,7 +61,7 @@ $results = Prompty::flow(fn(): array => [
   intro: 'Compose an order',
   outro: function (array $results): void {
     Prompty::outro('Order sent!');
-    echo "\nCollected answers:\n";
+    echo PHP_EOL . 'Collected answers:' . PHP_EOL;
     foreach ($results as $key => $value) {
       $display = is_array($value) ? (count($value) > 0 ? implode(', ', array_filter($value, is_string(...))) : 'none') : (is_bool($value) ? ($value ? 'yes' : 'no') : $value);
       echo sprintf('  %s: %s%s', $key, $display, PHP_EOL);

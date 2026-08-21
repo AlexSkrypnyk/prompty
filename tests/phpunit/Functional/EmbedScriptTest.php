@@ -35,6 +35,13 @@ final class EmbedScriptTest extends FunctionalTestCase {
     return $target;
   }
 
+  protected function prepareTargetWithoutMarkers(): string {
+    $target = self::$tmp . '/target.no-markers.php';
+    file_put_contents($target, "<?php\necho 'hello';\n");
+
+    return $target;
+  }
+
   protected function runEmbed(string ...$args): void {
     $this->runEmbedWithOutput(...$args);
   }
@@ -371,11 +378,20 @@ final class EmbedScriptTest extends FunctionalTestCase {
     $this->assertStarterFlowWorks($target);
   }
 
-  public function testSourceFlagWithMinifiedInput(): void {
+  #[DataProvider('dataProviderSourceFlagWithGeneratedInput')]
+  public function testSourceFlagWithGeneratedInput(bool $compact_source, bool $compact_flag): void {
     $target = $this->prepareTarget();
-    $min_source = $this->generateMinified();
+    $source = $compact_source ? $this->generateCompacted() : $this->generateMinified();
 
-    $this->runEmbed('--source', $min_source, $target);
+    $args = ['--source', $source];
+
+    if ($compact_flag) {
+      $args[] = '--compact';
+    }
+
+    $args[] = $target;
+
+    $this->runEmbed(...$args);
 
     $this->assertPhpLintPasses($target);
 
@@ -387,73 +403,52 @@ final class EmbedScriptTest extends FunctionalTestCase {
     $this->assertStarterFlowWorks($target);
   }
 
-  public function testSourceFlagWithCompactedInput(): void {
-    $target = $this->prepareTarget();
-    $compact_source = $this->generateCompacted();
+  public static function dataProviderSourceFlagWithGeneratedInput(): \Iterator {
+    yield 'minified source' => [FALSE, FALSE];
 
-    $this->runEmbed('--source', $compact_source, $target);
+    yield 'compacted source' => [TRUE, FALSE];
 
-    $this->assertPhpLintPasses($target);
-
-    $content = file_get_contents($target);
-    $this->assertIsString($content);
-    $this->assertStringContainsString('class Prompty', $content);
-    $this->assertStringContainsString('// @embed-start', $content);
-
-    $this->assertStarterFlowWorks($target);
+    yield 'compacted source, --compact' => [TRUE, TRUE];
   }
 
-  public function testSourceFlagWithCompactedInputAndCompactFlag(): void {
-    $target = $this->prepareTarget();
-    $compact_source = $this->generateCompacted();
+  /**
+   * Run embed.php with invalid arguments and assert the error output.
+   *
+   * @param array<int, string> $args
+   *   Arguments for embed.php. '<target>' and '<target-no-markers>' resolve
+   *   to prepared scripts, '<tmp>' to the temporary directory.
+   * @param array<int, string> $expected_output
+   *   Strings the combined output must contain.
+   */
+  #[DataProvider('dataProviderEmbedErrors')]
+  public function testEmbedErrors(array $args, array $expected_output): void {
+    $resolved = [];
 
-    $this->runEmbed('--source', $compact_source, '--compact', $target);
+    foreach ($args as $arg) {
+      $resolved[] = match ($arg) {
+        '<target>' => $this->prepareTarget(),
+        '<target-no-markers>' => $this->prepareTargetWithoutMarkers(),
+        default => str_replace('<tmp>', self::$tmp, $arg),
+      };
+    }
 
-    $this->assertPhpLintPasses($target);
-
-    $content = file_get_contents($target);
-    $this->assertIsString($content);
-    $this->assertStringContainsString('class Prompty', $content);
-
-    $this->assertStarterFlowWorks($target);
+    $this->processRun('php', array_merge([self::$root . '/embed.php'], $resolved));
+    $this->assertProcessFailed();
+    $this->assertProcessAnyOutputContains($expected_output);
   }
 
-  public function testUsageHelp(): void {
-    $this->processRun('php', [self::$root . '/embed.php']);
-    $this->assertProcessFailed();
+  public static function dataProviderEmbedErrors(): \Iterator {
+    yield 'no arguments' => [[], ['Usage:', '--source', '--compact', '--stdout', '--no-killswitch', '--no-verify', 'Re-embedding', 'Arguments:', 'Options:']];
 
-    $this->assertProcessAnyOutputContains(['Usage:', '--source', '--compact', '--stdout', '--no-killswitch', '--no-verify', 'Re-embedding', 'Arguments:', 'Options:']);
-  }
+    yield 'target without markers' => [['<target-no-markers>'], ['marker']];
 
-  public function testEmbedErrors(): void {
-    $this->processRun('php', [self::$root . '/embed.php']);
-    $this->assertProcessFailed();
-    $this->assertProcessAnyOutputContains('Usage');
+    yield 'missing target' => [['<tmp>/missing.php'], ['Target script not found']];
 
-    $target = self::$tmp . '/target.no-markers.php';
-    file_put_contents($target, "<?php\necho 'hello';\n");
+    yield 'output path in missing directory' => [['<target>', '<tmp>/no-such-dir/output.php'], ['Could not copy target script to output']];
 
-    $this->processRun('php', [self::$root . '/embed.php', $target]);
-    $this->assertProcessFailed();
-    $this->assertProcessAnyOutputContains('marker');
+    yield '--source without a path' => [['--source'], ['--source requires a path']];
 
-    $this->processRun('php', [self::$root . '/embed.php', self::$tmp . '/missing.php']);
-    $this->assertProcessFailed();
-    $this->assertProcessAnyOutputContains('Target script not found');
-
-    $target = $this->prepareTarget();
-    $this->processRun('php', [self::$root . '/embed.php', $target, self::$tmp . '/no-such-dir/output.php']);
-    $this->assertProcessFailed();
-    $this->assertProcessAnyOutputContains('Could not copy target script to output');
-
-    $this->processRun('php', [self::$root . '/embed.php', '--source']);
-    $this->assertProcessFailed();
-    $this->assertProcessAnyOutputContains('--source requires a path');
-
-    $target = $this->prepareTarget();
-    $this->processRun('php', [self::$root . '/embed.php', '--source', '/nonexistent/Prompty.php', $target]);
-    $this->assertProcessFailed();
-    $this->assertProcessAnyOutputContains('Source class not found');
+    yield '--source with missing class' => [['--source', '/nonexistent/Prompty.php', '<target>'], ['Source class not found']];
   }
 
   public function testVersionAfterImprinting(): void {
@@ -469,11 +464,11 @@ final class EmbedScriptTest extends FunctionalTestCase {
     $content = str_replace("if (!getenv('SHOULD_PROCEED'))", "echo 'VERSION:' . Prompty::version() . PHP_EOL;\nif (!getenv('SHOULD_PROCEED'))", $content);
     file_put_contents($target, $content);
 
-    $keystrokes = $this->keys('test', self::KEYS['ENTER'], self::KEYS['ENTER'], self::KEYS['ENTER'], self::KEYS['ENTER']);
+    $keystrokes = $this->keys('plum compote', self::KEYS['ENTER'], self::KEYS['ENTER'], self::KEYS['ENTER'], self::KEYS['ENTER']);
 
-    $r = $this->runWithKeystrokes('php ' . escapeshellarg($target), $keystrokes);
-    $this->assertSame(0, $r['exit_code'], 'Script failed: ' . $r['stderr']);
-    $this->assertStringContainsString('VERSION:1.2.3', $r['stdout']);
+    $output = $this->runScript($target, $keystrokes);
+
+    $this->assertStringContainsString('VERSION:1.2.3', $output);
   }
 
 }

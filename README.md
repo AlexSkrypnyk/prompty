@@ -625,7 +625,14 @@ $results = Prompty::flow(fn(): array => [/* ... */],
 Configuration key "bogus" for "labels" is not valid. Available keys: yes, no, cancelled, none, separator.
 ```
 
-`truthy` and `falsy` must each list at least one value, since a `confirm` widget that cannot resolve half its domain would reject every value it was given.
+`truthy` and `falsy` must each list at least one value, since a `confirm` widget that cannot resolve half its domain would reject every value it was given. Neither list accepts a blank value: values are matched after trimming, so a blank entry would answer for an empty discovered value that `confirm` otherwise rejects.
+
+Every argument is validated before any is applied, so a rejected value leaves the whole configuration as it was:
+
+```php
+// Throws, and neither the labels nor the prefix are changed.
+Prompty::configure(labels: ['yes' => 'Yep'], env_prefix: 'KITCHEN_', truthy: []);
+```
 
 An empty `env_prefix` is accepted, and makes discovery read the bare uppercased step key. A step named `path`, `home` or `user` then reads `PATH`, `HOME` or `USER` from the ambient environment, so keep a prefix unless you mean exactly that.
 

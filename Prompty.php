@@ -47,14 +47,14 @@ class Prompty {
   protected static ?self $instance = NULL;
 
   /**
-   * Stored TTY settings for standalone widget teardown.
-   */
-  protected ?string $prevTty = NULL;
-
-  /**
    * Whether a flow is currently being defined/executed.
    */
   protected static bool $inFlow = FALSE;
+
+  /**
+   * Stored TTY settings for standalone widget teardown.
+   */
+  protected ?string $prevTty = NULL;
 
   /**
    * Collected answers.
@@ -71,7 +71,7 @@ class Prompty {
   protected array $open = [];
 
   /**
-   * The step being rendered, and what settling its connector needs.
+   * The step being rendered, and the data needed to settle its connector.
    *
    * @var array{
    *   key: int|string,
@@ -219,17 +219,14 @@ class Prompty {
       $this->cfgUnicode = stripos($lang, 'utf') !== FALSE;
     }
 
-    $this->cfgSymbols = $this->cfgUnicode ? $this->cfgSymbolsUnicode : $this->cfgSymbolsAscii;
-
     $this->cfgColorsDefault = $this->cfgColors;
+
     if ($this->cfgAnsi === NULL) {
       $no_color = getenv('NO_COLOR');
       $this->cfgAnsi = ($no_color !== FALSE && $no_color !== '') || getenv('TERM') === 'dumb' ? FALSE : TRUE;
     }
 
-    if ($this->cfgAnsi === FALSE) {
-      $this->cfgColors = array_fill_keys(array_keys($this->cfgColors), '');
-    }
+    $this->resolveDisplay();
   }
 
   /**
@@ -245,7 +242,7 @@ class Prompty {
   }
 
   /**
-   * Resolves the symbol and colour sets from the unicode and ANSI settings.
+   * Resolves the symbol and color sets from the unicode and ANSI settings.
    */
   protected function resolveDisplay(): void {
     $this->cfgSymbols = $this->cfgUnicode ? $this->cfgSymbolsUnicode : $this->cfgSymbolsAscii;
@@ -258,7 +255,7 @@ class Prompty {
    * @return PromptyConfig
    *   The values in force, keyed as configure() names them.
    */
-  protected function configSnapshot(): array {
+  protected function snapshotConfig(): array {
     return [
       'symbols_unicode' => $this->cfgSymbolsUnicode,
       'symbols_ascii' => $this->cfgSymbolsAscii,
@@ -280,9 +277,9 @@ class Prompty {
    * as well as one it changed.
    *
    * @param PromptyConfig $snapshot
-   *   A snapshot from configSnapshot().
+   *   A snapshot from snapshotConfig().
    */
-  protected function configRestore(array $snapshot): void {
+  protected function restoreConfig(array $snapshot): void {
     $this->cfgSymbolsUnicode = $snapshot['symbols_unicode'];
     $this->cfgSymbolsAscii = $snapshot['symbols_ascii'];
     $this->cfgColorsDefault = $snapshot['colors'];
@@ -348,7 +345,7 @@ class Prompty {
    * Configure the singleton instance.
    *
    * Creates the singleton if it does not exist yet. Call before any widgets
-   * or flows to customise symbols, colors, env prefix, truthy/falsy values.
+   * or flows to customize symbols, colors, env prefix, truthy/falsy values.
    *
    * @param array<string, string>|null $symbols_unicode
    *   Partial unicode symbol overrides.
@@ -384,44 +381,78 @@ class Prompty {
     ?array $falsy = NULL,
   ): void {
     $p = static::instance();
+
+    // Every argument is checked before any is applied, so a rejected value
+    // leaves the configuration as it was rather than partly overwritten.
     if ($symbols_unicode !== NULL) {
       $p->assertConfigKeys('symbols_unicode', $symbols_unicode, $p->cfgSymbolsUnicode);
-      $p->cfgSymbolsUnicode = array_replace($p->cfgSymbolsUnicode, $symbols_unicode);
     }
+
     if ($symbols_ascii !== NULL) {
       $p->assertConfigKeys('symbols_ascii', $symbols_ascii, $p->cfgSymbolsAscii);
-      $p->cfgSymbolsAscii = array_replace($p->cfgSymbolsAscii, $symbols_ascii);
     }
+
     if ($colors !== NULL) {
       $p->assertConfigKeys('colors', $colors, $p->cfgColorsDefault);
+    }
+
+    if ($spacing !== NULL) {
+      $p->assertConfigKeys('spacing', $spacing, $p->cfgSpacing);
+    }
+
+    if ($labels !== NULL) {
+      $p->assertConfigKeys('labels', $labels, $p->cfgLabels);
+    }
+
+    if ($truthy !== NULL) {
+      $p->assertConfigList('truthy', $truthy);
+    }
+
+    if ($falsy !== NULL) {
+      $p->assertConfigList('falsy', $falsy);
+    }
+
+    if ($symbols_unicode !== NULL) {
+      $p->cfgSymbolsUnicode = array_replace($p->cfgSymbolsUnicode, $symbols_unicode);
+    }
+
+    if ($symbols_ascii !== NULL) {
+      $p->cfgSymbolsAscii = array_replace($p->cfgSymbolsAscii, $symbols_ascii);
+    }
+
+    if ($colors !== NULL) {
       $p->cfgColorsDefault = array_replace($p->cfgColorsDefault, $colors);
       $p->cfgColors = array_replace($p->cfgColors, $colors);
     }
+
     if ($spacing !== NULL) {
-      $p->assertConfigKeys('spacing', $spacing, $p->cfgSpacing);
       $p->cfgSpacing = array_replace($p->cfgSpacing, $spacing);
     }
+
     if ($labels !== NULL) {
-      $p->assertConfigKeys('labels', $labels, $p->cfgLabels);
       $p->cfgLabels = array_replace($p->cfgLabels, $labels);
     }
+
     if ($unicode !== NULL) {
       $p->cfgUnicode = $unicode;
     }
+
     if ($ansi !== NULL) {
       $p->cfgAnsi = $ansi;
     }
+
     if ($env_prefix !== NULL) {
       $p->cfgEnvPrefix = $env_prefix;
     }
+
     if ($truthy !== NULL) {
-      $p->assertConfigList('truthy', $truthy);
       $p->cfgTruthy = $truthy;
     }
+
     if ($falsy !== NULL) {
-      $p->assertConfigList('falsy', $falsy);
       $p->cfgFalsy = $falsy;
     }
+
     $p->resolveDisplay();
   }
 
@@ -499,7 +530,7 @@ class Prompty {
       || $env_prefix !== NULL
       || $truthy !== NULL
       || $falsy !== NULL) {
-      $snapshot = $p->configSnapshot();
+      $snapshot = $p->snapshotConfig();
       static::configure($symbols_unicode, $symbols_ascii, $colors, $spacing, $labels, $unicode, $ansi, $env_prefix, $truthy, $falsy);
     }
 
@@ -556,7 +587,7 @@ class Prompty {
       static::$inFlow = FALSE;
 
       if ($snapshot !== NULL) {
-        $p->configRestore($snapshot);
+        $p->restoreConfig($snapshot);
       }
     }
   }
@@ -576,7 +607,7 @@ class Prompty {
    *   Optional description rendered below the label.
    * @param mixed $discovered
    *   Pre-filled value that bypasses interactive input. It is trimmed, and an
-   *   empty result is an empty answer: it takes $default, or $placeholder.
+   *   empty result resolves as an empty answer: $default, or $placeholder.
    * @param callable|null $condition
    *   Optional condition callback; skips the step when it returns FALSE.
    * @param array<string, mixed> $children
@@ -598,7 +629,7 @@ class Prompty {
     ?array $ctx = NULL,
   ): \Closure|array|string|null {
     if (static::$inFlow && $ctx === NULL) {
-      $call = fn(array $ctx): array|\Closure|string|null => static::text(
+      $call = fn(array $ctx): \Closure|array|string|null => static::text(
         $label,
         default: $default,
         placeholder: $placeholder,
@@ -734,44 +765,6 @@ class Prompty {
   }
 
   /**
-   * Rejects configuration keys outside the set the default declares.
-   *
-   * @param string $parameter
-   *   The configure() parameter that supplied the values.
-   * @param array<string, string> $values
-   *   The supplied overrides.
-   * @param array<string, string> $declared
-   *   The defaults, whose keys are the valid set.
-   *
-   * @throws \InvalidArgumentException
-   *   When a key is not part of the declared set.
-   */
-  protected function assertConfigKeys(string $parameter, array $values, array $declared): void {
-    foreach (array_keys($values) as $key) {
-      if (!array_key_exists($key, $declared)) {
-        throw new \InvalidArgumentException(sprintf('Configuration key "%s" for "%s" is not valid. Available keys: %s.', $key, $parameter, implode(', ', array_keys($declared))));
-      }
-    }
-  }
-
-  /**
-   * Rejects a configuration list that holds nothing.
-   *
-   * @param string $parameter
-   *   The configure() parameter that supplied the values.
-   * @param list<string> $values
-   *   The supplied values.
-   *
-   * @throws \InvalidArgumentException
-   *   When the list is empty.
-   */
-  protected function assertConfigList(string $parameter, array $values): void {
-    if ($values === []) {
-      throw new \InvalidArgumentException(sprintf('No values declared for "%s". Provide at least one value.', $parameter));
-    }
-  }
-
-  /**
    * Renders a single-select widget, returning the chosen option key.
    *
    * @param string $label
@@ -815,7 +808,7 @@ class Prompty {
     ?array $ctx = NULL,
   ): \Closure|array|string|null {
     if (static::$inFlow && $ctx === NULL) {
-      $call = fn(array $ctx): array|\Closure|string|null => static::select(
+      $call = fn(array $ctx): \Closure|array|string|null => static::select(
         $label,
         options: $options,
         default: $default,
@@ -1007,7 +1000,7 @@ class Prompty {
     ?array $ctx = NULL,
   ): \Closure|array|null {
     if (static::$inFlow && $ctx === NULL) {
-      $call = fn(array $ctx): array|\Closure|null => static::multiselect(
+      $call = fn(array $ctx): \Closure|array|null => static::multiselect(
         $label,
         options: $options,
         default: $default,
@@ -1211,7 +1204,7 @@ class Prompty {
     ?array $ctx = NULL,
   ): \Closure|array|bool|null {
     if (static::$inFlow && $ctx === NULL) {
-      $call = fn(array $ctx): array|bool|\Closure|null => static::confirm(
+      $call = fn(array $ctx): \Closure|array|bool|null => static::confirm(
         $label,
         default: $default,
         description: $description,
@@ -1372,7 +1365,7 @@ class Prompty {
   }
 
   /**
-   * Neutralises control characters that would break a rendered line.
+   * Neutralizes control characters that would break a rendered line.
    *
    * A newline or tab becomes a space, so text stays on the line the tree drew
    * for it. Escape sequences and the remaining control characters are removed,
@@ -1390,10 +1383,10 @@ class Prompty {
     $text = preg_replace('/[\x00-\x1f\x7f]/', '', $text) ?? $text;
 
     // The rest of the control characters are the C1 range, which UTF-8 encodes
-    // in two bytes whose second one is also a continuation byte of ordinary
-    // characters. Matching characters rather than bytes is what keeps a
-    // character such as 'ą' whole. Text that is not valid UTF-8 has no
-    // characters to match, and keeps what the passes above left it.
+    // in two bytes whose second is also a continuation byte of ordinary
+    // characters. Matching characters rather than bytes keeps a character
+    // such as 'ą' whole. Text that is not valid UTF-8 has no characters to
+    // match, and keeps the result of the passes above.
     return preg_replace('/\p{Cc}/u', '', $text) ?? $text;
   }
 
@@ -1432,13 +1425,6 @@ class Prompty {
    */
   protected function pointer(bool $focused): string {
     return ($focused ? $this->color($this->cfgSymbols['pointer'], 'cyan') : ' ') . ' ';
-  }
-
-  /**
-   * Restores TTY settings to the previously saved state.
-   */
-  protected function restoreTty(string $prev): void {
-    shell_exec('stty ' . $prev . ' 2>/dev/null');
   }
 
   /**
@@ -1497,6 +1483,13 @@ class Prompty {
    */
   protected function hideCursor(): void {
     echo "\033[?25l";
+  }
+
+  /**
+   * Restores TTY settings to the previously saved state.
+   */
+  protected function restoreTty(string $prev): void {
+    shell_exec('stty ' . $prev . ' 2>/dev/null');
   }
 
   /**
@@ -1642,6 +1635,52 @@ class Prompty {
   }
 
   /**
+   * Rejects configuration keys outside the set the default declares.
+   *
+   * @param string $parameter
+   *   The configure() parameter that supplied the values.
+   * @param array<string, string> $values
+   *   The supplied overrides.
+   * @param array<string, string> $declared
+   *   The defaults, whose keys are the valid set.
+   *
+   * @throws \InvalidArgumentException
+   *   When a key is not part of the declared set.
+   */
+  protected function assertConfigKeys(string $parameter, array $values, array $declared): void {
+    foreach (array_keys($values) as $key) {
+      if (!array_key_exists($key, $declared)) {
+        throw new \InvalidArgumentException(sprintf('Configuration key "%s" for "%s" is not valid. Available keys: %s.', $key, $parameter, implode(', ', array_keys($declared))));
+      }
+    }
+  }
+
+  /**
+   * Rejects a configuration list that holds nothing usable.
+   *
+   * @param string $parameter
+   *   The configure() parameter that supplied the values.
+   * @param list<string> $values
+   *   The supplied values.
+   *
+   * @throws \InvalidArgumentException
+   *   When the list is empty or holds a blank value.
+   */
+  protected function assertConfigList(string $parameter, array $values): void {
+    if ($values === []) {
+      throw new \InvalidArgumentException(sprintf('No values declared for "%s". Provide at least one value.', $parameter));
+    }
+
+    foreach ($values as $value) {
+      // A blank entry is matched after trimming, so it would answer for an
+      // empty discovered value that the widget rejects on its own.
+      if (trim($value) === '') {
+        throw new \InvalidArgumentException(sprintf('Blank value declared for "%s". Every value must hold a non-space character.', $parameter));
+      }
+    }
+  }
+
+  /**
    * Rejects a widget declared without options.
    *
    * @param string $label
@@ -1662,7 +1701,7 @@ class Prompty {
    * Validates a supplied value against a widget's declared options.
    *
    * @param string $parameter
-   *   The parameter that supplied the value, capitalised, opening the error
+   *   The parameter that supplied the value, capitalized, opening the error
    *   message: 'Discovered' or 'Default'.
    * @param string $label
    *   The widget label, used to identify the widget in the error message.
@@ -1698,7 +1737,7 @@ class Prompty {
    * what the interactive path returns.
    *
    * @param string $parameter
-   *   The parameter that supplied the value, capitalised, opening the error
+   *   The parameter that supplied the value, capitalized, opening the error
    *   message: 'Discovered' or 'Default'.
    * @param string $label
    *   The widget label, used to identify the widget in the error message.
@@ -1733,8 +1772,8 @@ class Prompty {
    *
    * A step is looked up as its key uppercased behind the prefix. A name that
    * is not a shell identifier can still be set by a parent process, but it
-   * cannot be exported from a shell or written in most .env files, so a step
-   * named that way could never be filled by the means callers actually use.
+   * cannot be exported from a shell or written in most .env files. A step
+   * named that way could never be filled by the means callers use.
    *
    * @param array<array-key, mixed> $steps
    *   Flow steps, keyed by step name.
@@ -1788,14 +1827,14 @@ class Prompty {
     }
 
     $display = is_scalar($value) ? trim((string) $value) : get_debug_type($value);
-    $normalise = fn(string $token): string => strtolower(trim($token));
-    $normalised = $normalise($display);
+    $normalize = fn(string $token): string => strtolower(trim($token));
+    $normalized = $normalize($display);
 
-    if (in_array($normalised, array_map($normalise, $truthy), TRUE)) {
+    if (in_array($normalized, array_map($normalize, $truthy), TRUE)) {
       return TRUE;
     }
 
-    if (in_array($normalised, array_map($normalise, $falsy), TRUE)) {
+    if (in_array($normalized, array_map($normalize, $falsy), TRUE)) {
       return FALSE;
     }
 
