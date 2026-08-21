@@ -219,17 +219,14 @@ class Prompty {
       $this->cfgUnicode = stripos($lang, 'utf') !== FALSE;
     }
 
-    $this->cfgSymbols = $this->cfgUnicode ? $this->cfgSymbolsUnicode : $this->cfgSymbolsAscii;
-
     $this->cfgColorsDefault = $this->cfgColors;
+
     if ($this->cfgAnsi === NULL) {
       $no_color = getenv('NO_COLOR');
       $this->cfgAnsi = ($no_color !== FALSE && $no_color !== '') || getenv('TERM') === 'dumb' ? FALSE : TRUE;
     }
 
-    if ($this->cfgAnsi === FALSE) {
-      $this->cfgColors = array_fill_keys(array_keys($this->cfgColors), '');
-    }
+    $this->resolveDisplay();
   }
 
   /**
