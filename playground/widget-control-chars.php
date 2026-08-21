@@ -45,9 +45,9 @@ function demo(string $title, string $value): void {
   echo PHP_EOL . '--- ' . $title . ' ---' . PHP_EOL;
   echo 'Raw bytes:   ' . json_encode($value) . PHP_EOL;
 
-  $drawn = Prompty::text('Dish name', discovered: $value);
+  $r = Prompty::text('Dish name', discovered: $value);
 
-  echo 'Returned:    ' . json_encode($drawn) . PHP_EOL;
+  echo 'Returned:    ' . json_encode($r) . PHP_EOL;
 }
 
 demo('A newline, as a multi-line command would give', "pear tart\nserves four");
