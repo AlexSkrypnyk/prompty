@@ -469,7 +469,7 @@ final class EmbedScriptTest extends FunctionalTestCase {
     $content = str_replace("if (!getenv('SHOULD_PROCEED'))", "echo 'VERSION:' . Prompty::version() . PHP_EOL;\nif (!getenv('SHOULD_PROCEED'))", $content);
     file_put_contents($target, $content);
 
-    $keystrokes = $this->keys('test', self::KEYS['ENTER'], self::KEYS['ENTER'], self::KEYS['ENTER'], self::KEYS['ENTER']);
+    $keystrokes = $this->keys('plum compote', self::KEYS['ENTER'], self::KEYS['ENTER'], self::KEYS['ENTER'], self::KEYS['ENTER']);
 
     $r = $this->runWithKeystrokes('php ' . escapeshellarg($target), $keystrokes);
     $this->assertSame(0, $r['exit_code'], 'Script failed: ' . $r['stderr']);
