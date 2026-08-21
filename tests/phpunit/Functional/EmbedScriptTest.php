@@ -471,9 +471,9 @@ final class EmbedScriptTest extends FunctionalTestCase {
 
     $keystrokes = $this->keys('plum compote', self::KEYS['ENTER'], self::KEYS['ENTER'], self::KEYS['ENTER'], self::KEYS['ENTER']);
 
-    $r = $this->runWithKeystrokes('php ' . escapeshellarg($target), $keystrokes);
-    $this->assertSame(0, $r['exit_code'], 'Script failed: ' . $r['stderr']);
-    $this->assertStringContainsString('VERSION:1.2.3', $r['stdout']);
+    $output = $this->runScript($target, $keystrokes);
+
+    $this->assertStringContainsString('VERSION:1.2.3', $output);
   }
 
 }
