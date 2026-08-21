@@ -734,44 +734,6 @@ class Prompty {
   }
 
   /**
-   * Rejects configuration keys outside the set the default declares.
-   *
-   * @param string $parameter
-   *   The configure() parameter that supplied the values.
-   * @param array<string, string> $values
-   *   The supplied overrides.
-   * @param array<string, string> $declared
-   *   The defaults, whose keys are the valid set.
-   *
-   * @throws \InvalidArgumentException
-   *   When a key is not part of the declared set.
-   */
-  protected function assertConfigKeys(string $parameter, array $values, array $declared): void {
-    foreach (array_keys($values) as $key) {
-      if (!array_key_exists($key, $declared)) {
-        throw new \InvalidArgumentException(sprintf('Configuration key "%s" for "%s" is not valid. Available keys: %s.', $key, $parameter, implode(', ', array_keys($declared))));
-      }
-    }
-  }
-
-  /**
-   * Rejects a configuration list that holds nothing.
-   *
-   * @param string $parameter
-   *   The configure() parameter that supplied the values.
-   * @param list<string> $values
-   *   The supplied values.
-   *
-   * @throws \InvalidArgumentException
-   *   When the list is empty.
-   */
-  protected function assertConfigList(string $parameter, array $values): void {
-    if ($values === []) {
-      throw new \InvalidArgumentException(sprintf('No values declared for "%s". Provide at least one value.', $parameter));
-    }
-  }
-
-  /**
    * Renders a single-select widget, returning the chosen option key.
    *
    * @param string $label
@@ -1639,6 +1601,44 @@ class Prompty {
    */
   protected function optionKeys(array $options): array {
     return array_map(strval(...), array_keys($options));
+  }
+
+  /**
+   * Rejects configuration keys outside the set the default declares.
+   *
+   * @param string $parameter
+   *   The configure() parameter that supplied the values.
+   * @param array<string, string> $values
+   *   The supplied overrides.
+   * @param array<string, string> $declared
+   *   The defaults, whose keys are the valid set.
+   *
+   * @throws \InvalidArgumentException
+   *   When a key is not part of the declared set.
+   */
+  protected function assertConfigKeys(string $parameter, array $values, array $declared): void {
+    foreach (array_keys($values) as $key) {
+      if (!array_key_exists($key, $declared)) {
+        throw new \InvalidArgumentException(sprintf('Configuration key "%s" for "%s" is not valid. Available keys: %s.', $key, $parameter, implode(', ', array_keys($declared))));
+      }
+    }
+  }
+
+  /**
+   * Rejects a configuration list that holds nothing.
+   *
+   * @param string $parameter
+   *   The configure() parameter that supplied the values.
+   * @param list<string> $values
+   *   The supplied values.
+   *
+   * @throws \InvalidArgumentException
+   *   When the list is empty.
+   */
+  protected function assertConfigList(string $parameter, array $values): void {
+    if ($values === []) {
+      throw new \InvalidArgumentException(sprintf('No values declared for "%s". Provide at least one value.', $parameter));
+    }
   }
 
   /**
