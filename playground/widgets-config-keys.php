@@ -38,7 +38,7 @@ function attempt(string $title, callable $call): void {
     echo 'Accepted.' . PHP_EOL;
   }
   catch (\InvalidArgumentException $exception) {
-    echo 'Turned down: ' . $exception->getMessage() . PHP_EOL;
+    echo 'Rejected: ' . $exception->getMessage() . PHP_EOL;
   }
 }
 

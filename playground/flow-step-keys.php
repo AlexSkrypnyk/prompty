@@ -37,7 +37,7 @@ try {
   echo 'Accepted.' . PHP_EOL;
 }
 catch (\InvalidArgumentException $exception) {
-  echo 'Turned down: ' . $exception->getMessage() . PHP_EOL;
+  echo 'Rejected: ' . $exception->getMessage() . PHP_EOL;
 }
 
 echo PHP_EOL . '--- The same key inside children ---' . PHP_EOL;
@@ -51,7 +51,7 @@ try {
   echo 'Accepted.' . PHP_EOL;
 }
 catch (\InvalidArgumentException $exception) {
-  echo 'Turned down: ' . $exception->getMessage() . PHP_EOL;
+  echo 'Rejected: ' . $exception->getMessage() . PHP_EOL;
 }
 
 echo PHP_EOL . '--- Keys that are fine ---' . PHP_EOL;
