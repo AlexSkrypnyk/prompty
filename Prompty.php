@@ -598,7 +598,7 @@ class Prompty {
     ?array $ctx = NULL,
   ): \Closure|array|string|null {
     if (static::$inFlow && $ctx === NULL) {
-      $call = fn(array $ctx): array|\Closure|string|null => static::text(
+      $call = fn(array $ctx): \Closure|array|string|null => static::text(
         $label,
         default: $default,
         placeholder: $placeholder,
@@ -777,7 +777,7 @@ class Prompty {
     ?array $ctx = NULL,
   ): \Closure|array|string|null {
     if (static::$inFlow && $ctx === NULL) {
-      $call = fn(array $ctx): array|\Closure|string|null => static::select(
+      $call = fn(array $ctx): \Closure|array|string|null => static::select(
         $label,
         options: $options,
         default: $default,
@@ -969,7 +969,7 @@ class Prompty {
     ?array $ctx = NULL,
   ): \Closure|array|null {
     if (static::$inFlow && $ctx === NULL) {
-      $call = fn(array $ctx): array|\Closure|null => static::multiselect(
+      $call = fn(array $ctx): \Closure|array|null => static::multiselect(
         $label,
         options: $options,
         default: $default,
@@ -1173,7 +1173,7 @@ class Prompty {
     ?array $ctx = NULL,
   ): \Closure|array|bool|null {
     if (static::$inFlow && $ctx === NULL) {
-      $call = fn(array $ctx): array|bool|\Closure|null => static::confirm(
+      $call = fn(array $ctx): \Closure|array|bool|null => static::confirm(
         $label,
         default: $default,
         description: $description,
