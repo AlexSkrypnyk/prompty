@@ -120,6 +120,44 @@ final class PromptyConfigureKeysTest extends PromptyTestCase {
     ];
   }
 
+  #[DataProvider('dataProviderRejectsBlankValue')]
+  public function testRejectsBlankValue(\Closure $configure, string $parameter): void {
+    $this->expectException(\InvalidArgumentException::class);
+    $this->expectExceptionMessage(sprintf('Blank value declared for "%s". Every value must hold a non-space character.', $parameter));
+
+    $configure();
+  }
+
+  public static function dataProviderRejectsBlankValue(): \Iterator {
+    yield 'empty truthy value' => [
+      static function (): void {
+        Prompty::configure(truthy: ['yes', '']);
+      },
+      'truthy',
+    ];
+
+    yield 'space-only truthy value' => [
+      static function (): void {
+        Prompty::configure(truthy: ['  ']);
+      },
+      'truthy',
+    ];
+
+    yield 'empty falsy value' => [
+      static function (): void {
+        Prompty::configure(falsy: ['no', '']);
+      },
+      'falsy',
+    ];
+
+    yield 'space-only falsy value' => [
+      static function (): void {
+        Prompty::configure(falsy: ["\t"]);
+      },
+      'falsy',
+    ];
+  }
+
   public function testAcceptsDeclaredKeys(): void {
     Prompty::configure(symbols_ascii: ['bar' => '!'], spacing: ['indent' => '    '], labels: ['yes' => 'Aye']);
 
@@ -145,6 +183,37 @@ final class PromptyConfigureKeysTest extends PromptyTestCase {
     }
 
     $this->assertSame($before['labels'], Prompty::config()['labels']);
+  }
+
+  public function testRejectionLeavesEarlierArgumentsAlone(): void {
+    $before = Prompty::config();
+
+    try {
+      Prompty::configure(colors: ['cyan' => "\033[35m"], labels: ['yes' => 'Aye'], truthy: []);
+    }
+    catch (\InvalidArgumentException) {
+      // The rejected argument is the last one, so the two valid arguments
+      // ahead of it prove the check runs before anything is written.
+    }
+
+    $after = Prompty::config();
+
+    $this->assertSame($before['labels'], $after['labels']);
+    $this->assertSame($before['colors'], $after['colors']);
+    $this->assertSame($before['truthy'], $after['truthy']);
+  }
+
+  public function testAcceptedArgumentsApplyTogether(): void {
+    Prompty::configure(colors: ['cyan' => "\033[35m"], labels: ['yes' => 'Aye'], truthy: ['aye']);
+
+    $config = Prompty::config();
+
+    $this->assertIsArray($config['labels']);
+    $this->assertIsArray($config['colors']);
+
+    $this->assertSame('Aye', $config['labels']['yes']);
+    $this->assertSame("\033[35m", $config['colors']['cyan']);
+    $this->assertSame(['aye'], $config['truthy']);
   }
 
 }

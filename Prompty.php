@@ -381,44 +381,78 @@ class Prompty {
     ?array $falsy = NULL,
   ): void {
     $p = static::instance();
+
+    // Every argument is checked before any is applied, so a rejected value
+    // leaves the configuration as it was rather than partly overwritten.
     if ($symbols_unicode !== NULL) {
       $p->assertConfigKeys('symbols_unicode', $symbols_unicode, $p->cfgSymbolsUnicode);
-      $p->cfgSymbolsUnicode = array_replace($p->cfgSymbolsUnicode, $symbols_unicode);
     }
+
     if ($symbols_ascii !== NULL) {
       $p->assertConfigKeys('symbols_ascii', $symbols_ascii, $p->cfgSymbolsAscii);
-      $p->cfgSymbolsAscii = array_replace($p->cfgSymbolsAscii, $symbols_ascii);
     }
+
     if ($colors !== NULL) {
       $p->assertConfigKeys('colors', $colors, $p->cfgColorsDefault);
+    }
+
+    if ($spacing !== NULL) {
+      $p->assertConfigKeys('spacing', $spacing, $p->cfgSpacing);
+    }
+
+    if ($labels !== NULL) {
+      $p->assertConfigKeys('labels', $labels, $p->cfgLabels);
+    }
+
+    if ($truthy !== NULL) {
+      $p->assertConfigList('truthy', $truthy);
+    }
+
+    if ($falsy !== NULL) {
+      $p->assertConfigList('falsy', $falsy);
+    }
+
+    if ($symbols_unicode !== NULL) {
+      $p->cfgSymbolsUnicode = array_replace($p->cfgSymbolsUnicode, $symbols_unicode);
+    }
+
+    if ($symbols_ascii !== NULL) {
+      $p->cfgSymbolsAscii = array_replace($p->cfgSymbolsAscii, $symbols_ascii);
+    }
+
+    if ($colors !== NULL) {
       $p->cfgColorsDefault = array_replace($p->cfgColorsDefault, $colors);
       $p->cfgColors = array_replace($p->cfgColors, $colors);
     }
+
     if ($spacing !== NULL) {
-      $p->assertConfigKeys('spacing', $spacing, $p->cfgSpacing);
       $p->cfgSpacing = array_replace($p->cfgSpacing, $spacing);
     }
+
     if ($labels !== NULL) {
-      $p->assertConfigKeys('labels', $labels, $p->cfgLabels);
       $p->cfgLabels = array_replace($p->cfgLabels, $labels);
     }
+
     if ($unicode !== NULL) {
       $p->cfgUnicode = $unicode;
     }
+
     if ($ansi !== NULL) {
       $p->cfgAnsi = $ansi;
     }
+
     if ($env_prefix !== NULL) {
       $p->cfgEnvPrefix = $env_prefix;
     }
+
     if ($truthy !== NULL) {
-      $p->assertConfigList('truthy', $truthy);
       $p->cfgTruthy = $truthy;
     }
+
     if ($falsy !== NULL) {
-      $p->assertConfigList('falsy', $falsy);
       $p->cfgFalsy = $falsy;
     }
+
     $p->resolveDisplay();
   }
 
@@ -1622,7 +1656,7 @@ class Prompty {
   }
 
   /**
-   * Rejects a configuration list that holds nothing.
+   * Rejects a configuration list that holds nothing usable.
    *
    * @param string $parameter
    *   The configure() parameter that supplied the values.
@@ -1630,11 +1664,19 @@ class Prompty {
    *   The supplied values.
    *
    * @throws \InvalidArgumentException
-   *   When the list is empty.
+   *   When the list is empty or holds a blank value.
    */
   protected function assertConfigList(string $parameter, array $values): void {
     if ($values === []) {
       throw new \InvalidArgumentException(sprintf('No values declared for "%s". Provide at least one value.', $parameter));
+    }
+
+    foreach ($values as $value) {
+      // A blank entry is matched after trimming, so it would answer for an
+      // empty discovered value that the widget rejects on its own.
+      if (trim($value) === '') {
+        throw new \InvalidArgumentException(sprintf('Blank value declared for "%s". Every value must hold a non-space character.', $parameter));
+      }
     }
   }
 
