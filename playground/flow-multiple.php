@@ -57,6 +57,6 @@ if ($options === NULL) {
   exit(0);
 }
 
-$extras = is_array($options['extras']) ? $options['extras'] : [];
+$extras = is_array($options['extras']) ? array_filter($options['extras'], is_string(...)) : [];
 echo "\nExtras: " . ($extras === [] ? 'none' : implode(', ', $extras)) . "\n";
 echo 'Send: ' . ($options['send'] ? 'yes' : 'no') . "\n";
