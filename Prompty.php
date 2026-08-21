@@ -1397,13 +1397,6 @@ class Prompty {
   }
 
   /**
-   * Restores TTY settings to the previously saved state.
-   */
-  protected function restoreTty(string $prev): void {
-    shell_exec('stty ' . $prev . ' 2>/dev/null');
-  }
-
-  /**
    * Reads a single keypress from the input stream and returns its name.
    *
    * A stream that is exhausted or cannot be read yields 'eof', which ends the
@@ -1459,6 +1452,13 @@ class Prompty {
    */
   protected function hideCursor(): void {
     echo "\033[?25l";
+  }
+
+  /**
+   * Restores TTY settings to the previously saved state.
+   */
+  protected function restoreTty(string $prev): void {
+    shell_exec('stty ' . $prev . ' 2>/dev/null');
   }
 
   /**
