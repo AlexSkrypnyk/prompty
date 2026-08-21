@@ -33,7 +33,7 @@ final class PromptyConfirmInteractiveTest extends PromptyTestCase {
     return $this->promptyRun(fn(): mixed => Prompty::confirm('Install?',
       default: $default,
       description: 'Install dependencies.',
-      ctx: $this->defaultCtx(array_merge(['truthy' => ['1', 'true', 'yes'], 'falsy' => ['0', 'false', 'no']], $ctx_overrides)),
+      ctx: $this->ctx($ctx_overrides),
     ), $keystrokes);
   }
 

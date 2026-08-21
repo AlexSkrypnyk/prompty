@@ -36,6 +36,19 @@ abstract class PromptyTestCase extends TestCase {
   }
 
   /**
+   * Build a context array carrying the confirm truthy and falsy lists.
+   *
+   * @param array<string, mixed> $overrides
+   *   Context overrides.
+   *
+   * @return array<string, mixed>
+   *   Context array.
+   */
+  protected function ctx(array $overrides = []): array {
+    return $this->defaultCtx(array_merge(['truthy' => ['1', 'true', 'yes'], 'falsy' => ['0', 'false', 'no']], $overrides));
+  }
+
+  /**
    * Create a Prompty instance and set it as the singleton.
    */
   protected function createAndSetInstance(array $config = [], bool $in_flow = FALSE): Prompty {

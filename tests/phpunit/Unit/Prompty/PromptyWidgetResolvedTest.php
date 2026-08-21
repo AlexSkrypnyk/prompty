@@ -25,19 +25,6 @@ final class PromptyWidgetResolvedTest extends PromptyTestCase {
     $this->createAndSetInstance();
   }
 
-  /**
-   * Build a default context array for widget execution.
-   *
-   * @param array<string, mixed> $overrides
-   *   Context overrides.
-   *
-   * @return array<string, mixed>
-   *   Context array.
-   */
-  protected function ctx(array $overrides = []): array {
-    return $this->defaultCtx(array_merge(['truthy' => ['1', 'true', 'yes'], 'falsy' => ['0', 'false', 'no']], $overrides));
-  }
-
   #[DataProvider('dataProviderTextResolved')]
   public function testTextResolved(string $discovered, string $expected): void {
     $this->captureOutput(function () use ($discovered, &$result): void {
