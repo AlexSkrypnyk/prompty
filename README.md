@@ -630,8 +630,8 @@ Configuration key "bogus" for "labels" is not valid. Available keys: yes, no, ca
 Every argument is validated before any is applied, so a rejected value leaves the whole configuration as it was:
 
 ```php
-// Throws, and neither the colors nor the labels are changed.
-Prompty::configure(colors: ['cyan' => "\033[35m"], labels: ['yes' => 'Aye'], truthy: []);
+// Throws, and neither the labels nor the prefix are changed.
+Prompty::configure(labels: ['yes' => 'Yep'], env_prefix: 'KITCHEN_', truthy: []);
 ```
 
 An empty `env_prefix` is accepted, and makes discovery read the bare uppercased step key. A step named `path`, `home` or `user` then reads `PATH`, `HOME` or `USER` from the ambient environment, so keep a prefix unless you mean exactly that.
