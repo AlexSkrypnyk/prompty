@@ -73,7 +73,7 @@ if ($results === NULL) {
   exit(0);
 }
 
-echo PHP_EOL . 'Collected:' . PHP_EOL;
+echo PHP_EOL . 'Collected answers:' . PHP_EOL;
 
 foreach ($results as $key => $value) {
   echo '  ' . $key . ': ' . (is_string($value) ? $value : json_encode($value)) . PHP_EOL;
