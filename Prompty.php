@@ -47,14 +47,14 @@ class Prompty {
   protected static ?self $instance = NULL;
 
   /**
-   * Stored TTY settings for standalone widget teardown.
-   */
-  protected ?string $prevTty = NULL;
-
-  /**
    * Whether a flow is currently being defined/executed.
    */
   protected static bool $inFlow = FALSE;
+
+  /**
+   * Stored TTY settings for standalone widget teardown.
+   */
+  protected ?string $prevTty = NULL;
 
   /**
    * Collected answers.
