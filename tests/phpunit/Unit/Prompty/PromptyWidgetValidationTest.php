@@ -430,18 +430,20 @@ final class PromptyWidgetValidationTest extends PromptyTestCase {
     $this->assertStringContainsString('Tables', $r['output']);
   }
 
-  #[DataProvider('dataProviderKeysPhpDoesNotCastSurviveUnchanged')]
-  public function testKeysPhpDoesNotCastSurviveUnchanged(string $keystrokes, array $options, string $expected): void {
+  #[DataProvider('dataProviderNumericLikeKeysReturnAsDeclaredStrings')]
+  public function testNumericLikeKeysReturnAsDeclaredStrings(string $keystrokes, array $options, string $expected): void {
     /** @var array<int|string, string> $options */
     $r = $this->runSelectWidget($keystrokes, '', $options);
 
     $this->assertSame($expected, $r['result']);
   }
 
-  public static function dataProviderKeysPhpDoesNotCastSurviveUnchanged(): \Iterator {
-    yield 'leading zero' => [self::KEY_ENTER, ['007' => 'Table 007', '8' => 'Table 8'], '007'];
-    yield 'decimal point' => [self::KEY_ENTER, ['1.5' => 'Half portion', '2' => 'Double portion'], '1.5'];
-    yield 'negative' => [self::KEY_ENTER, ['-1' => 'Void', '1' => 'Table 1'], '-1'];
+  public static function dataProviderNumericLikeKeysReturnAsDeclaredStrings(): \Iterator {
+    // PHP stores a canonical decimal integer as an int key and leaves every
+    // other numeric-looking key a string, so both paths reach the widget.
+    yield 'leading zero, kept a string key' => [self::KEY_ENTER, ['007' => 'Table 007', '8' => 'Table 8'], '007'];
+    yield 'decimal point, kept a string key' => [self::KEY_ENTER, ['1.5' => 'Half portion', '2' => 'Double portion'], '1.5'];
+    yield 'negative, stored as an int key' => [self::KEY_ENTER, ['-1' => 'Void', '1' => 'Table 1'], '-1'];
   }
 
   public function testMixedNumericAndTextualKeys(): void {
