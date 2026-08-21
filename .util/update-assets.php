@@ -1085,7 +1085,6 @@ EXPECT;
  */
 function createWidgetSelectExpectScript(string $playground_script, string $expect_script): void {
   $delay = PROMPT_DELAY;
-  $step_delay = RECORD_STEP_SLEEP;
   $content = <<<EXPECT
 #!/usr/bin/env expect
 
