@@ -10,7 +10,10 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Group;
 
 /**
- * Tests for Prompty constructor, configuration, and singleton behavior.
+ * Tests for Prompty configuration and singleton behavior.
+ *
+ * Covers the defaults, what configure() accepts, what it rejects, and how a
+ * rejection leaves the configuration alone.
  */
 #[CoversClass(Prompty::class)]
 #[Group('unit')]
@@ -60,61 +63,70 @@ final class PromptyConfigTest extends PromptyTestCase {
     ];
   }
 
-  #[DataProvider('dataProviderUnicodeDetection')]
-  public function testUnicodeDetection(string $env_var, string $env_value, bool $expected): void {
-    $saved = [];
-    foreach (['LANG', 'LC_ALL', 'LC_CTYPE'] as $var) {
-      $saved[$var] = getenv($var);
-      putenv($var);
-    }
+  /**
+   * Tests unicode and ansi detection from the environment.
+   *
+   * @param array<string, string|null> $env
+   *   Environment variables to apply; a NULL value unsets the variable.
+   * @param string $option
+   *   The config key left as NULL so the constructor detects it.
+   * @param string $property
+   *   The property holding the detected value.
+   * @param bool $expected
+   *   The detected value.
+   */
+  #[DataProvider('dataProviderEnvironmentDetection')]
+  public function testEnvironmentDetection(array $env, string $option, string $property, bool $expected): void {
+    $this->withEnv($env, function () use ($option, $property, $expected): void {
+      $p = $this->createInstance([$option => NULL]);
 
-    putenv($env_var . '=' . $env_value);
-
-    $p = $this->createInstance(['unicode' => NULL]);
-
-    $this->assertSame($expected, $this->getProperty($p, 'cfgUnicode'));
-
-    foreach ($saved as $var => $value) {
-      $value !== FALSE ? putenv($var . '=' . $value) : putenv($var);
-    }
+      $this->assertSame($expected, $this->getProperty($p, $property));
+    });
   }
 
-  public static function dataProviderUnicodeDetection(): \Iterator {
-    yield 'LANG with UTF-8' => ['LANG', 'en_US.UTF-8', TRUE];
-    yield 'LANG with utf8' => ['LANG', 'en_AU.utf8', TRUE];
-    yield 'LANG without UTF' => ['LANG', 'C', FALSE];
-    yield 'LC_ALL with UTF-8' => ['LC_ALL', 'en_US.UTF-8', TRUE];
-    yield 'LC_CTYPE with UTF-8' => ['LC_CTYPE', 'en_US.UTF-8', TRUE];
+  public static function dataProviderEnvironmentDetection(): \Iterator {
+    yield 'LANG with UTF-8' => [['LANG' => 'en_US.UTF-8', 'LC_ALL' => NULL, 'LC_CTYPE' => NULL], 'unicode', 'cfgUnicode', TRUE];
+    yield 'LANG with utf8' => [['LANG' => 'en_AU.utf8', 'LC_ALL' => NULL, 'LC_CTYPE' => NULL], 'unicode', 'cfgUnicode', TRUE];
+    yield 'LANG without UTF' => [['LANG' => 'C', 'LC_ALL' => NULL, 'LC_CTYPE' => NULL], 'unicode', 'cfgUnicode', FALSE];
+    yield 'LC_ALL with UTF-8' => [['LANG' => NULL, 'LC_ALL' => 'en_US.UTF-8', 'LC_CTYPE' => NULL], 'unicode', 'cfgUnicode', TRUE];
+    yield 'LC_CTYPE with UTF-8' => [['LANG' => NULL, 'LC_ALL' => NULL, 'LC_CTYPE' => 'en_US.UTF-8'], 'unicode', 'cfgUnicode', TRUE];
+    yield 'NO_COLOR set' => [['NO_COLOR' => '1', 'TERM' => NULL], 'ansi', 'cfgAnsi', FALSE];
+    yield 'NO_COLOR and TERM unset' => [['NO_COLOR' => NULL, 'TERM' => NULL], 'ansi', 'cfgAnsi', TRUE];
+    yield 'TERM dumb' => [['NO_COLOR' => NULL, 'TERM' => 'dumb'], 'ansi', 'cfgAnsi', FALSE];
+    yield 'TERM xterm' => [['NO_COLOR' => NULL, 'TERM' => 'xterm-256color'], 'ansi', 'cfgAnsi', TRUE];
   }
 
   #[DataProvider('dataProviderUnicodeForced')]
-  public function testUnicodeForced(bool $unicode, string $expected_bar): void {
+  public function testUnicodeForced(bool $unicode, string $bar, string $completed, string $active): void {
     $p = $this->createInstance(['unicode' => $unicode]);
 
     $this->assertSame($unicode, $this->getProperty($p, 'cfgUnicode'));
     /** @var array<string, string> $symbols */
     $symbols = $this->getProperty($p, 'cfgSymbols');
-    $this->assertSame($expected_bar, $symbols['bar']);
+    $this->assertSame($bar, $symbols['bar']);
+    $this->assertSame($completed, $symbols['completed']);
+    $this->assertSame($active, $symbols['active']);
   }
 
   public static function dataProviderUnicodeForced(): \Iterator {
-    yield 'forced unicode' => [TRUE, '│'];
-    yield 'forced ascii' => [FALSE, '|'];
+    yield 'forced unicode' => [TRUE, '│', '◆', '◇'];
+    yield 'forced ascii' => [FALSE, '|', '+', 'o'];
   }
 
-  #[DataProvider('dataProviderSymbolResolution')]
-  public function testSymbolResolution(bool $unicode, string $expected_completed, string $expected_active): void {
-    $p = $this->createInstance(['unicode' => $unicode]);
+  #[DataProvider('dataProviderAnsiForced')]
+  public function testAnsiForced(bool $ansi, string $cyan, string $reset): void {
+    $p = $this->createInstance(['ansi' => $ansi]);
 
-    /** @var array<string, string> $symbols */
-    $symbols = $this->getProperty($p, 'cfgSymbols');
-    $this->assertSame($expected_completed, $symbols['completed']);
-    $this->assertSame($expected_active, $symbols['active']);
+    $this->assertSame($ansi, $this->getProperty($p, 'cfgAnsi'));
+    /** @var array<string, string> $colors */
+    $colors = $this->getProperty($p, 'cfgColors');
+    $this->assertSame($cyan, $colors['cyan']);
+    $this->assertSame($reset, $colors['reset']);
   }
 
-  public static function dataProviderSymbolResolution(): \Iterator {
-    yield 'unicode symbols' => [TRUE, '◆', '◇'];
-    yield 'ascii symbols' => [FALSE, '+', 'o'];
+  public static function dataProviderAnsiForced(): \Iterator {
+    yield 'forced ansi on' => [TRUE, "\033[36m", "\033[0m"];
+    yield 'forced ansi off' => [FALSE, '', ''];
   }
 
   #[DataProvider('dataProviderConfigure')]
@@ -138,118 +150,45 @@ final class PromptyConfigTest extends PromptyTestCase {
     yield 'unicode false' => [['unicode' => FALSE], 'cfgUnicode', FALSE];
   }
 
-  public function testConfigurePartialArrayMerge(): void {
+  #[DataProvider('dataProviderConfigurePartialArrayMerge')]
+  public function testConfigurePartialArrayMerge(array $args, string $property, string $key, string $value, string $kept_key, string $kept_value): void {
     $p = $this->createAndSetInstance();
 
-    /** @var array<string, string> $original_labels */
-    $original_labels = $this->getProperty($p, 'cfgLabels');
-    $original_no = $original_labels['no'];
+    Prompty::configure(...$args);
 
-    Prompty::configure(labels: ['yes' => 'Yep']);
-
-    /** @var array<string, string> $labels */
-    $labels = $this->getProperty($p, 'cfgLabels');
-    $this->assertSame('Yep', $labels['yes']);
-    $this->assertSame($original_no, $labels['no']);
+    /** @var array<string, string> $merged */
+    $merged = $this->getProperty($p, $property);
+    $this->assertSame($value, $merged[$key]);
+    $this->assertSame($kept_value, $merged[$kept_key]);
   }
 
-  public function testConfigureColors(): void {
-    $p = $this->createAndSetInstance();
+  public static function dataProviderConfigurePartialArrayMerge(): \Iterator {
+    yield 'labels' => [['labels' => ['yes' => 'Yep']], 'cfgLabels', 'yes', 'Yep', 'no', 'No'];
 
-    Prompty::configure(colors: ['cyan' => "\033[96m"]);
+    yield 'colors' => [['colors' => ['cyan' => "\033[96m"]], 'cfgColors', 'cyan', "\033[96m", 'reset', "\033[0m"];
 
-    /** @var array<string, string> $colors */
-    $colors = $this->getProperty($p, 'cfgColors');
-    $this->assertSame("\033[96m", $colors['cyan']);
-    $this->assertSame("\033[0m", $colors['reset']);
+    yield 'spacing' => [['spacing' => ['indent' => '    ']], 'cfgSpacing', 'indent', '    ', 'hint_indent', '    '];
   }
 
-  public function testConfigureSpacing(): void {
-    $p = $this->createAndSetInstance();
+  #[DataProvider('dataProviderConfigureSymbols')]
+  public function testConfigureSymbols(bool $unicode, array $args, string $property, string $bar): void {
+    $p = $this->createAndSetInstance(['unicode' => $unicode]);
 
-    Prompty::configure(spacing: ['indent' => '    ']);
+    Prompty::configure(...$args);
 
-    /** @var array<string, string> $spacing */
-    $spacing = $this->getProperty($p, 'cfgSpacing');
-    $this->assertSame('    ', $spacing['indent']);
-    $this->assertSame('    ', $spacing['hint_indent']);
-  }
-
-  public function testConfigureSymbolsUnicode(): void {
-    $p = $this->createAndSetInstance(['unicode' => TRUE]);
-
-    Prompty::configure(symbols_unicode: ['bar' => '┃']);
-
-    /** @var array<string, string> $symbols_unicode */
-    $symbols_unicode = $this->getProperty($p, 'cfgSymbolsUnicode');
-    $this->assertSame('┃', $symbols_unicode['bar']);
+    /** @var array<string, string> $stored */
+    $stored = $this->getProperty($p, $property);
+    $this->assertSame($bar, $stored['bar']);
 
     /** @var array<string, string> $symbols */
     $symbols = $this->getProperty($p, 'cfgSymbols');
-    $this->assertSame('┃', $symbols['bar']);
+    $this->assertSame($bar, $symbols['bar']);
   }
 
-  public function testConfigureSymbolsAscii(): void {
-    $p = $this->createAndSetInstance(['unicode' => FALSE]);
+  public static function dataProviderConfigureSymbols(): \Iterator {
+    yield 'unicode set' => [TRUE, ['symbols_unicode' => ['bar' => '┃']], 'cfgSymbolsUnicode', '┃'];
 
-    Prompty::configure(symbols_ascii: ['bar' => '!']);
-
-    /** @var array<string, string> $symbols_ascii */
-    $symbols_ascii = $this->getProperty($p, 'cfgSymbolsAscii');
-    $this->assertSame('!', $symbols_ascii['bar']);
-
-    /** @var array<string, string> $symbols */
-    $symbols = $this->getProperty($p, 'cfgSymbols');
-    $this->assertSame('!', $symbols['bar']);
-  }
-
-  #[DataProvider('dataProviderAnsiDetection')]
-  public function testAnsiDetection(string $env_var, string $env_value, bool $expected): void {
-    $saved = [];
-    foreach (['NO_COLOR', 'TERM'] as $var) {
-      $saved[$var] = getenv($var);
-      putenv($var);
-    }
-
-    if ($env_value !== '') {
-      putenv($env_var . '=' . $env_value);
-    }
-
-    $p = $this->createInstance(['ansi' => NULL]);
-
-    $this->assertSame($expected, $this->getProperty($p, 'cfgAnsi'));
-
-    foreach ($saved as $var => $value) {
-      $value !== FALSE ? putenv($var . '=' . $value) : putenv($var);
-    }
-  }
-
-  public static function dataProviderAnsiDetection(): \Iterator {
-    yield 'NO_COLOR set' => ['NO_COLOR', '1', FALSE];
-    yield 'NO_COLOR empty string' => ['NO_COLOR', '', TRUE];
-    yield 'TERM dumb' => ['TERM', 'dumb', FALSE];
-    yield 'TERM xterm' => ['TERM', 'xterm-256color', TRUE];
-  }
-
-  #[DataProvider('dataProviderAnsiForced')]
-  public function testAnsiForced(bool $ansi): void {
-    $p = $this->createInstance(['ansi' => $ansi]);
-
-    $this->assertSame($ansi, $this->getProperty($p, 'cfgAnsi'));
-    /** @var array<string, string> $colors */
-    $colors = $this->getProperty($p, 'cfgColors');
-    if ($ansi) {
-      $this->assertSame("\033[36m", $colors['cyan']);
-    }
-    else {
-      $this->assertSame('', $colors['cyan']);
-      $this->assertSame('', $colors['reset']);
-    }
-  }
-
-  public static function dataProviderAnsiForced(): \Iterator {
-    yield 'forced ansi on' => [TRUE];
-    yield 'forced ansi off' => [FALSE];
+    yield 'ascii set' => [FALSE, ['symbols_ascii' => ['bar' => '!']], 'cfgSymbolsAscii', '!'];
   }
 
   public function testConfigureAnsiToggle(): void {
@@ -320,6 +259,127 @@ final class PromptyConfigTest extends PromptyTestCase {
     $this->assertSame($original_prefix, $this->getProperty($p, 'cfgEnvPrefix'));
   }
 
+  /**
+   * Tests configure() applies every accepted argument.
+   *
+   * @param array $args
+   *   The configure() arguments.
+   * @param array<string, array<string, string>> $expected_partial
+   *   Expected entries inside map-valued configuration keys.
+   * @param array<string, list<string>> $expected_full
+   *   Expected whole values for list-valued configuration keys.
+   */
+  #[DataProvider('dataProviderConfigureAcceptsDeclaredKeys')]
+  public function testConfigureAcceptsDeclaredKeys(array $args, array $expected_partial, array $expected_full): void {
+    $this->createAndSetInstance();
+
+    Prompty::configure(...$args);
+
+    $config = Prompty::config();
+
+    foreach ($expected_partial as $config_key => $entries) {
+      $actual = $config[$config_key];
+      $this->assertIsArray($actual);
+
+      foreach ($entries as $entry_key => $value) {
+        $this->assertSame($value, $actual[$entry_key]);
+      }
+    }
+
+    foreach ($expected_full as $config_key => $values) {
+      $this->assertSame($values, $config[$config_key]);
+    }
+  }
+
+  public static function dataProviderConfigureAcceptsDeclaredKeys(): \Iterator {
+    yield 'map arguments' => [
+      ['symbols_ascii' => ['bar' => '!'], 'spacing' => ['indent' => '    '], 'labels' => ['yes' => 'Aye']],
+      ['labels' => ['yes' => 'Aye'], 'spacing' => ['indent' => '    '], 'symbols_ascii' => ['bar' => '!']],
+      [],
+    ];
+
+    yield 'map and list arguments together' => [
+      ['colors' => ['cyan' => "\033[35m"], 'labels' => ['yes' => 'Aye'], 'truthy' => ['aye']],
+      ['labels' => ['yes' => 'Aye'], 'colors' => ['cyan' => "\033[35m"]],
+      ['truthy' => ['aye']],
+    ];
+  }
+
+  #[DataProvider('dataProviderConfigureRejectsUnknownKey')]
+  public function testConfigureRejectsUnknownKey(array $args, string $key, string $parameter): void {
+    $this->createAndSetInstance();
+
+    $this->expectException(\InvalidArgumentException::class);
+    $this->expectExceptionMessage($this->rejectionMessage($key, $parameter));
+
+    Prompty::configure(...$args);
+  }
+
+  public static function dataProviderConfigureRejectsUnknownKey(): \Iterator {
+    yield 'unicode symbols' => [['symbols_unicode' => ['bogus' => 'X']], 'bogus', 'symbols_unicode'];
+    yield 'ascii symbols' => [['symbols_ascii' => ['bogus' => 'X']], 'bogus', 'symbols_ascii'];
+    yield 'colors' => [['colors' => ['bogus' => 'X']], 'bogus', 'colors'];
+    yield 'spacing' => [['spacing' => ['bogus' => 'X']], 'bogus', 'spacing'];
+    yield 'labels' => [['labels' => ['bogus' => 'X']], 'bogus', 'labels'];
+    yield 'misspelt key' => [['symbols_unicode' => ['bar_' => '|']], 'bar_', 'symbols_unicode'];
+  }
+
+  #[DataProvider('dataProviderConfigureRejectsInvalidList')]
+  public function testConfigureRejectsInvalidList(array $args, string $message): void {
+    $this->createAndSetInstance();
+
+    $this->expectException(\InvalidArgumentException::class);
+    $this->expectExceptionMessage($message);
+
+    Prompty::configure(...$args);
+  }
+
+  public static function dataProviderConfigureRejectsInvalidList(): \Iterator {
+    yield 'empty truthy list' => [['truthy' => []], 'No values declared for "truthy". Provide at least one value.'];
+    yield 'empty falsy list' => [['falsy' => []], 'No values declared for "falsy". Provide at least one value.'];
+    yield 'empty truthy value' => [['truthy' => ['yes', '']], 'Blank value declared for "truthy". Every value must hold a non-space character.'];
+    yield 'space-only truthy value' => [['truthy' => ['  ']], 'Blank value declared for "truthy". Every value must hold a non-space character.'];
+    yield 'empty falsy value' => [['falsy' => ['no', '']], 'Blank value declared for "falsy". Every value must hold a non-space character.'];
+    yield 'tab-only falsy value' => [['falsy' => ["\t"]], 'Blank value declared for "falsy". Every value must hold a non-space character.'];
+  }
+
+  /**
+   * Tests a rejected configure() call applies none of its arguments.
+   *
+   * @param array $args
+   *   The configure() arguments, at least one of them invalid.
+   * @param list<string> $checked_keys
+   *   The config() keys asserted unchanged.
+   */
+  #[DataProvider('dataProviderConfigureRejectionLeavesConfigAlone')]
+  public function testConfigureRejectionLeavesConfigAlone(array $args, array $checked_keys): void {
+    $this->createAndSetInstance();
+
+    $before = Prompty::config();
+
+    try {
+      Prompty::configure(...$args);
+    }
+    catch (\InvalidArgumentException) {
+      // The message is asserted elsewhere; this checks nothing was applied.
+    }
+
+    $after = Prompty::config();
+
+    foreach ($checked_keys as $checked_key) {
+      $this->assertSame($before[$checked_key], $after[$checked_key]);
+    }
+  }
+
+  public static function dataProviderConfigureRejectionLeavesConfigAlone(): \Iterator {
+    yield 'rejected key beside a valid key' => [['labels' => ['yes' => 'Aye', 'bogus' => 'X']], ['labels']];
+
+    yield 'rejected argument after valid arguments' => [
+      ['colors' => ['cyan' => "\033[35m"], 'labels' => ['yes' => 'Aye'], 'truthy' => []],
+      ['labels', 'colors', 'truthy'],
+    ];
+  }
+
   public function testVersionReturnsDevelopment(): void {
     $this->assertSame('development', Prompty::version());
   }
@@ -346,6 +406,51 @@ final class PromptyConfigTest extends PromptyTestCase {
     $this->assertArrayHasKey('symbols', $cfg);
     $this->assertArrayHasKey('colors', $cfg);
     $this->assertArrayHasKey('env_prefix', $cfg);
+  }
+
+  /**
+   * Runs a callback under a modified environment, restoring it afterwards.
+   *
+   * @param array<string, string|null> $env
+   *   Map of variable name to value; a NULL value unsets the variable.
+   * @param callable $callback
+   *   The callback to run while the environment is modified.
+   */
+  protected function withEnv(array $env, callable $callback): void {
+    $saved = [];
+
+    foreach ($env as $var => $value) {
+      $saved[$var] = getenv($var);
+      $value !== NULL ? putenv($var . '=' . $value) : putenv($var);
+    }
+
+    try {
+      $callback();
+    }
+    finally {
+      foreach ($saved as $var => $original) {
+        $original !== FALSE ? putenv($var . '=' . $original) : putenv($var);
+      }
+    }
+  }
+
+  /**
+   * Builds the message configure() raises for an unknown configuration key.
+   *
+   * @param string $key
+   *   The rejected key.
+   * @param string $parameter
+   *   The configure() parameter carrying the key, also the config() key that
+   *   holds the valid set.
+   *
+   * @return string
+   *   The expected exception message.
+   */
+  protected function rejectionMessage(string $key, string $parameter): string {
+    /** @var array<string, string> $declared */
+    $declared = Prompty::config()[$parameter];
+
+    return sprintf('Configuration key "%s" for "%s" is not valid. Available keys: %s.', $key, $parameter, implode(', ', array_keys($declared)));
   }
 
 }
