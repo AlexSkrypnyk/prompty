@@ -305,11 +305,12 @@ Intro, outro and cancelled lines stay order-themed and specific to their demo:
 | `starter.php` | `Compose an order` | `Order sent!` | `Order cancelled.` |
 | `flow.php` | `Compose an order` | `Order sent!` | `Order cancelled.` |
 | `flow-nested.php` | `Kitchen order` | `Order sent to the kitchen!` | `Kitchen order cancelled.` |
-| `flow-config.php` | `Order setup` | `All done!` | `Order setup cancelled.` |
-| `flow-multiple.php` step 1 | `Step 1: The dish` | `Dish noted.` | `Dish selection cancelled.` |
-| `flow-multiple.php` step 2 | `Step 2: Extras` | `Order sent!` | `Extras selection cancelled.` |
+| `config.php` | `Order setup` | `All done!` | `Order setup cancelled.` |
+| `flow-scope.php` flow 1 | `A flow with its own configuration` | `Dish noted.` | `Cancelled.` |
+| `flow-scope.php` flow 2 | `A flow that asks for nothing` | `Course noted.` | `Cancelled.` |
+| `flow-scope.php` flow 3 | `A flow after configure()` | `Order sent!` | `Cancelled.` |
 
-Env prefixes: `PROMPTY_` in `flow.php`, `KITCHEN_` in `flow-nested.php` and `widgets-config.php`, `ORDER_` in `flow-config.php`.
+Env prefixes: `PROMPTY_` in `flow.php`, `KITCHEN_` in `flow-nested.php`, `config.php` and `flow-scope.php`, `ORDER_` in the `config.php` merge demo.
 
 ## Recorded inputs
 

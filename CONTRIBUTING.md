@@ -70,38 +70,31 @@ composer test -- --filter testRenderIntro
 
 The [`playground/`](playground) directory holds runnable demos - the quickest way to see a change in a real terminal:
 
-| Script                        | Shows                                              |
-|-------------------------------|----------------------------------------------------|
-| `widgets.php`                 | Each widget type standalone, one after another.     |
-| `widget-text.php`             | Text widget variants.                               |
-| `widget-select.php`           | Select widget variants.                             |
-| `widget-multiselect.php`      | Multiselect widget variants.                        |
-| `widget-confirm.php`          | Confirm widget variants.                            |
-| `widget-placeholder.php`      | What an empty answer to a text widget means.        |
-| `widget-discovered.php`       | Where a discovered value comes from, and its forms. |
-| `widget-default.php`          | Defaults, and the option keys they are held to.     |
-| `widget-control-chars.php`    | What a control character in a value draws as.       |
-| `widgets-config.php`          | Standalone widgets with custom configuration.       |
-| `widgets-config-keys.php`     | What `configure()` accepts, and what it turns down. |
-| `flow.php`                    | A linear flow with descriptions and hints.          |
-| `flow-nested.php`             | A nested flow with conditionals, 3 levels deep.     |
-| `flow-config.php`             | A flow with `configure()` applied beforehand.       |
-| `flow-multiple.php`           | Several flows, and a standalone widget between them.|
-| `flow-config-scope.php`       | How long a flow's own configuration lasts.          |
-| `flow-step-keys.php`          | What a step key becomes, and which are turned down. |
-| `flow-embed.php`              | The flow the embedder is tested against.            |
+| Script                     | Shows                                                                  |
+|----------------------------|------------------------------------------------------------------------|
+| `widgets.php`              | Each widget type standalone, one after another.                        |
+| `widget-text.php`          | Text widget variants.                                                  |
+| `widget-select.php`        | Select widget variants.                                                |
+| `widget-multiselect.php`   | Multiselect widget variants.                                           |
+| `widget-confirm.php`       | Confirm widget variants.                                               |
+| `widget-values.php`        | Where an answer comes from, and what each source is held to.           |
+| `widget-control-chars.php` | What a control character in a value draws as.                          |
+| `config.php`               | What `configure()` accepts, how a flow adds to it, what it turns down. |
+| `flow.php`                 | A linear flow with descriptions and hints.                             |
+| `flow-nested.php`          | A nested flow with conditionals, 3 levels deep.                        |
+| `flow-scope.php`           | Several flows, and how long a flow's own configuration lasts.          |
+| `flow-step-keys.php`       | What a step key becomes, and which are turned down.                    |
+| `flow-embed.php`           | The flow the embedder is tested against.                               |
 
 ```bash
 php playground/flow-nested.php
 ```
 
-Most of them accept `--no-unicode` and `--no-ansi` to force a display mode:
+All of them except `flow-step-keys.php` accept `--no-unicode` and `--no-ansi` to force a display mode:
 
 ```bash
 php playground/flow.php --no-unicode --no-ansi
 ```
-
-`flow-config.php` and `flow-multiple.php` set their display mode in code instead, and `flow-config-scope.php` is about configuration lifetime rather than display, so the flags do nothing in those three.
 
 ### The embedded demo
 
