@@ -80,6 +80,13 @@ final class PromptyStepKeyTest extends PromptyTestCase {
     $this->assertSame([$key => 'plum compote'], $result);
   }
 
+  public static function dataProviderAcceptsKey(): \Iterator {
+    yield 'lowercase' => ['dish'];
+    yield 'underscored' => ['dish_name'];
+    yield 'mixed case' => ['dishName'];
+    yield 'trailing digit' => ['dish2'];
+  }
+
   public function testRejectsKeyThatWouldStartTheNameWithDigit(): void {
     // An empty prefix leaves the key to start the name on its own, and a name
     // cannot start with a digit.
@@ -103,13 +110,6 @@ final class PromptyStepKeyTest extends PromptyTestCase {
     });
 
     $this->assertSame(['2nd' => 'main'], $result);
-  }
-
-  public static function dataProviderAcceptsKey(): \Iterator {
-    yield 'lowercase' => ['dish'];
-    yield 'underscored' => ['dish_name'];
-    yield 'mixed case' => ['dishName'];
-    yield 'trailing digit' => ['dish2'];
   }
 
 }
