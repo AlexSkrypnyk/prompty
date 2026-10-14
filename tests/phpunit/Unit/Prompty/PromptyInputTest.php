@@ -12,11 +12,11 @@ use PHPUnit\Framework\Attributes\Group;
 /**
  * Tests for reading and sanitising input.
  *
- * readKey() turns input bytes into key names, including the escape sequences
- * a terminal sends for cursor keys. Control characters in values, labels and
- * messages are filtered to printable text before rendering, and an exhausted
- * input stream yields the 'eof' sentinel that cancels a widget instead of
- * blocking.
+ * The readKey() method turns input bytes into key names, including the escape
+ * sequences a terminal sends for cursor keys. Control characters in values,
+ * labels and messages are filtered to printable text before rendering, and an
+ * exhausted input stream yields the 'eof' sentinel that cancels a widget
+ * instead of blocking.
  */
 #[CoversClass(Prompty::class)]
 #[Group('unit')]
