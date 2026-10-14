@@ -286,6 +286,19 @@ final class PromptyFlowTest extends PromptyTestCase {
     $this->assertSame($expected . "\n", $output);
   }
 
+  public function testResultsReturnsLastFlowAnswers(): void {
+    $this->setEnvVars(['name' => 'test', 'send' => 'yes']);
+
+    $this->captureOutput(function (): void {
+      Prompty::flow(fn(): array => [
+        'name' => Prompty::text('Name'),
+        'send' => Prompty::confirm('Send?'),
+      ], unicode: FALSE);
+    });
+
+    $this->assertSame(['name' => 'test', 'send' => TRUE], Prompty::results());
+  }
+
   public function testFlowNumbering(): void {
     $this->setEnvVars(['name' => 'test', 'framework' => 'react']);
 
