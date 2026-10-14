@@ -750,9 +750,9 @@ class Prompty {
       }
 
       if ($key === 'backspace') {
-        if ($value !== '') {
-          $value = mb_substr($value, 0, -1);
-        }
+        // Text that is not valid UTF-8 fails the /u match, so it loses its
+        // last byte instead of its last character.
+        $value = preg_replace('/.\z/su', '', $value) ?? substr($value, 0, -1);
       }
       elseif ($key === 'space') {
         $value .= ' ';
@@ -760,7 +760,7 @@ class Prompty {
       // Reject control bytes (ord < 32); accept printable ASCII and bytes
       // 0x80-0xFF, so UTF-8 characters delivered one byte per readKey()
       // call accumulate in the buffer.
-      elseif (mb_strlen($key) === 1 && ord($key) >= 32) {
+      elseif (strlen($key) === 1 && ord($key) >= 32) {
         $value .= $key;
       }
 

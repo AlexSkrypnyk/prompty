@@ -89,6 +89,9 @@ final class PromptyWidgetInteractiveTest extends PromptyTestCase {
     yield 'multiple deletes' => ['abcdef' . self::KEY_BACKSPACE . self::KEY_BACKSPACE . self::KEY_BACKSPACE, 'abc'];
     yield 'backspace on empty' => [self::KEY_BACKSPACE . self::KEY_BACKSPACE . 'ok', 'ok'];
     yield 'delete all returns placeholder' => ['hi' . self::KEY_BACKSPACE . self::KEY_BACKSPACE, 'my-app'];
+    yield 'delete two-byte char' => ["pi\u{0105}" . self::KEY_BACKSPACE, 'pi'];
+    yield 'delete four-byte char' => ["pear\u{1F350}" . self::KEY_BACKSPACE, 'pear'];
+    yield 'delete byte of text that is not utf8' => ["ab\xFF" . self::KEY_BACKSPACE, 'ab'];
   }
 
   // Select widget.
