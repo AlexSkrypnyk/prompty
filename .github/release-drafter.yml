@@ -20,8 +20,9 @@ template: |
   | File | Description |
   |------|-------------|
   | `Prompty.php` | Full class with comments |
-  | `Prompty.min.php` | Minified — comments stripped, single line |
-  | `Prompty.compact.php` | Compacted — minified + shortened internals (~60% smaller) |
+  | `Prompty.min.php` | Minified - comments stripped, class body on 1 line |
+  | `Prompty.compact.php` | Compacted - minified + shortened internals (~60% smaller) |
+  | `PromptyTestTrait.php` | PHPUnit helper for testing scripts that use Prompty |
   | `starter.php` | Example script template |
   | `embed.php` | Embed/minify helper |
 
@@ -31,8 +32,12 @@ template: |
   directory, then:
 
   ```bash
-  # Import the public key (first time only).
-  curl -sL https://raw.githubusercontent.com/AlexSkrypnyk/prompty/main/PUBLIC_KEY.asc | gpg --import
+  # Fetch the public key and check its fingerprint before importing it
+  # (first time only).
+  curl -LO \
+    https://raw.githubusercontent.com/AlexSkrypnyk/prompty/main/PUBLIC_KEY.asc
+  gpg --show-keys --with-fingerprint PUBLIC_KEY.asc
+  gpg --import PUBLIC_KEY.asc
 
   # Verify the signature.
   gpg --verify SHA256SUMS.asc SHA256SUMS
@@ -40,3 +45,5 @@ template: |
   # Verify file checksums.
   sha256sum -c SHA256SUMS
   ```
+
+  The expected fingerprint, and what this check does and does not prove, are in [SECURITY.md](https://github.com/$OWNER/$REPOSITORY/blob/main/SECURITY.md#verifying-a-release).
