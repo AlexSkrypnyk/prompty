@@ -76,4 +76,40 @@ final class StarterScriptTest extends FunctionalTestCase {
     $this->assertStringNotContainsString('Order sent!', $output);
   }
 
+  /**
+   * Run starter.php with answers on stdin and assert what reaches the output.
+   *
+   * @param array<int, string> $inputs
+   *   Lines fed to the script. An empty list cancels at the first prompt.
+   * @param bool $should_proceed
+   *   Whether SHOULD_PROCEED is set to '1' or removed from the environment.
+   * @param array<int, string> $expected
+   *   Strings the ANSI-stripped output must contain.
+   * @param array<int, string> $unexpected
+   *   Strings the ANSI-stripped output must not contain.
+   */
+  #[DataProvider('dataProviderStarterKillSwitch')]
+  public function testStarterKillSwitch(array $inputs, bool $should_proceed, array $expected, array $unexpected): void {
+    $this->processRun('php', [$this->starterScript], $inputs, ['SHOULD_PROCEED' => $should_proceed ? '1' : FALSE], 15, 15);
+    $this->assertProcessSuccessful();
+
+    $output = $this->stripAnsi($this->processGet()->getOutput());
+
+    foreach ($expected as $expected_string) {
+      $this->assertStringContainsString($expected_string, $output);
+    }
+
+    foreach ($unexpected as $unexpected_string) {
+      $this->assertStringNotContainsString($unexpected_string, $output);
+    }
+  }
+
+  public static function dataProviderStarterKillSwitch(): \Iterator {
+    yield 'answered, kill switch unset' => [['plum compote', '', '', ''], FALSE, ['Order sent!'], ['Dish: plum compote']];
+
+    yield 'answered, kill switch set' => [['plum compote', '', '', ''], TRUE, ['Order sent!', 'Dish: plum compote', 'Send: yes'], []];
+
+    yield 'cancelled, kill switch set' => [[], TRUE, ['Order cancelled.'], ['Dish:']];
+  }
+
 }

@@ -9,9 +9,10 @@
  *
  * The kill switch pattern:
  *   1. Run the flow to collect user answers.
- *   2. Check an environment variable (e.g., SHOULD_PROCEED).
- *   3. If not set, exit early - this is what happens during testing.
- *   4. If set, proceed with real work (file creation, installs, etc.).
+ *   2. Stop if the flow was cancelled.
+ *   3. Check an environment variable (e.g., SHOULD_PROCEED).
+ *   4. If not set, exit early - this is what happens during testing.
+ *   5. If set, proceed with real work (file creation, installs, etc.).
  */
 
 declare(strict_types=1);
@@ -32,14 +33,18 @@ $results = Prompty::flow(fn(): array => [
   'send' => Prompty::confirm('Send order?'),
 ], intro: 'Compose an order', outro: 'Order sent!', cancelled: 'Order cancelled.');
 
+if ($results === NULL) {
+  return;
+}
+
 // Kill switch - stop here when running under tests.
 // In production, set SHOULD_PROCEED=1 to continue past this point.
 if (!getenv('SHOULD_PROCEED')) {
   return;
 }
 
-/** @var array{dish: string, course: string, extras: list<string>, send: bool}|null $results */
-echo 'Dish: ' . ($results['dish'] ?? '') . PHP_EOL;
-echo 'Course: ' . ($results['course'] ?? '') . PHP_EOL;
-echo 'Extras: ' . implode(', ', $results['extras'] ?? []) . PHP_EOL;
-echo 'Send: ' . (($results['send'] ?? FALSE) ? 'yes' : 'no') . PHP_EOL;
+/** @var array{dish: string, course: string, extras: list<string>, send: bool} $results */
+echo 'Dish: ' . $results['dish'] . PHP_EOL;
+echo 'Course: ' . $results['course'] . PHP_EOL;
+echo 'Extras: ' . implode(', ', $results['extras']) . PHP_EOL;
+echo 'Send: ' . ($results['send'] ? 'yes' : 'no') . PHP_EOL;

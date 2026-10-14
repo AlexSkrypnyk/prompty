@@ -744,13 +744,17 @@ A widget that reads past the last queued keystroke reaches the end of the stream
 
 ## Starter script
 
-[`starter.php`](starter.php) is a ready-to-use template for your own scripts. It demonstrates the recommended "kill switch" pattern for testable flows — the script collects answers, then checks an env var before doing real work:
+[`starter.php`](starter.php) is a ready-to-use template for your own scripts. It demonstrates the recommended "kill switch" pattern for testable flows - the script collects answers, stops if the flow was cancelled, then checks an env var before doing real work:
 
 ```php
 $results = Prompty::flow(fn(): array => [
   'dish' => Prompty::text('Dish name', placeholder: 'pear tart'),
   // ...
 ], intro: 'Compose an order');
+
+if ($results === NULL) {
+  return; // Cancelled, so there is nothing to act on.
+}
 
 if (!getenv('SHOULD_PROCEED')) {
   return; // Tests stop here.
