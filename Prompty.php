@@ -1520,11 +1520,13 @@ class Prompty {
     $this->prevTty = $this->input === NULL ? (shell_exec('stty -g 2>/dev/null') ?: NULL) : NULL;
 
     if ($this->prevTty !== NULL) {
+      // @codeCoverageIgnoreStart
       $this->prevTty = trim($this->prevTty);
       // -isig delivers Ctrl+C to readKey() as a byte rather than as SIGINT,
       // which would end the process before the terminal is restored.
       shell_exec('stty -echo -icanon -isig min 1 time 0 2>/dev/null');
       $this->hideCursor();
+      // @codeCoverageIgnoreEnd
     }
   }
 
