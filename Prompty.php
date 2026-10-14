@@ -1876,14 +1876,27 @@ class Prompty {
    * @param array<array-key, mixed> $steps
    *   Flow steps, keyed by step name.
    *
+   * @param array<string|int, mixed> $steps
+   *   The steps to validate.
+   * @param array<string, true>|null $seen
+   *   Internal: keys seen so far across the whole tree, shared through the
+   *   recursive child calls so duplicates across nesting levels are caught.
+   *
    * @throws \InvalidArgumentException
    *   When the name a step resolves through is not a valid variable name.
    */
-  protected function assertStepKeys(array $steps): void {
+  protected function assertStepKeys(array $steps, ?array &$seen = NULL): void {
+    $seen ??= [];
+
     foreach ($steps as $key => $step) {
       if ((string) $key === '') {
         throw new \InvalidArgumentException('A step must have a key: it names the answer in the results and the variable the answer can come from.');
       }
+
+      if (isset($seen[(string) $key])) {
+        throw new \InvalidArgumentException(sprintf('Duplicate step key "%s": two steps answering into the same key would silently overwrite each other in the results.', $key));
+      }
+      $seen[(string) $key] = TRUE;
 
       $name = $this->cfgEnvPrefix . strtoupper((string) $key);
 
@@ -1896,7 +1909,7 @@ class Prompty {
       $children = is_array($step) ? $step['__children'] ?? NULL : NULL;
 
       if (is_array($children)) {
-        $this->assertStepKeys($children);
+        $this->assertStepKeys($children, $seen);
       }
     }
   }

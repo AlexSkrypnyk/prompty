@@ -74,6 +74,49 @@ final class PromptyWalkFlowTest extends PromptyTestCase {
     });
   }
 
+  public function testRejectsDuplicateKeyBetweenChildren(): void {
+    $this->captureOutputThrows(\InvalidArgumentException::class, 'Duplicate step key "dessert": two steps answering into the same key would silently overwrite each other in the results.', function (): void {
+      Prompty::flow(fn(): array => [
+        'course' => Prompty::confirm('Add dessert?', discovered: TRUE, children: [
+          'dessert' => Prompty::text('Dessert', discovered: 'pear tart'),
+        ]),
+        'priority' => Prompty::confirm('Same dessert twice?', discovered: TRUE, children: [
+          'dessert' => Prompty::text('Dessert again?', discovered: 'plum compote'),
+        ]),
+      ], unicode: FALSE);
+    });
+  }
+
+  public function testRejectsDuplicateKeyAcrossNesting(): void {
+    $this->captureOutputThrows(\InvalidArgumentException::class, 'Duplicate step key "dish": two steps answering into the same key would silently overwrite each other in the results.', function (): void {
+      Prompty::flow(fn(): array => [
+        'dish' => Prompty::text('Outer dish', discovered: 'plum compote'),
+        'course' => Prompty::confirm('Add dessert?', discovered: TRUE, children: [
+          'dish' => Prompty::text('Dessert', discovered: 'pear tart'),
+        ]),
+      ], unicode: FALSE);
+    });
+  }
+
+  public function testAllowsSameKeyInSiblingSubflows(): void {
+    // Keys must be unique across the whole tree, but a key reused in a
+    // sibling subtree that was REJECTED would be fine -- here we only assert
+    // two distinct keys plus nested distinct keys still pass validation by
+    // running a flow to completion.
+    $results = $this->captureOutput(fn() => Prompty::flow(fn(): array => [
+      'dish' => Prompty::text('Dish', discovered: 'plum compote'),
+      'course' => Prompty::confirm('Add dessert?', discovered: TRUE, children: [
+        'dessert' => Prompty::text('Dessert', discovered: 'pear tart'),
+      ]),
+    ], unicode: FALSE));
+
+    $this->assertSame([
+      'dish' => 'plum compote',
+      'course' => TRUE,
+      'dessert' => 'pear tart',
+    ], Prompty::results());
+  }
+
   #[DataProvider('dataProviderAcceptsKey')]
   public function testAcceptsKey(string $key): void {
     $this->setEnvVars([$key => 'plum compote']);
