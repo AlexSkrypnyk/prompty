@@ -40,6 +40,15 @@ namespace AlexSkrypnyk\Prompty;
 class Prompty {
 
   /**
+   * Microseconds to wait for each further byte of an escape sequence.
+   *
+   * A terminal writes all bytes of a key's sequence at once. The wait covers a
+   * sequence split in transit, such as over SSH, and is the delay before a
+   * lone Escape press registers.
+   */
+  protected const ESCAPE_TIMEOUT = 50000;
+
+  /**
    * Singleton instance.
    *
    * @var static|null
@@ -1465,15 +1474,78 @@ class Prompty {
       "\x7f", "\x08" => 'backspace',
       "\t" => 'tab',
       ' ' => 'space',
-      "\x1b" => match (fread($stream, 2)) {
-        '[A' => 'up',
-        '[B' => 'down',
-        '[C' => 'right',
-        '[D' => 'left',
-        default => 'escape',
-      },
+      "\x1b" => $this->readEscapeSequence($stream),
       default => $char,
     };
+  }
+
+  /**
+   * Reads the rest of an escape sequence and returns the key it encodes.
+   *
+   * A terminal sends a cursor key as ESC followed by a CSI ('[') or SS3 ('O')
+   * sequence. Any other ESC reads as the Escape key, including ESC followed
+   * by a plain byte, which a terminal sends for a key pressed with Alt.
+   *
+   * @param resource $stream
+   *   The input stream, positioned after the ESC byte.
+   *
+   * @return string
+   *   'up', 'down', 'right' or 'left' for a cursor key, 'unknown' for any
+   *   other complete sequence, or 'escape'.
+   */
+  protected function readEscapeSequence($stream): string {
+    $introducer = $this->readSequenceByte($stream);
+
+    if ($introducer !== '[' && $introducer !== 'O') {
+      return 'escape';
+    }
+
+    $sequence = '';
+
+    // An SS3 sequence ends after 1 byte. A CSI sequence continues through
+    // bytes in 0x20-0x3F and ends with the first byte outside that range.
+    do {
+      $byte = $this->readSequenceByte($stream);
+
+      if ($byte === '') {
+        return 'escape';
+      }
+
+      $sequence .= $byte;
+    } while ($introducer === '[' && ord($byte) >= 0x20 && ord($byte) <= 0x3F);
+
+    return match ($sequence) {
+      'A' => 'up',
+      'B' => 'down',
+      'C' => 'right',
+      'D' => 'left',
+      default => 'unknown',
+    };
+  }
+
+  /**
+   * Reads the next byte of an escape sequence if it arrives in time.
+   *
+   * @param resource $stream
+   *   The input stream.
+   *
+   * @return string
+   *   The byte, or an empty string when none arrives within ESCAPE_TIMEOUT or
+   *   the stream has ended.
+   */
+  protected function readSequenceByte($stream): string {
+    $read = [$stream];
+    $write = NULL;
+    $except = NULL;
+
+    // Seekable streams such as php://memory are read without a poll: their
+    // bytes are all present, and stream_select() rejects a memory stream. A
+    // failed poll returns FALSE, not 0, and falls through to the read.
+    if (!stream_get_meta_data($stream)['seekable'] && stream_select($read, $write, $except, 0, static::ESCAPE_TIMEOUT) === 0) {
+      return '';
+    }
+
+    return (string) fread($stream, 1);
   }
 
   /**

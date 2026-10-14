@@ -79,6 +79,95 @@ abstract class FunctionalTestCase extends TestCase {
   }
 
   /**
+   * Run a script with its stdin attached to a pseudo-terminal.
+   *
+   * The script switches the terminal to raw mode and receives each keystroke
+   * when the terminal delivers it. Bytes written before raw mode wait in the
+   * line buffer, so the keystrokes are sent once $ready appears on stdout.
+   * PHP errors go to stderr, so they stay out of what the script draws.
+   *
+   * Skips the test when PHP cannot open a pseudo-terminal.
+   *
+   * @param string $script_path
+   *   Path to the script to run.
+   * @param string $ready
+   *   Text the script prints once it reads keystrokes.
+   * @param string $keystrokes
+   *   Raw keystroke bytes, sent in 1 write.
+   *
+   * @return array{stdout: string, stderr: string, exit_code: int}
+   *   Process output.
+   */
+  protected function runInTerminal(string $script_path, string $ready, string $keystrokes): array {
+    $descriptors = [0 => ['pty'], 1 => ['pipe', 'w'], 2 => ['pipe', 'w']];
+
+    // proc_open() warns before it fails when PHP was built without pty
+    // support.
+    $process = @proc_open(['php', '-d', 'display_errors=stderr', $script_path], $descriptors, $pipes);
+
+    if (!is_resource($process)) {
+      $this->markTestSkipped('This PHP build cannot open a pseudo-terminal.');
+    }
+
+    $deadline = microtime(TRUE) + 15;
+    $stdout = $this->readPipe($pipes[1], $deadline, $ready);
+    $is_ready = str_contains($stdout, $ready);
+
+    if ($is_ready) {
+      fwrite($pipes[0], $keystrokes);
+      $stdout .= $this->readPipe($pipes[1], $deadline);
+    }
+
+    // Stdout closes when the script exits. A script still running at the
+    // deadline is waiting for input that will not come.
+    $has_exited = feof($pipes[1]);
+
+    if (!$has_exited) {
+      proc_terminate($process);
+    }
+
+    $stderr = (string) stream_get_contents($pipes[2]);
+    fclose($pipes[0]);
+    fclose($pipes[1]);
+    fclose($pipes[2]);
+    $exit_code = proc_close($process);
+
+    $this->assertTrue($is_ready, sprintf('The script did not print "%s". It printed:%s%s%s', $ready, PHP_EOL, $stdout, $stderr));
+    $this->assertTrue($has_exited, sprintf('The script did not exit after the keystrokes. It printed:%s%s%s', PHP_EOL, $stdout, $stderr));
+
+    return ['stdout' => $stdout, 'stderr' => $stderr, 'exit_code' => $exit_code];
+  }
+
+  /**
+   * Read a pipe until it holds $needle, closes, or the deadline passes.
+   *
+   * @param resource $pipe
+   *   The pipe to read.
+   * @param float $deadline
+   *   Unix timestamp to stop waiting at.
+   * @param string|null $needle
+   *   Text to stop at, or NULL to read until the pipe closes.
+   *
+   * @return string
+   *   Everything read.
+   */
+  protected function readPipe($pipe, float $deadline, ?string $needle = NULL): string {
+    $output = '';
+
+    while (!feof($pipe) && microtime(TRUE) < $deadline && ($needle === NULL || !str_contains($output, $needle))) {
+      $read = [$pipe];
+      $write = NULL;
+      $except = NULL;
+
+      if (stream_select($read, $write, $except, 0, 100000) > 0) {
+        $output .= (string) fread($pipe, 8192);
+      }
+    }
+
+    return $output;
+  }
+
+  /**
    * Run a script with no input and return its ANSI-stripped stdout.
    *
    * Symfony's process leaves the child with a closed stdin, so every widget
