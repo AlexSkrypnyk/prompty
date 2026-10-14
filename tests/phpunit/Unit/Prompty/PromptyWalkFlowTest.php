@@ -283,11 +283,11 @@ final class PromptyWalkFlowTest extends PromptyTestCase {
    *   Options array.
    */
   protected function defaultOptions(array $overrides = []): array {
-    return array_merge(['numbering' => FALSE, 'env_prefix' => 'TEST_WALK_', 'truthy' => ['1', 'true', 'yes'], 'falsy' => ['0', 'false', 'no']], $overrides);
+    return array_merge(['numbering' => FALSE], $overrides);
   }
 
   /**
-   * Create a step closure that returns a fixed value via "discovered".
+   * Create a step closure that draws a completed step for a fixed value.
    *
    * Simulates what a widget closure does when the flow walker calls it.
    */
@@ -336,26 +336,6 @@ final class PromptyWalkFlowTest extends PromptyTestCase {
     return $steps;
   }
 
-  /**
-   * Every key in a spec, children included.
-   *
-   * @return list<string>
-   *   The keys in walk order.
-   */
-  protected function specKeys(array $spec): array {
-    $keys = [];
-
-    foreach ($spec as $key => $node) {
-      $keys[] = (string) $key;
-
-      if (is_array($node) && isset($node['children']) && is_array($node['children'])) {
-        $keys = array_merge($keys, $this->specKeys($node['children']));
-      }
-    }
-
-    return $keys;
-  }
-
   #[DataProvider('dataProviderWalkFlow')]
   public function testWalkFlow(
     array $spec,
@@ -370,7 +350,6 @@ final class PromptyWalkFlowTest extends PromptyTestCase {
     $this->setProperty($p, 'results', $initial_results);
 
     $steps = $this->buildSteps($spec);
-    $this->clearEnvVars($this->specKeys($spec), 'TEST_WALK_');
 
     $result = NULL;
     $output = $this->captureOutput(function () use ($p, $steps, $depth, &$result): void {
@@ -514,7 +493,6 @@ final class PromptyWalkFlowTest extends PromptyTestCase {
 
         return $resolved($ctx);
       };
-      $this->clearEnvVars(['step' . $i], 'TEST_WALK_');
     }
 
     $this->captureOutput(function () use ($p, $steps, $number_prefix): void {
