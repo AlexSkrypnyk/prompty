@@ -727,7 +727,7 @@ if ($no_killswitch || $no_verify) {
   exit(0);
 }
 
-if (posix_isatty(STDIN)) {
+if (stream_isatty(STDIN)) {
   echo sprintf('Verifying embedded script (interactive input required)...%s', PHP_EOL);
 
   $verify_exit = 0;
