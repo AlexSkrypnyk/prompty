@@ -9,7 +9,7 @@
 # Code coverage and test logs.
 /.logs
 
-# Built by 'composer embed-playground' whenever the embedding is exercised.
+# Built on demand by embed.php and not committed.
 /playground/flow-embed.dist.php
 
 # Temporary AI agent and developer artifacts (plans, scratch output, reports).

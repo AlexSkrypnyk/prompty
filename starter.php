@@ -12,7 +12,7 @@
  *   2. Stop if the flow was cancelled.
  *   3. Check an environment variable (e.g., SHOULD_PROCEED).
  *   4. If not set, exit early - this is what happens during testing.
- *   5. If set, proceed with real work (file creation, installs, etc.).
+ *   5. If set, proceed with the real work, such as sending the order.
  */
 
 declare(strict_types=1);

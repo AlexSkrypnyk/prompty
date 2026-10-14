@@ -52,7 +52,7 @@ class Prompty {
   protected static bool $inFlow = FALSE;
 
   /**
-   * Stored TTY settings for standalone widget teardown.
+   * Terminal settings saved by setupTty() for teardownTty() to restore.
    */
   protected ?string $prevTty = NULL;
 
@@ -273,9 +273,6 @@ class Prompty {
   /**
    * Puts a captured configuration back in force.
    *
-   * The values are assigned rather than merged, so a key a flow added is gone
-   * as well as one it changed.
-   *
    * @param PromptyConfig $snapshot
    *   A snapshot from snapshotConfig().
    */
@@ -358,9 +355,11 @@ class Prompty {
    * @param array<string, string>|null $labels
    *   Partial label overrides.
    * @param bool|null $unicode
-   *   Force unicode (TRUE), ASCII (FALSE), or auto-detect (NULL).
+   *   Force unicode (TRUE) or ASCII (FALSE). NULL keeps the current setting,
+   *   which is auto-detected until set.
    * @param bool|null $ansi
-   *   Force ANSI colors (TRUE), suppress (FALSE), or auto-detect (NULL).
+   *   Force ANSI colors (TRUE) or suppress them (FALSE). NULL keeps the
+   *   current setting, which is auto-detected until set.
    * @param string|null $env_prefix
    *   Environment variable prefix.
    * @param list<string>|null $truthy
@@ -487,9 +486,11 @@ class Prompty {
    * @param array<string, string>|null $labels
    *   Partial label overrides.
    * @param bool|null $unicode
-   *   Force unicode (TRUE), ASCII (FALSE), or auto-detect (NULL).
+   *   Force unicode (TRUE) or ASCII (FALSE). NULL keeps the current setting,
+   *   which is auto-detected until set.
    * @param bool|null $ansi
-   *   Force ANSI colors (TRUE), suppress (FALSE), or auto-detect (NULL).
+   *   Force ANSI colors (TRUE) or suppress them (FALSE). NULL keeps the
+   *   current setting, which is auto-detected until set.
    * @param string|null $env_prefix
    *   Environment variable prefix.
    * @param list<string>|null $truthy
@@ -545,9 +546,6 @@ class Prompty {
         'numbering' => $numbering,
       ];
 
-      // No TTY exists when input is piped, and the flow then runs with
-      // env/discovered values without terminal control. An injected input
-      // stream (test mode) also skips TTY setup.
       $p->setupTty();
 
       if ($p->prevTty !== NULL) {
@@ -616,7 +614,9 @@ class Prompty {
    *   Flow context passed by the flow walker.
    *
    * @return \Closure|array<string, mixed>|string|null
-   *   A closure in flow mode, or the entered string in standalone mode.
+   *   While a flow is being defined, a closure, or a step array when a
+   *   condition or children are set. Otherwise the entered string, or NULL
+   *   when the widget is cancelled.
    */
   public static function text(
     string $label,
@@ -794,7 +794,9 @@ class Prompty {
    *   Flow context passed by the flow walker.
    *
    * @return \Closure|array<string, mixed>|string|null
-   *   A closure in flow mode, or the selected option key in standalone mode.
+   *   While a flow is being defined, a closure, or a step array when a
+   *   condition or children are set. Otherwise the selected option key, or
+   *   NULL when the widget is cancelled.
    *
    * @throws \InvalidArgumentException
    *   When $options is empty, or a default or discovered value is not a key of
@@ -989,8 +991,9 @@ class Prompty {
    *   Flow context passed by the flow walker.
    *
    * @return \Closure|array<string, mixed>|list<string>|null
-   *   A closure in flow mode, or the array of selected keys in standalone mode,
-   *   deduplicated and in option order.
+   *   While a flow is being defined, a closure, or a step array when a
+   *   condition or children are set. Otherwise the selected option keys,
+   *   deduplicated and in option order, or NULL when the widget is cancelled.
    *
    * @throws \InvalidArgumentException
    *   When $options is empty, or a default or discovered entry is not a key of
@@ -1201,7 +1204,9 @@ class Prompty {
    *   Flow context passed by the flow walker.
    *
    * @return \Closure|array<string, mixed>|bool|null
-   *   A closure in flow mode, or the boolean result in standalone mode.
+   *   While a flow is being defined, a closure, or a step array when a
+   *   condition or children are set. Otherwise TRUE for yes and FALSE for no,
+   *   or NULL when the widget is cancelled.
    *
    * @throws \InvalidArgumentException
    *   When a discovered value appears in neither the truthy nor falsy list.
@@ -1345,7 +1350,7 @@ class Prompty {
   }
 
   /**
-   * Prints an intro banner at the start of a flow.
+   * Prints an intro banner.
    */
   public static function intro(string $message): void {
     $p = static::instance();
@@ -1353,7 +1358,7 @@ class Prompty {
   }
 
   /**
-   * Prints an outro banner at the end of a flow.
+   * Prints an outro banner.
    */
   public static function outro(string $message): void {
     $p = static::instance();
@@ -1509,7 +1514,10 @@ class Prompty {
   }
 
   /**
-   * Set up TTY for standalone widget execution.
+   * Puts the terminal into raw mode and saves the settings it replaces.
+   *
+   * Leaves prevTty NULL when an input stream is injected or stdin is not a
+   * TTY.
    */
   protected function setupTty(): void {
     $this->prevTty = $this->input === NULL ? (shell_exec('stty -g 2>/dev/null') ?: NULL) : NULL;
@@ -1524,7 +1532,7 @@ class Prompty {
   }
 
   /**
-   * Tear down TTY after standalone widget execution.
+   * Restores the terminal settings saved by setupTty() and shows the cursor.
    */
   protected function teardownTty(): void {
     if ($this->prevTty !== NULL) {

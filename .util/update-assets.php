@@ -145,7 +145,7 @@ function getJobs(string $project_dir): array {
 /**
  * Main functionality - orchestrator mode.
  *
- * Launches all recordings as parallel worker processes.
+ * Launches the recordings as worker processes, MAX_WORKERS at a time.
  */
 function main(): void {
   $script_dir = __DIR__;
@@ -421,7 +421,7 @@ function postProcessCast(string $cast_file): void {
   $filtered = canonicalizeCast(explode("\n", $content));
 
   // In asciicast v3, timestamps are relative (delta from previous event),
-  // so the pause is added as an empty output event with that duration.
+  // so the pause is added as a 1-space output event with that duration.
   $filtered[] = json_encode([END_PAUSE, 'o', ' ']);
 
   $content = implode("\n", $filtered);

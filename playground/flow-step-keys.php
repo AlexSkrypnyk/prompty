@@ -18,8 +18,8 @@
  * Such a key is rejected. The check runs on the full name, so a prefix that
  * cannot be exported is caught the same way.
  *
- * The first two flows are rejected and print their messages. The third
- * is accepted, and its answers come from the environment.
+ * The first 2 flows are rejected and print their messages. The third is
+ * accepted, and reads its answers from the environment when they are set.
  *
  * phpcs:disable Drupal.Arrays.Array.LongLineDeclaration
  */

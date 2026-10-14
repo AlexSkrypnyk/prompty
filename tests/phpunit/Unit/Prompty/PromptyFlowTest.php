@@ -17,8 +17,7 @@ use PHPUnit\Framework\Attributes\Group;
  * the environment. Rendered output is captured, ANSI-stripped, and compared
  * whole against a heredoc, or against an escaped string where trailing
  * whitespace is significant. The cancellation tests that assert output use
- * substrings, because their output carries redraw sequences that depend on
- * keystroke timing.
+ * substrings, because their output carries redraw sequences.
  */
 #[CoversClass(Prompty::class)]
 #[Group('unit')]
