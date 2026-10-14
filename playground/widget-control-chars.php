@@ -4,19 +4,17 @@
  * @file
  * Playground - what a control character in a value does to the tree.
  *
- * A value does not always arrive as printable text. An environment variable
- * populated by a command that printed more than one line carries a newline;
- * a value pasted from somewhere else can carry a carriage return or a color
- * sequence. The tree is drawn line by line, so text that itself moves the
- * cursor would draw over the tree that holds it.
+ * An environment variable filled by a command that printed more than 1 line
+ * carries a newline, and a pasted value can carry a carriage return or a
+ * color sequence. The tree is drawn line by line, so text that moves the
+ * cursor would draw over the tree.
  *
  * Every value below is drawn as printable text: escape sequences and control
- * bytes are removed, and a newline or tab becomes a space. The value
- * therefore stays on the line the tree drew for it. Each is shown with its
- * raw bytes first, so what arrived and what was drawn can be compared.
+ * bytes are removed, and a newline or tab becomes a space, so the value stays
+ * on its own line. Each value's raw bytes print first, for comparison.
  *
- * A description is split on its own newlines before any of that, so the line
- * breaks a caller writes deliberately still render as line breaks.
+ * A description is split on its own newlines first, so the line breaks a
+ * caller writes still render as line breaks.
  *
  * phpcs:disable Drupal.Arrays.Array.LongLineDeclaration
  */
@@ -60,7 +58,7 @@ echo PHP_EOL . '--- An option label carrying a newline ---' . PHP_EOL;
 Prompty::select('Course', options: ['starter' => "Star\nter", 'main' => 'Main'], discovered: 'starter');
 
 // A description is drawn while a widget is waiting, so this one asks rather
-// than resolving a value. The two lines below the label are the line breaks
+// than resolving a value. The 2 lines below the label are the line breaks
 // the caller wrote.
 echo PHP_EOL . '--- A description keeps the line breaks it was written with ---' . PHP_EOL;
 echo 'This one waits for input. Press enter to take the placeholder.' . PHP_EOL;

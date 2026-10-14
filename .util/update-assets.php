@@ -5,14 +5,14 @@
  * @file
  * Generate SVG assets from asciinema recordings.
  *
- * Records terminal sessions for seven playground scripts in four flag
- * variants each, plus the embedded copy of the flow. The widgets, flow,
- * flow-nested and flow-embed recordings render as animated SVGs; the
- * widget-* recordings render as static single-frame SVGs.
+ * Records terminal sessions for 7 playground scripts in 4 flag variants
+ * each, plus the embedded copy of the flow. The widgets, flow, flow-nested
+ * and flow-embed recordings render as animated SVGs; the widget-* recordings
+ * render as static single-frame SVGs.
  *
- * Recordings run in small batches: enough at once to finish in reasonable
- * time, few enough that the machine does not stall a session. A stalled
- * session changes where its frames fall.
+ * Recordings run in small batches, large enough to finish in reasonable time
+ * and small enough that the machine does not stall a session. A stalled
+ * session shifts its frame boundaries.
  *
  * Dependencies: asciinema, expect, node, npm
  *
@@ -39,8 +39,8 @@ define('PROMPT_DELAY', 1);
 // the recording splits into the same frames on every run.
 define('TYPE_DELAY', 0.02);
 
-// Sleep before a keypress that moves within a widget (seconds). Long enough
-// to sit clear of MERGE_WINDOW; the rendered pacing does not depend on it.
+// Sleep before a keypress that moves within a widget (seconds). Longer than
+// MERGE_WINDOW by a clear margin; the rendered pacing does not depend on it.
 define('RECORD_STEP_SLEEP', 0.7);
 
 // Recordings running at the same time.
@@ -56,7 +56,7 @@ define('MERGE_WINDOW', 0.35);
 // the prompt that was just answered.
 define('STEP_DELAY', 1.0);
 
-// Rendered gap between the redraws within one step (seconds), which is the
+// Rendered gap between the redraws within a step (seconds), which is the
 // speed typing plays back at.
 define('FRAME_DELAY', 0.1);
 
@@ -145,7 +145,7 @@ function getJobs(string $project_dir): array {
 /**
  * Main functionality - orchestrator mode.
  *
- * Launches all recordings as parallel worker processes.
+ * Launches the recordings as worker processes, MAX_WORKERS at a time.
  */
 function main(): void {
   $script_dir = __DIR__;
@@ -161,6 +161,7 @@ function main(): void {
 
   $jobs = getJobs($project_dir);
   $tmp_dir = $project_dir . '/.artifacts/tmp/asciinema';
+
   if (!is_dir($tmp_dir)) {
     mkdir($tmp_dir, 0700, TRUE);
   }
@@ -169,10 +170,10 @@ function main(): void {
 
   $failed = [];
 
-  // A recording is timed against the machine it runs on, and a machine
-  // running every recording at once stalls each of them unpredictably.
-  // Batches keep the load low enough that the pauses in a session stay
-  // apart from the gaps within one, so the output is reproducible.
+  // Recording timing depends on machine load, and running every recording at
+  // once stalls them unpredictably. Batches keep the load low enough that
+  // pauses between steps stay longer than gaps within a step, so the output
+  // is reproducible.
   info(sprintf('Recording %d sessions, %d at a time...', count($jobs), MAX_WORKERS));
   info('');
 
@@ -235,9 +236,11 @@ function main(): void {
   if ($failed !== []) {
     error('');
     error('Errors:');
+
     foreach ($failed as $name => $output) {
       error('  ' . $name . ': ' . $output);
     }
+
     throw new \RuntimeException('Failed to generate ' . count($failed) . ' asset(s).');
   }
 
@@ -258,6 +261,7 @@ function processOne(string $name): void {
   $tmp_dir = $project_dir . '/.artifacts/tmp/asciinema';
 
   $jobs = getJobs($project_dir);
+
   if (!isset($jobs[$name])) {
     throw new \RuntimeException('Unknown job: ' . $name);
   }
@@ -315,6 +319,7 @@ function buildEmbeddedPlayground(string $project_dir): void {
     throw new \RuntimeException('Could not build the embedded playground: ' . implode(PHP_EOL, $output));
   }
 }
+
 /**
  * Check that all required dependencies are installed.
  */
@@ -324,6 +329,7 @@ function checkDependencies(): void {
 
   foreach ($deps as $dep) {
     $cmd = sprintf('which %s 2>/dev/null', escapeshellarg($dep));
+
     if (empty(shell_exec($cmd))) {
       $missing[] = $dep;
     }
@@ -346,6 +352,7 @@ function installNodeDependencies(string $script_dir): void {
   info('Installing svg-term Node.js dependency...');
 
   $node_modules_dir = $script_dir . '/node_modules';
+
   if (is_dir($node_modules_dir . '/svg-term')) {
     info('svg-term already installed.');
 
@@ -354,6 +361,7 @@ function installNodeDependencies(string $script_dir): void {
 
   $cmd = sprintf('npm install --prefix %s svg-term@1.3.1 2>&1', escapeshellarg($script_dir));
   $output = shell_exec($cmd);
+
   if (!is_dir($node_modules_dir . '/svg-term')) {
     throw new \RuntimeException('Failed to install svg-term: ' . ($output ?? 'unknown error'));
   }
@@ -405,6 +413,7 @@ function recordSession(string $expect_script, string $cast_file, int $rows = TER
  */
 function postProcessCast(string $cast_file): void {
   $content = file_get_contents($cast_file);
+
   if ($content === FALSE) {
     return;
   }
@@ -412,12 +421,13 @@ function postProcessCast(string $cast_file): void {
   $filtered = canonicalizeCast(explode("\n", $content));
 
   // In asciicast v3, timestamps are relative (delta from previous event),
-  // so the pause is added as an empty output event with that duration.
+  // so the pause is added as a 1-space output event with that duration.
   $filtered[] = json_encode([END_PAUSE, 'o', ' ']);
 
   $content = implode("\n", $filtered);
 
   $home = getenv('HOME');
+
   if ($home !== FALSE && $home !== '') {
     $content = str_replace($home, '/home/user', $content);
   }
@@ -428,22 +438,20 @@ function postProcessCast(string $cast_file): void {
 /**
  * Rewrite a recording's events onto a canonical timeline.
  *
- * A recording carries whatever chunks the terminal happened to deliver, at
- * whatever moment the scheduler delivered them. Two runs of one session
- * produce different frames and different durations even when nothing about
- * the session changed.
+ * A recording's events follow how the terminal chunked its output and when
+ * the scheduler delivered it. 2 runs of an unchanged session therefore differ
+ * in frames and durations.
  *
- * The output is therefore treated as one stream and cut into frames where
- * the session itself redrew. That cut does not depend on how the chunks
- * fell.
+ * The output is treated as 1 stream instead, and cut into frames where the
+ * session redrew, which does not depend on the chunking.
  *
- * The recorded times reduce to a two-way choice: a frame that follows
- * within MERGE_WINDOW continues the step before it and plays at
- * FRAME_DELAY. Anything slower begins a step and plays at STEP_DELAY.
+ * Recorded times reduce to 2 delays: a frame within MERGE_WINDOW of the
+ * previous one continues its step and plays at FRAME_DELAY. A slower frame
+ * starts a step and plays at STEP_DELAY.
  *
- * The spawn echo is dropped from that stream rather than from the events it
- * arrived in. However the terminal chunked the echo, no part of it is left
- * in the render and no real output is dropped with it.
+ * The spawn echo is removed from the stream rather than from the events it
+ * arrived in. However the terminal chunked it, no part of it reaches the
+ * render and no real output is removed with it.
  *
  * @param array<int, string> $lines
  *   Cast lines, the header first.
@@ -495,9 +503,8 @@ function canonicalizeCast(array $lines): array {
 /**
  * Remove the spawn echo from the head of a session's output.
  *
- * Expect announces the command it spawns, so a recording opens with a line
- * that belongs to the harness rather than to the session. The echo runs to
- * the first line break after it.
+ * Expect prints the command it spawns, so a recording starts with a line from
+ * the harness rather than the session. The echo ends at the first line break.
  *
  * @param string $stream
  *   The session's output.
@@ -563,14 +570,13 @@ function arrivalAt(array $arrivals, int $offset): float {
  * the cursor up, so that sequence marks where one frame ends and the next
  * begins.
  *
- * The boundary comes from the output itself, not from where the recording
- * timings fell.
+ * The boundary comes from the output, not from the recording's timing.
  *
  * @param string $data
  *   The session's output.
  *
  * @return list<string>
- *   One entry per redraw, in order.
+ *   1 entry per redraw, in order.
  */
 function splitRedraws(string $data): array {
   $frames = preg_split('/(?=\x1b\[[0-9]+A)/', $data, -1, PREG_SPLIT_NO_EMPTY);
@@ -796,7 +802,7 @@ EXPECT;
 /**
  * Create an expect script for the embedded flow playground.
  *
- * The embedded copy runs the same four prompts as flow-embed.php, so what it
+ * The embedded copy runs the same 4 prompts as flow-embed.php, so what it
  * draws is what that flow draws unless the embedder changed something.
  *
  * @param string $playground_script
@@ -882,6 +888,7 @@ EXPECT;
   file_put_contents($expect_script, $content);
   chmod($expect_script, 0700);
 }
+
 /**
  * Create an expect script for the flow-nested.php playground.
  *
@@ -1279,7 +1286,7 @@ EXPECT;
 /**
  * Read a worker's stdout and stderr until both reach EOF.
  *
- * Both pipes are polled together, so a worker that fills one pipe buffer
+ * Both pipes are polled together, so a worker that fills either pipe buffer
  * cannot block while this waits on the other. Returns once the worker has
  * closed both ends, so the captured output is complete enough to diagnose a
  * failure.
@@ -1357,6 +1364,7 @@ function info(string $message): void {
   if (getenv('SCRIPT_QUIET') === '1') {
     return;
   }
+
   print $message . PHP_EOL;
 }
 
@@ -1387,6 +1395,7 @@ set_error_handler(function (int $severity, string $message, string $file, int $l
 
 try {
   $record_index = array_search('--record', $argv);
+
   if ($record_index !== FALSE && isset($argv[$record_index + 1])) {
     processOne($argv[$record_index + 1]);
   }

@@ -30,11 +30,11 @@ composer install
 
 ## Code quality
 
-Four checks gate every change, and CI runs all of them through `composer lint`:
+4 checks gate every change, and CI runs all of them through `composer lint`:
 
 - **PHPCS** - the Drupal standard plus DrevOps rules, with `strict_types` required in every file. Config in [`phpcs.xml`](phpcs.xml).
 - **PHPStan** - level 9, the strictest level. Config in [`phpstan.neon`](phpstan.neon).
-- **Rector** - PHP 8.2 modernisation plus dead-code, code-quality, coding-style, type-declaration, naming and early-return sets, run in dry-run mode during linting. Config in [`rector.php`](rector.php).
+- **Rector** - PHP 8.2 modernisation plus the dead-code, code-quality, coding-style, type-declaration, naming, instanceof, early-return and PHPUnit code-quality sets, run in dry-run mode during linting. Config in [`rector.php`](rector.php).
 - **Embedded demo check** - embeds `playground/flow-embed.php` and fails if the copy prints anything different from the original. See [The embedded demo](#the-embedded-demo).
 
 Coverage has a threshold in CI (80% by default, set via the `CI_CODE_COVERAGE_THRESHOLD` repository variable). New code needs tests.
@@ -101,7 +101,8 @@ php playground/flow.php --no-unicode --no-ansi
 Prompty is meant to be copied into a consumer script, so the copy is the thing that has to keep working. `flow-embed.php` is the script that proves it does. Embedding rewrites it into `flow-embed.dist.php`, which carries the class inline and requires nothing, so it runs from anywhere:
 
 ```bash
-php embed.php --no-verify playground/flow-embed.php playground/flow-embed.dist.php
+php embed.php --no-verify \
+  playground/flow-embed.php playground/flow-embed.dist.php
 php playground/flow-embed.php
 cp playground/flow-embed.dist.php ~/order.php
 php ~/order.php
@@ -109,14 +110,14 @@ php ~/order.php
 
 Both render the same flow, so anything that differs between them is a fault in the embedder rather than in the flow. Make edits in `flow-embed.php`; the built copy is output, and it is not committed - build it whenever it is wanted.
 
-Two things compare the pair without being asked:
+2 things compare the pair without being asked:
 
 - `composer lint` runs [`.util/check-embed.php`](.util/check-embed.php), which embeds the demo into a temporary path, runs both with every answer supplied through the environment, and fails if they print anything different. It reports both outputs when they diverge, so the difference is readable from the failure.
 - `.util/assets/flow-embed.svg` records the embedded copy being driven through its prompts by the expect script the recorder generates for it. Nothing embeds that asset and it is deliberately kept out of the README: it exists so that a change in what an embedded script *draws* shows up as a diff in the frames, which comparing text cannot catch.
 
 ## Demo content
 
-Every example in the repository - playground scripts, `starter.php`, README snippets and recorded assets - uses one kitchen-order theme, with no software or technology references. The vocabulary is defined in [`.claude/demo_content_reference.md`](.claude/demo_content_reference.md).
+Every example in the repository - playground scripts, `starter.php`, README snippets and recorded assets - uses a single kitchen-order theme, with no software or technology references. The vocabulary is defined in [`.claude/demo_content_reference.md`](.claude/demo_content_reference.md).
 
 Take labels, keys and hints from that file rather than inventing them. If a demo needs a concept the file doesn't cover, add it there first.
 
@@ -136,13 +137,13 @@ php .util/update-assets.php --record widgets
 
 It needs `asciinema`, `expect`, `node` and `npm` on your PATH. Set `SCRIPT_QUIET=1` to suppress progress output, or `SCRIPT_KEEP_CASTS=1` to keep the recordings under `.artifacts/tmp/asciinema` for inspection.
 
-**Regeneration is reproducible.** Recording the same session twice produces the same SVG, byte for byte, so `git status` after a regeneration answers whether the rendering changed: a clean tree means it did not, and any diff is a real change worth reading. Three things make that hold, and a change to any of them can break it:
+**Regeneration is reproducible.** Recording the same session twice produces the same SVG, byte for byte, so `git status` after a regeneration answers whether the rendering changed: a clean tree means it did not, and any diff is a real change worth reading. 3 things make that hold, and a change to any of them can break it:
 
 - Sessions type at a fixed rate rather than expect's humanised one, which varies its delays by design.
-- The recorded output is treated as one stream and cut into frames where a widget redrew, so a frame is never created by the terminal happening to split a write.
-- Every gap is rewritten to one of two durations before rendering, so the wall clock the recording ran against does not reach the SVG.
+- The recorded output is treated as 1 stream and cut into frames where a widget redrew, so a frame is never created by the terminal happening to split a write.
+- Every gap is rewritten to 1 of 2 durations before rendering, so the wall clock the recording ran against does not reach the SVG.
 
-Recordings run a few at a time rather than all at once, because a machine running every session together stalls them enough to blur the gap between a pause in a session and the gaps within one.
+Recordings run a few at a time rather than all at once, because a machine running every session together stalls them enough to blur the difference between the pauses between steps and the gaps within a step.
 
 ## Releases
 
@@ -160,4 +161,4 @@ Release notes are drafted automatically by [`draft-release-notes.yml`](.github/w
 
 This repository was generated from the [Scaffold](https://getscaffold.dev/) template and can pull the template's latest CI workflows, linting configuration and docs at any time.
 
-The update is agent-driven: ask Claude Code to "update scaffold" and it fetches the updater skill and follows it. [`AGENTS.md`](AGENTS.md) has the steps.
+The update is agent-driven: ask Claude Code to "update scaffold" and it fetches the updater skill and follows it. [`CLAUDE.md`](CLAUDE.md) has the steps.

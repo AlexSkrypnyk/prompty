@@ -52,7 +52,7 @@ class Prompty {
   protected static bool $inFlow = FALSE;
 
   /**
-   * Stored TTY settings for standalone widget teardown.
+   * Terminal settings saved by setupTty() for teardownTty() to restore.
    */
   protected ?string $prevTty = NULL;
 
@@ -273,9 +273,6 @@ class Prompty {
   /**
    * Puts a captured configuration back in force.
    *
-   * The values are assigned rather than merged, so a key a flow added is gone
-   * as well as one it changed.
-   *
    * @param PromptyConfig $snapshot
    *   A snapshot from snapshotConfig().
    */
@@ -344,8 +341,8 @@ class Prompty {
   /**
    * Configure the singleton instance.
    *
-   * Creates the singleton if it does not exist yet. Call before any widgets
-   * or flows to customize symbols, colors, env prefix, truthy/falsy values.
+   * Creates the singleton if it does not exist yet. The settings apply to every
+   * widget and flow that runs afterwards.
    *
    * @param array<string, string>|null $symbols_unicode
    *   Partial unicode symbol overrides.
@@ -358,9 +355,11 @@ class Prompty {
    * @param array<string, string>|null $labels
    *   Partial label overrides.
    * @param bool|null $unicode
-   *   Force unicode (TRUE), ASCII (FALSE), or auto-detect (NULL).
+   *   Force unicode (TRUE) or ASCII (FALSE). NULL keeps the current setting,
+   *   which is auto-detected until set.
    * @param bool|null $ansi
-   *   Force ANSI colors (TRUE), suppress (FALSE), or auto-detect (NULL).
+   *   Force ANSI colors (TRUE) or suppress them (FALSE). NULL keeps the
+   *   current setting, which is auto-detected until set.
    * @param string|null $env_prefix
    *   Environment variable prefix.
    * @param list<string>|null $truthy
@@ -382,8 +381,8 @@ class Prompty {
   ): void {
     $p = static::instance();
 
-    // Every argument is checked before any is applied, so a rejected value
-    // leaves the configuration as it was rather than partly overwritten.
+    // Validate every argument before applying any, so a rejected call leaves
+    // the configuration unchanged.
     if ($symbols_unicode !== NULL) {
       $p->assertConfigKeys('symbols_unicode', $symbols_unicode, $p->cfgSymbolsUnicode);
     }
@@ -487,9 +486,11 @@ class Prompty {
    * @param array<string, string>|null $labels
    *   Partial label overrides.
    * @param bool|null $unicode
-   *   Force unicode (TRUE), ASCII (FALSE), or auto-detect (NULL).
+   *   Force unicode (TRUE) or ASCII (FALSE). NULL keeps the current setting,
+   *   which is auto-detected until set.
    * @param bool|null $ansi
-   *   Force ANSI colors (TRUE), suppress (FALSE), or auto-detect (NULL).
+   *   Force ANSI colors (TRUE) or suppress them (FALSE). NULL keeps the
+   *   current setting, which is auto-detected until set.
    * @param string|null $env_prefix
    *   Environment variable prefix.
    * @param list<string>|null $truthy
@@ -545,9 +546,6 @@ class Prompty {
         'numbering' => $numbering,
       ];
 
-      // No TTY exists when input is piped, and the flow then runs with
-      // env/discovered values without terminal control. An injected input
-      // stream (test mode) also skips TTY setup.
       $p->setupTty();
 
       if ($p->prevTty !== NULL) {
@@ -616,7 +614,9 @@ class Prompty {
    *   Flow context passed by the flow walker.
    *
    * @return \Closure|array<string, mixed>|string|null
-   *   A closure in flow mode, or the entered string in standalone mode.
+   *   While a flow is being defined, a closure, or a step array when a
+   *   condition or children are set. Otherwise the entered string, or NULL
+   *   when the widget is cancelled.
    */
   public static function text(
     string $label,
@@ -637,6 +637,7 @@ class Prompty {
         discovered: $discovered,
         ctx: $ctx,
       );
+
       if ($condition !== NULL || $children !== []) {
         return ['__call' => $call, '__children' => $children, '__condition' => $condition];
       }
@@ -678,6 +679,7 @@ class Prompty {
 
       $open = $p->settleOpen($display, $open);
       $p->printLines($p->renderCompleted($label, $display, $depth, $open));
+
       if ($standalone) {
         // @codeCoverageIgnoreStart
         $p->teardownTty();
@@ -688,8 +690,8 @@ class Prompty {
     }
 
     $render_active = function (string $value) use ($p, $label, $placeholder, $description, $depth, $open): array {
-      // Typed bytes reach here as they were typed, and a paste can carry a
-      // control character among them.
+      // The buffer holds bytes as typed, and a paste can put a control
+      // character among them.
       $value = $p->printable($value);
       $cursor = $p->color('█', 'cyan');
       $display = $value === '' ? $p->color($placeholder, 'gray') . $cursor : $p->color($value, 'white') . $cursor;
@@ -722,6 +724,7 @@ class Prompty {
 
       if ($p->isCancelKey($key)) {
         $p->redraw($line_count, $p->renderCancelled($label, $value, $depth, $open));
+
         if ($standalone) {
           // @codeCoverageIgnoreStart
           $p->teardownTty();
@@ -736,6 +739,7 @@ class Prompty {
         $display = $value !== '' ? $value : $placeholder;
         $open = $p->settleOpen($display, $open);
         $p->redraw($line_count, $p->renderCompleted($label, $display, $depth, $open));
+
         if ($standalone) {
           // @codeCoverageIgnoreStart
           $p->teardownTty();
@@ -746,17 +750,17 @@ class Prompty {
       }
 
       if ($key === 'backspace') {
-        if ($value !== '') {
-          $value = mb_substr($value, 0, -1);
-        }
+        // Text that is not valid UTF-8 fails the /u match, so it loses its
+        // last byte instead of its last character.
+        $value = preg_replace('/.\z/su', '', $value) ?? substr($value, 0, -1);
       }
       elseif ($key === 'space') {
         $value .= ' ';
       }
       // Reject control bytes (ord < 32); accept printable ASCII and bytes
-      // 0x80-0xFF, so UTF-8 characters delivered one byte per readKey()
-      // call accumulate in the buffer.
-      elseif (mb_strlen($key) === 1 && ord($key) >= 32) {
+      // 0x80-0xFF, so UTF-8 characters delivered 1 byte per readKey() call
+      // accumulate in the buffer.
+      elseif (strlen($key) === 1 && ord($key) >= 32) {
         $value .= $key;
       }
 
@@ -790,7 +794,9 @@ class Prompty {
    *   Flow context passed by the flow walker.
    *
    * @return \Closure|array<string, mixed>|string|null
-   *   A closure in flow mode, or the selected option key in standalone mode.
+   *   While a flow is being defined, a closure, or a step array when a
+   *   condition or children are set. Otherwise the selected option key, or
+   *   NULL when the widget is cancelled.
    *
    * @throws \InvalidArgumentException
    *   When $options is empty, or a default or discovered value is not a key of
@@ -817,6 +823,7 @@ class Prompty {
         discovered: $discovered,
         ctx: $ctx,
       );
+
       if ($condition !== NULL || $children !== []) {
         return ['__call' => $call, '__children' => $children, '__condition' => $condition];
       }
@@ -856,6 +863,7 @@ class Prompty {
     if ($resolved_key !== NULL) {
       $open = $p->settleOpen($resolved_key, $open);
       $p->printLines($p->renderCompleted($label, $options[$resolved_key], $depth, $open));
+
       if ($standalone) {
         // @codeCoverageIgnoreStart
         $p->teardownTty();
@@ -924,6 +932,7 @@ class Prompty {
 
       if ($p->isCancelKey($key)) {
         $p->redraw($line_count, $p->renderCancelled($label, $option_labels[$focused], $depth, $open));
+
         if ($standalone) {
           // @codeCoverageIgnoreStart
           $p->teardownTty();
@@ -936,6 +945,7 @@ class Prompty {
       if ($key === 'enter') {
         $open = $p->settleOpen($option_keys[$focused], $open);
         $p->redraw($line_count, $p->renderCompleted($label, $option_labels[$focused], $depth, $open));
+
         if ($standalone) {
           // @codeCoverageIgnoreStart
           $p->teardownTty();
@@ -981,8 +991,9 @@ class Prompty {
    *   Flow context passed by the flow walker.
    *
    * @return \Closure|array<string, mixed>|list<string>|null
-   *   A closure in flow mode, or the array of selected keys in standalone mode,
-   *   deduplicated and in option order.
+   *   While a flow is being defined, a closure, or a step array when a
+   *   condition or children are set. Otherwise the selected option keys,
+   *   deduplicated and in option order, or NULL when the widget is cancelled.
    *
    * @throws \InvalidArgumentException
    *   When $options is empty, or a default or discovered entry is not a key of
@@ -1009,6 +1020,7 @@ class Prompty {
         discovered: $discovered,
         ctx: $ctx,
       );
+
       if ($condition !== NULL || $children !== []) {
         return ['__call' => $call, '__children' => $children, '__condition' => $condition];
       }
@@ -1026,10 +1038,9 @@ class Prompty {
 
     $resolved = $discovered ?? $ctx['discovered'] ?? NULL;
 
-    // An environment variable carries only one string, so several answers
-    // arrive comma-separated. A scalar from either source is split the same
-    // way; a list is taken as given, so an option key holding a comma is
-    // selected as a list entry.
+    // An environment variable holds 1 string, so several answers arrive
+    // comma-separated, and a scalar from either source is split the same way.
+    // A list is taken as given, so it can select an option key with a comma.
     if (is_scalar($resolved)) {
       $resolved = explode(',', (string) $resolved);
     }
@@ -1058,6 +1069,7 @@ class Prompty {
       $display = $resolved_keys !== [] ? implode(', ', array_map(fn(string $key): string => $options[$key], $resolved_keys)) : $p->label('none');
       $open = $p->settleOpen($resolved_keys, $open);
       $p->printLines($p->renderCompleted($label, $display, $depth, $open));
+
       if ($standalone) {
         // @codeCoverageIgnoreStart
         $p->teardownTty();
@@ -1123,6 +1135,7 @@ class Prompty {
 
       if ($p->isCancelKey($key)) {
         $p->redraw($line_count, $p->renderCancelled($label, '', $depth, $open));
+
         if ($standalone) {
           // @codeCoverageIgnoreStart
           $p->teardownTty();
@@ -1145,6 +1158,7 @@ class Prompty {
 
         $open = $p->settleOpen($selected_keys, $open);
         $p->redraw($line_count, $p->renderCompleted($label, $selected_labels !== [] ? implode(', ', $selected_labels) : $p->label('none'), $depth, $open));
+
         if ($standalone) {
           // @codeCoverageIgnoreStart
           $p->teardownTty();
@@ -1189,7 +1203,9 @@ class Prompty {
    *   Flow context passed by the flow walker.
    *
    * @return \Closure|array<string, mixed>|bool|null
-   *   A closure in flow mode, or the boolean result in standalone mode.
+   *   While a flow is being defined, a closure, or a step array when a
+   *   condition or children are set. Otherwise TRUE for yes and FALSE for no,
+   *   or NULL when the widget is cancelled.
    *
    * @throws \InvalidArgumentException
    *   When a discovered value appears in neither the truthy nor falsy list.
@@ -1211,6 +1227,7 @@ class Prompty {
         discovered: $discovered,
         ctx: $ctx,
       );
+
       if ($condition !== NULL || $children !== []) {
         return ['__call' => $call, '__children' => $children, '__condition' => $condition];
       }
@@ -1249,6 +1266,7 @@ class Prompty {
     if ($resolved_bool !== NULL) {
       $open = $p->settleOpen($resolved_bool, $open);
       $p->printLines($p->renderCompleted($label, $resolved_bool ? $p->label('yes') : $p->label('no'), $depth, $open));
+
       if ($standalone) {
         // @codeCoverageIgnoreStart
         $p->teardownTty();
@@ -1293,6 +1311,7 @@ class Prompty {
 
       if ($p->isCancelKey($key)) {
         $p->redraw($line_count, $p->renderCancelled($label, $yes ? $p->label('yes') : $p->label('no'), $depth, $open));
+
         if ($standalone) {
           // @codeCoverageIgnoreStart
           $p->teardownTty();
@@ -1305,6 +1324,7 @@ class Prompty {
       if ($key === 'enter') {
         $open = $p->settleOpen($yes, $open);
         $p->redraw($line_count, $p->renderCompleted($label, $yes ? $p->label('yes') : $p->label('no'), $depth, $open));
+
         if ($standalone) {
           // @codeCoverageIgnoreStart
           $p->teardownTty();
@@ -1329,7 +1349,7 @@ class Prompty {
   }
 
   /**
-   * Prints an intro banner at the start of a flow.
+   * Prints an intro banner.
    */
   public static function intro(string $message): void {
     $p = static::instance();
@@ -1337,7 +1357,7 @@ class Prompty {
   }
 
   /**
-   * Prints an outro banner at the end of a flow.
+   * Prints an outro banner.
    */
   public static function outro(string $message): void {
     $p = static::instance();
@@ -1382,11 +1402,9 @@ class Prompty {
     $text = preg_replace('/[\t\n\x0b\x0c\r]+/', ' ', $text) ?? $text;
     $text = preg_replace('/[\x00-\x1f\x7f]/', '', $text) ?? $text;
 
-    // The rest of the control characters are the C1 range, which UTF-8 encodes
-    // in two bytes whose second is also a continuation byte of ordinary
-    // characters. Matching characters rather than bytes keeps a character
-    // such as 'ą' whole. Text that is not valid UTF-8 has no characters to
-    // match, and keeps the result of the passes above.
+    // Match the remaining C1 controls by character, since their second UTF-8
+    // byte also occurs inside characters such as 'ą'. Text that is not valid
+    // UTF-8 fails the /u match and keeps the result of the passes above.
     return preg_replace('/\p{Cc}/u', '', $text) ?? $text;
   }
 
@@ -1465,7 +1483,7 @@ class Prompty {
    *   A key name returned by readKey().
    *
    * @return bool
-   *   TRUE for the two cancel keys and for the end of the input stream.
+   *   TRUE for the 2 cancel keys and for the end of the input stream.
    */
   protected function isCancelKey(string $key): bool {
     return in_array($key, ['ctrl-c', 'escape', 'eof'], TRUE);
@@ -1493,20 +1511,27 @@ class Prompty {
   }
 
   /**
-   * Set up TTY for standalone widget execution.
+   * Puts the terminal into raw mode and saves the settings it replaces.
+   *
+   * Leaves prevTty NULL when an input stream is injected or stdin is not a
+   * TTY.
    */
   protected function setupTty(): void {
     $this->prevTty = $this->input === NULL ? (shell_exec('stty -g 2>/dev/null') ?: NULL) : NULL;
 
     if ($this->prevTty !== NULL) {
+      // @codeCoverageIgnoreStart
       $this->prevTty = trim($this->prevTty);
-      shell_exec('stty -echo -icanon min 1 time 0 2>/dev/null');
+      // -isig delivers Ctrl+C to readKey() as a byte rather than as SIGINT,
+      // which would end the process before the terminal is restored.
+      shell_exec('stty -echo -icanon -isig min 1 time 0 2>/dev/null');
       $this->hideCursor();
+      // @codeCoverageIgnoreEnd
     }
   }
 
   /**
-   * Tear down TTY after standalone widget execution.
+   * Restores the terminal settings saved by setupTty() and shows the cursor.
    */
   protected function teardownTty(): void {
     if ($this->prevTty !== NULL) {
@@ -1672,8 +1697,8 @@ class Prompty {
     }
 
     foreach ($values as $value) {
-      // A blank entry is matched after trimming, so it would answer for an
-      // empty discovered value that the widget rejects on its own.
+      // Values are matched after trimming, so a blank entry would match an
+      // empty discovered value, which the widget otherwise rejects.
       if (trim($value) === '') {
         throw new \InvalidArgumentException(sprintf('Blank value declared for "%s". Every value must hold a non-space character.', $parameter));
       }
@@ -1770,10 +1795,11 @@ class Prompty {
   /**
    * Rejects steps whose environment variable name cannot be exported.
    *
-   * A step is looked up as its key uppercased behind the prefix. A name that
-   * is not a shell identifier can still be set by a parent process, but it
-   * cannot be exported from a shell or written in most .env files. A step
-   * named that way could never be filled by the means callers use.
+   * A step is looked up as its key uppercased behind the prefix.
+   *
+   * A parent process can set a name that is not a shell identifier, but a
+   * shell cannot export it and most .env files cannot hold it. Such a step
+   * could never be filled through either.
    *
    * @param array<array-key, mixed> $steps
    *   Flow steps, keyed by step name.
@@ -2036,7 +2062,7 @@ class Prompty {
    *   The answers each condition is tested against.
    *
    * @return bool
-   *   TRUE when at least one step is unconditional or its condition passes.
+   *   TRUE when at least 1 step is unconditional or its condition passes.
    */
   protected function hasVisibleStep(array $steps, array $results): bool {
     foreach ($steps as $step) {
@@ -2054,7 +2080,7 @@ class Prompty {
    * Marks whether a depth level still has siblings to come.
    *
    * @param int $depth
-   *   The nesting depth to mark. Depth zero has no connector.
+   *   The nesting depth to mark. Depth 0 has no connector.
    * @param bool $is_last
    *   Whether the step being rendered is the last visible one at that depth.
    */
@@ -2075,14 +2101,12 @@ class Prompty {
   /**
    * Settles the tree connector once the step's answer is known.
    *
-   * Each later sibling's condition is evaluated against the results it will
-   * see when its own step is reached, so no condition observes an answer that
-   * has not been collected yet.
+   * Later siblings' conditions run against the results each will see when
+   * reached, so none reads an answer that has not been collected.
    *
-   * The flow settles again from the value it stores, so a step whose stored
-   * result differs from the one its widget drew still leaves the exact state
-   * behind for whatever renders next. The widget's own lines keep the state it
-   * settled, since they were drawn before the step returned a different value.
+   * walkFlow() settles again from the stored value, so the next render gets
+   * the exact state when that value differs from the drawn one. The widget's
+   * own lines keep the state it settled, because they were drawn first.
    *
    * @param mixed $value
    *   The answer the step resolved to.

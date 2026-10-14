@@ -288,8 +288,16 @@ The shape used by `starter.php` and the linear demos:
 ```php
 $results = Prompty::flow(fn(): array => [
   'dish' => Prompty::text('Dish name', placeholder: 'pear tart'),
-  'course' => Prompty::select('Course', options: ['starter' => 'Starter', 'main' => 'Main', 'dessert' => 'Dessert']),
-  'extras' => Prompty::multiselect('Extras', options: ['bread' => 'Bread', 'olives' => 'Olives', 'herbs' => 'Herbs']),
+  'course' => Prompty::select('Course', options: [
+    'starter' => 'Starter',
+    'main' => 'Main',
+    'dessert' => 'Dessert',
+  ]),
+  'extras' => Prompty::multiselect('Extras', options: [
+    'bread' => 'Bread',
+    'olives' => 'Olives',
+    'herbs' => 'Herbs',
+  ]),
   'send' => Prompty::confirm('Send order?'),
 ], intro: 'Compose an order', outro: 'Order sent!');
 ```

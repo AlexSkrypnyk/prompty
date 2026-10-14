@@ -92,7 +92,6 @@ trait PromptyTestTrait {
     $this->promptySetStatic('instance', $instance);
     $this->promptySetStatic('inFlow', TRUE);
 
-    $result = NULL;
     ob_start();
     $result = $callback();
     $raw_output = ob_get_clean();
@@ -134,9 +133,11 @@ trait PromptyTestTrait {
     }
 
     $instance = $this->promptyCreateInstance();
+
     if ($stream !== NULL) {
       $this->promptySetProperty($instance, 'input', $stream);
     }
+
     $this->promptySetStatic('instance', $instance);
 
     ob_start();
@@ -209,6 +210,7 @@ trait PromptyTestTrait {
     }
 
     $constructor = $ref->getConstructor();
+
     if ($constructor !== NULL) {
       $constructor->invoke($instance);
     }

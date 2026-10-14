@@ -10,16 +10,17 @@
  *
  * A name outside letters, digits and underscores can still be set by a
  * parent process: env 'PROMPTY_DISH-NAME=x' php script.php works. 'export'
- * rejects such a name as a syntax error, and most .env parsers will not
- * accept it. A step named that way could never be pre-filled through export
- * or a .env file: the lookup would find nothing and the flow would prompt
- * instead, with no indication of why.
+ * rejects such a name as a syntax error, and most .env parsers refuse it.
+ *
+ * A step named that way could never be pre-filled through export or a .env
+ * file. The lookup would find nothing, and the flow would prompt with no
+ * indication why.
  *
  * Such a key is rejected. The check runs on the full name, so a prefix that
  * cannot be exported is caught the same way.
  *
- * The first two flows are rejected and print their messages. The third
- * is accepted, and its answers come from the environment.
+ * The first 2 flows are rejected and print their messages. The third is
+ * accepted, and reads its answers from the environment when they are set.
  *
  * phpcs:disable Drupal.Arrays.Array.LongLineDeclaration
  */

@@ -31,7 +31,7 @@
         <exclude-pattern>*.test</exclude-pattern>
     </rule>
 
-    <!-- Allow missing function names in tests. -->
+    <!-- Allow missing function comments in tests. -->
     <rule ref="Drupal.Commenting.FunctionComment.Missing">
         <exclude-pattern>*.Test\.php</exclude-pattern>
         <exclude-pattern>*.TestCase\.php</exclude-pattern>

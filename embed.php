@@ -26,6 +26,72 @@ define('EMBED_SOURCE', __DIR__ . '/Prompty.php');
 define('EMBED_MARKER_START', '@embed-start');
 define('EMBED_MARKER_END', '@embed-end');
 
+/**
+ * Finds the nearest token that is not whitespace.
+ *
+ * @param array<int, array{int, string, int}|string> $tokens
+ *   Tokens from token_get_all().
+ * @param int $index
+ *   The index the search starts at.
+ * @param int $step
+ *   Search direction: 1 forward, -1 backward.
+ *
+ * @return int|null
+ *   The token's index, or NULL when only whitespace remains.
+ */
+function find_significant_token(array $tokens, int $index, int $step): ?int {
+  $count = count($tokens);
+
+  while ($index >= 0 && $index < $count) {
+    if (!is_array($tokens[$index]) || $tokens[$index][0] !== T_WHITESPACE) {
+      return $index;
+    }
+
+    $index += $step;
+  }
+
+  return NULL;
+}
+
+/**
+ * Collects the parameter names of a function signature.
+ *
+ * @param array<int, array{int, string, int}|string> $tokens
+ *   Tokens from token_get_all().
+ * @param int $index
+ *   The index of the first token after the function name.
+ *
+ * @return array<string, bool>
+ *   Parameter names without the leading '$', as keys.
+ */
+function collect_parameter_names(array $tokens, int $index): array {
+  $names = [];
+  $depth = 0;
+  $count = count($tokens);
+
+  while ($index < $count) {
+    $token = $tokens[$index];
+
+    if ($token === '(') {
+      $depth++;
+    }
+    elseif ($token === ')') {
+      $depth--;
+
+      if ($depth <= 0) {
+        break;
+      }
+    }
+    elseif (is_array($token) && $token[0] === T_VARIABLE && $depth > 0) {
+      $names[substr($token[1], 1)] = TRUE;
+    }
+
+    $index++;
+  }
+
+  return $names;
+}
+
 $compact = FALSE;
 $stdout = FALSE;
 $no_killswitch = FALSE;
@@ -48,10 +114,12 @@ for ($arg_i = 1; $arg_i < $argc; $arg_i++) {
   }
   elseif ($argv[$arg_i] === '--source') {
     $arg_i++;
+
     if ($arg_i >= $argc) {
       fwrite(STDERR, sprintf('Error: --source requires a path argument.%s', PHP_EOL));
       exit(1);
     }
+
     $source_override = $argv[$arg_i];
   }
   else {
@@ -131,33 +199,20 @@ if ($source === FALSE) {
 
 $tokens = token_get_all($source);
 
-// Find the class header docblock: the T_DOC_COMMENT immediately before
+// Find the class header docblock: the T_DOC_COMMENT immediately before the
 // T_CLASS token.
 $class_header_index = NULL;
 $token_count = count($tokens);
 
 for ($i = 0; $i < $token_count; $i++) {
-  if (!is_array($tokens[$i])) {
+  if (!is_array($tokens[$i]) || $tokens[$i][0] !== T_CLASS) {
     continue;
   }
 
-  if ($tokens[$i][0] !== T_CLASS) {
-    continue;
-  }
+  $previous = find_significant_token($tokens, $i - 1, -1);
 
-  for ($j = $i - 1; $j >= 0; $j--) {
-    if (!is_array($tokens[$j])) {
-      break;
-    }
-
-    if ($tokens[$j][0] === T_DOC_COMMENT) {
-      $class_header_index = $j;
-      break;
-    }
-
-    if ($tokens[$j][0] !== T_WHITESPACE) {
-      break;
-    }
+  if ($previous !== NULL && is_array($tokens[$previous]) && $tokens[$previous][0] === T_DOC_COMMENT) {
+    $class_header_index = $previous;
   }
 
   break;
@@ -183,10 +238,12 @@ for ($i = 0; $i < $token_count; $i++) {
   if ($token_type === T_DECLARE) {
     while ($i < $token_count) {
       $i++;
+
       if (is_string($tokens[$i]) && $tokens[$i] === ';') {
         break;
       }
     }
+
     continue;
   }
 
@@ -195,10 +252,12 @@ for ($i = 0; $i < $token_count; $i++) {
   if ($token_type === T_NAMESPACE) {
     while ($i < $token_count) {
       $i++;
+
       if (is_string($tokens[$i]) && $tokens[$i] === ';') {
         break;
       }
     }
+
     $skip_preamble = FALSE;
     continue;
   }
@@ -207,6 +266,7 @@ for ($i = 0; $i < $token_count; $i++) {
     if ($i === $class_header_index) {
       $output .= $token_value;
     }
+
     continue;
   }
 
@@ -287,7 +347,6 @@ if ($compact && $class_start !== NULL) {
   $public_method_params = [];
 
   $visibility = NULL;
-  $is_static = FALSE;
 
   for ($i = 0; $i < $compact_token_count; $i++) {
     if (!is_array($compact_tokens[$i])) {
@@ -298,93 +357,61 @@ if ($compact && $class_start !== NULL) {
 
     if ($token_type === T_PUBLIC) {
       $visibility = 'public';
-      $is_static = FALSE;
       continue;
     }
 
     if ($token_type === T_PROTECTED || $token_type === T_PRIVATE) {
       $visibility = 'protected';
-      $is_static = FALSE;
       continue;
     }
 
+    // 'static' can follow the visibility keyword, so it must not reset the
+    // visibility.
     if ($token_type === T_STATIC) {
-      $is_static = TRUE;
       continue;
     }
 
     if ($token_type === T_VARIABLE && $visibility !== NULL) {
-      $prop_name = substr($compact_tokens[$i][1], 1);
-
       // Treat as a property unless the preceding non-whitespace token is
       // T_FUNCTION.
-      $is_property = TRUE;
-      for ($k = $i - 1; $k >= 0; $k--) {
-        if (is_array($compact_tokens[$k]) && $compact_tokens[$k][0] === T_WHITESPACE) {
-          continue;
-        }
-        if (is_array($compact_tokens[$k]) && $compact_tokens[$k][0] === T_FUNCTION) {
-          $is_property = FALSE;
-        }
-        break;
-      }
+      $previous = find_significant_token($compact_tokens, $i - 1, -1);
+      $is_property = $previous === NULL || !is_array($compact_tokens[$previous]) || $compact_tokens[$previous][0] !== T_FUNCTION;
 
       if ($is_property && $visibility !== 'public') {
-        $protected_props[] = $prop_name;
+        $protected_props[] = substr($compact_tokens[$i][1], 1);
       }
+
       $visibility = NULL;
-      $is_static = FALSE;
       continue;
     }
 
     if ($token_type === T_FUNCTION) {
-      for ($k = $i + 1; $k < $compact_token_count; $k++) {
-        if (is_array($compact_tokens[$k]) && $compact_tokens[$k][0] === T_WHITESPACE) {
-          continue;
-        }
-        if (is_array($compact_tokens[$k]) && $compact_tokens[$k][0] === T_STRING) {
-          $method_name = $compact_tokens[$k][1];
+      $name_index = find_significant_token($compact_tokens, $i + 1, 1);
+      $name_token = $name_index === NULL ? NULL : $compact_tokens[$name_index];
 
-          if (!str_starts_with($method_name, '__')) {
-            if ($visibility !== 'public') {
-              $protected_methods[] = $method_name;
-            }
-            else {
-              $paren_depth = 0;
-              for ($m = $k + 1; $m < $compact_token_count; $m++) {
-                if (is_string($compact_tokens[$m]) && $compact_tokens[$m] === '(') {
-                  $paren_depth++;
-                }
-                elseif (is_string($compact_tokens[$m]) && $compact_tokens[$m] === ')') {
-                  $paren_depth--;
-                  if ($paren_depth <= 0) {
-                    break;
-                  }
-                }
-                elseif (is_array($compact_tokens[$m]) && $compact_tokens[$m][0] === T_VARIABLE && $paren_depth > 0) {
-                  $public_method_params[substr($compact_tokens[$m][1], 1)] = TRUE;
-                }
-              }
-            }
-          }
+      if ($name_index !== NULL && is_array($name_token) && $name_token[0] === T_STRING && !str_starts_with($name_token[1], '__')) {
+        if ($visibility !== 'public') {
+          $protected_methods[] = $name_token[1];
         }
-        break;
+        else {
+          $public_method_params += collect_parameter_names($compact_tokens, $name_index + 1);
+        }
       }
+
       $visibility = NULL;
-      $is_static = FALSE;
       continue;
     }
 
     // Reset visibility on any unexpected token.
-    if (!in_array($token_type, [T_WHITESPACE, T_STRING, T_ARRAY, T_NS_SEPARATOR], TRUE) && $compact_tokens[$i][1] !== '?') {
+    if (!in_array($token_type, [T_WHITESPACE, T_STRING, T_ARRAY, T_NS_SEPARATOR], TRUE)) {
       $visibility = NULL;
-      $is_static = FALSE;
     }
   }
 
   // --- Step 2: Build rename maps. ---
   $prop_map = [];
   $idx = 0;
+
   foreach (array_unique($protected_props) as $prop) {
     $prop_map[$prop] = '_p' . $idx;
     $idx++;
@@ -392,6 +419,7 @@ if ($compact && $class_start !== NULL) {
 
   $method_map = [];
   $idx = 0;
+
   foreach (array_unique($protected_methods) as $method) {
     $method_map[$method] = '_m' . $idx;
     $idx++;
@@ -403,13 +431,12 @@ if ($compact && $class_start !== NULL) {
   ];
 
   $all_vars = [];
+
   for ($i = 0; $i < $compact_token_count; $i++) {
-    if (!is_array($compact_tokens[$i])) {
+    if (!is_array($compact_tokens[$i]) || $compact_tokens[$i][0] !== T_VARIABLE) {
       continue;
     }
-    if ($compact_tokens[$i][0] !== T_VARIABLE) {
-      continue;
-    }
+
     $var_name = substr($compact_tokens[$i][1], 1);
 
     if (in_array($var_name, $superglobals, TRUE)) {
@@ -431,13 +458,16 @@ if ($compact && $class_start !== NULL) {
 
   $var_map = [];
   $idx = 0;
+
   foreach (array_keys($all_vars) as $var) {
     $short = '';
     $n = $idx;
+
     do {
       $short = chr(97 + ($n % 26)) . $short;
       $n = intdiv($n, 26) - 1;
     } while ($n >= 0);
+
     $var_map[$var] = $short;
     $idx++;
   }
@@ -457,8 +487,8 @@ if ($compact && $class_start !== NULL) {
     if ($token_type === T_VARIABLE) {
       $var_name = substr($token_value, 1);
 
-      // Property reference after -> : the variable itself stays, the
-      // property name is handled as T_STRING after T_OBJECT_OPERATOR.
+      // In '$this->name', only '$this' is a T_VARIABLE; the property name is a
+      // T_STRING, renamed below.
       if (isset($var_map[$var_name])) {
         $compact_output .= '$' . $var_map[$var_name];
         continue;
@@ -475,58 +505,25 @@ if ($compact && $class_start !== NULL) {
     }
 
     if ($token_type === T_STRING) {
-      $prev = NULL;
-      for ($k = $i - 1; $k >= 0; $k--) {
-        if (is_array($compact_tokens[$k]) && $compact_tokens[$k][0] === T_WHITESPACE) {
-          continue;
-        }
-        $prev = is_array($compact_tokens[$k]) ? $compact_tokens[$k][0] : $compact_tokens[$k];
-        break;
-      }
+      $prev_index = find_significant_token($compact_tokens, $i - 1, -1);
+      $next_index = find_significant_token($compact_tokens, $i + 1, 1);
+      $prev = $prev_index === NULL ? NULL : $compact_tokens[$prev_index];
+      $next = $next_index === NULL ? NULL : $compact_tokens[$next_index];
 
-      if ($prev === T_OBJECT_OPERATOR || $prev === T_NULLSAFE_OBJECT_OPERATOR) {
-        $next = NULL;
-        for ($k = $i + 1; $k < $compact_token_count; $k++) {
-          if (is_array($compact_tokens[$k]) && $compact_tokens[$k][0] === T_WHITESPACE) {
-            continue;
-          }
-          $next = is_array($compact_tokens[$k]) ? $compact_tokens[$k][1] : $compact_tokens[$k];
-          break;
-        }
+      $prev_type = is_array($prev) ? $prev[0] : $prev;
+      $is_member = $prev_type === T_OBJECT_OPERATOR || $prev_type === T_NULLSAFE_OBJECT_OPERATOR;
+      $is_call = $next === '(';
+      $is_method = ($is_call && ($is_member || $prev_type === T_DOUBLE_COLON)) || $prev_type === T_FUNCTION;
 
-        if ($next === '(' && isset($method_map[$token_value])) {
-          $compact_output .= $method_map[$token_value];
-          continue;
-        }
-
-        if ($next !== '(' && isset($prop_map[$token_value])) {
-          $compact_output .= $prop_map[$token_value];
-          continue;
-        }
-      }
-
-      if ($prev === T_DOUBLE_COLON && isset($method_map[$token_value])) {
-        $next = NULL;
-        for ($k = $i + 1; $k < $compact_token_count; $k++) {
-          if (is_array($compact_tokens[$k]) && $compact_tokens[$k][0] === T_WHITESPACE) {
-            continue;
-          }
-          $next = is_array($compact_tokens[$k]) ? $compact_tokens[$k][1] : $compact_tokens[$k];
-          break;
-        }
-        if ($next === '(') {
-          $compact_output .= $method_map[$token_value];
-          continue;
-        }
-      }
-
-      if ($prev === T_FUNCTION && isset($method_map[$token_value])) {
+      if ($is_method && isset($method_map[$token_value])) {
         $compact_output .= $method_map[$token_value];
         continue;
       }
 
-      $compact_output .= $token_value;
-      continue;
+      if ($is_member && !$is_call && isset($prop_map[$token_value])) {
+        $compact_output .= $prop_map[$token_value];
+        continue;
+      }
     }
 
     $compact_output .= $token_value;
@@ -551,6 +548,7 @@ if ($compact && $class_start !== NULL) {
     if ($token_type === T_WHITESPACE) {
       $before = is_array($whitespace_tokens[$i - 1]) ? $whitespace_tokens[$i - 1][1] : $whitespace_tokens[$i - 1];
       $after = '';
+
       if ($i + 1 < $whitespace_token_count) {
         $after = is_array($whitespace_tokens[$i + 1]) ? $whitespace_tokens[$i + 1][1] : $whitespace_tokens[$i + 1];
       }
@@ -564,6 +562,7 @@ if ($compact && $class_start !== NULL) {
       if ($before_is_word && $after_is_word) {
         $whitespace_output .= ' ';
       }
+
       continue;
     }
 
@@ -576,6 +575,7 @@ if ($compact && $class_start !== NULL) {
 }
 
 $namespace = '';
+
 if (preg_match('/^\s*namespace\s+(.+?)\s*;/m', $source, $ns_match)) {
   $namespace = $ns_match[1];
 }
@@ -589,9 +589,11 @@ $rector_config = __DIR__ . '/rector.php';
 
 if (is_file($rector_bin) && is_file($rector_config)) {
   $tmp_dir = __DIR__ . '/.artifacts/tmp';
+
   if (!is_dir($tmp_dir)) {
     mkdir($tmp_dir, 0755, TRUE);
   }
+
   $rector_tmp = tempnam($tmp_dir, 'embed_rector_');
   rename($rector_tmp, $rector_tmp . '.php');
   $rector_tmp .= '.php';
@@ -610,6 +612,7 @@ if (is_file($rector_bin) && is_file($rector_config)) {
 
   if ($rector_exit <= 1) {
     $rector_result = file_get_contents($rector_tmp);
+
     if ($rector_result !== FALSE) {
       $rector_result = preg_replace('/^<\?php\s+declare\(strict_types\s*=\s*1\)\s*;\s*/s', '', $rector_result);
       $payload = trim((string) $rector_result) . "\n";
@@ -622,9 +625,11 @@ if (is_file($rector_bin) && is_file($rector_config)) {
 
 if ($stdout) {
   $standalone = "<?php\n\ndeclare(strict_types=1);\n\n";
+
   if ($namespace !== '') {
     $standalone .= "namespace {$namespace};\n\n";
   }
+
   $standalone .= $payload;
 
   file_put_contents($stdout_path, $standalone);
@@ -722,7 +727,7 @@ if ($no_killswitch || $no_verify) {
   exit(0);
 }
 
-if (posix_isatty(STDIN)) {
+if (stream_isatty(STDIN)) {
   echo sprintf('Verifying embedded script (interactive input required)...%s', PHP_EOL);
 
   $verify_exit = 0;

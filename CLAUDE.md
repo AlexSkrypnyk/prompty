@@ -10,7 +10,8 @@ Namespace: `AlexSkrypnyk\Prompty`. Key files: `Prompty.php` (library),
 
 - **Singleton** - `static::$instance`, never `new Prompty()`.
 - **Dual-mode widgets** - `text`, `select`, `multiselect`, `confirm` return
-  closures in flow mode, values in standalone mode.
+  closures (step arrays when given a condition or children) while a flow is
+  being defined, and values otherwise.
 - **Typed config properties** - `cfgUnicode`, `cfgSymbols`, `cfgColors`,
   `cfgSpacing`, `cfgLabels`, `cfgEnvPrefix`, `cfgTruthy`, `cfgFalsy`, etc.
   Configured via `Prompty::configure(...)` named arguments.
@@ -18,16 +19,16 @@ Namespace: `AlexSkrypnyk\Prompty`. Key files: `Prompty.php` (library),
   is set before widget evaluation.
 - **Tree rendering** - nested children use bar connectors; `open` array
   tracks continuing siblings.
-- **Widget signatures** - all four widgets share one parameter order, and any
+- **Widget signatures** - all 4 widgets share one parameter order, and any
   new widget follows it:
 
   ```
-  label, [options], default, [placeholder], [description], [hints],
+  label, [options], default, [placeholder], description, [hints],
   discovered, condition, children, ctx
   ```
 
   Bracketed parameters appear only where they apply: `options` and `hints` on
-  `select`/`multiselect`, `placeholder` on `text`. The trailing four are
+  `select`/`multiselect`, `placeholder` on `text`. The trailing 4 are
   common to every widget. Callers pass `label` positionally and everything
   else by name, so the order matters to the signature, not to call sites.
 
@@ -48,7 +49,7 @@ if a demo needs a concept it does not cover, add it there first.
 ## Commands
 
 ```bash
-composer lint          # PHPCS + PHPStan + Rector dry-run
+composer lint          # PHPCS + PHPStan + Rector dry-run + embed check
 composer lint-fix      # Rector + PHPCBF
 composer test          # PHPUnit (no coverage)
 composer test-coverage # PHPUnit with coverage

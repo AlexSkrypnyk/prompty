@@ -14,11 +14,12 @@ use PHPUnit\Framework\Attributes\Group;
  *
  * Inside a flow a widget returns a deferred closure, or a step array when it
  * carries a condition or children. The whole-flow tests resolve answers from
- * the environment. Rendered output is captured, ANSI-stripped, and compared
- * whole against a heredoc, or against an escaped string where trailing
- * whitespace is significant. The cancellation tests that assert output use
- * substrings, because their output carries redraw sequences that depend on
- * keystroke timing.
+ * the environment.
+ *
+ * Rendered output is captured, ANSI-stripped, and compared whole against a
+ * heredoc, or against an escaped string where trailing whitespace is
+ * significant. The cancellation tests that assert output use substrings,
+ * because their output carries redraw sequences.
  */
 #[CoversClass(Prompty::class)]
 #[Group('unit')]
@@ -285,6 +286,19 @@ final class PromptyFlowTest extends PromptyTestCase {
     $this->assertSame($expected . "\n", $output);
   }
 
+  public function testResultsReturnsLastFlowAnswers(): void {
+    $this->setEnvVars(['name' => 'test', 'send' => 'yes']);
+
+    $this->captureOutput(function (): void {
+      Prompty::flow(fn(): array => [
+        'name' => Prompty::text('Name'),
+        'send' => Prompty::confirm('Send?'),
+      ], unicode: FALSE);
+    });
+
+    $this->assertSame(['name' => 'test', 'send' => TRUE], Prompty::results());
+  }
+
   public function testFlowNumbering(): void {
     $this->setEnvVars(['name' => 'test', 'framework' => 'react']);
 
@@ -468,7 +482,7 @@ final class PromptyFlowTest extends PromptyTestCase {
       fn(): mixed => Prompty::flow(fn(): array => ['dish' => Prompty::text('Dish name')], outro: fn(): never => throw new \RuntimeException('boom'), unicode: FALSE),
     ];
 
-    // Throws from the recursive walkFlow() call, one level below the parent.
+    // Throws from the recursive walkFlow() call, 1 level below the parent.
     yield 'nested child callable' => [
       fn(): mixed => Prompty::flow(fn(): array => [
         'dish' => Prompty::text('Dish name', children: [

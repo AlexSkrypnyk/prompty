@@ -22,8 +22,8 @@
  * PROMPTY_EXTRAS=bread,olives PROMPTY_DISH= php playground/widget-values.php
  * @endcode
  *
- * Without either source, those widgets ask, so one script serves an
- * operator at a terminal and a scripted run that already has the answers.
+ * Without either source, those widgets ask, so the same script works at a
+ * terminal and in a scripted run that already has the answers.
  */
 
 declare(strict_types=1);
@@ -39,7 +39,7 @@ $courses = ['starter' => 'Starter', 'main' => 'Main', 'dessert' => 'Dessert'];
 $extras = ['bread' => 'Bread', 'olives' => 'Olives', 'herbs' => 'Herbs'];
 
 /**
- * Prints a text result on one line.
+ * Prints a text result on 1 line.
  *
  * @param \Closure|array<string, mixed>|string|null $result
  *   What the widget returned.
@@ -49,7 +49,7 @@ function show_text(\Closure|array|string|null $result): void {
 }
 
 /**
- * Prints a multiselect result on one line.
+ * Prints a multiselect result on 1 line.
  *
  * @param \Closure|array<string, mixed>|list<string>|null $result
  *   What the widget returned.
@@ -71,6 +71,7 @@ echo "\n--- Multiselect: defaults pre-check options ---\n";
 show_selection(Prompty::multiselect('Extras', options: $extras, default: ['bread', 'herbs'], description: 'Uncheck what the table does not want.'));
 
 echo "\n--- Select: default outside the options ---\n";
+
 try {
   Prompty::select('Course', options: $courses, default: 'pudding');
 }
@@ -79,6 +80,7 @@ catch (\InvalidArgumentException $exception) {
 }
 
 echo "\n--- Multiselect: one default outside the options ---\n";
+
 try {
   Prompty::multiselect('Extras', options: $extras, default: ['bread', 'pickles']);
 }
@@ -111,6 +113,7 @@ echo "\n--- Multiselect: a key holding a comma needs the list form ---\n";
 show_selection(Prompty::multiselect('Extras', options: ['salt,pepper' => 'Salt and pepper', 'herbs' => 'Herbs'], discovered: ['salt,pepper']));
 
 echo "\n--- Multiselect: one key of the answer is not an option ---\n";
+
 try {
   Prompty::multiselect('Extras', options: $extras, discovered: 'bread,pickles');
 }

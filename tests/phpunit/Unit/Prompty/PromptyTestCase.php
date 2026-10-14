@@ -110,6 +110,7 @@ abstract class PromptyTestCase extends TestCase {
     $result = $this->promptyCallProtected($instance, $method, ...$args);
     $this->assertIsArray($result);
     $lines = [];
+
     foreach ($result as $item) {
       $this->assertIsString($item);
       $lines[] = $item;
