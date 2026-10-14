@@ -12,9 +12,11 @@ use PHPUnit\Framework\Attributes\Group;
 /**
  * Tests for reading and sanitising input.
  *
- * Control characters in values, labels and messages are filtered to
- * printable text before rendering, and an exhausted input stream yields the
- * 'eof' sentinel that cancels a widget instead of blocking.
+ * readKey() turns input bytes into key names, including the escape sequences
+ * a terminal sends for cursor keys. Control characters in values, labels and
+ * messages are filtered to printable text before rendering, and an exhausted
+ * input stream yields the 'eof' sentinel that cancels a widget instead of
+ * blocking.
  */
 #[CoversClass(Prompty::class)]
 #[Group('unit')]
@@ -218,15 +220,106 @@ final class PromptyInputTest extends PromptyTestCase {
     $this->assertStringContainsString('Order cancelled.', $r['output']);
   }
 
-  public function testReadKeyReturnsEofWhenStreamIsExhausted(): void {
+  /**
+   * Read every key from a memory stream.
+   *
+   * @param string $input
+   *   Raw bytes in the stream.
+   * @param list<string> $expected
+   *   The keys read, ending with the 'eof' that the end of the stream yields.
+   */
+  #[DataProvider('dataProviderReadKey')]
+  public function testReadKey(string $input, array $expected): void {
     $p = $this->createInstance();
     $stream = fopen('php://memory', 'r+');
     $this->assertIsResource($stream);
+    fwrite($stream, $input);
+    rewind($stream);
     $this->setProperty($p, 'input', $stream);
 
-    $this->assertSame('eof', $this->callProtected($p, 'readKey'));
+    $keys = [];
+
+    while (count($keys) < count($expected)) {
+      $keys[] = $this->callProtected($p, 'readKey');
+    }
+
+    $this->assertSame($expected, $keys);
 
     fclose($stream);
+  }
+
+  public static function dataProviderReadKey(): \Iterator {
+    yield 'exhausted stream' => ['', ['eof']];
+    yield 'interrupt' => [self::KEY_CTRL_C, ['ctrl-c', 'eof']];
+    yield 'line feed' => ["\n", ['enter', 'eof']];
+    yield 'carriage return' => ["\r", ['enter', 'eof']];
+    yield 'delete byte' => ["\x7f", ['backspace', 'eof']];
+    yield 'backspace byte' => ["\x08", ['backspace', 'eof']];
+    yield 'tab' => [self::KEY_TAB, ['tab', 'eof']];
+    yield 'space' => [self::KEY_SPACE, ['space', 'eof']];
+    yield 'printable character' => ['x', ['x', 'eof']];
+    yield 'multibyte character' => ["\u{0105}", ["\xC4", "\x85", 'eof']];
+    yield 'lone escape' => [self::KEY_ESCAPE, ['escape', 'eof']];
+    yield 'escape and a key together' => ["\x1bx", ['escape', 'eof']];
+    yield 'up' => [self::KEY_UP, ['up', 'eof']];
+    yield 'down' => [self::KEY_DOWN, ['down', 'eof']];
+    yield 'right' => [self::KEY_RIGHT, ['right', 'eof']];
+    yield 'left' => [self::KEY_LEFT, ['left', 'eof']];
+    yield 'up in application mode' => ["\x1bOA", ['up', 'eof']];
+    yield 'down in application mode' => ["\x1bOB", ['down', 'eof']];
+    yield 'right in application mode' => ["\x1bOC", ['right', 'eof']];
+    yield 'left in application mode' => ["\x1bOD", ['left', 'eof']];
+    yield 'delete key' => ["\x1b[3~", ['unknown', 'eof']];
+    yield 'up with shift' => ["\x1b[1;2A", ['unknown', 'eof']];
+    yield 'function key' => ["\x1bOP", ['unknown', 'eof']];
+    yield 'key after a cursor key' => [self::KEY_DOWN . 'x', ['down', 'x', 'eof']];
+    yield 'key after an unrecognised sequence' => ["\x1b[3~x", ['unknown', 'x', 'eof']];
+    yield 'sequence cut short' => ["\x1b[", ['escape', 'eof']];
+    yield 'sequence cut short after a parameter' => ["\x1b[1;", ['escape', 'eof']];
+    yield 'application mode sequence cut short' => ["\x1bO", ['escape', 'eof']];
+  }
+
+  /**
+   * Read keys from a live stream that receives bytes between reads.
+   *
+   * @param list<string> $writes
+   *   Bytes written to the stream before each read.
+   * @param list<string> $expected
+   *   The key each read returns.
+   */
+  #[DataProvider('dataProviderReadKeyFromLiveStream')]
+  public function testReadKeyFromLiveStream(array $writes, array $expected): void {
+    $sockets = stream_socket_pair(STREAM_PF_UNIX, STREAM_SOCK_STREAM, STREAM_IPPROTO_IP);
+    $this->assertIsArray($sockets);
+    [$input, $sender] = $sockets;
+    // A read that waits for a byte the test never sends gives up after this,
+    // so a regression fails the test instead of holding the suite.
+    stream_set_timeout($input, 5);
+
+    $p = $this->createInstance();
+    $this->setProperty($p, 'input', $input);
+
+    $keys = [];
+
+    foreach ($writes as $write) {
+      fwrite($sender, $write);
+      $started = microtime(TRUE);
+      $keys[] = $this->callProtected($p, 'readKey');
+
+      $this->assertLessThan(1, microtime(TRUE) - $started, 'readKey() waited for bytes that had not been sent.');
+    }
+
+    $this->assertSame($expected, $keys);
+
+    fclose($input);
+    fclose($sender);
+  }
+
+  public static function dataProviderReadKeyFromLiveStream(): \Iterator {
+    yield 'lone escape, then a key' => [[self::KEY_ESCAPE, 'x'], ['escape', 'x']];
+    yield 'cursor key' => [[self::KEY_UP], ['up']];
+    yield 'escape and a key together' => [["\x1bx"], ['escape']];
+    yield 'sequence cut short, then the rest' => [["\x1b[", 'A'], ['escape', 'A']];
   }
 
   #[DataProvider('dataProviderIsCancelKey')]
