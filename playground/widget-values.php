@@ -22,8 +22,8 @@
  * PROMPTY_EXTRAS=bread,olives PROMPTY_DISH= php playground/widget-values.php
  * @endcode
  *
- * Without either source, those widgets ask, so one script serves an
- * operator at a terminal and a scripted run that already has the answers.
+ * Without either source, those widgets ask, so the same script works at a
+ * terminal and in a scripted run that already has the answers.
  */
 
 declare(strict_types=1);
@@ -39,7 +39,7 @@ $courses = ['starter' => 'Starter', 'main' => 'Main', 'dessert' => 'Dessert'];
 $extras = ['bread' => 'Bread', 'olives' => 'Olives', 'herbs' => 'Herbs'];
 
 /**
- * Prints a text result on one line.
+ * Prints a text result on 1 line.
  *
  * @param \Closure|array<string, mixed>|string|null $result
  *   What the widget returned.
@@ -49,7 +49,7 @@ function show_text(\Closure|array|string|null $result): void {
 }
 
 /**
- * Prints a multiselect result on one line.
+ * Prints a multiselect result on 1 line.
  *
  * @param \Closure|array<string, mixed>|list<string>|null $result
  *   What the widget returned.

@@ -199,7 +199,7 @@ if ($source === FALSE) {
 
 $tokens = token_get_all($source);
 
-// Find the class header docblock: the T_DOC_COMMENT immediately before
+// Find the class header docblock: the T_DOC_COMMENT immediately before the
 // T_CLASS token.
 $class_header_index = NULL;
 $token_count = count($tokens);
@@ -365,8 +365,8 @@ if ($compact && $class_start !== NULL) {
       continue;
     }
 
-    // 'static' sits between the visibility and the name, so the visibility
-    // stays set past it.
+    // 'static' can follow the visibility keyword, so it must not reset the
+    // visibility.
     if ($token_type === T_STATIC) {
       continue;
     }
@@ -487,8 +487,8 @@ if ($compact && $class_start !== NULL) {
     if ($token_type === T_VARIABLE) {
       $var_name = substr($token_value, 1);
 
-      // Property reference after -> : the variable itself stays, the
-      // property name is handled as T_STRING after T_OBJECT_OPERATOR.
+      // In '$this->name', only '$this' is a T_VARIABLE; the property name is a
+      // T_STRING, renamed below.
       if (isset($var_map[$var_name])) {
         $compact_output .= '$' . $var_map[$var_name];
         continue;

@@ -2,44 +2,17 @@
 
 /**
  * @file
- * Playground - how embedding is tested.
+ * Playground - the flow the embedder is tested against.
  *
- * Prompty is meant to be copied into a consumer script, so the copy must
- * keep working; this file tests that. Like every other demo here, it loads
- * the class with require, and the embedder rewrites it into a copy that
- * carries the class inline and requires nothing.
+ * Like every other demo here, it loads the class with require, and the
+ * embedder builds a copy that carries the class inline and requires nothing.
  *
- * Build that copy by running the embedder with an output path, so the source
- * is copied there and the copy is rewritten:
- *
- *   php embed.php playground/flow-embed.php playground/flow-embed.dist.php
- *
- * Then run both and compare what they draw. They render the same flow, so
- * anything that differs between them is a fault in the embedder rather than
- * in the flow:
- *
- *   php playground/flow-embed.php
- *   php playground/flow-embed.dist.php
- *
- * That comparison also happens automatically in two places. `composer lint`
- * runs .util/check-embed.php, which builds the copy and fails if the two
- * print anything different.
- *
- * .util/assets/flow-embed.svg records the embedded copy driven through its
- * prompts by the expect script the recorder generates for it. The asset is
- * kept out of the README on purpose. A change in what the embedded script
- * draws then shows up as a diff in the frames rather than only in the text.
- *
- * flow-embed.dist.php is generated and is not committed. Build it whenever
- * it is wanted; nothing depends on a copy of it being in the repository.
+ * CONTRIBUTING.md, under "The embedded demo", covers how the copy is built
+ * and compared with this file.
  *
  * The embedder replaces everything between the markers below with a minified
  * copy of the Prompty class and copies everything outside them unchanged, so
  * both files share this docblock.
- *
- * Running the embedder again on an embedded script replaces the marker region
- * with the current class and preserves everything outside it. That second run
- * updates an embedded script to a newer version of Prompty.
  *
  * phpcs:disable Drupal.Arrays.Array.LongLineDeclaration
  */

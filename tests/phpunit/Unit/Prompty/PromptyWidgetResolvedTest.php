@@ -14,8 +14,10 @@ use PHPUnit\Framework\Attributes\Group;
  *
  * A value arrives through the `discovered` argument, the `discovered` ctx
  * key, or an environment variable read by a flow. The widget then skips its
- * interactive loop and returns immediately. Covers where the value comes
- * from, how it is normalised, what a blank one means, and what is rejected.
+ * interactive loop and returns immediately.
+ *
+ * Covers where the value comes from, how it is normalised, what a blank one
+ * means, and what is rejected.
  *
  * Grouped as resolved values per widget (text, select, multiselect,
  * confirm), resolved values across widgets, blank and empty answers, and

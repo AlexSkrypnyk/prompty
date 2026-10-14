@@ -33,7 +33,7 @@ final class StarterScriptTest extends FunctionalTestCase {
    * Run starter.php with keystrokes and assert the output contains strings.
    *
    * @param array<int, string> $keystrokes
-   *   Keys fed to the script, joined into one raw input string.
+   *   Keys fed to the script, joined into 1 raw input string.
    * @param array<int, string> $expected_strings
    *   Strings the ANSI-stripped output must contain.
    */

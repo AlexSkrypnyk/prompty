@@ -11,7 +11,7 @@
  * way intro, outro and numbering are: they are not a shorthand for
  * configure().
  *
- * Three flows run here:
+ * 3 flows run here:
  *
  * 1. One that passes its own spacing, labels and environment prefix.
  * 2. One that passes none, and renders with the configuration in force
@@ -92,7 +92,7 @@ if ($second === NULL) {
 }
 
 // Each flow returns only its own steps, so the order is assembled from the
-// two result arrays.
+// 2 result arrays.
 $dish = is_string($first['dish']) ? $first['dish'] : '';
 $course = is_string($second['course']) ? $second['course'] : '';
 echo PHP_EOL . 'Order: ' . $dish . ' + ' . $course . PHP_EOL;

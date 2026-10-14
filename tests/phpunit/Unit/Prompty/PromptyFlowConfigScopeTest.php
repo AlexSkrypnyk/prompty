@@ -25,7 +25,7 @@ final class PromptyFlowConfigScopeTest extends PromptyTestCase {
    * The steps every flow in this test runs.
    *
    * @return \Closure
-   *   A callable returning one text step that resolves from the environment.
+   *   A callable returning 1 text step that resolves from the environment.
    */
   protected static function steps(): \Closure {
     return fn(): array => ['dish' => Prompty::text('Dish name')];

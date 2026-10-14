@@ -341,8 +341,8 @@ class Prompty {
   /**
    * Configure the singleton instance.
    *
-   * Creates the singleton if it does not exist yet. Call before any widgets
-   * or flows to customize symbols, colors, env prefix, truthy/falsy values.
+   * Creates the singleton if it does not exist yet. The settings apply to every
+   * widget and flow that runs afterwards.
    *
    * @param array<string, string>|null $symbols_unicode
    *   Partial unicode symbol overrides.
@@ -381,8 +381,8 @@ class Prompty {
   ): void {
     $p = static::instance();
 
-    // Every argument is checked before any is applied, so a rejected value
-    // leaves the configuration as it was rather than partly overwritten.
+    // Validate every argument before applying any, so a rejected call leaves
+    // the configuration unchanged.
     if ($symbols_unicode !== NULL) {
       $p->assertConfigKeys('symbols_unicode', $symbols_unicode, $p->cfgSymbolsUnicode);
     }
@@ -690,8 +690,8 @@ class Prompty {
     }
 
     $render_active = function (string $value) use ($p, $label, $placeholder, $description, $depth, $open): array {
-      // Typed bytes reach here as they were typed, and a paste can carry a
-      // control character among them.
+      // The buffer holds bytes as typed, and a paste can put a control
+      // character among them.
       $value = $p->printable($value);
       $cursor = $p->color('█', 'cyan');
       $display = $value === '' ? $p->color($placeholder, 'gray') . $cursor : $p->color($value, 'white') . $cursor;
@@ -758,8 +758,8 @@ class Prompty {
         $value .= ' ';
       }
       // Reject control bytes (ord < 32); accept printable ASCII and bytes
-      // 0x80-0xFF, so UTF-8 characters delivered one byte per readKey()
-      // call accumulate in the buffer.
+      // 0x80-0xFF, so UTF-8 characters delivered 1 byte per readKey() call
+      // accumulate in the buffer.
       elseif (strlen($key) === 1 && ord($key) >= 32) {
         $value .= $key;
       }
@@ -1038,10 +1038,9 @@ class Prompty {
 
     $resolved = $discovered ?? $ctx['discovered'] ?? NULL;
 
-    // An environment variable carries only one string, so several answers
-    // arrive comma-separated. A scalar from either source is split the same
-    // way; a list is taken as given, so an option key holding a comma is
-    // selected as a list entry.
+    // An environment variable holds 1 string, so several answers arrive
+    // comma-separated, and a scalar from either source is split the same way.
+    // A list is taken as given, so it can select an option key with a comma.
     if (is_scalar($resolved)) {
       $resolved = explode(',', (string) $resolved);
     }
@@ -1403,11 +1402,9 @@ class Prompty {
     $text = preg_replace('/[\t\n\x0b\x0c\r]+/', ' ', $text) ?? $text;
     $text = preg_replace('/[\x00-\x1f\x7f]/', '', $text) ?? $text;
 
-    // The rest of the control characters are the C1 range, which UTF-8 encodes
-    // in two bytes whose second is also a continuation byte of ordinary
-    // characters. Matching characters rather than bytes keeps a character
-    // such as 'ą' whole. Text that is not valid UTF-8 has no characters to
-    // match, and keeps the result of the passes above.
+    // Match the remaining C1 controls by character, since their second UTF-8
+    // byte also occurs inside characters such as 'ą'. Text that is not valid
+    // UTF-8 fails the /u match and keeps the result of the passes above.
     return preg_replace('/\p{Cc}/u', '', $text) ?? $text;
   }
 
@@ -1486,7 +1483,7 @@ class Prompty {
    *   A key name returned by readKey().
    *
    * @return bool
-   *   TRUE for the two cancel keys and for the end of the input stream.
+   *   TRUE for the 2 cancel keys and for the end of the input stream.
    */
   protected function isCancelKey(string $key): bool {
     return in_array($key, ['ctrl-c', 'escape', 'eof'], TRUE);
@@ -1698,8 +1695,8 @@ class Prompty {
     }
 
     foreach ($values as $value) {
-      // A blank entry is matched after trimming, so it would answer for an
-      // empty discovered value that the widget rejects on its own.
+      // Values are matched after trimming, so a blank entry would match an
+      // empty discovered value, which the widget otherwise rejects.
       if (trim($value) === '') {
         throw new \InvalidArgumentException(sprintf('Blank value declared for "%s". Every value must hold a non-space character.', $parameter));
       }
@@ -1796,10 +1793,11 @@ class Prompty {
   /**
    * Rejects steps whose environment variable name cannot be exported.
    *
-   * A step is looked up as its key uppercased behind the prefix. A name that
-   * is not a shell identifier can still be set by a parent process, but it
-   * cannot be exported from a shell or written in most .env files. A step
-   * named that way could never be filled by the means callers use.
+   * A step is looked up as its key uppercased behind the prefix.
+   *
+   * A parent process can set a name that is not a shell identifier, but a
+   * shell cannot export it and most .env files cannot hold it. Such a step
+   * could never be filled through either.
    *
    * @param array<array-key, mixed> $steps
    *   Flow steps, keyed by step name.
@@ -2062,7 +2060,7 @@ class Prompty {
    *   The answers each condition is tested against.
    *
    * @return bool
-   *   TRUE when at least one step is unconditional or its condition passes.
+   *   TRUE when at least 1 step is unconditional or its condition passes.
    */
   protected function hasVisibleStep(array $steps, array $results): bool {
     foreach ($steps as $step) {
@@ -2080,7 +2078,7 @@ class Prompty {
    * Marks whether a depth level still has siblings to come.
    *
    * @param int $depth
-   *   The nesting depth to mark. Depth zero has no connector.
+   *   The nesting depth to mark. Depth 0 has no connector.
    * @param bool $is_last
    *   Whether the step being rendered is the last visible one at that depth.
    */
@@ -2101,14 +2099,12 @@ class Prompty {
   /**
    * Settles the tree connector once the step's answer is known.
    *
-   * Each later sibling's condition is evaluated against the results it will
-   * see when its own step is reached, so no condition observes an answer that
-   * has not been collected yet.
+   * Later siblings' conditions run against the results each will see when
+   * reached, so none reads an answer that has not been collected.
    *
-   * The flow settles again from the value it stores, so a step whose stored
-   * result differs from the one its widget drew still leaves the exact state
-   * behind for whatever renders next. The widget's own lines keep the state it
-   * settled, since they were drawn before the step returned a different value.
+   * walkFlow() settles again from the stored value, so the next render gets
+   * the exact state when that value differs from the drawn one. The widget's
+   * own lines keep the state it settled, because they were drawn first.
    *
    * @param mixed $value
    *   The answer the step resolved to.

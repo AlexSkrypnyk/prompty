@@ -6,9 +6,9 @@
  * Check that embedding does not change what a script does.
  *
  * playground/flow-embed.php loads the class with require; embedding rewrites
- * it into a copy that carries the class inline and requires nothing. The two
- * run the same flow, so anything that differs between what they print is a
- * fault in the embedder.
+ * it into a copy that carries the class inline and requires nothing. Both run
+ * the same flow, so anything that differs between what they print is a fault
+ * in the embedder.
  *
  * This builds that copy into a temporary path, runs both with the same
  * answers supplied through the environment, and compares the output.
@@ -38,8 +38,8 @@ define('ANSWERS', [
  * Compare the source script against a freshly embedded copy of it.
  *
  * @throws \RuntimeException
- *   When the copy cannot be built, either run prints nothing, or the two
- *   runs print something different.
+ *   When the copy cannot be built, either run prints nothing, or the 2 runs
+ *   print something different.
  */
 function main(): void {
   $project_dir = dirname(__DIR__);
@@ -56,7 +56,7 @@ function main(): void {
   $embedded = run($embedded_path);
   unlink($embedded_path);
 
-  // Two runs that print nothing would otherwise match, so the runs have to
+  // 2 runs that print nothing would otherwise match, so the runs have to
   // reach the end of the flow to count.
   if (!str_contains($source, 'Order sent!')) {
     throw new \RuntimeException(sprintf("%s did not complete its flow. It printed:%s%s", SOURCE_SCRIPT, PHP_EOL, $source));

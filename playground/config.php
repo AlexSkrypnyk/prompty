@@ -4,19 +4,18 @@
  * @file
  * Playground - configure() for widgets and flows, and what it rejects.
  *
- * Prompty::configure() writes to the shared instance, so what it sets -
- * labels, a display mode, an environment prefix - serves every widget and
- * flow that follows, with no flow wrapper needed. Repeat calls update the
- * instance, and a flow's own configuration arguments merge on top for as
- * long as that flow runs.
+ * Prompty::configure() writes to the shared instance, so its settings apply
+ * to every later widget and flow, with no flow wrapper needed. Repeat calls
+ * update the instance, and a flow's own configuration arguments merge on top
+ * while that flow runs.
  *
  * The symbol, color, label and spacing arguments each take a fixed set of
- * keys. A key outside that set is rejected, and the message names the key
- * and lists the ones that would have worked. Merged in and never read, a
- * misspelled key would change nothing and report nothing.
+ * keys, since a merged misspelling would change nothing and report nothing.
+ * A key outside the set is rejected with a message that names it and lists
+ * the valid keys.
  *
- * Each rejected call below prints the message it was rejected with, and the
- * accepted one then draws a confirm with the labels it set.
+ * Each rejected call below prints its message. The accepted call then draws a
+ * confirm with the labels it set.
  */
 
 declare(strict_types=1);
@@ -37,7 +36,7 @@ Prompty::configure(
  * Make a configure() call and report what it did.
  *
  * @param string $title
- *   What the call is trying to do.
+ *   Section heading describing the call.
  * @param callable $call
  *   The configure() call.
  */

@@ -347,7 +347,7 @@ final class PromptyConfigTest extends PromptyTestCase {
    * Tests a rejected configure() call applies none of its arguments.
    *
    * @param array $args
-   *   The configure() arguments, at least one of them invalid.
+   *   The configure() arguments, at least 1 of them invalid.
    * @param list<string> $checked_keys
    *   The config() keys asserted unchanged.
    */

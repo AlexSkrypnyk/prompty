@@ -12,7 +12,7 @@ use PHPUnit\Framework\Attributes\Group;
 /**
  * Tests what select and multiselect accept as options and defaults.
  *
- * Covers three concerns: a widget declared with no options is rejected, a
+ * Covers 3 concerns: a widget declared with no options is rejected, a
  * default must name a declared option key, and numeric-string option keys
  * survive PHP's array-key cast.
  */
@@ -40,7 +40,7 @@ final class PromptyWidgetValidationTest extends PromptyTestCase {
    * fail the same way for both widgets.
    *
    * @return \Iterator<string, array{string}>
-   *   One keystroke sequence per case.
+   *   1 keystroke sequence per case.
    */
   protected static function keystrokeCases(): \Iterator {
     yield 'enter' => [self::KEY_ENTER];
