@@ -52,10 +52,11 @@ The library itself is deliberately a single class in a single file with no depen
 
 ```text
 tests/phpunit/Unit/Prompty/   Unit tests, driven through PromptyTestTrait.
-tests/phpunit/Functional/     Runs embed.php and starter.php as subprocesses.
+tests/phpunit/Functional/     Runs embed.php, starter.php and fixtures as subprocesses.
+tests/phpunit/Fixtures/       Scripts the functional tests run.
 ```
 
-Unit tests extend `PromptyTestCase` and use `PromptyTestTrait` to feed keystrokes into a memory stream, so no real TTY is needed. Functional tests shell out, which makes them slower but catches things the unit tests can't - like whether an embedded script still parses.
+Unit tests extend `PromptyTestCase` and use `PromptyTestTrait` to feed keystrokes into a memory stream, so no real TTY is needed. Functional tests shell out, which makes them slower but catches things the unit tests can't - like whether an embedded script still parses, or how a widget handles keys that arrive over time in a real terminal. `TerminalInputTest` runs a fixture in a pseudo-terminal for that, and skips itself on PHP builds that can't open one.
 
 Use data providers where you can. Name the provider `dataProvider<Something>` and put it *after* the test method it feeds.
 

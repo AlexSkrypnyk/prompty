@@ -74,8 +74,7 @@ composer reset         # rm vendor/, vendor-bin/, composer.lock
 - Base class: `PromptyTestCase` (uses `PromptyTestTrait`)
 - PHPUnit 11: `#[CoversClass()]`, `#[DataProvider()]`
 - Unit tests in `tests/phpunit/Unit/Prompty/`
-- Functional tests in `tests/phpunit/Functional/` - these run `embed.php` and
-  `starter.php` in real subprocesses
+- Functional tests in `tests/phpunit/Functional/` - these run `embed.php`, `starter.php` and the scripts in `tests/phpunit/Fixtures/` in real subprocesses, the fixtures in a pseudo-terminal
 - Autoload: classmap (no PSR-4)
 
 ## Updating from the template
