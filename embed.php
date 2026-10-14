@@ -34,7 +34,7 @@ define('EMBED_MARKER_END', '@embed-end');
  * @param int $index
  *   The index the search starts at.
  * @param int $step
- *   1 to search forward, -1 to search backward.
+ *   Search direction: 1 forward, -1 backward.
  *
  * @return int|null
  *   The token's index, or NULL when only whitespace remains.
