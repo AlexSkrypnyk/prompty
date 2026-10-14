@@ -161,6 +161,7 @@ function main(): void {
 
   $jobs = getJobs($project_dir);
   $tmp_dir = $project_dir . '/.artifacts/tmp/asciinema';
+
   if (!is_dir($tmp_dir)) {
     mkdir($tmp_dir, 0700, TRUE);
   }
@@ -235,9 +236,11 @@ function main(): void {
   if ($failed !== []) {
     error('');
     error('Errors:');
+
     foreach ($failed as $name => $output) {
       error('  ' . $name . ': ' . $output);
     }
+
     throw new \RuntimeException('Failed to generate ' . count($failed) . ' asset(s).');
   }
 
@@ -258,6 +261,7 @@ function processOne(string $name): void {
   $tmp_dir = $project_dir . '/.artifacts/tmp/asciinema';
 
   $jobs = getJobs($project_dir);
+
   if (!isset($jobs[$name])) {
     throw new \RuntimeException('Unknown job: ' . $name);
   }
@@ -315,6 +319,7 @@ function buildEmbeddedPlayground(string $project_dir): void {
     throw new \RuntimeException('Could not build the embedded playground: ' . implode(PHP_EOL, $output));
   }
 }
+
 /**
  * Check that all required dependencies are installed.
  */
@@ -324,6 +329,7 @@ function checkDependencies(): void {
 
   foreach ($deps as $dep) {
     $cmd = sprintf('which %s 2>/dev/null', escapeshellarg($dep));
+
     if (empty(shell_exec($cmd))) {
       $missing[] = $dep;
     }
@@ -346,6 +352,7 @@ function installNodeDependencies(string $script_dir): void {
   info('Installing svg-term Node.js dependency...');
 
   $node_modules_dir = $script_dir . '/node_modules';
+
   if (is_dir($node_modules_dir . '/svg-term')) {
     info('svg-term already installed.');
 
@@ -354,6 +361,7 @@ function installNodeDependencies(string $script_dir): void {
 
   $cmd = sprintf('npm install --prefix %s svg-term@1.3.1 2>&1', escapeshellarg($script_dir));
   $output = shell_exec($cmd);
+
   if (!is_dir($node_modules_dir . '/svg-term')) {
     throw new \RuntimeException('Failed to install svg-term: ' . ($output ?? 'unknown error'));
   }
@@ -405,6 +413,7 @@ function recordSession(string $expect_script, string $cast_file, int $rows = TER
  */
 function postProcessCast(string $cast_file): void {
   $content = file_get_contents($cast_file);
+
   if ($content === FALSE) {
     return;
   }
@@ -418,6 +427,7 @@ function postProcessCast(string $cast_file): void {
   $content = implode("\n", $filtered);
 
   $home = getenv('HOME');
+
   if ($home !== FALSE && $home !== '') {
     $content = str_replace($home, '/home/user', $content);
   }
@@ -882,6 +892,7 @@ EXPECT;
   file_put_contents($expect_script, $content);
   chmod($expect_script, 0700);
 }
+
 /**
  * Create an expect script for the flow-nested.php playground.
  *
@@ -1357,6 +1368,7 @@ function info(string $message): void {
   if (getenv('SCRIPT_QUIET') === '1') {
     return;
   }
+
   print $message . PHP_EOL;
 }
 
@@ -1387,6 +1399,7 @@ set_error_handler(function (int $severity, string $message, string $file, int $l
 
 try {
   $record_index = array_search('--record', $argv);
+
   if ($record_index !== FALSE && isset($argv[$record_index + 1])) {
     processOne($argv[$record_index + 1]);
   }

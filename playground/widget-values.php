@@ -71,6 +71,7 @@ echo "\n--- Multiselect: defaults pre-check options ---\n";
 show_selection(Prompty::multiselect('Extras', options: $extras, default: ['bread', 'herbs'], description: 'Uncheck what the table does not want.'));
 
 echo "\n--- Select: default outside the options ---\n";
+
 try {
   Prompty::select('Course', options: $courses, default: 'pudding');
 }
@@ -79,6 +80,7 @@ catch (\InvalidArgumentException $exception) {
 }
 
 echo "\n--- Multiselect: one default outside the options ---\n";
+
 try {
   Prompty::multiselect('Extras', options: $extras, default: ['bread', 'pickles']);
 }
@@ -111,6 +113,7 @@ echo "\n--- Multiselect: a key holding a comma needs the list form ---\n";
 show_selection(Prompty::multiselect('Extras', options: ['salt,pepper' => 'Salt and pepper', 'herbs' => 'Herbs'], discovered: ['salt,pepper']));
 
 echo "\n--- Multiselect: one key of the answer is not an option ---\n";
+
 try {
   Prompty::multiselect('Extras', options: $extras, discovered: 'bread,pickles');
 }

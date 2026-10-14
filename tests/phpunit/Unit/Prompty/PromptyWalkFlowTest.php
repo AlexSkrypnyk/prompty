@@ -506,6 +506,7 @@ final class PromptyWalkFlowTest extends PromptyTestCase {
 
     $steps = [];
     $numbers = [];
+
     for ($i = 1; $i <= max($step_index, 3); $i++) {
       $resolved = $this->resolvedStep('val' . $i);
       $steps['step' . $i] = function (array $ctx) use (&$numbers, $resolved): string {

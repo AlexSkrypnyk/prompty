@@ -141,6 +141,7 @@ function info(string $message): void {
   if (getenv('SCRIPT_QUIET') === '1') {
     return;
   }
+
   print $message . PHP_EOL;
 }
 

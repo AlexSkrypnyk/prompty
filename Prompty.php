@@ -637,6 +637,7 @@ class Prompty {
         discovered: $discovered,
         ctx: $ctx,
       );
+
       if ($condition !== NULL || $children !== []) {
         return ['__call' => $call, '__children' => $children, '__condition' => $condition];
       }
@@ -678,6 +679,7 @@ class Prompty {
 
       $open = $p->settleOpen($display, $open);
       $p->printLines($p->renderCompleted($label, $display, $depth, $open));
+
       if ($standalone) {
         // @codeCoverageIgnoreStart
         $p->teardownTty();
@@ -722,6 +724,7 @@ class Prompty {
 
       if ($p->isCancelKey($key)) {
         $p->redraw($line_count, $p->renderCancelled($label, $value, $depth, $open));
+
         if ($standalone) {
           // @codeCoverageIgnoreStart
           $p->teardownTty();
@@ -736,6 +739,7 @@ class Prompty {
         $display = $value !== '' ? $value : $placeholder;
         $open = $p->settleOpen($display, $open);
         $p->redraw($line_count, $p->renderCompleted($label, $display, $depth, $open));
+
         if ($standalone) {
           // @codeCoverageIgnoreStart
           $p->teardownTty();
@@ -817,6 +821,7 @@ class Prompty {
         discovered: $discovered,
         ctx: $ctx,
       );
+
       if ($condition !== NULL || $children !== []) {
         return ['__call' => $call, '__children' => $children, '__condition' => $condition];
       }
@@ -856,6 +861,7 @@ class Prompty {
     if ($resolved_key !== NULL) {
       $open = $p->settleOpen($resolved_key, $open);
       $p->printLines($p->renderCompleted($label, $options[$resolved_key], $depth, $open));
+
       if ($standalone) {
         // @codeCoverageIgnoreStart
         $p->teardownTty();
@@ -924,6 +930,7 @@ class Prompty {
 
       if ($p->isCancelKey($key)) {
         $p->redraw($line_count, $p->renderCancelled($label, $option_labels[$focused], $depth, $open));
+
         if ($standalone) {
           // @codeCoverageIgnoreStart
           $p->teardownTty();
@@ -936,6 +943,7 @@ class Prompty {
       if ($key === 'enter') {
         $open = $p->settleOpen($option_keys[$focused], $open);
         $p->redraw($line_count, $p->renderCompleted($label, $option_labels[$focused], $depth, $open));
+
         if ($standalone) {
           // @codeCoverageIgnoreStart
           $p->teardownTty();
@@ -1009,6 +1017,7 @@ class Prompty {
         discovered: $discovered,
         ctx: $ctx,
       );
+
       if ($condition !== NULL || $children !== []) {
         return ['__call' => $call, '__children' => $children, '__condition' => $condition];
       }
@@ -1058,6 +1067,7 @@ class Prompty {
       $display = $resolved_keys !== [] ? implode(', ', array_map(fn(string $key): string => $options[$key], $resolved_keys)) : $p->label('none');
       $open = $p->settleOpen($resolved_keys, $open);
       $p->printLines($p->renderCompleted($label, $display, $depth, $open));
+
       if ($standalone) {
         // @codeCoverageIgnoreStart
         $p->teardownTty();
@@ -1123,6 +1133,7 @@ class Prompty {
 
       if ($p->isCancelKey($key)) {
         $p->redraw($line_count, $p->renderCancelled($label, '', $depth, $open));
+
         if ($standalone) {
           // @codeCoverageIgnoreStart
           $p->teardownTty();
@@ -1145,6 +1156,7 @@ class Prompty {
 
         $open = $p->settleOpen($selected_keys, $open);
         $p->redraw($line_count, $p->renderCompleted($label, $selected_labels !== [] ? implode(', ', $selected_labels) : $p->label('none'), $depth, $open));
+
         if ($standalone) {
           // @codeCoverageIgnoreStart
           $p->teardownTty();
@@ -1211,6 +1223,7 @@ class Prompty {
         discovered: $discovered,
         ctx: $ctx,
       );
+
       if ($condition !== NULL || $children !== []) {
         return ['__call' => $call, '__children' => $children, '__condition' => $condition];
       }
@@ -1249,6 +1262,7 @@ class Prompty {
     if ($resolved_bool !== NULL) {
       $open = $p->settleOpen($resolved_bool, $open);
       $p->printLines($p->renderCompleted($label, $resolved_bool ? $p->label('yes') : $p->label('no'), $depth, $open));
+
       if ($standalone) {
         // @codeCoverageIgnoreStart
         $p->teardownTty();
@@ -1293,6 +1307,7 @@ class Prompty {
 
       if ($p->isCancelKey($key)) {
         $p->redraw($line_count, $p->renderCancelled($label, $yes ? $p->label('yes') : $p->label('no'), $depth, $open));
+
         if ($standalone) {
           // @codeCoverageIgnoreStart
           $p->teardownTty();
@@ -1305,6 +1320,7 @@ class Prompty {
       if ($key === 'enter') {
         $open = $p->settleOpen($yes, $open);
         $p->redraw($line_count, $p->renderCompleted($label, $yes ? $p->label('yes') : $p->label('no'), $depth, $open));
+
         if ($standalone) {
           // @codeCoverageIgnoreStart
           $p->teardownTty();
