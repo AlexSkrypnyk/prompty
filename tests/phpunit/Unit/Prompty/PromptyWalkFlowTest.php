@@ -74,10 +74,6 @@ final class PromptyWalkFlowTest extends PromptyTestCase {
     });
   }
 
-  /**
-   * @param \Closure(): array<string, mixed> $steps
-   *   Builds the flow's steps.
-   */
   #[DataProvider('dataProviderRejectsDuplicateKey')]
   public function testRejectsDuplicateKey(string $key, \Closure $steps): void {
     $message = sprintf('Step "%s" appears more than once in the flow. Each answer is stored under its step key, so a later step would overwrite the earlier answer in the results.', $key);
