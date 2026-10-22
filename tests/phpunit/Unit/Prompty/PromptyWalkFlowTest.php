@@ -74,47 +74,56 @@ final class PromptyWalkFlowTest extends PromptyTestCase {
     });
   }
 
-  public function testRejectsDuplicateKeyBetweenChildren(): void {
-    $this->captureOutputThrows(\InvalidArgumentException::class, 'Duplicate step key "dessert": two steps answering into the same key would silently overwrite each other in the results.', function (): void {
-      Prompty::flow(fn(): array => [
-        'course' => Prompty::confirm('Add dessert?', discovered: TRUE, children: [
-          'dessert' => Prompty::text('Dessert', discovered: 'pear tart'),
-        ]),
-        'priority' => Prompty::confirm('Same dessert twice?', discovered: TRUE, children: [
-          'dessert' => Prompty::text('Dessert again?', discovered: 'plum compote'),
-        ]),
-      ], unicode: FALSE);
+  /**
+   * @param \Closure(): array<string, mixed> $steps
+   *   Builds the flow's steps.
+   */
+  #[DataProvider('dataProviderRejectsDuplicateKey')]
+  public function testRejectsDuplicateKey(string $key, \Closure $steps): void {
+    $message = sprintf('Step "%s" appears more than once in the flow. Each answer is stored under its step key, so a later step would overwrite the earlier answer in the results.', $key);
+
+    $output = $this->captureOutputThrows(\InvalidArgumentException::class, $message, function () use ($steps): void {
+      Prompty::flow($steps, unicode: FALSE);
     });
+
+    $this->assertSame('', $output);
   }
 
-  public function testRejectsDuplicateKeyAcrossNesting(): void {
-    $this->captureOutputThrows(\InvalidArgumentException::class, 'Duplicate step key "dish": two steps answering into the same key would silently overwrite each other in the results.', function (): void {
-      Prompty::flow(fn(): array => [
-        'dish' => Prompty::text('Outer dish', discovered: 'plum compote'),
-        'course' => Prompty::confirm('Add dessert?', discovered: TRUE, children: [
-          'dish' => Prompty::text('Dessert', discovered: 'pear tart'),
-        ]),
-      ], unicode: FALSE);
-    });
-  }
-
-  public function testAllowsSameKeyInSiblingSubflows(): void {
-    // Keys must be unique across the whole tree, but a key reused in a
-    // sibling subtree that was REJECTED would be fine -- here we only assert
-    // two distinct keys plus nested distinct keys still pass validation by
-    // running a flow to completion.
-    $results = $this->captureOutput(fn() => Prompty::flow(fn(): array => [
-      'dish' => Prompty::text('Dish', discovered: 'plum compote'),
+  public static function dataProviderRejectsDuplicateKey(): \Iterator {
+    yield 'parent and child' => ['dish', fn(): array => [
+      'dish' => Prompty::text('Dish name', discovered: 'plum compote'),
+      'course' => Prompty::confirm('Add dessert?', discovered: TRUE, children: [
+        'dish' => Prompty::text('Dessert', discovered: 'pear tart'),
+      ]),
+    ]];
+    yield 'children of different parents' => ['dessert', fn(): array => [
       'course' => Prompty::confirm('Add dessert?', discovered: TRUE, children: [
         'dessert' => Prompty::text('Dessert', discovered: 'pear tart'),
       ]),
-    ], unicode: FALSE));
+      'extras' => Prompty::confirm('Add extras?', discovered: TRUE, children: [
+        'dessert' => Prompty::text('Second dessert', discovered: 'plum compote'),
+      ]),
+    ]];
+    yield 'child and later sibling of its parent' => ['garnish', fn(): array => [
+      'course' => Prompty::confirm('Add dessert?', discovered: TRUE, children: [
+        'garnish' => Prompty::text('Garnish', discovered: 'mint'),
+      ]),
+      'garnish' => Prompty::text('Garnish', discovered: 'basil'),
+    ]];
+  }
 
-    $this->assertSame([
-      'dish' => 'plum compote',
-      'course' => TRUE,
-      'dessert' => 'pear tart',
-    ], Prompty::results());
+  public function testAcceptsDistinctKeysAcrossNesting(): void {
+    $result = NULL;
+    $this->captureOutput(function () use (&$result): void {
+      $result = Prompty::flow(fn(): array => [
+        'dish' => Prompty::text('Dish name', discovered: 'plum compote'),
+        'course' => Prompty::confirm('Add dessert?', discovered: TRUE, children: [
+          'dessert' => Prompty::text('Dessert', discovered: 'pear tart'),
+        ]),
+      ], unicode: FALSE);
+    });
+
+    $this->assertSame(['dish' => 'plum compote', 'course' => TRUE, 'dessert' => 'pear tart'], $result);
   }
 
   #[DataProvider('dataProviderAcceptsKey')]
