@@ -1865,7 +1865,7 @@ class Prompty {
   }
 
   /**
-   * Rejects steps whose environment variable name cannot be exported.
+   * Rejects steps whose key is reused or cannot be exported.
    *
    * A step is looked up as its key uppercased behind the prefix.
    *
@@ -1873,29 +1873,28 @@ class Prompty {
    * shell cannot export it and most .env files cannot hold it. Such a step
    * could never be filled through either.
    *
+   * The results are flat, so a key reused anywhere in the tree would let a
+   * later answer overwrite an earlier one.
+   *
    * @param array<array-key, mixed> $steps
    *   Flow steps, keyed by step name.
-   *
-   * @param array<string|int, mixed> $steps
-   *   The steps to validate.
-   * @param array<string, true>|null $seen
-   *   Internal: keys seen so far across the whole tree, shared through the
-   *   recursive child calls so duplicates across nesting levels are caught.
+   * @param array<string, true> $seen
+   *   Keys already validated elsewhere in the tree.
    *
    * @throws \InvalidArgumentException
-   *   When the name a step resolves through is not a valid variable name.
+   *   When a key is reused, or the name a step resolves through is not a
+   *   valid variable name.
    */
-  protected function assertStepKeys(array $steps, ?array &$seen = NULL): void {
-    $seen ??= [];
-
+  protected function assertStepKeys(array $steps, array &$seen = []): void {
     foreach ($steps as $key => $step) {
       if ((string) $key === '') {
         throw new \InvalidArgumentException('A step must have a key: it names the answer in the results and the variable the answer can come from.');
       }
 
       if (isset($seen[(string) $key])) {
-        throw new \InvalidArgumentException(sprintf('Duplicate step key "%s": two steps answering into the same key would silently overwrite each other in the results.', $key));
+        throw new \InvalidArgumentException(sprintf('Step "%s" appears more than once in the flow. Each answer is stored under its step key, so a later step would overwrite the earlier answer in the results.', $key));
       }
+
       $seen[(string) $key] = TRUE;
 
       $name = $this->cfgEnvPrefix . strtoupper((string) $key);
