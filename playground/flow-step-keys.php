@@ -61,7 +61,7 @@ catch (\InvalidArgumentException $exception) {
   echo 'Rejected: ' . $exception->getMessage() . PHP_EOL;
 }
 
-echo PHP_EOL . '--- A key used by both a parent and its child ---' . PHP_EOL;
+echo PHP_EOL . '--- A top-level key reused inside children ---' . PHP_EOL;
 
 try {
   Prompty::flow(fn(): array => [

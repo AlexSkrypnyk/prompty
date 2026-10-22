@@ -86,7 +86,7 @@ final class PromptyWalkFlowTest extends PromptyTestCase {
   }
 
   public static function dataProviderRejectsDuplicateKey(): \Iterator {
-    yield 'parent and child' => ['dish', fn(): array => [
+    yield 'top-level step and nested child' => ['dish', fn(): array => [
       'dish' => Prompty::text('Dish name', discovered: 'plum compote'),
       'course' => Prompty::confirm('Add dessert?', discovered: TRUE, children: [
         'dish' => Prompty::text('Dessert', discovered: 'pear tart'),
