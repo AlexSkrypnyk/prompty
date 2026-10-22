@@ -414,6 +414,12 @@ Step "dish-name" is looked up as the environment variable "PROMPTY_DISH-NAME", w
 
 The name is what is checked, not the key alone, so an `env_prefix` that cannot be exported is caught the same way - and with an empty prefix, a key starting with a digit is too, since a name cannot.
 
+Each key must also be unique across the whole flow, including the keys of children. `flow()` stores every answer in 1 flat array keyed by step, so a reused key would overwrite the earlier answer. A flow with a reused key is turned down when it starts:
+
+```text
+Step "dish" appears more than once in the flow. Each answer is stored under its step key, so a later step would overwrite the earlier answer in the results.
+```
+
 ### Discovered and default values must be valid answers
 
 A discovered value has to be an answer the widget would have accepted interactively. For `select` and `multiselect` that means a key of `options`; for `confirm`, a value in the truthy or falsy list. Anything else throws an `InvalidArgumentException` naming the widget, the offending value, and what was allowed:

@@ -19,7 +19,10 @@
  * Such a key is rejected. The check runs on the full name, so a prefix that
  * cannot be exported is caught the same way.
  *
- * The first 2 flows are rejected and print their messages. The third is
+ * Results are a flat array keyed by step, so a key used twice anywhere in the
+ * tree is rejected too.
+ *
+ * The first 3 flows are rejected and print their messages. The fourth is
  * accepted, and reads its answers from the environment when they are set.
  *
  * phpcs:disable Drupal.Arrays.Array.LongLineDeclaration
@@ -50,6 +53,21 @@ try {
   Prompty::flow(fn(): array => [
     'course' => Prompty::confirm('Send order?', discovered: TRUE, children: [
       'side.dish' => Prompty::text('Side dish'),
+    ]),
+  ]);
+  echo 'Accepted.' . PHP_EOL;
+}
+catch (\InvalidArgumentException $exception) {
+  echo 'Rejected: ' . $exception->getMessage() . PHP_EOL;
+}
+
+echo PHP_EOL . '--- A key used by both a parent and its child ---' . PHP_EOL;
+
+try {
+  Prompty::flow(fn(): array => [
+    'dish' => Prompty::text('Dish name'),
+    'course' => Prompty::confirm('Add dessert?', discovered: TRUE, children: [
+      'dish' => Prompty::text('Dessert'),
     ]),
   ]);
   echo 'Accepted.' . PHP_EOL;
