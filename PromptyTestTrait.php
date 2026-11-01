@@ -211,7 +211,7 @@ trait PromptyTestTrait {
 
     $constructor = $ref->getConstructor();
 
-    if ($constructor !== NULL) {
+    if ($constructor instanceof \ReflectionMethod) {
       $constructor->invoke($instance);
     }
 
