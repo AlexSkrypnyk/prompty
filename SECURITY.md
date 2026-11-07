@@ -68,7 +68,7 @@ To check a script that already embeds Prompty, see [Verify an embedded script](R
 A passing check proves 2 things:
 
 - The files you downloaded match the signed checksums.
-- The signature was made with the key in this repository.
+- The signature was made with a key in your keyring. Confirm that the key `gpg --verify` names matches the fingerprint in the preceding block.
 
 It doesn't prove that the key belongs to the maintainer. The key, its fingerprint and this page all live in this repository. Anyone who took over the repository or the maintainer's account could replace all 3, and the check on a first-time download would still pass.
 
@@ -98,4 +98,4 @@ Everything under `.util/` is maintainer tooling, outside the library. It holds t
 
 `.gitattributes` marks `.util/` as `export-ignore`, so source archives and Composer's default dist installs leave it out. A `--prefer-source` install clones the whole repository and includes it.
 
-The `.util/` scripts run `php`, and the recording scripts also run `asciinema`, `expect` and `node`. Their only arguments are paths built from each script's own location or named on its command line, and job names checked against a fixed list. Every argument goes through `escapeshellarg()`.
+The `.util/` scripts run `php`, and the recording scripts also run `asciinema`, `expect` and `node`. When `.util/node_modules/svg-term` is missing, the recorder runs `npm install svg-term@1.3.1`, which downloads the package and runs its install scripts. Shell commands get only paths built from each script's own location or named on its command line, and job names checked against a fixed list, each through `escapeshellarg()`. The generated `expect` scripts put the playground script's path in a `spawn` line without Tcl escaping, so record only from a checkout path with no spaces or Tcl special characters.

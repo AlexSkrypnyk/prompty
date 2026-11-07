@@ -884,7 +884,7 @@ php embed.php --no-killswitch my-script.php
 
 After writing the file, `embed.php` checks it with `php -l` and then runs it to confirm the embedded class works. In a terminal, you answer any prompts that come before the kill switch. Without a terminal, `embed.php` pipes in a few newlines and discards the output.
 
-The run happens only when the file has a kill switch, which stops the run before the real work. `--no-killswitch` skips the run too, even when the script has its own kill switch.
+The run happens only when the file has a kill switch, which stops the run before the real work unless `SHOULD_PROCEED` is set. The run inherits your environment, so with `SHOULD_PROCEED` set, unset it or pass `--no-verify`. `--no-killswitch` skips the run too, even when the script has its own kill switch.
 
 To add the kill switch but skip the run, pass `--no-verify`. Use it in build steps, CI jobs and scripts that regenerate an embedded file:
 
