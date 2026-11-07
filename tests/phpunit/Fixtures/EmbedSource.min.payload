@@ -1,0 +1,10 @@
+/**
+ * Fixture - a class embed.php minifies to the same bytes on every PHP version.
+ *
+ * It uses each construct the minifier rewrites. Its expected payloads change
+ * only when the minifier does, unlike the payloads of Prompty.php.
+ *
+ * @license MIT
+ */
+// @phpstan-ignore-next-line
+class EmbedSource { public const VERSION = '9.8.7'; protected const PAUSE = 50000; protected static ?self $instance = NULL; protected array $courses = [ 'starter' => 'Starter', 'main' => 'Main', 'dessert' => "Dessert [\033[1msweet\033[0m]", ]; protected array $extras = []; protected function __construct() { $this->extras = []; } public static function instance(): self { if (!static::$instance instanceof EmbedSource) { static::$instance = new self(); } return static::$instance; } public function describe(string $dish, string $course = 'main', array $sides = []): string { $this->extras = array_values(array_filter(array_map(trim(...), $sides), fn(string $side): bool => $side !== '')); $label = $this->courses[$course] ?? $this->labelFor($course); $suffix = $this->extras === [] ? '' : ' with ' . implode(', ', $this->extras); return match (TRUE) { $dish === '' => sprintf('%s (unnamed)%s', $label, $suffix), default => sprintf('%s: %s%s', $label, $dish, $suffix), }; } public function pause(?int $seconds = NULL): int { return ($seconds ?? 0) * 1000000 + static::PAUSE; } protected function labelFor(string $course): string { $words = explode('_', $course); $format = static function (string $word) use ($course): string { $word = trim($word); return $word === '' ? $course : ucfirst($word); }; return implode(' ', array_map($format, $words)); } }

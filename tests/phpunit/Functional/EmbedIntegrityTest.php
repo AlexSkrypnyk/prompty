@@ -15,9 +15,9 @@ use PHPUnit\Framework\Attributes\Group;
 #[Group('functional')]
 final class EmbedIntegrityTest extends EmbedTestCase {
 
-  protected const FIXTURE = 'tests/phpunit/Fixtures/embed-source';
+  protected const FIXTURE = 'tests/phpunit/Fixtures/EmbedSource';
 
-  #[DataProvider('dataProviderModes')]
+  #[DataProvider('dataProviderFixturePayload')]
   public function testFixturePayload(bool $compact): void {
     $path = self::$tmp . '/fixture.payload';
 
@@ -27,7 +27,11 @@ final class EmbedIntegrityTest extends EmbedTestCase {
     $this->assertSame($expected, $this->readFile($path), 'The payload is byte-identical to the committed one on this PHP version.');
   }
 
-  #[DataProvider('dataProviderModes')]
+  public static function dataProviderFixturePayload(): \Iterator {
+    yield from self::modes();
+  }
+
+  #[DataProvider('dataProviderEmbedIsDeterministic')]
   public function testEmbedIsDeterministic(bool $compact): void {
     $first = $this->prepareTarget('first.php');
     $second = $this->prepareTarget('second.php');
@@ -38,7 +42,11 @@ final class EmbedIntegrityTest extends EmbedTestCase {
     $this->assertSame($this->readFile($first), $this->readFile($second));
   }
 
-  #[DataProvider('dataProviderModes')]
+  public static function dataProviderEmbedIsDeterministic(): \Iterator {
+    yield from self::modes();
+  }
+
+  #[DataProvider('dataProviderRegionMatchesPayload')]
   public function testRegionMatchesPayload(bool $compact): void {
     $target = $this->prepareTarget();
     $payload = self::$tmp . '/Prompty.payload';
@@ -51,7 +59,14 @@ final class EmbedIntegrityTest extends EmbedTestCase {
     $this->assertSame($compact ? 'compact' : 'min', $this->readMarker($target)['mode']);
   }
 
-  public static function dataProviderModes(): \Iterator {
+  public static function dataProviderRegionMatchesPayload(): \Iterator {
+    yield from self::modes();
+  }
+
+  /**
+   * The embed modes, as data provider rows.
+   */
+  protected static function modes(): \Iterator {
     yield 'minified' => [FALSE];
 
     yield 'compacted' => [TRUE];
@@ -347,7 +362,7 @@ final class EmbedIntegrityTest extends EmbedTestCase {
     $readme = $this->readFile(self::$root . '/README.md');
 
     foreach ($matches[1] as $index => $snippet) {
-      $this->assertTrue(str_contains($readme, rtrim($snippet)), sprintf("README.md does not show snippet %d as embed.php prints it for my-script.php:\n%s", $index + 1, $snippet));
+      $this->assertStringContainsString(rtrim($snippet), $readme, sprintf("README.md does not show snippet %d as embed.php prints it for my-script.php:\n%s", $index + 1, $snippet));
     }
   }
 

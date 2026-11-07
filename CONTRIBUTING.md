@@ -58,11 +58,11 @@ tests/phpunit/Fixtures/       Scripts the functional tests run.
 
 Unit tests extend `PromptyTestCase` and use `PromptyTestTrait` to feed keystrokes into a memory stream, so no real TTY is needed. Functional tests shell out, which makes them slower but catches things the unit tests can't - like whether an embedded script still parses, or how a widget handles keys that arrive over time in a real terminal. `TerminalInputTest` runs a fixture in a pseudo-terminal for that, and skips itself on PHP builds that can't open one.
 
-`embed.php` must produce the same bytes on every PHP version, so a consumer's embed matches the release's `.payload` assets. `EmbedIntegrityTest` minifies `tests/phpunit/Fixtures/embed-source.php` on each PHP version in CI and compares the result with the committed `embed-source.min.payload` and `embed-source.compact.payload`. After a deliberate change to the minifier, regenerate both:
+`embed.php` must produce the same bytes on every PHP version, so a consumer's embed matches the release's `.payload` assets. `EmbedIntegrityTest` minifies `tests/phpunit/Fixtures/EmbedSource.php` on each PHP version in CI and compares the result with the committed `EmbedSource.min.payload` and `EmbedSource.compact.payload`. After a deliberate change to the minifier, regenerate both:
 
 ```bash
-php embed.php --source tests/phpunit/Fixtures/embed-source.php --payload tests/phpunit/Fixtures/embed-source.min.payload
-php embed.php --compact --source tests/phpunit/Fixtures/embed-source.php --payload tests/phpunit/Fixtures/embed-source.compact.payload
+php embed.php --source tests/phpunit/Fixtures/EmbedSource.php --payload tests/phpunit/Fixtures/EmbedSource.min.payload
+php embed.php --compact --source tests/phpunit/Fixtures/EmbedSource.php --payload tests/phpunit/Fixtures/EmbedSource.compact.payload
 ```
 
 Use data providers where you can. Name the provider `dataProvider<Something>` and put it *after* the test method it feeds.

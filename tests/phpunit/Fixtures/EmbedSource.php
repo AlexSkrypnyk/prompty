@@ -26,6 +26,8 @@ class EmbedSource {
 
   /**
    * Shared instance.
+   *
+   * @var self|null
    */
   protected static ?self $instance = NULL;
 
@@ -48,11 +50,18 @@ class EmbedSource {
   protected array $extras = [];
 
   /**
+   * Creates the shared instance.
+   */
+  protected function __construct() {
+    $this->extras = [];
+  }
+
+  /**
    * Returns the shared instance.
    */
-  public static function instance(): static {
+  public static function instance(): self {
     if (!static::$instance instanceof EmbedSource) {
-      static::$instance = new static();
+      static::$instance = new self();
     }
 
     return static::$instance;
@@ -85,8 +94,8 @@ class EmbedSource {
   /**
    * Returns the pause between courses, in microseconds.
    */
-  public function pause(?\DateInterval $delay = NULL): int {
-    return ($delay?->s ?? 0) * 1000000 + static::PAUSE;
+  public function pause(?int $seconds = NULL): int {
+    return ($seconds ?? 0) * 1000000 + static::PAUSE;
   }
 
   /**
@@ -101,6 +110,8 @@ class EmbedSource {
   protected function labelFor(string $course): string {
     $words = explode('_', $course);
     $format = static function (string $word) use ($course): string {
+      $word = trim($word);
+
       return $word === '' ? $course : ucfirst($word);
     };
 

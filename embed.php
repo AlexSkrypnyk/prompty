@@ -691,11 +691,11 @@ if ($check) {
   exit(embed_check($positional[0], $sums_path));
 }
 
-if ($stdout || $payload_only) {
-  // These modes take an output file, not a target script.
-  $stdout_path = $positional[0];
-}
-else {
+$stdout_path = $positional[0];
+$target_path = $positional[0];
+
+// --stdout and --payload take an output file, not a target script.
+if (!$stdout && !$payload_only) {
   $input_path = $positional[0];
 
   if (!is_file($input_path)) {

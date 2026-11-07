@@ -121,7 +121,10 @@ abstract class EmbedTestCase extends FunctionalTestCase {
    *   Attribute values keyed by name.
    */
   protected function readMarker(string $path): array {
-    $this->assertSame(1, preg_match('/^\/\/ @embed-start(.*)$/m', $this->readFile($path), $match), 'The script has a start marker.');
+    if (preg_match('/^\/\/ @embed-start(.*)$/m', $this->readFile($path), $match) !== 1) {
+      $this->fail('The script has no start marker.');
+    }
+
     preg_match_all('/\s([a-z0-9]+)=(\S+)/', $match[1], $pairs, PREG_SET_ORDER);
 
     $attributes = [];
@@ -137,7 +140,9 @@ abstract class EmbedTestCase extends FunctionalTestCase {
    * Read the code between the markers of an embedded script.
    */
   protected function readRegion(string $path): string {
-    $this->assertSame(1, preg_match('/^\/\/ @embed-start[^\n]*\n(.*?)^\/\/ @embed-end/ms', $this->readFile($path), $match), 'The script has 1 embed region.');
+    if (preg_match('/^\/\/ @embed-start[^\n]*\n(.*?)^\/\/ @embed-end/ms', $this->readFile($path), $match) !== 1) {
+      $this->fail('The script has no embed region.');
+    }
 
     return $match[1];
   }
