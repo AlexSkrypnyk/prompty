@@ -1,14 +1,16 @@
 # Contributing
 
-Thanks for taking an interest. Bug reports, fixes and ideas are all welcome - open an [issue](https://github.com/AlexSkrypnyk/prompty/issues) or a pull request.
+Thanks for helping with Prompty. This guide covers local setup, the checks and tests every change passes, the playground demos and the release process. To report a bug or suggest an idea, open an [issue](https://github.com/AlexSkrypnyk/prompty/issues) or send a pull request.
 
 ## Requirements
 
-PHP 8.2 or newer, and Composer. CI runs the suite on PHP 8.2, 8.3, 8.4 and 8.5, against both current and lowest resolvable dependencies, so a change that only works on the newest PHP won't get through.
+You need PHP 8.2 or later and Composer. CI runs the suite on PHP 8.2, 8.3, 8.4 and 8.5, with both the latest and the lowest dependency versions. A change that needs PHP newer than 8.2 fails CI.
 
 `composer.lock` isn't committed, so a fresh clone resolves dependencies from scratch.
 
 ## Setup
+
+Clone the repository and install its dependencies:
 
 ```bash
 git clone https://github.com/AlexSkrypnyk/prompty.git
@@ -18,6 +20,8 @@ composer install
 
 ## Commands
 
+The project's commands run through Composer:
+
 | Command                     | What it does                                          |
 |-----------------------------|-------------------------------------------------------|
 | `composer lint`             | PHPCS, PHPStan, Rector in dry-run mode, then the embedded playground demo check. |
@@ -26,29 +30,33 @@ composer install
 | `composer test-coverage`    | PHPUnit with coverage, written to `.logs/`.            |
 | `composer reset`            | Removes `vendor/`, `vendor-bin/` and `composer.lock`.  |
 
-`composer reset` only deletes - run `composer install` afterwards to get back to a working tree.
+`composer reset` only deletes files. Run `composer install` after it to restore a working tree.
 
 ## Code quality
 
-4 checks gate every change, and CI runs all of them through `composer lint`:
+`composer lint` runs 4 checks, and CI runs it on every change:
 
 - **PHPCS** - the Drupal standard plus DrevOps rules, with `strict_types` required in every file. Config in [`phpcs.xml`](phpcs.xml).
 - **PHPStan** - level 9, the strictest level. Config in [`phpstan.neon`](phpstan.neon).
-- **Rector** - PHP 8.2 modernisation plus the dead-code, code-quality, coding-style, type-declaration, naming, instanceof, early-return and PHPUnit code-quality sets, run in dry-run mode during linting. Config in [`rector.php`](rector.php).
+- **Rector** - PHP 8.2 modernization plus the dead-code, code-quality, coding-style, type-declaration, naming, instanceof, early-return and PHPUnit code-quality sets. Linting runs it in dry-run mode. Config in [`rector.php`](rector.php).
 - **Embedded demo check** - embeds `playground/flow-embed.php` and fails if the copy prints anything different from the original. See [The embedded demo](#the-embedded-demo).
 
-Coverage has a threshold in CI (80% by default, set via the `CI_CODE_COVERAGE_THRESHOLD` repository variable). New code needs tests.
+CI fails when coverage drops below a threshold: 80% by default, or the value of the `CI_CODE_COVERAGE_THRESHOLD` repository variable. New code needs tests.
 
 ## Conventions
 
+Follow these code conventions:
+
 - `declare(strict_types=1)` at the top of every PHP file.
-- Single quotes for strings, unless the string contains one.
+- Single quotes for strings, unless the string contains a single quote.
 - `snake_case` for local variables and method arguments; `camelCase` for method names and class properties.
 - Every file ends with a newline.
 
-The library itself is deliberately a single class in a single file with no dependencies. Anything that would introduce a `require` of something outside `Prompty.php` needs a good reason.
+The library is 1 class in 1 file with no dependencies, by design. A change that requires a file outside `Prompty.php` needs a strong reason.
 
 ## Tests
+
+The tests and their fixtures live in 3 directories:
 
 ```text
 tests/phpunit/Unit/Prompty/   Unit tests, driven through PromptyTestTrait.
@@ -56,7 +64,7 @@ tests/phpunit/Functional/     Runs embed.php, starter.php and fixtures as subpro
 tests/phpunit/Fixtures/       Scripts the functional tests run.
 ```
 
-Unit tests extend `PromptyTestCase` and use `PromptyTestTrait` to feed keystrokes into a memory stream, so no real TTY is needed. Functional tests shell out, which makes them slower but catches things the unit tests can't - like whether an embedded script still parses, or how a widget handles keys that arrive over time in a real terminal. `TerminalInputTest` runs a fixture in a pseudo-terminal for that, and skips itself on PHP builds that can't open one.
+Unit tests extend `PromptyTestCase` and use `PromptyTestTrait` to feed keystrokes from a memory stream, so they need no terminal. Functional tests run subprocesses. They're slower, but they catch what unit tests can't, such as an embedded script that no longer parses. `TerminalInputTest` runs a fixture in a pseudo-terminal to test keys that arrive over time, and skips itself on PHP builds that can't open one.
 
 `embed.php` must produce the same bytes on every PHP version, so a consumer's embed matches the release's `.payload` assets. `EmbedIntegrityTest` minifies `tests/phpunit/Fixtures/EmbedSource.php` on each PHP version in CI and compares the result with the committed `EmbedSource.min.payload` and `EmbedSource.compact.payload`. After a deliberate change to the minifier, regenerate both:
 
@@ -67,7 +75,7 @@ php embed.php --compact --source tests/phpunit/Fixtures/EmbedSource.php --payloa
 
 Use data providers where you can. Name the provider `dataProvider<Something>` and put it *after* the test method it feeds.
 
-Arguments after `--` reach PHPUnit, so a single file or a filter looks like:
+Arguments after `--` go to PHPUnit. To run 1 file or filter by test name:
 
 ```bash
 composer test -- tests/phpunit/Unit/Prompty/PromptyRenderTest.php
@@ -76,7 +84,7 @@ composer test -- --filter testRenderIntro
 
 ## Playground
 
-The [`playground/`](playground) directory holds runnable demos - the quickest way to see a change in a real terminal:
+The [`playground/`](playground) directory holds runnable demos. Run one to see a change in a real terminal:
 
 | Script                     | Shows                                                                  |
 |----------------------------|------------------------------------------------------------------------|
@@ -94,6 +102,8 @@ The [`playground/`](playground) directory holds runnable demos - the quickest wa
 | `flow-step-keys.php`       | What a step key becomes, and which are turned down.                    |
 | `flow-embed.php`           | The flow the embedder is tested against.                               |
 
+To run a demo:
+
 ```bash
 php playground/flow-nested.php
 ```
@@ -106,7 +116,7 @@ php playground/flow.php --no-unicode --no-ansi
 
 ### The embedded demo
 
-Prompty is meant to be copied into a consumer script, so the copy is the thing that has to keep working. `flow-embed.php` is the script that proves it does. Embedding rewrites it into `flow-embed.dist.php`, which carries the class inline and requires nothing, so it runs from anywhere:
+Consumer scripts run an embedded copy of Prompty, so that copy has to keep working. `flow-embed.php` is the demo that tests it. Embedding writes `flow-embed.dist.php`, which carries the class inline and runs from any directory. To build the copy and run both versions:
 
 ```bash
 php embed.php --no-verify \
@@ -116,18 +126,18 @@ cp playground/flow-embed.dist.php ~/order.php
 php ~/order.php
 ```
 
-Both render the same flow, so anything that differs between them is a fault in the embedder rather than in the flow. Make edits in `flow-embed.php`; the built copy is output, and it is not committed - build it whenever it is wanted.
+Both versions render the same flow, so any difference between them is an embedder bug. Edit `flow-embed.php` only. The built copy is git-ignored, so build it when you need it.
 
-2 things compare the pair without being asked:
+2 things catch a difference between the pair:
 
-- `composer lint` runs [`.util/check-embed.php`](.util/check-embed.php), which embeds the demo into a temporary path, runs both with every answer supplied through the environment, and fails if they print anything different. It reports both outputs when they diverge, so the difference is readable from the failure.
-- `.util/assets/flow-embed.svg` records the embedded copy being driven through its prompts by the expect script the recorder generates for it. Nothing embeds that asset and it is deliberately kept out of the README: it exists so that a change in what an embedded script *draws* shows up as a diff in the frames, which comparing text cannot catch.
+- `composer lint` runs [`.util/check-embed.php`](.util/check-embed.php). It embeds the demo into a temporary path, runs both versions with every answer set through the environment and fails if their output differs. The failure prints both outputs.
+- The asset recorder captures the embedded copy answering its prompts in `.util/assets/flow-embed.svg`. The README doesn't show that SVG. A change in what the embedded script draws shows up as a diff in its frames, and a text comparison can't catch that kind of change.
 
 ## Demo content
 
-Every example in the repository - playground scripts, `starter.php`, README snippets and recorded assets - uses a single kitchen-order theme, with no software or technology references. The vocabulary is defined in [`.claude/demo_content_reference.md`](.claude/demo_content_reference.md).
+Every example in the repository uses 1 kitchen-order theme, with no software or technology references. That covers the playground scripts, `starter.php`, README snippets and recorded assets. [`.claude/demo_content_reference.md`](.claude/demo_content_reference.md) defines the vocabulary.
 
-Take labels, keys and hints from that file rather than inventing them. If a demo needs a concept the file doesn't cover, add it there first.
+Take labels, keys and hints from that file. If a demo needs a concept the file doesn't cover, add the concept there first.
 
 ## Regenerating the README assets
 
@@ -137,25 +147,25 @@ The SVGs under `.util/assets/` are recorded from the playground scripts. Regener
 php .util/update-assets.php
 ```
 
-That records all 7 scripts in 4 flag variants each, plus the embedded copy of the flow, a few at a time. To redo just one:
+The command records 7 scripts in 4 flag variants each, plus the embedded copy of the flow. It runs a few recordings at a time. To record 1 asset again, pass its filename without `.svg`:
 
 ```bash
 php .util/update-assets.php --record widgets
 ```
 
-It needs `asciinema`, `expect`, `node` and `npm` on your PATH. Set `SCRIPT_QUIET=1` to suppress progress output, or `SCRIPT_KEEP_CASTS=1` to keep the recordings under `.artifacts/tmp/asciinema` for inspection.
+The recorder needs `asciinema`, `expect`, `node` and `npm` on your `PATH`. To hide progress output, set `SCRIPT_QUIET=1`. To keep the recordings in `.artifacts/tmp/asciinema` for inspection, set `SCRIPT_KEEP_CASTS=1`.
 
-**Regeneration is reproducible.** Recording the same session twice produces the same SVG, byte for byte, so `git status` after a regeneration answers whether the rendering changed: a clean tree means it did not, and any diff is a real change worth reading. 3 things make that hold, and a change to any of them can break it:
+Recording the same session twice produces the same SVG, byte for byte. After a regeneration, a clean `git status` means the rendering didn't change, and any diff is a real change. 3 design choices keep recordings reproducible, and changing any of them can break that:
 
-- Sessions type at a fixed rate rather than expect's humanised one, which varies its delays by design.
-- The recorded output is treated as 1 stream and cut into frames where a widget redrew, so a frame is never created by the terminal happening to split a write.
-- Every gap is rewritten to 1 of 2 durations before rendering, so the wall clock the recording ran against does not reach the SVG.
+- Sessions type at a fixed rate, because `expect`'s humanized typing varies its delays.
+- The recorder treats the output as 1 stream and cuts a frame wherever a widget redraws. A terminal splitting a write never creates a frame.
+- The recorder sets every gap between frames to 1 of 2 fixed durations before rendering, so the SVG doesn't depend on how fast the recording ran.
 
-Recordings run a few at a time rather than all at once, because a machine running every session together stalls them enough to blur the difference between the pauses between steps and the gaps within a step.
+Recordings run a few at a time. Running every session at once stalls them enough to blur the pauses between steps into the gaps within a step.
 
 ## Releases
 
-Publishing a GitHub release triggers [`release.yml`](.github/workflows/release.yml), which:
+Publishing a GitHub release triggers [`release.yml`](.github/workflows/release.yml), which does the following:
 
 1. Substitutes the tag name for the `__PROMPTY_VERSION__` token in `Prompty.php`, so `Prompty::version()` reports the release instead of `development`.
 2. Runs `starter.php` once as a smoke test.
@@ -169,10 +179,10 @@ The job runs in the `release` environment. Store `GPG_PRIVATE_KEY` as a secret o
 
 The `Check embed release` job in [`test-php.yml`](.github/workflows/test-php.yml) builds the same payloads and an unsigned `SHA256SUMS` on every pull request, and runs the same script against them.
 
-Release notes are drafted automatically by [`draft-release-notes.yml`](.github/workflows/draft-release-notes.yml) using the categories in [`.github/release-drafter.yml`](.github/release-drafter.yml).
+[`draft-release-notes.yml`](.github/workflows/draft-release-notes.yml) drafts the release notes, using the categories in [`.github/release-drafter.yml`](.github/release-drafter.yml).
 
 ## Updating from the template
 
-This repository was generated from the [Scaffold](https://getscaffold.dev/) template and can pull the template's latest CI workflows, linting configuration and docs at any time.
+This repository comes from the [Scaffold](https://getscaffold.dev/) template, and can pull the template's latest CI workflows, linting configuration and docs.
 
-The update is agent-driven: ask Claude Code to "update scaffold" and it fetches the updater skill and follows it. [`CLAUDE.md`](CLAUDE.md) has the steps.
+To update, ask Claude Code to "update scaffold". Claude Code fetches the updater skill and follows it. [`CLAUDE.md`](CLAUDE.md) lists the steps it takes.

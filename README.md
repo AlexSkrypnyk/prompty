@@ -23,76 +23,49 @@
   <img src=".util/assets/flow-nested.svg" height="400" alt="Nested flow">
 </p>
 
+Prompty asks questions in the terminal for PHP command-line scripts, from a single text prompt to a multi-step wizard. It's 1 file with no dependencies, so you can require it, install it with Composer or embed it in your script. This README is for PHP developers and covers installing Prompty, building prompts and flows, testing them and shipping the script that uses them.
+
 ## Features
 
-- 📦 [**Zero dependencies**](#installation) - drop `Prompty.php` into your project or [embed](#embedding) into your script
-- 🧩 [**Widgets**](#widgets) - `text`, `select`, `multiselect`, `confirm`
-- 🔀 [**Flows**](#flows) - group prompts into a wizard with intro/outro, numbering, and cancellation
-- 🌳 [**Nested flows**](#nested-flows-with-conditions) - conditional children rendered as a tree
-- ⚡ [**Standalone mode**](#standalone-mode) - use any widget on its own, outside of a flow
-- 🌍 [**Environment variable discovery**](#environment-variable-discovery) - auto-fill answers from env vars
-- 💬 [**Descriptions and hints**](#descriptions-and-hints) - contextual help below labels and per-option
-- ✨ [**Unicode and ASCII**](#unicode-and-ascii) - auto-detects terminal support or force a mode
-- 🎨 [**ANSI colors**](#ansi-colors) - auto-detects color support, respects `NO_COLOR`
-- ⚙️ [**Configuration**](#configuration) - symbols, colors, spacing, labels, env prefix, truthy/falsy values
-- 🧪 [**Test harness**](#test-harness) - `PromptyTestTrait` injects keystrokes for PHPUnit testing
+- 📦 [**Zero dependencies**](#installation) - drop `Prompty.php` into your project or [embed](#embedding) it in your script
+- 🧩 [**Widgets**](#widgets) - `text`, `select`, `multiselect` and `confirm`
+- 🔀 [**Flows**](#flows) - group prompts into a wizard with an intro, an outro, numbering and cancellation
+- 🌳 [**Nested flows**](#nested-flows-with-conditions) - conditional children drawn as a tree
+- ⚡ [**Standalone mode**](#standalone-mode) - use any widget on its own, outside a flow
+- 🌍 [**Environment variable discovery**](#environment-variable-discovery) - fill answers from environment variables
+- 💬 [**Descriptions and hints**](#descriptions-and-hints) - help text under each label and each option
+- ✨ [**Unicode and ASCII**](#unicode-and-ascii) - detected from the locale, or forced
+- 🎨 [**ANSI colors**](#ansi-colors) - on by default, off under `NO_COLOR` or `TERM=dumb`
+- ⚙️ [**Configuration**](#configuration) - symbols, colors, spacing, labels, the variable prefix and the yes/no values
+- 🧪 [**Test harness**](#test-harness) - `PromptyTestTrait` feeds keystrokes to widgets in PHPUnit
 - 🚀 [**Starter script**](#starter-script) - [`starter.php`](starter.php) as a template for your own scripts
-- 📥 [**Embedding**](#embedding) - minify and embed the class directly into your script
+- 📥 [**Embedding**](#embedding) - minify the class and embed it in your script
 
 ## Installation
 
-Prompty is a single PHP file with zero dependencies. It requires PHP 8.2 or newer.
+Prompty is a single PHP file with no dependencies. It requires PHP 8.2 or later.
 
 ### Download from releases
 
 Download `Prompty.php` from the [latest release](https://github.com/AlexSkrypnyk/prompty/releases/latest) assets.
 
-3 variants are available:
+The release has 3 variants of the class:
 
 | Asset                 | Description                                                             |
 |-----------------------|-------------------------------------------------------------------------|
 | `Prompty.php`         | Full source with version imprinted                                      |
-| `Prompty.min.php`     | Minified - comments and blank lines stripped, class body on 1 line      |
+| `Prompty.min.php`     | Minified - comments except the license header and blank lines stripped, class body on 1 line |
 | `Prompty.compact.php` | Minified, plus shortened internal names and no optional whitespace      |
 
 For testing, also download `PromptyTestTrait.php` from the same release.
 
-Each release also ships `Prompty.min.payload` and `Prompty.compact.payload`. Each one holds the exact code `embed.php` writes between the markers in its mode, for checking an embedded script. See [Verify an embedded script](#verify-an-embedded-script).
+Each release also ships `Prompty.min.payload` and `Prompty.compact.payload`. Each holds the exact code `embed.php` writes between the markers in that mode. To check an embedded script against them, see [Verify an embedded script](#verify-an-embedded-script).
 
-See [Embedding](#embedding) for how to embed the class directly into your script.
+To embed the class in your script, see [Embedding](#embedding).
 
 ### Verifying a download
 
-Every release ships a `SHA256SUMS` file covering all assets, signed with the maintainer's GPG key as `SHA256SUMS.asc`. The matching public key is [`PUBLIC_KEY.asc`](PUBLIC_KEY.asc) in this repository, with this fingerprint:
-
-```text
-755E 824E 80F8 4913 5F5F  4043 E71E DB25 C4F6 D89D
-```
-
-```bash
-BASE=https://github.com/AlexSkrypnyk/prompty/releases/latest/download
-RAW=https://raw.githubusercontent.com/AlexSkrypnyk/prompty/main
-
-curl -LO $BASE/Prompty.php
-curl -LO $BASE/SHA256SUMS
-curl -LO $BASE/SHA256SUMS.asc
-curl -LO $RAW/PUBLIC_KEY.asc
-
-# Check the fingerprint against the one above before trusting the key.
-gpg --show-keys --with-fingerprint PUBLIC_KEY.asc
-
-gpg --import PUBLIC_KEY.asc
-gpg --verify SHA256SUMS.asc SHA256SUMS
-sha256sum --ignore-missing -c SHA256SUMS
-```
-
-`--ignore-missing` lets the checksum check pass when only some assets were downloaded. See [`SECURITY.md`](SECURITY.md) for what this verification does and does not prove.
-
-Every asset, `SHA256SUMS` included, also has a build attestation that ties it to the commit and workflow run that built it. To verify an asset with the [GitHub CLI](https://cli.github.com) instead of GPG:
-
-```bash
-gh attestation verify Prompty.php --repo AlexSkrypnyk/prompty
-```
+Every release ships a `SHA256SUMS` file signed with the maintainer's GPG key, and a build attestation for every asset. To check a download with GPG or the GitHub CLI, follow [Verifying a release](SECURITY.md#verifying-a-release) in `SECURITY.md`, which also lists the key's fingerprint.
 
 ### Composer
 
@@ -114,15 +87,13 @@ use AlexSkrypnyk\Prompty\Prompty;
 $dish = Prompty::text('Dish name');
 ```
 
-Or [embed](#embedding) the minified class directly into your script (using the provided minification script) to ship a single file with no external dependencies.
-
-You may also use the [starter](#starter-script) as a template for your own scripts.
+To ship a single file instead, [embed](#embedding) the minified class in your script. To start from a template, copy the [starter script](#starter-script).
 
 ## Widgets
 
-4 widget types cover the most common prompt patterns. Each returns the user's answer, or `null` if they cancel (Escape or Ctrl+C).
+Prompty has 4 widgets. Each returns the answer, or `null` when the user presses <kbd>Escape</kbd> or <kbd>Ctrl+C</kbd>.
 
-Everything a widget draws is rendered as printable text. A newline or tab in a value, a label or an option label becomes a space, and escape sequences and other control characters are removed, so a value carrying them cannot break the tree or drive the terminal. `text` returns the printable form, so a caller gets the same text that was drawn.
+Widgets draw only printable text. A newline or tab in a value, label or option label becomes a space. Escape sequences and other control characters are removed, so a value can't break the tree or control the terminal. `text` returns the same printable text it drew.
 
 <p align="center">
   <img src=".util/assets/widgets.svg" width="100%" alt="Text, select, multiselect and confirm widgets in sequence">
@@ -130,7 +101,7 @@ Everything a widget draws is rendered as printable text. A newline or tab in a v
 
 ### Text
 
-Free-form text input with an optional editable `default` and placeholder.
+Free-form text input, with an optional `default` and `placeholder`:
 
 ```php
 $dish = Prompty::text('Dish name',
@@ -141,11 +112,11 @@ $dish = Prompty::text('Dish name',
 );
 ```
 
-`default` pre-fills the input with an editable value; `placeholder` is the gray hint shown only while the input is empty.
+`default` pre-fills the input with text the user can edit. `placeholder` is the gray text shown while the input is empty.
 
-Submitting an empty input returns the `placeholder` string as the answer, so a placeholder doubles as a non-editable fallback value. With a `default` seeded, the buffer is not empty, so submitting without typing returns the default. Leave both unset if an empty answer should stay empty.
+Submitting an empty input returns the `placeholder` string itself, so a placeholder also works as a fallback answer. With a `default` set, submitting without typing returns the default. To let an empty answer stay empty, leave both unset.
 
-An empty answer means the same thing however it arrives. A discovered value is trimmed, and an empty result is read as "nothing typed", so it takes the `default`, or the `placeholder` when no default was seeded:
+A [discovered](#environment-variable-discovery) value follows the same rule. Prompty trims it, and an empty result takes the `default`, or the `placeholder` when no default is set:
 
 ```php
 // All 3 answer 'pear tart'.
@@ -156,7 +127,7 @@ Prompty::text('Dish name', placeholder: 'pear tart', discovered: '');
 Prompty::text('Dish name', placeholder: 'pear tart', discovered: '  ');
 ```
 
-An empty `PROMPTY_DISH=` takes that fallback straight away. An unset `PROMPTY_DISH` prompts instead, and submitting without typing takes the same fallback - so a variable populated by a command that returned nothing lands on the answer a user would have accepted, rather than on an empty string.
+In a flow with a `dish` step, an empty `PROMPTY_DISH=` takes the fallback without prompting. An unset `PROMPTY_DISH` opens the prompt, where submitting without typing gives the same fallback.
 
 <table>
   <tr>
@@ -178,7 +149,7 @@ An empty `PROMPTY_DISH=` takes that fallback straight away. An unset `PROMPTY_DI
 
 ### Select
 
-Single-choice from a list. Arrow keys to navigate, Enter to confirm. Pass `default` (an option key) to focus an option other than the first.
+Pick 1 option from a list. Press the arrow keys to move and <kbd>Enter</kbd> to confirm. To focus an option other than the first, pass its key as `default`:
 
 ```php
 $course = Prompty::select('Course',
@@ -197,7 +168,7 @@ $course = Prompty::select('Course',
 );
 ```
 
-`options` must not be empty. A widget with nothing to choose from cannot ask a question, so it throws an `InvalidArgumentException` before it draws anything or reads a key - whether the answer would have come from the user, from `discovered`, or from an environment variable:
+`options` must hold at least 1 option. An empty `options` throws an `InvalidArgumentException` before the widget draws anything, even when the answer comes from `discovered` or an environment variable:
 
 ```text
 No options declared for "Course". Provide at least one option.
@@ -223,7 +194,7 @@ No options declared for "Course". Provide at least one option.
 
 ### Multiselect
 
-Multiple-choice from a list. Space to toggle, Enter to confirm. Pass `default` (a list of option keys) to pre-check options - ideal for opt-out lists where every option starts selected and the user unchecks what they don't want.
+Pick any number of options from a list. Press <kbd>Space</kbd> to toggle an option and <kbd>Enter</kbd> to confirm. To pre-check options, pass a list of their keys as `default`. Pre-checking every option makes an opt-out list:
 
 ```php
 $extras = Prompty::multiselect('Extras',
@@ -238,7 +209,7 @@ $extras = Prompty::multiselect('Extras',
 );
 ```
 
-As with [select](#select), `options` must not be empty - an empty map throws an `InvalidArgumentException` naming the widget, on every path.
+As with [select](#select), an empty `options` throws an `InvalidArgumentException` that names the widget.
 
 <table>
   <tr>
@@ -260,7 +231,7 @@ As with [select](#select), `options` must not be empty - an empty map throws an 
 
 ### Confirm
 
-Yes/No toggle. Arrow keys or Tab to switch, `y`/`n` to pick directly, Enter to confirm.
+A yes/no toggle. Press the arrow keys or <kbd>Tab</kbd> to switch, <kbd>y</kbd> or <kbd>n</kbd> to pick directly and <kbd>Enter</kbd> to confirm:
 
 ```php
 $send = Prompty::confirm('Send order?',
@@ -288,7 +259,7 @@ $send = Prompty::confirm('Send order?',
 
 ## Flows
 
-Group widgets into a step-by-step wizard.
+`flow()` groups widgets into a step-by-step wizard. Each array key names a step:
 
 ```php
 $results = Prompty::flow(fn(): array => [
@@ -307,11 +278,11 @@ $results = Prompty::flow(fn(): array => [
 ], intro: 'Compose an order', outro: 'Order sent!');
 ```
 
-`flow()` returns the collected answers keyed by step name, or `null` if the user cancels any step.
+`flow()` returns the answers keyed by step, or `null` when the user cancels any step.
 
-An input stream with nothing left to read counts as a cancellation. A script run from a pipe, from `/dev/null`, or from a CI step with no terminal attached stops at the first prompt it cannot read and returns `null`, rather than waiting for input that will never arrive.
+An input stream with nothing left to read counts as a cancellation. A flow run from a pipe, from `/dev/null` or in CI without a terminal returns `null` at the first prompt it can't read.
 
-Flows support intro, outro, and cancellation messages - as strings or callables:
+`intro`, `outro` and `cancelled` each take a string or a callable. A callable receives the answers collected so far:
 
 ```php
 $results = Prompty::flow(fn(): array => [ /* ... */ ],
@@ -326,7 +297,7 @@ $results = Prompty::flow(fn(): array => [ /* ... */ ],
 
 ### Nested flows with conditions
 
-Widgets accept `children` and `condition` to build tree-structured flows. Children render as an indented tree with bar connectors. Conditions receive the collected results so far and skip the step when they return `false`.
+Prompty draws a widget's `children` as an indented tree under it, joined by vertical bars. Any step can take a `condition`, which receives the answers collected so far. When the condition returns `false`, the flow skips the step:
 
 ```php
 $results = Prompty::flow(fn(): array => [
@@ -356,7 +327,7 @@ $results = Prompty::flow(fn(): array => [
 
 ## Standalone mode
 
-Widgets work outside of flows too. Call any widget directly and it handles TTY setup/teardown internally, returning the answer immediately:
+Called outside a flow, a widget sets up the terminal, asks its question and returns the answer:
 
 ```php
 require_once 'Prompty.php';
@@ -373,7 +344,7 @@ $send = Prompty::confirm('Send order?');
 echo "Sending $dish for the $course course...\n";
 ```
 
-You can mix standalone widgets with flows in the same script:
+A script can mix standalone widgets and flows:
 
 ```php
 // Standalone widgets can sit between flows.
@@ -384,24 +355,26 @@ $extras = Prompty::flow(fn(): array => [/* step 2 */], intro: 'Step 2: Extras');
 
 ## Environment variable discovery
 
-Flows auto-discover answers from environment variables. The key name is uppercased and prefixed with `PROMPTY_` (configurable):
+Inside a flow, each step can take its answer from an environment variable named after the step key, uppercased, with the `PROMPTY_` prefix. A widget called outside a flow reads no variables:
 
 ```bash
 PROMPTY_DISH='pear tart' PROMPTY_COURSE=main php your-script.php
 ```
 
-This pre-fills `dish` and `course` without prompting the user. The flow renders the discovered values as completed steps and moves on.
+The flow draws `dish` and `course` as completed steps and prompts only for the rest.
 
-Configure the prefix per-flow or globally:
+To change the prefix for 1 flow, pass `env_prefix`. To change it for every flow, pass it to [`Prompty::configure()`](#configuration):
 
 ```php
 // Reads KITCHEN_DISH, KITCHEN_COURSE, etc.
 $results = Prompty::flow(fn(): array => [/* ... */], env_prefix: 'KITCHEN_');
 ```
 
-Multiselect values are read as a comma-separated list, so `PROMPTY_EXTRAS=bread,olives` selects both options. The result comes back deduplicated and in the order the options were declared, exactly as if the user had ticked them by hand - so `PROMPTY_EXTRAS=olives,bread,olives` also gives you `['bread', 'olives']`. An empty value means nothing is selected, and a stray trailing comma is ignored.
+A multiselect reads its variable as a comma-separated list, so `PROMPTY_EXTRAS=bread,olives` selects both options. The result is deduplicated and in declared option order, so `PROMPTY_EXTRAS=olives,bread,olives` also gives `['bread', 'olives']`. A trailing comma is ignored.
 
-The `discovered:` argument reads a string the same way. That matters because the argument is how a script passes on an answer it already holds - a parsed `--extras=bread,olives` flag, a value read from a config file, an answer carried over from a previous run - and `getopt()` hands a flag over as 1 string, exactly as `getenv()` does. Either source can therefore stand in for the other:
+Every widget also takes a `discovered:` argument for an answer the script already holds, such as a parsed `--extras=bread,olives` flag. A widget given a `discovered:` value skips its prompt, inside a flow or outside one. In a flow, the `discovered:` value wins over the environment variable.
+
+A multiselect reads a `discovered:` string as a comma-separated list too, so a string from `getopt()` and a list give the same answer:
 
 ```php
 Prompty::multiselect('Extras',
@@ -410,19 +383,19 @@ Prompty::multiselect('Extras',
   options: $extras, discovered: ['bread', 'olives']);
 ```
 
-The list form takes each entry literally, which is the way to select an option key that itself contains a comma - a comma-joined string would be split around it.
+The list form takes each entry as is. Use it to select an option key that contains a comma.
 
-For confirm widgets, env values are interpreted using configurable truthy/falsy lists (default: `1`/`true`/`yes` and `0`/`false`/`no`), matched after trimming and regardless of case, so `YES` and `True` both count as yes.
+A confirm matches its value against the `truthy` and `falsy` lists, after trimming and ignoring case. The defaults are `1`, `true` and `yes` for yes, and `0`, `false` and `no` for no, so `YES` and `True` both count as yes. A boolean `discovered:` value is taken as is.
 
-A step is looked up as its key uppercased behind the prefix, so `dish_name` reads `PROMPTY_DISH_NAME`. A name outside letters, digits and underscores can still be set by a parent process - `env 'PROMPTY_DISH-NAME=x' php your-script.php` works - but it is not a shell identifier, so `export PROMPTY_DISH-NAME=x` is a syntax error in bash, zsh and sh, and most `.env` parsers will not accept it. A step named that way could never be filled by the means callers actually reach for, so it is turned down when the flow starts rather than quietly never resolving:
+A step key of `dish_name` reads `PROMPTY_DISH_NAME`. A name a shell can export holds only letters, digits and underscores. It doesn't start with a digit. Only a parent process can set a name such as `PROMPTY_DISH-NAME`, as in `env 'PROMPTY_DISH-NAME=x' php your-script.php`. `export` rejects it in bash, zsh and sh. Most `.env` parsers reject it too. `flow()` throws an `InvalidArgumentException` for such a step before the first prompt:
 
 ```text
 Step "dish-name" is looked up as the environment variable "PROMPTY_DISH-NAME", which cannot be exported. A variable name may hold only letters, digits and underscores, and may not start with a digit.
 ```
 
-The name is what is checked, not the key alone, so an `env_prefix` that cannot be exported is caught the same way - and with an empty prefix, a key starting with a digit is too, since a name cannot.
+Prompty checks the full variable name, so an `env_prefix` that can't be exported fails the same way. With an empty prefix, a key that starts with a digit fails too.
 
-Each key must also be unique across the whole flow, including the keys of children. `flow()` stores every answer in 1 flat array keyed by step, so a reused key would overwrite the earlier answer. A flow with a reused key is turned down when it starts:
+Each key must also be unique across the whole flow, children included. `flow()` stores every answer in 1 flat array keyed by step, so a reused key would overwrite an earlier answer. `flow()` rejects a reused key before the first prompt:
 
 ```text
 Step "dish" appears more than once in the flow. Each answer is stored under its step key, so a later step would overwrite the earlier answer in the results.
@@ -430,27 +403,30 @@ Step "dish" appears more than once in the flow. Each answer is stored under its 
 
 ### Discovered and default values must be valid answers
 
-A discovered value has to be an answer the widget would have accepted interactively. For `select` and `multiselect` that means a key of `options`; for `confirm`, a value in the truthy or falsy list. Anything else throws an `InvalidArgumentException` naming the widget, the offending value, and what was allowed:
+A discovered value must be an answer the widget accepts interactively:
+
+- For `select` and `multiselect`, a key of `options`
+- For `confirm`, a value in the `truthy` or `falsy` list
+
+Any other value throws an `InvalidArgumentException` that names the widget, the value and the accepted values:
 
 ```text
 Discovered value "pudding" for "Course" is not a valid option. Available options: starter, main, dessert.
 ```
 
-This applies to both sources - a `discovered:` argument and a `PROMPTY_*` variable - and it holds whether or not a terminal is attached. `text` has no fixed set of answers, so nothing is checked there; its discovered value is trimmed instead, and an empty one falls back to the [default or placeholder](#text).
+The check covers both the `discovered:` argument and the `PROMPTY_*` variable, with or without a terminal. `text` accepts any value, and an empty one falls back to the [default or placeholder](#text).
 
-`default` names an option key too, so `select` and `multiselect` hold it to the same list, with the parameter named in the message:
+`select` and `multiselect` check `default` against `options` too, and the message names the parameter:
 
 ```text
 Default value "pudding" for "Course" is not a valid option. Available options: starter, main, dessert.
 ```
 
-An empty default means "no default" and is always valid: `''` for `select` focuses the first option, `[]` for `multiselect` pre-checks nothing. Both values are checked before the widget draws, so a mistyped key fails at the widget that declared it rather than opening a prompt that quietly ignores it.
-
-That strictness earns its keep where discovery is actually used. A typo in a CI variable or an installer script fails at the widget that would have consumed it, with a message you can act on, instead of landing in your results and turning into something odd much further downstream.
+An empty default is always valid. `''` makes `select` focus the first option, and `[]` makes `multiselect` pre-check nothing. Both checks run when the widget starts, before it draws, so a mistyped key in a CI variable or a script fails at the widget that reads it.
 
 ### A blank value means no answer was supplied
 
-An empty or whitespace-only value - what an exported but never populated shell variable produces, or a `DISH="$(some-command)"` where the command printed nothing - is read as "no answer was supplied". Where a widget has an answer that means exactly that, a blank value takes it; where it has none, a blank value is rejected:
+A blank value is empty or holds only whitespace. An exported variable that was never filled gives one, and so does `DISH="$(some-command)"` when the command prints nothing. A widget with an answer that means "nothing supplied" takes that answer, and the other widgets reject a blank value:
 
 | Widget        | A blank value resolves to                                       |
 |---------------|-----------------------------------------------------------------|
@@ -459,17 +435,17 @@ An empty or whitespace-only value - what an exported but never populated shell v
 | `select`      | Rejected - one choice has no answer that means "nothing chosen" |
 | `confirm`     | Rejected - yes and no are the only answers                      |
 
-A blank value is still a value that was supplied, so it is not the same as leaving the variable unset: an unset `PROMPTY_COURSE` opens the prompt, while `PROMPTY_COURSE=` fails the same check as any other invalid value, with the value reported trimmed:
+A blank value differs from an unset variable. An unset `PROMPTY_COURSE` opens the prompt. `PROMPTY_COURSE=` fails the same check as any other invalid value, and the message shows the trimmed value:
 
 ```text
 Discovered value "" for "Course" is not a valid option. Available options: starter, main, dessert.
 ```
 
-Selecting nothing is a real answer for `multiselect`, so a blank value and a stray trailing comma both give `[]`. The rule holds for both sources - a `discovered:` argument and a `PROMPTY_*` variable.
+The rule covers both the `discovered:` argument and the `PROMPTY_*` variable.
 
 ## Descriptions and hints
 
-Every widget accepts a `description` - multi-line text rendered below the label:
+Every widget takes a `description`, shown under the label. A description can span several lines:
 
 ```php
 Prompty::text('Dish name',
@@ -478,7 +454,7 @@ Prompty::text('Dish name',
 );
 ```
 
-Select and multiselect widgets also accept `hints` - per-option text that updates as the user navigates:
+`select` and `multiselect` also take `hints`, keyed by option. The focused option's hint shows under the list and can span several lines:
 
 ```php
 Prompty::select('Method',
@@ -496,11 +472,9 @@ Prompty::select('Method',
 );
 ```
 
-Hints support multi-line text. They appear below the option list and change as the user moves between options.
-
 ## Default values
 
-Every interactive widget can seed its starting state with `default`, so the user begins from a sensible answer and adjusts from there:
+Every widget takes a `default` that sets its starting state:
 
 | Widget        | `default` type             | Effect                                     |
 |---------------|----------------------------|--------------------------------------------|
@@ -509,31 +483,22 @@ Every interactive widget can seed its starting state with `default`, so the user
 | `multiselect` | `list<int\|string>` (keys) | Pre-checks those options.                  |
 | `confirm`     | `bool`                     | Starts on Yes (`true`) or No (`false`).    |
 
-```php
-// Opt-out list: everything starts checked; the user unchecks what to drop.
-$extras = Prompty::multiselect('Extras', options: [
-  'bread' => 'Bread',
-  'olives' => 'Olives',
-  'herbs' => 'Herbs',
-], default: ['bread', 'olives', 'herbs']);
-```
+A `discovered:` value or a `PROMPTY_*` variable wins over `default` and skips the prompt. The exception is a blank value for `text`, which takes the default.
 
-`default` only seeds the *interactive* starting state. A value supplied via `discovered` or a `PROMPTY_*` environment variable still takes precedence and skips the prompt entirely, so explicit input always wins over the default.
-
-For `select` and `multiselect`, every key in `default` has to be a key of `options` - see [Discovered and default values must be valid answers](#discovered-and-default-values-must-be-valid-answers).
+For `select` and `multiselect`, every key in `default` must be a key of `options`. See [Discovered and default values must be valid answers](#discovered-and-default-values-must-be-valid-answers).
 
 ## Unicode and ASCII
 
-Prompty auto-detects Unicode support from the terminal locale (`LANG`, `LC_ALL`, `LC_CTYPE`). When Unicode is available, it uses symbols like `◆`, `◇`, `│`, `●`. Otherwise, it falls back to ASCII: `+`, `o`, `|`, `(*)`.
+Prompty detects Unicode support from the locale in `LANG`, `LC_ALL` or `LC_CTYPE`. A UTF-8 locale gets symbols such as `◆`, `◇`, `│` and `●`. Any other locale gets their ASCII forms: `+`, `o`, `|` and `(*)`.
 
-Force a mode:
+To force a mode for every widget and flow:
 
 ```php
 Prompty::configure(unicode: FALSE); // Always ASCII
 Prompty::configure(unicode: TRUE);  // Always Unicode
 ```
 
-Or per-flow:
+To force it for 1 flow:
 
 ```php
 $results = Prompty::flow(fn(): array => [/* ... */], unicode: FALSE);
@@ -541,16 +506,16 @@ $results = Prompty::flow(fn(): array => [/* ... */], unicode: FALSE);
 
 ## ANSI colors
 
-Prompty auto-detects ANSI color support. It respects the [`NO_COLOR`](https://no-color.org/) environment variable and `TERM=dumb`.
+Prompty uses ANSI colors unless the [`NO_COLOR`](https://no-color.org/) environment variable is set to a non-empty value or `TERM` is `dumb`.
 
-Force colors on or off:
+To force colors on or off for every widget and flow:
 
 ```php
 Prompty::configure(ansi: FALSE); // Suppress all color codes
 Prompty::configure(ansi: TRUE);  // Force ANSI colors
 ```
 
-Or per-flow:
+To force them for 1 flow:
 
 ```php
 $results = Prompty::flow(fn(): array => [/* ... */], ansi: FALSE);
@@ -558,7 +523,7 @@ $results = Prompty::flow(fn(): array => [/* ... */], ansi: FALSE);
 
 ### Display modes
 
-Combine `unicode` and `ansi` to control the output style. Here is how a flat flow looks in each combination:
+`unicode` and `ansi` combine into 4 display modes. The following table shows a flat flow in each mode:
 
 <table align="center">
   <tr>
@@ -578,7 +543,7 @@ Combine `unicode` and `ansi` to control the output style. Here is how a flat flo
   </tr>
 </table>
 
-And a nested flow:
+The following table shows a nested flow in each mode:
 
 <table align="center">
   <tr>
@@ -600,9 +565,11 @@ And a nested flow:
 
 ## Configuration
 
-Configure globally with `Prompty::configure()` or per-flow via named arguments on `Prompty::flow()`. All parameters are optional - pass only what you want to override. Per-flow config merges on top of global.
+`Prompty::configure()` sets options for the rest of the process. `Prompty::flow()` takes the same options as named arguments and merges them over the global ones for that flow. Every option is optional, so pass only what you change.
 
-A per-flow argument lasts as long as the flow. Whether the flow completes, is cancelled, or throws, the configuration it found is back in force when it returns, so the next flow sees the global settings rather than the last flow's. `Prompty::configure()` is the way to change something for the rest of the process.
+A per-flow option lasts until the flow returns, whether the flow completes, is canceled or throws. The next flow gets the global settings again.
+
+The following example sets options globally, then for 1 flow:
 
 ```php
 // Global.
@@ -622,18 +589,20 @@ $results = Prompty::flow(fn(): array => [/* ... */],
 
 ### Available options
 
-| Parameter         | Type                    | Description                                              |
-|-------------------|-------------------------|----------------------------------------------------------|
-| `unicode`         | `bool`                  | Force Unicode or ASCII symbols                           |
-| `ansi`            | `bool`                  | Force ANSI colors on or suppress all color codes         |
-| `env_prefix`      | `string`                | Prefix for env var discovery                             |
-| `labels`          | `array<string, string>` | UI labels: `yes`, `no`, `cancelled`, `none`, `separator` |
-| `truthy`          | `list<string>`          | Strings treated as `true` for confirm env values         |
-| `falsy`           | `list<string>`          | Strings treated as `false` for confirm env values        |
-| `symbols_unicode` | `array<string, string>` | Unicode symbol overrides                                 |
-| `symbols_ascii`   | `array<string, string>` | ASCII symbol overrides                                   |
-| `colors`          | `array<string, string>` | ANSI color escape overrides                              |
-| `spacing`         | `array<string, string>` | Indentation strings                                      |
+The following table lists every option and its default:
+
+| Parameter         | Type                    | Description                                                                   |
+|-------------------|-------------------------|-------------------------------------------------------------------------------|
+| `unicode`         | `bool`                  | Forces Unicode or ASCII symbols. Detected from the locale by default.         |
+| `ansi`            | `bool`                  | Forces ANSI colors on or off. On unless `NO_COLOR` or `TERM=dumb` is set.     |
+| `env_prefix`      | `string`                | Prefix for environment variable discovery. Default `PROMPTY_`.                |
+| `labels`          | `array<string, string>` | UI labels: `yes`, `no`, `cancelled`, `none`, `separator`.                     |
+| `truthy`          | `list<string>`          | Values a confirm reads as yes. Default `1`, `true`, `yes`.                    |
+| `falsy`           | `list<string>`          | Values a confirm reads as no. Default `0`, `false`, `no`.                     |
+| `symbols_unicode` | `array<string, string>` | Unicode symbol overrides.                                                     |
+| `symbols_ascii`   | `array<string, string>` | ASCII symbol overrides.                                                       |
+| `colors`          | `array<string, string>` | ANSI color escape overrides.                                                  |
+| `spacing`         | `array<string, string>` | Indentation strings.                                                          |
 
 The map-valued options take these keys:
 
@@ -644,15 +613,15 @@ The map-valued options take these keys:
 
 ### Unknown keys are rejected
 
-`labels`, `spacing`, `colors`, `symbols_unicode` and `symbols_ascii` each accept only the keys listed above - the ones the defaults declare, which `Prompty::config()` returns. A key outside that set is rejected rather than merged in, so a misspelling fails at the call instead of quietly doing nothing, and the message lists the keys that would have worked:
+The map-valued options accept only the keys in the preceding list, which `Prompty::config()` also returns. An unknown key throws an `InvalidArgumentException` that lists the valid keys, so a misspelling fails at the call:
 
 ```text
 Configuration key "bogus" for "labels" is not valid. Available keys: yes, no, cancelled, none, separator.
 ```
 
-`truthy` and `falsy` must each list at least 1 value, since a `confirm` widget that cannot resolve half its domain would reject every value it was given. Neither list accepts a blank value: values are matched after trimming, so a blank entry would answer for an empty discovered value that `confirm` otherwise rejects.
+`truthy` and `falsy` must each hold at least 1 value, and neither accepts a blank value. Values match after trimming, so a blank entry would accept the empty value that `confirm` otherwise rejects.
 
-Every argument is validated before any is applied, so a rejected value leaves the whole configuration as it was:
+`configure()` validates every argument before it applies any, so a rejected call changes nothing:
 
 ```php
 // Throws, and neither the labels nor the prefix are changed.
@@ -663,20 +632,22 @@ Prompty::configure(
 );
 ```
 
-An empty `env_prefix` is accepted, and makes discovery read the bare uppercased step key. A step named `path`, `home` or `user` then reads `PATH`, `HOME` or `USER` from the ambient environment, so keep a prefix unless you mean exactly that.
+An empty `env_prefix` makes discovery read the uppercased step key alone. A step named `path`, `home` or `user` then reads `PATH`, `HOME` or `USER`, so keep a prefix unless you mean that.
 
 ### Other methods
 
-Besides the 4 widgets and `flow()`, the class exposes:
+Besides the 4 widgets, `flow()` and `configure()`, the class has these methods:
 
-| Method                    | Returns  | Description                                                     |
-|---------------------------|----------|-----------------------------------------------------------------|
-| `Prompty::results()`      | `array`  | The answers collected by the last flow.                         |
-| `Prompty::config()`       | `array`  | The resolved configuration, including auto-detected values.     |
-| `Prompty::version()`      | `string` | The release version, or `development` when running from source. |
-| `Prompty::intro($text)`   | `void`   | Prints an intro banner outside of `flow()`.                     |
-| `Prompty::outro($text)`   | `void`   | Prints an outro banner outside of `flow()`.                     |
-| `Prompty::output($lines)` | `int`    | Prints an array of lines, 1 per line; returns the count.        |
+| Method                       | Returns  | Description                                                     |
+|------------------------------|----------|-----------------------------------------------------------------|
+| `Prompty::results()`         | `array`  | The answers collected by the last flow.                         |
+| `Prompty::config()`          | `array`  | The resolved configuration, including detected values.          |
+| `Prompty::version()`         | `string` | The release version, or `development` when running from source. |
+| `Prompty::intro($message)`   | `void`   | Prints an intro banner outside `flow()`.                        |
+| `Prompty::outro($message)`   | `void`   | Prints an outro banner outside `flow()`.                        |
+| `Prompty::output($lines)`    | `int`    | Prints an array of lines, 1 per line. Returns the count.        |
+
+The following example reads the answers 2 ways and prints a banner:
 
 ```php
 // flow() returns the collected answers.
@@ -692,9 +663,9 @@ Prompty::outro('Order sent to the kitchen!');
 
 ## Test harness
 
-Prompty ships with `PromptyTestTrait` for PHPUnit. It injects keystrokes into a memory stream and captures terminal output - no real TTY needed.
+`PromptyTestTrait` drives widgets from PHPUnit. It feeds keystrokes from a memory stream and captures the output, so tests run without a terminal.
 
-Use `promptyRun()` when the flow's return value is what you want to assert on:
+To assert on what a flow returns, use `promptyRun()`:
 
 ```php
 use AlexSkrypnyk\Prompty\Prompty;
@@ -733,7 +704,7 @@ class MyFlowTest extends TestCase {
 }
 ```
 
-Use `promptyRunScript()` to drive a consumer script instead. Leave the script's [kill switch](#starter-script) variable unset so it stops before doing real work, then read the answers from `Prompty::results()`:
+To test a whole script, use `promptyRunScript()`. Leave the script's [kill switch](#starter-script) variable unset so the script stops before its real work, then read the answers from `Prompty::results()`:
 
 ```php
 public function testMyScript(): void {
@@ -752,28 +723,38 @@ public function testMyScript(): void {
 }
 ```
 
-Both helpers return an array with an ANSI-stripped `output` key; `promptyRun()` adds a `result` key holding the callback's return value.
+Both helpers return an array whose `output` key holds the output with ANSI codes stripped. `promptyRun()` adds a `result` key with the callback's return value.
 
-A widget that reads past the last queued keystroke reaches the end of the stream and cancels, so a test with too few keystrokes gets a `null` result its assertions can catch, rather than blocking on the terminal.
+Under both helpers, widgets draw ASCII symbols. To change that in `promptyRun()`, pass a configuration array such as `['unicode' => TRUE]` as its third argument.
+
+A widget that reads past the last keystroke cancels, so a test with too few keystrokes gets `null` instead of hanging.
 
 ### Available key constants
 
-| Constant         | Key          |
-|------------------|--------------|
-| `KEY_ENTER`      | Enter        |
-| `KEY_SPACE`      | Space        |
-| `KEY_BACKSPACE`  | Backspace    |
-| `KEY_TAB`        | Tab          |
-| `KEY_ESCAPE`     | Escape       |
-| `KEY_CTRL_C`     | Ctrl+C       |
-| `KEY_UP`         | Arrow up     |
-| `KEY_DOWN`       | Arrow down   |
-| `KEY_LEFT`       | Arrow left   |
-| `KEY_RIGHT`      | Arrow right  |
+Pass these constants to `promptyKeys()`:
+
+| Constant         | Key                  |
+|------------------|----------------------|
+| `KEY_ENTER`      | <kbd>Enter</kbd>     |
+| `KEY_SPACE`      | <kbd>Space</kbd>     |
+| `KEY_BACKSPACE`  | <kbd>Backspace</kbd> |
+| `KEY_TAB`        | <kbd>Tab</kbd>       |
+| `KEY_ESCAPE`     | <kbd>Escape</kbd>    |
+| `KEY_CTRL_C`     | <kbd>Ctrl+C</kbd>    |
+| `KEY_UP`         | <kbd>↑</kbd>         |
+| `KEY_DOWN`       | <kbd>↓</kbd>         |
+| `KEY_LEFT`       | <kbd>←</kbd>         |
+| `KEY_RIGHT`      | <kbd>→</kbd>         |
 
 ## Starter script
 
-[`starter.php`](starter.php) is a ready-to-use template for your own scripts. It demonstrates the recommended "kill switch" pattern for testable flows - the script collects answers, stops if the flow was cancelled, then checks an env var before doing real work:
+[`starter.php`](starter.php) is a template for your own scripts. It follows the *kill switch* pattern, which keeps a script testable. The script does 3 things in order:
+
+1. Runs the flow.
+2. Returns if the flow returns `null`.
+3. Returns unless `SHOULD_PROCEED` is set, so tests stop before the real work.
+
+The following excerpt shows the pattern:
 
 ```php
 $results = Prompty::flow(fn(): array => [
@@ -793,17 +774,17 @@ if (!getenv('SHOULD_PROCEED')) {
 echo 'Dish: ' . $results['dish'] . "\n";
 ```
 
-Copy `starter.php`, rename it, and replace the steps with your own.
+To start a script, copy `starter.php` under a new name and replace its steps with your own.
 
 ## Embedding
 
-[`embed.php`](embed.php) minifies `Prompty.php` and embeds it directly into your script, so you can ship a single file with no `require_once` and no external dependencies. Minifying strips every comment except the license header, drops blank lines and puts the class body on 1 line.
+[`embed.php`](embed.php) minifies `Prompty.php` and writes it into your script, so the script ships as 1 file with no `require_once`. Minifying strips every comment except the license header, drops blank lines and puts the class body on 1 line.
 
-Download `embed.php` from the [latest release](https://github.com/AlexSkrypnyk/prompty/releases/latest) assets alongside `Prompty.php`.
+Download `embed.php` with `Prompty.php` from the [latest release](https://github.com/AlexSkrypnyk/prompty/releases/latest) assets.
 
 ### Setup
 
-Add `// @embed-start` and `// @embed-end` markers in your script around the `require_once` line **and the import**:
+In your script, put `// @embed-start` and `// @embed-end` markers around the `require_once` line and the `use` import:
 
 ```php
 <?php
@@ -820,38 +801,42 @@ use AlexSkrypnyk\Prompty\Prompty;
 $dish = Prompty::text('Dish name');
 ```
 
-Both lines go inside the markers. The embedded class is emitted without a namespace, so an import left outside them collides with it and the embedded script fails to parse.
+Keep the `use` import inside the markers. The embedded class has no namespace, so an import left outside them collides with the class name and the embedded script fails to compile.
 
 ### Usage
 
-Embed in place (modifies the file directly):
+To embed in place, run `embed.php` on your script:
 
 ```bash
 php embed.php my-script.php
 ```
 
-Embed into a separate output file (source stays unchanged):
+To write the result to a separate file and leave your script unchanged, add an output path:
 
 ```bash
 php embed.php my-script.php dist/my-script.php
 ```
 
-Wrap the markers in `// phpcs:disable` / `// phpcs:enable` to suppress coding standard warnings on the minified code.
+To silence coding-standard warnings on the minified code, wrap the markers in `// phpcs:disable` and `// phpcs:enable`.
 
-See [`starter.php`](starter.php) for an example with markers already in place, and [`playground/flow-embed.php`](playground/flow-embed.php) for the demo the embedder is tested against. [`CONTRIBUTING.md`](CONTRIBUTING.md#the-embedded-demo) shows how to build its embedded copy and compare the 2.
+[`starter.php`](starter.php) has the markers in place. [`playground/flow-embed.php`](playground/flow-embed.php) is the demo the embedder is tested against, and [`CONTRIBUTING.md`](CONTRIBUTING.md#the-embedded-demo) shows how to build and compare its embedded copy.
 
 ### Options
 
-| Option            | Description                                                                              |
-|-------------------|------------------------------------------------------------------------------------------|
-| `--source <path>` | Path to the class file to embed. Defaults to `Prompty.php` beside `embed.php`.            |
-| `--compact`       | Shorten internal names and strip optional whitespace, for a smaller output.               |
-| `--stdout`        | Write the processed class as a standalone PHP file instead of embedding into a script.    |
-| `--payload`       | Write only the code that embedding puts between the markers.                              |
-| `--check`         | Check an embedded script. See [Verify an embedded script](#verify-an-embedded-script).   |
-| `--sums <path>`   | With `--check`, the `SHA256SUMS` of the release the start marker names.                   |
-| `--no-killswitch` | Skip injecting the kill switch block and the post-embed verification run.                 |
-| `--no-verify`     | Skip the post-embed verification run, still injecting the kill switch block.              |
+`embed.php` takes these options:
+
+| Option            | Description                                                                             |
+|-------------------|-----------------------------------------------------------------------------------------|
+| `--source <path>` | Sets the class file to embed. Defaults to `Prompty.php` beside `embed.php`.             |
+| `--compact`       | Shortens internal names, renames local variables and strips optional whitespace.        |
+| `--stdout`        | Writes the processed class as a standalone PHP file instead of embedding it.            |
+| `--payload`       | Writes only the code that embedding puts between the markers.                           |
+| `--check`         | Checks an embedded script. See [Verify an embedded script](#verify-an-embedded-script). |
+| `--sums <path>`   | With `--check`, sets the `SHA256SUMS` file of the release that the start marker names. |
+| `--no-killswitch` | Skips adding the kill switch block and the verification run.                            |
+| `--no-verify`     | Skips the verification run but still adds the kill switch block.                        |
+
+For example:
 
 ```bash
 php embed.php --compact my-script.php
@@ -859,17 +844,17 @@ php embed.php --source /path/to/Prompty.php my-script.php
 php embed.php --stdout Prompty.min.php
 ```
 
-`--stdout` and `--payload` take an output path rather than a target script. The release workflow uses `--stdout` to build `Prompty.min.php` and `Prompty.compact.php`, and `--payload` to build the 2 `.payload` assets.
+With `--stdout` or `--payload`, `embed.php` takes an output file path in place of a target script. The release workflow uses `--stdout` to build `Prompty.min.php` and `Prompty.compact.php`, and `--payload` to build the 2 `.payload` assets.
 
 ### Re-embedding
 
-To update an already-embedded script to a newer version of Prompty, replace `Prompty.php` with the new version and re-run `embed.php`. The embedded region is replaced with the latest class content while all code outside the markers is preserved:
+To update an embedded script to a newer Prompty, replace `Prompty.php` with the new version and run `embed.php` again. `embed.php` replaces the code between the markers and keeps everything outside them:
 
 ```bash
 php embed.php my-script.php
 ```
 
-If the new `Prompty.php` is in a different location, use `--source`:
+If the new `Prompty.php` is in another directory, point `--source` at it:
 
 ```bash
 php embed.php --source /path/to/new/Prompty.php my-script.php
@@ -877,7 +862,7 @@ php embed.php --source /path/to/new/Prompty.php my-script.php
 
 ### Kill switch
 
-`embed.php` looks for `if (!getenv('SHOULD_PROCEED'))` in your script. If it is not there, `embed.php` injects this block right after the embed region:
+`embed.php` looks for `if (!getenv('SHOULD_PROCEED'))` in your script. If the line is missing, `embed.php` adds this block after the embed region:
 
 ```php
 // Kill switch - stop here when running under tests.
@@ -887,9 +872,9 @@ if (!getenv('SHOULD_PROCEED')) {
 }
 ```
 
-The injected block sits ahead of your prompts, so the script stops before asking anything unless `SHOULD_PROCEED` is set. To let tests answer the prompts and still stop before the real work, write the kill switch yourself, below the flow, as [`starter.php`](starter.php) does.
+The added block sits before your prompts, so the script asks nothing and does nothing unless `SHOULD_PROCEED` is set. For tests that answer the prompts and stop before the real work, write the kill switch yourself after the flow, as [`starter.php`](starter.php) does.
 
-Use `--no-killswitch` to skip the injection:
+To skip adding the block, pass `--no-killswitch`:
 
 ```bash
 php embed.php --no-killswitch my-script.php
@@ -897,11 +882,11 @@ php embed.php --no-killswitch my-script.php
 
 ### Verification run
 
-Once the file is written, `embed.php` runs it to confirm the embedded class works. In a terminal the run takes over the keyboard so the flow can be stepped through by hand; otherwise it pipes a few newlines in and discards the output.
+After writing the file, `embed.php` checks it with `php -l` and then runs it to confirm the embedded class works. In a terminal, you answer any prompts that come before the kill switch. Without a terminal, `embed.php` pipes in a few newlines and discards the output.
 
-The kill switch is what keeps that run from reaching the real work, so the run only happens when the file ends up with one. `--no-killswitch` therefore skips the run as well as the injection.
+The run happens only when the file has a kill switch, which stops the run before the real work unless `SHOULD_PROCEED` is set. The run inherits your environment, so with `SHOULD_PROCEED` set, unset it or pass `--no-verify`. `--no-killswitch` skips the run too, even when the script has its own kill switch.
 
-Use `--no-verify` to embed without running the result while still injecting the kill switch - for build steps, CI jobs, and scripts that regenerate an embedded file:
+To add the kill switch but skip the run, pass `--no-verify`. Use it in build steps, CI jobs and scripts that regenerate an embedded file:
 
 ```bash
 php embed.php --no-verify my-script.php
@@ -1144,11 +1129,11 @@ php embed.php --source /path/to/new/Prompty.php my-script.php
 
 ## Contributing
 
-See [`CONTRIBUTING.md`](CONTRIBUTING.md) for local development setup, the linting and testing commands, the playground scripts, and the release process.
+For local setup, the lint and test commands, the playground scripts and the release process, see [`CONTRIBUTING.md`](CONTRIBUTING.md).
 
 ## Security
 
-See [`SECURITY.md`](SECURITY.md) for how to report a vulnerability and how to verify a downloaded release.
+To report a vulnerability or verify a downloaded release, see [`SECURITY.md`](SECURITY.md).
 
 ---
 _This repository was created using the [Scaffold](https://getscaffold.dev/) project template_
