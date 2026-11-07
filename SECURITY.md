@@ -90,6 +90,12 @@ The library makes no network requests, writes no files and runs no input as code
 
 The last command runs your script, so point `embed.php` only at scripts you trust. `embed.php` runs the embedded script only when the script has a [kill switch](README.md#kill-switch). The kill switch returns before the real work unless the `SHOULD_PROCEED` environment variable is set. Without a kill switch, `embed.php` prints a warning and skips the run. `--check` only reads the script and `SHA256SUMS`, and runs nothing.
 
-Everything under `.util/` is maintainer tooling, outside the library. It holds the drift check that `composer lint` runs against the embedded playground demo, the release embed check that CI and the release workflow run, and the scripts that record and render the README demos. `.gitattributes` marks `.util/` as `export-ignore`, so source archives and Composer's default dist installs leave it out. A `--prefer-source` install clones the whole repository and includes it.
+Everything under `.util/` is maintainer tooling, outside the library. It holds these scripts:
+
+- The drift check that `composer lint` runs against the embedded playground demo
+- The release embed check that CI and the release workflow run
+- The scripts that record and render the README demos
+
+`.gitattributes` marks `.util/` as `export-ignore`, so source archives and Composer's default dist installs leave it out. A `--prefer-source` install clones the whole repository and includes it.
 
 The `.util/` scripts run `php`, and the recording scripts also run `asciinema`, `expect` and `node`. Their only arguments are paths built from each script's own location or named on its command line, and job names checked against a fixed list. Every argument goes through `escapeshellarg()`.
