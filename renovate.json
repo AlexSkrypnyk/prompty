@@ -5,12 +5,28 @@
     "dependencyDashboard": true,
     "pinDigests": true,
     "branchPrefix": "deps/",
-    "enabledManagers": ["github-actions"],
+    "enabledManagers": ["github-actions", "custom.regex"],
+    "customManagers": [
+        {
+            "customType": "regex",
+            "description": "Major versions of the actions in the workflow snippets that embed.php prints.",
+            "managerFilePatterns": ["/^embed\\.php$/"],
+            "matchStrings": ["uses: (?<depName>[\\w.-]+/[\\w.-]+)@v(?<currentValue>\\d+) "],
+            "datasourceTemplate": "github-tags",
+            "extractVersionTemplate": "^v(?<version>\\d+)(\\.\\d+)*$",
+            "versioningTemplate": "loose"
+        }
+    ],
     "packageRules": [
         {
             "matchPackageNames": ["*"],
             "groupName": "all dependencies",
             "groupSlug": "all"
+        },
+        {
+            "matchManagers": ["custom.regex"],
+            "pinDigests": false,
+            "rangeStrategy": "replace"
         }
     ]
 }

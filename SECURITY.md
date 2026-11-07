@@ -50,9 +50,21 @@ sha256sum --ignore-missing -c SHA256SUMS
 
 The release workflow performs this same verification itself after uploading, so a release that fails it never ships.
 
+Every asset, `SHA256SUMS` included, also has a build attestation from GitHub Actions. To verify an asset with the [GitHub CLI](https://cli.github.com) instead of GPG:
+
+```bash
+gh attestation verify Prompty.php --repo AlexSkrypnyk/prompty
+```
+
+After uploading, the release workflow also verifies every attestation. It then embeds the uploaded `Prompty.php` with the uploaded `embed.php` in both modes and runs `embed.php --check` against the uploaded `SHA256SUMS`.
+
+To check a script that already embeds Prompty, see [Verify an embedded script](README.md#verify-an-embedded-script).
+
 ### What this does and does not prove
 
 A passing check proves 2 things: the files you downloaded match the checksums that were signed, and the signature was made with the key whose public half is in this repository. It doesn't prove that key belongs to the maintainer. The key, its fingerprint and this page all live in the same repository, so anyone who took over the repository or the maintainer's account could replace all 3 at once, and a first-time download would verify just fine.
+
+An attestation has the same limit. It proves that a workflow run in this repository built the asset from the commit it names, and anyone who controls the repository can start that workflow.
 
 What the check does defend against is a key swap after you've already trusted the key. Record the fingerprint the first time you download Prompty and compare it on every download after that. If it changes without a note in the release notes, treat that release as suspect and [get in touch](#reporting-a-vulnerability) before running anything from it.
 
@@ -62,6 +74,6 @@ Prompty reads keystrokes from a stream and writes ANSI escape sequences to stdou
 
 The library performs no network access, writes no files, and evaluates no user input as code.
 
-`embed.php` is a build-time tool with a wider footprint. It reads a class file, rewrites it, writes the result to a path you name, and then shells out: to Rector if it's installed, to `php -l` to check the output parses, and to `php <your-script>` to confirm the embedded result actually runs. That last step executes the target script, so only point `embed.php` at scripts you trust. The run is guarded by the [kill switch](README.md#kill-switch): `embed.php` only runs a script that has one, and the kill switch returns before the script's real work unless `SHOULD_PROCEED` is set.
+`embed.php` is a build-time tool with a wider footprint. It reads a class file, rewrites it and writes the result to a path you name. It then shells out: to `php -l` to check the output parses, to `git` to find the repository named in the snippets it prints, and to `php <your-script>` to confirm the embedded result actually runs. That last step executes the target script, so only point `embed.php` at scripts you trust. The run is guarded by the [kill switch](README.md#kill-switch): `embed.php` only runs a script that has one, and the kill switch returns before the script's real work unless `SHOULD_PROCEED` is set. `--check` only reads the script and `SHA256SUMS`, and runs nothing.
 
-Everything under `.util/` is maintainer tooling, not part of the library: the drift check that `composer lint` runs against the embedded playground demo, and the scripts that record and render the README demos. It's marked `export-ignore` in `.gitattributes`, so it's left out of source archives and of the dist installs Composer does by default; a `--prefer-source` install clones the whole repository and gets it too. These scripts shell out too - to `php`, and for the recordings to `asciinema`, `expect` and `node` - but only with paths derived from their own location and job names checked against a fixed list, each passed through `escapeshellarg()`.
+Everything under `.util/` is maintainer tooling, not part of the library: the drift check that `composer lint` runs against the embedded playground demo, the release embed check that CI and the release workflow run, and the scripts that record and render the README demos. It's marked `export-ignore` in `.gitattributes`, so it's left out of source archives and of the dist installs Composer does by default; a `--prefer-source` install clones the whole repository and gets it too. These scripts shell out too - to `php`, and for the recordings to `asciinema`, `expect` and `node` - but only with paths derived from their own location or named on their command line, and job names checked against a fixed list, each passed through `escapeshellarg()`.

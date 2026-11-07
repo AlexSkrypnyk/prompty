@@ -49,6 +49,11 @@ class Prompty {
   protected const ESCAPE_TIMEOUT = 50000;
 
   /**
+   * The release version, or the placeholder token in an unreleased copy.
+   */
+  public const VERSION = '__PROMPTY_VERSION__';
+
+  /**
    * Singleton instance.
    *
    * @var static|null
@@ -344,7 +349,7 @@ class Prompty {
    *   The version string.
    */
   public static function version(): string {
-    return str_starts_with('__PROMPTY_VERSION__', '__') ? 'development' : '__PROMPTY_VERSION__';
+    return str_starts_with(static::VERSION, '__') ? 'development' : static::VERSION;
   }
 
   /**

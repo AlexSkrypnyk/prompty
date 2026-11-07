@@ -1,3 +1,6 @@
+# Keep payloads byte-exact on every checkout, so their hashes hold.
+*.payload -text
+
 # Ignore files for distribution archives.
 
 /.claude         export-ignore
