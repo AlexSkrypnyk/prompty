@@ -54,7 +54,7 @@ The release has 3 variants of the class:
 | Asset                 | Description                                                             |
 |-----------------------|-------------------------------------------------------------------------|
 | `Prompty.php`         | Full source with version imprinted                                      |
-| `Prompty.min.php`     | Minified - comments and blank lines stripped, class body on 1 line      |
+| `Prompty.min.php`     | Minified - comments except the license header and blank lines stripped, class body on 1 line |
 | `Prompty.compact.php` | Minified, plus shortened internal names and no optional whitespace      |
 
 For testing, also download `PromptyTestTrait.php` from the same release.
@@ -112,9 +112,9 @@ $dish = Prompty::text('Dish name',
 );
 ```
 
-`default` pre-fills the input with text the user can edit. `placeholder` is the gray hint shown while the input is empty.
+`default` pre-fills the input with text the user can edit. `placeholder` is the gray text shown while the input is empty.
 
-Submitting an empty input returns the `placeholder`, so a placeholder also works as a fallback answer. With a `default` set, submitting without typing returns the default. To let an empty answer stay empty, leave both unset.
+Submitting an empty input returns the `placeholder` string itself, so a placeholder also works as a fallback answer. With a `default` set, submitting without typing returns the default. To let an empty answer stay empty, leave both unset.
 
 A [discovered](#environment-variable-discovery) value follows the same rule. Prompty trims it, and an empty result takes the `default`, or the `placeholder` when no default is set:
 
@@ -127,7 +127,7 @@ Prompty::text('Dish name', placeholder: 'pear tart', discovered: '');
 Prompty::text('Dish name', placeholder: 'pear tart', discovered: '  ');
 ```
 
-An empty `PROMPTY_DISH=` takes the fallback without prompting. An unset `PROMPTY_DISH` opens the prompt, where submitting without typing gives the same fallback.
+In a flow with a `dish` step, an empty `PROMPTY_DISH=` takes the fallback without prompting. An unset `PROMPTY_DISH` opens the prompt, where submitting without typing gives the same fallback.
 
 <table>
   <tr>
@@ -297,7 +297,7 @@ $results = Prompty::flow(fn(): array => [ /* ... */ ],
 
 ### Nested flows with conditions
 
-A widget's `children` draw as an indented tree under it, joined by bar connectors. Any step can take a `condition`, which receives the answers collected so far. When the condition returns `false`, the flow skips the step:
+Prompty draws a widget's `children` as an indented tree under it, joined by vertical bars. Any step can take a `condition`, which receives the answers collected so far. When the condition returns `false`, the flow skips the step:
 
 ```php
 $results = Prompty::flow(fn(): array => [
@@ -355,7 +355,7 @@ $extras = Prompty::flow(fn(): array => [/* step 2 */], intro: 'Step 2: Extras');
 
 ## Environment variable discovery
 
-Inside a flow, each step can take its answer from an environment variable. The variable name is the step key, uppercased, after the `PROMPTY_` prefix:
+Inside a flow, each step can take its answer from an environment variable named after the step key, uppercased, with the `PROMPTY_` prefix. A widget called outside a flow reads no variables:
 
 ```bash
 PROMPTY_DISH='pear tart' PROMPTY_COURSE=main php your-script.php
@@ -387,7 +387,7 @@ The list form takes each entry as is. Use it to select an option key that contai
 
 A confirm matches its value against the `truthy` and `falsy` lists, after trimming and ignoring case. The defaults are `1`, `true` and `yes` for yes, and `0`, `false` and `no` for no, so `YES` and `True` both count as yes. A boolean `discovered:` value is taken as is.
 
-A step key of `dish_name` reads `PROMPTY_DISH_NAME`. A variable name can hold only letters, digits and underscores. It can't start with a digit. Only a parent process can set a name such as `PROMPTY_DISH-NAME`, as in `env 'PROMPTY_DISH-NAME=x' php your-script.php`. `export` rejects it in bash, zsh and sh. Most `.env` parsers reject it too. `flow()` throws an `InvalidArgumentException` for such a step before the first prompt:
+A step key of `dish_name` reads `PROMPTY_DISH_NAME`. A name a shell can export holds only letters, digits and underscores. It doesn't start with a digit. Only a parent process can set a name such as `PROMPTY_DISH-NAME`, as in `env 'PROMPTY_DISH-NAME=x' php your-script.php`. `export` rejects it in bash, zsh and sh. Most `.env` parsers reject it too. `flow()` throws an `InvalidArgumentException` for such a step before the first prompt:
 
 ```text
 Step "dish-name" is looked up as the environment variable "PROMPTY_DISH-NAME", which cannot be exported. A variable name may hold only letters, digits and underscores, and may not start with a digit.
@@ -422,7 +422,7 @@ The check covers both the `discovered:` argument and the `PROMPTY_*` variable, w
 Default value "pudding" for "Course" is not a valid option. Available options: starter, main, dessert.
 ```
 
-An empty default is always valid. `''` makes `select` focus the first option, and `[]` makes `multiselect` pre-check nothing. Both checks run before the widget draws, so a mistyped key in a CI variable or a script fails at the widget that reads it.
+An empty default is always valid. `''` makes `select` focus the first option, and `[]` makes `multiselect` pre-check nothing. Both checks run when the widget starts, before it draws, so a mistyped key in a CI variable or a script fails at the widget that reads it.
 
 ### A blank value means no answer was supplied
 
@@ -725,7 +725,7 @@ public function testMyScript(): void {
 
 Both helpers return an array whose `output` key holds the output with ANSI codes stripped. `promptyRun()` adds a `result` key with the callback's return value.
 
-Both helpers draw ASCII symbols. To change that in `promptyRun()`, pass a configuration array such as `['unicode' => TRUE]` as its third argument.
+Under both helpers, widgets draw ASCII symbols. To change that in `promptyRun()`, pass a configuration array such as `['unicode' => TRUE]` as its third argument.
 
 A widget that reads past the last keystroke cancels, so a test with too few keystrokes gets `null` instead of hanging.
 
@@ -801,7 +801,7 @@ use AlexSkrypnyk\Prompty\Prompty;
 $dish = Prompty::text('Dish name');
 ```
 
-Keep the `use` import inside the markers. The embedded class has no namespace, so an import left outside them makes the embedded script fail to parse.
+Keep the `use` import inside the markers. The embedded class has no namespace, so an import left outside them collides with the class name and the embedded script fails to compile.
 
 ### Usage
 
@@ -844,7 +844,7 @@ php embed.php --source /path/to/Prompty.php my-script.php
 php embed.php --stdout Prompty.min.php
 ```
 
-With `--stdout` or `--payload`, the argument is the output path. The release workflow uses `--stdout` to build `Prompty.min.php` and `Prompty.compact.php`, and `--payload` to build the 2 `.payload` assets.
+With `--stdout` or `--payload`, `embed.php` takes an output file path in place of a target script. The release workflow uses `--stdout` to build `Prompty.min.php` and `Prompty.compact.php`, and `--payload` to build the 2 `.payload` assets.
 
 ### Re-embedding
 
@@ -872,7 +872,7 @@ if (!getenv('SHOULD_PROCEED')) {
 }
 ```
 
-The added block sits before your prompts, so the script asks nothing unless `SHOULD_PROCEED` is set. For tests that answer the prompts and stop before the real work, write the kill switch yourself after the flow, as [`starter.php`](starter.php) does.
+The added block sits before your prompts, so the script asks nothing and does nothing unless `SHOULD_PROCEED` is set. For tests that answer the prompts and stop before the real work, write the kill switch yourself after the flow, as [`starter.php`](starter.php) does.
 
 To skip adding the block, pass `--no-killswitch`:
 
@@ -882,9 +882,9 @@ php embed.php --no-killswitch my-script.php
 
 ### Verification run
 
-After writing the file, `embed.php` checks it with `php -l` and then runs it to confirm the embedded class works. In a terminal, you step through the flow by hand. Without a terminal, `embed.php` pipes in a few newlines and discards the output.
+After writing the file, `embed.php` checks it with `php -l` and then runs it to confirm the embedded class works. In a terminal, you answer any prompts that come before the kill switch. Without a terminal, `embed.php` pipes in a few newlines and discards the output.
 
-The run happens only when the file has a kill switch, which stops the run before the real work. `--no-killswitch` therefore skips the run too.
+The run happens only when the file has a kill switch, which stops the run before the real work. `--no-killswitch` skips the run too, even when the script has its own kill switch.
 
 To add the kill switch but skip the run, pass `--no-verify`. Use it in build steps, CI jobs and scripts that regenerate an embedded file:
 

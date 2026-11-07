@@ -2,11 +2,11 @@
 
 ## Supported versions
 
-Prompty is pre-1.0, and only the [latest release](https://github.com/AlexSkrypnyk/prompty/releases/latest) is supported. Fixes ship in a new release and aren't backported, so on an older tag, upgrade to get a fix.
+Prompty is pre-1.0, and only the [latest release](https://github.com/AlexSkrypnyk/prompty/releases/latest) is supported. Fixes ship in a new release and aren't backported, so on an older release, upgrade to get a fix.
 
 ## Reporting a vulnerability
 
-Don't report a security problem in a public issue. On the [Security tab](https://github.com/AlexSkrypnyk/prompty/security/advisories/new), choose **Report a vulnerability** to open a private thread that only the maintainers can see. If you can't use private reporting, email <alex@drevops.com>.
+Don't report a security problem in a public issue. On the [Security tab](https://github.com/AlexSkrypnyk/prompty/security/advisories/new), choose **Report a vulnerability** to open a private thread between you and the maintainers. If you can't use private reporting, email <alex@drevops.com>.
 
 Include as much of the following as you can:
 
@@ -51,7 +51,7 @@ sha256sum --ignore-missing -c SHA256SUMS
 
 `--ignore-missing` lets the check pass when you've downloaded only some of the assets. If you've downloaded all of them, drop it.
 
-The release workflow runs the same check before it uploads the assets, and again on the uploaded copies.
+The release workflow runs the same `gpg --verify` and `sha256sum` check before it uploads the assets, and again on the uploaded copies.
 
 Every asset, `SHA256SUMS` included, also has a build attestation from GitHub Actions. To verify an asset with the [GitHub CLI](https://cli.github.com) instead of GPG:
 
@@ -70,11 +70,11 @@ A passing check proves 2 things:
 - The files you downloaded match the signed checksums.
 - The signature was made with the key in this repository.
 
-It doesn't prove that the key belongs to the maintainer. The key, its fingerprint and this page all live in this repository. Anyone who took over the repository or the maintainer's account could replace all 3, and a first-time download would still pass.
+It doesn't prove that the key belongs to the maintainer. The key, its fingerprint and this page all live in this repository. Anyone who took over the repository or the maintainer's account could replace all 3, and the check on a first-time download would still pass.
 
 An attestation has the same limit. It proves that a workflow run in this repository built the asset from the commit it names. Anyone who controls the repository can start that workflow.
 
-The check does catch a key swap after you've trusted the key. Record the fingerprint on your first download and compare it on every later download. If the fingerprint changes without a note in the release notes, treat that release as suspect. [Report it](#reporting-a-vulnerability) before you run anything from it.
+Comparing fingerprints does catch a key swap after you've trusted the key. Record the fingerprint on your first download and compare it on every later download. If the fingerprint changes without a note in the release notes, treat that release as suspect. [Report it](#reporting-a-vulnerability) before you run anything from it.
 
 ## Scope
 
@@ -82,14 +82,14 @@ Prompty reads keystrokes from a stream and writes ANSI escape sequences to stdou
 
 The library makes no network requests, writes no files and runs no input as code.
 
-`embed.php` is a build-time tool that does more. It reads a class file, rewrites it and writes the result to a path you name. Then it runs these commands:
+`embed.php` is a build-time tool that does more. It reads a class file, minifies it and embeds it in the script you name. Then it runs these commands:
 
-- `php -l`, to check that the output parses
-- `git`, to find the repository named in the snippets it prints
-- `php` on your script, to confirm that the embedded result runs
+- `php -l`, to check that the embedded script parses
+- `git`, to find the repository's GitHub remote for the snippets it prints
+- `php` on the embedded script, to confirm that it runs
 
-The last command runs your script, so point `embed.php` only at scripts you trust. `embed.php` runs a script only when it has a [kill switch](README.md#kill-switch), which returns before the script's real work unless `SHOULD_PROCEED` is set. `--check` only reads the script and `SHA256SUMS`, and runs nothing.
+The last command runs your script, so point `embed.php` only at scripts you trust. `embed.php` runs the embedded script only when the script has a [kill switch](README.md#kill-switch). The kill switch returns before the real work unless the `SHOULD_PROCEED` environment variable is set. Without a kill switch, `embed.php` prints a warning and skips the run. `--check` only reads the script and `SHA256SUMS`, and runs nothing.
 
 Everything under `.util/` is maintainer tooling, outside the library. It holds the drift check that `composer lint` runs against the embedded playground demo, the release embed check that CI and the release workflow run, and the scripts that record and render the README demos. `.gitattributes` marks `.util/` as `export-ignore`, so source archives and Composer's default dist installs leave it out. A `--prefer-source` install clones the whole repository and includes it.
 
-The `.util/` scripts run `php`, and the recorder also runs `asciinema`, `expect` and `node`. Each command gets only paths derived from the script's own location or named on its command line, and job names checked against a fixed list, each passed through `escapeshellarg()`.
+The `.util/` scripts run `php`, and the recording scripts also run `asciinema`, `expect` and `node`. Their only arguments are paths built from each script's own location or named on its command line, and job names checked against a fixed list. Every argument goes through `escapeshellarg()`.

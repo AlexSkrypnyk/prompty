@@ -4,7 +4,7 @@ Thanks for helping with Prompty. This guide covers local setup, the checks and t
 
 ## Requirements
 
-You need PHP 8.2 or later and Composer. CI runs the suite on PHP 8.2, 8.3, 8.4 and 8.5, with both the latest and the lowest dependency versions. A change that needs a newer PHP fails CI.
+You need PHP 8.2 or later and Composer. CI runs the suite on PHP 8.2, 8.3, 8.4 and 8.5, with both the latest and the lowest dependency versions. A change that needs PHP newer than 8.2 fails CI.
 
 `composer.lock` isn't committed, so a fresh clone resolves dependencies from scratch.
 
@@ -48,7 +48,7 @@ CI fails when coverage drops below a threshold: 80% by default, or the value of 
 Follow these code conventions:
 
 - `declare(strict_types=1)` at the top of every PHP file.
-- Single quotes for strings, unless the string contains one.
+- Single quotes for strings, unless the string contains a single quote.
 - `snake_case` for local variables and method arguments; `camelCase` for method names and class properties.
 - Every file ends with a newline.
 
@@ -56,7 +56,7 @@ The library is 1 class in 1 file with no dependencies, by design. A change that 
 
 ## Tests
 
-The tests live in 3 directories:
+The tests and their fixtures live in 3 directories:
 
 ```text
 tests/phpunit/Unit/Prompty/   Unit tests, driven through PromptyTestTrait.
@@ -128,10 +128,10 @@ php ~/order.php
 
 Both versions render the same flow, so any difference between them is an embedder bug. Edit `flow-embed.php` only. The built copy is git-ignored, so build it when you need it.
 
-2 checks compare the pair automatically:
+2 things catch a difference between the pair:
 
 - `composer lint` runs [`.util/check-embed.php`](.util/check-embed.php). It embeds the demo into a temporary path, runs both versions with every answer set through the environment and fails if their output differs. The failure prints both outputs.
-- `.util/assets/flow-embed.svg` records the embedded copy answering its prompts. The README doesn't show it. It's there so a change in what the embedded script draws shows up as a diff in the frames, which a text comparison misses.
+- The asset recorder captures the embedded copy answering its prompts in `.util/assets/flow-embed.svg`. The README doesn't show that SVG. A change in what the embedded script draws shows up as a diff in its frames, and a text comparison can't catch that kind of change.
 
 ## Demo content
 
@@ -147,7 +147,7 @@ The SVGs under `.util/assets/` are recorded from the playground scripts. Regener
 php .util/update-assets.php
 ```
 
-The command records 7 scripts in 4 flag variants each, plus the embedded copy of the flow. It runs a few recordings at a time. To record 1 script again:
+The command records 7 scripts in 4 flag variants each, plus the embedded copy of the flow. It runs a few recordings at a time. To record 1 asset again, pass its filename without `.svg`:
 
 ```bash
 php .util/update-assets.php --record widgets
@@ -159,7 +159,7 @@ Recording the same session twice produces the same SVG, byte for byte. After a r
 
 - Sessions type at a fixed rate, because `expect`'s humanized typing varies its delays.
 - The recorder treats the output as 1 stream and cuts a frame wherever a widget redraws. A terminal splitting a write never creates a frame.
-- The recorder sets every gap to 1 of 2 durations before rendering, so the speed of the recording run doesn't reach the SVG.
+- The recorder sets every gap between frames to 1 of 2 fixed durations before rendering, so the SVG doesn't depend on how fast the recording ran.
 
 Recordings run a few at a time. Running every session at once stalls them enough to blur the pauses between steps into the gaps within a step.
 
@@ -185,4 +185,4 @@ The `Check embed release` job in [`test-php.yml`](.github/workflows/test-php.yml
 
 This repository comes from the [Scaffold](https://getscaffold.dev/) template, and can pull the template's latest CI workflows, linting configuration and docs.
 
-To update, ask Claude Code to "update scaffold". It fetches the updater skill and follows it, and [`CLAUDE.md`](CLAUDE.md) lists the steps.
+To update, ask Claude Code to "update scaffold". Claude Code fetches the updater skill and follows it. [`CLAUDE.md`](CLAUDE.md) lists the steps it takes.
