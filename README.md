@@ -57,6 +57,8 @@ Download `Prompty.php` from the [latest release](https://github.com/AlexSkrypnyk
 
 For testing, also download `PromptyTestTrait.php` from the same release.
 
+Each release also ships `Prompty.min.payload` and `Prompty.compact.payload`. Each one holds the exact code `embed.php` writes between the markers in its mode, for checking an embedded script. See [Verify an embedded script](#verify-an-embedded-script).
+
 See [Embedding](#embedding) for how to embed the class directly into your script.
 
 ### Verifying a download
@@ -85,6 +87,12 @@ sha256sum --ignore-missing -c SHA256SUMS
 ```
 
 `--ignore-missing` lets the checksum check pass when only some assets were downloaded. See [`SECURITY.md`](SECURITY.md) for what this verification does and does not prove.
+
+Every asset, `SHA256SUMS` included, also has a build attestation that ties it to the commit and workflow run that built it. To verify an asset with the [GitHub CLI](https://cli.github.com) instead of GPG:
+
+```bash
+gh attestation verify Prompty.php --repo AlexSkrypnyk/prompty
+```
 
 ### Composer
 
@@ -839,6 +847,9 @@ See [`starter.php`](starter.php) for an example with markers already in place, a
 | `--source <path>` | Path to the class file to embed. Defaults to `Prompty.php` beside `embed.php`.            |
 | `--compact`       | Shorten internal names and strip optional whitespace, for a smaller output.               |
 | `--stdout`        | Write the processed class as a standalone PHP file instead of embedding into a script.    |
+| `--payload`       | Write only the code that embedding puts between the markers.                              |
+| `--check`         | Check an embedded script. See [Verify an embedded script](#verify-an-embedded-script).   |
+| `--sums <path>`   | With `--check`, the `SHA256SUMS` of the release the start marker names.                   |
 | `--no-killswitch` | Skip injecting the kill switch block and the post-embed verification run.                 |
 | `--no-verify`     | Skip the post-embed verification run, still injecting the kill switch block.              |
 
@@ -848,7 +859,7 @@ php embed.php --source /path/to/Prompty.php my-script.php
 php embed.php --stdout Prompty.min.php
 ```
 
-`--stdout` takes an output path rather than a target script, and is how the release workflow builds the `Prompty.min.php` and `Prompty.compact.php` assets.
+`--stdout` and `--payload` take an output path rather than a target script. The release workflow uses `--stdout` to build `Prompty.min.php` and `Prompty.compact.php`, and `--payload` to build the 2 `.payload` assets.
 
 ### Re-embedding
 
@@ -895,6 +906,174 @@ Use `--no-verify` to embed without running the result while still injecting the 
 ```bash
 php embed.php --no-verify my-script.php
 ```
+
+### Verify an embedded script
+
+Embedded code sits on 1 line that's too long to review in a diff, so `embed.php` records what it embedded and can check it later. Embedding writes 5 attributes into the start marker line:
+
+```php
+// @embed-start class=Prompty version=1.2.0 mode=min sha256=f9a6c847...d278f embedder=46232669...8a747
+```
+
+| Attribute  | Value                                                                                                 |
+|------------|-------------------------------------------------------------------------------------------------------|
+| `class`    | The name of the embedded class.                                                                       |
+| `version`  | The class's `VERSION` constant: a release tag, `development` for an unreleased copy, or `unknown` when the class has none. |
+| `mode`     | `min`, or `compact` for an embed made with `--compact`.                                               |
+| `sha256`   | The SHA-256 of the code between the start marker line and the end marker line.                       |
+| `embedder` | The SHA-256 of the `embed.php` that did the embedding.                                                |
+
+Re-embedding rewrites the whole line. The same `Prompty.php`, `embed.php` and mode always produce the same code. An embed made from a release's `Prompty.php` and `embed.php` therefore matches that release's `.payload` asset byte for byte.
+
+To check that the embedded code still matches its marker:
+
+```bash
+php embed.php --check my-script.php
+```
+
+To also check the code and the embedder against a release, pass the `SHA256SUMS` of the release the marker names. `--check` trusts that file as given, so verify its signature first, as in [Verifying a download](#verifying-a-download):
+
+```bash
+php embed.php --check my-script.php --sums SHA256SUMS
+```
+
+`--check` prints `OK` or `FAIL` for each comparison, and exits with `1` when any comparison fails. Without `--sums`, it also prints `NOT VERIFIED AGAINST A RELEASE`. It reads Windows line endings as Unix ones.
+
+After every embed into a script, `embed.php` prints 3 snippets for the script's repository. It fills in the script's path and the repository's GitHub remote, and lists any placeholder it couldn't fill. The `--stdout`, `--payload` and `--check` modes print no snippets. For `my-script.php` outside a git repository, the snippets look like this.
+
+A README section that shows your users how to verify the script:
+
+````markdown
+## Verifying my-script.php
+
+`my-script.php` runs on your machine with your permissions, so check that the file you downloaded is the one this repository built. Each release includes a build attestation for `my-script.php`. GitHub Actions signs it and ties it to the commit and workflow run that built the file.
+
+To verify the file with the [GitHub CLI](https://cli.github.com):
+
+```bash
+curl -fsSL https://github.com/<owner>/<repo>/releases/latest/download/my-script.php -o my-script.php
+gh attestation verify my-script.php --repo <owner>/<repo>
+php my-script.php
+```
+
+`gh attestation verify` fails when the file changed after the build or came from another repository's workflows.
+
+To verify the file without the GitHub CLI, compare it with the checksum attached to the release:
+
+```bash
+curl -fsSL https://github.com/<owner>/<repo>/releases/latest/download/my-script.php -o my-script.php
+curl -fsSL https://github.com/<owner>/<repo>/releases/latest/download/my-script.php.sha256 -o my-script.php.sha256
+sha256sum -c my-script.php.sha256    # macOS: shasum -a 256 -c my-script.php.sha256
+```
+
+When you download `my-script.php` from a host other than GitHub, tampering with that host alone fails the check, because the checksum comes from GitHub. Both checks trust this repository: anyone who controls it can rebuild the attestation and the checksum along with the file.
+
+### The embedded Prompty library
+
+`my-script.php` embeds [Prompty](https://github.com/AlexSkrypnyk/prompty) as minified code that's too long to review in a diff. On every pull request, CI compares that code with the signed Prompty release named in its `// @embed-start` marker. The check fails when 1 byte differs.
+````
+
+A workflow, `.github/workflows/publish-my-script.yml`, that attaches the script, its checksum and a build attestation to each release:
+
+```yaml
+name: Publish my-script.php
+
+on:
+  release:
+    types:
+      - published
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    name: Publish my-script.php
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write     # Upload to the release.
+      id-token: write     # Sign the attestation.
+      attestations: write # Record the attestation.
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7 # Pin to a commit SHA.
+        with:
+          persist-credentials: false
+
+      # Hash the file exactly as users download it. If a build step changes
+      # it after checkout, run that step first and copy its output instead.
+      - name: Checksum my-script.php
+        run: |
+          mkdir -p .publish
+          cp my-script.php .publish/my-script.php
+          cd .publish
+          sha256sum my-script.php > my-script.php.sha256
+
+      - name: Attest my-script.php
+        uses: actions/attest-build-provenance@v4 # Pin to a commit SHA.
+        with:
+          subject-path: .publish/my-script.php
+
+      - name: Upload my-script.php to the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.event.release.tag_name }}
+        run: gh release upload "${TAG}" .publish/my-script.php .publish/my-script.php.sha256 --clobber
+```
+
+A job for the workflow that tests your pull requests. It downloads the Prompty release named in the marker, verifies it, checks the script against it and confirms that a changed copy fails:
+
+```yaml
+  check-embedded-prompty:
+    name: Check embedded Prompty
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7 # Pin to a commit SHA.
+        with:
+          persist-credentials: false
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2 # Pin to a commit SHA.
+        with:
+          php-version: '8.3'
+
+      - name: Download the Prompty release named in the marker
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version="$(sed -n 's/.*@embed-start.* version=\([^ ]*\).*/\1/p' my-script.php)"
+          gh release download "${version}" --repo AlexSkrypnyk/prompty --dir .prompty --pattern embed.php --pattern SHA256SUMS --pattern SHA256SUMS.asc
+
+      - name: Verify the Prompty release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh attestation verify .prompty/embed.php --repo AlexSkrypnyk/prompty
+          curl -fsSL https://raw.githubusercontent.com/AlexSkrypnyk/prompty/main/PUBLIC_KEY.asc | gpg --batch --import
+          gpg --batch --status-fd 1 --verify .prompty/SHA256SUMS.asc .prompty/SHA256SUMS | grep -q '^\[GNUPG:\] VALIDSIG 755E824E80F849135F5F4043E71EDB25C4F6D89D '
+          cd .prompty
+          sha256sum --ignore-missing -c SHA256SUMS
+
+      - name: Check the embedded code
+        run: php .prompty/embed.php --check my-script.php --sums .prompty/SHA256SUMS
+
+      # Proves the check above fails on a changed copy, so it can't pass
+      # without checking anything.
+      - name: Check that a changed copy fails
+        run: |
+          cp my-script.php .prompty/changed.php
+          sed -i '/@embed-start/{n;s/^/ /;}' .prompty/changed.php
+          ! php .prompty/embed.php --check .prompty/changed.php --sums .prompty/SHA256SUMS
+```
+
+The job passes only for a script embedded from a release. Re-embed from the release you want to pin, and commit the new marker line with it.
 
 ### For AI agents
 

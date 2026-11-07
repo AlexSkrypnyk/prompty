@@ -11,12 +11,18 @@
  * Run the script without arguments to see the usage, arguments and options.
  *
  * The target script must contain // @embed-start and // @embed-end markers.
- * The minified class is inserted between these markers.
+ * The minified class is inserted between these markers, and the start marker
+ * records the class, its version, the minification mode, the SHA-256 of the
+ * inserted code and the SHA-256 of this script.
  *
- * Before embedding, if Rector is available (vendor/bin/rector), it is run
- * on the processed class content. A kill switch block is injected after
- * the embed region if one is not already present. The embedded script is
- * then run to verify it works.
+ * The same source and mode always produce the same bytes, so the inserted
+ * code can be compared with the payload assets of a release. A kill switch
+ * block is injected after the embed region if one is not already present.
+ * The embedded script is then run to verify it works, and the snippets that
+ * let the consumer's repository verify the embedded code are printed.
+ *
+ * --check verifies an embedded script against its marker and, with --sums,
+ * against the SHA256SUMS of the release the marker names.
  */
 
 declare(strict_types=1);
@@ -25,6 +31,15 @@ define('EMBED_SOURCE', __DIR__ . '/Prompty.php');
 
 define('EMBED_MARKER_START', '@embed-start');
 define('EMBED_MARKER_END', '@embed-end');
+
+// Group 1 is the rest of the start marker line, group 2 the embedded code.
+define('EMBED_REGION_PATTERN', '/^[ \t]*\/\/\s*' . preg_quote(EMBED_MARKER_START, '/') . '\b([^\n]*)\n(.*?)^[ \t]*\/\/\s*' . preg_quote(EMBED_MARKER_END, '/') . '\b[^\n]*/ms');
+
+define('EMBED_MODES', ['min', 'compact']);
+
+define('EMBED_RELEASE_REPO', 'AlexSkrypnyk/prompty');
+define('EMBED_RELEASE_FINGERPRINT', '755E824E80F849135F5F4043E71EDB25C4F6D89D');
+define('EMBED_SUMS_EMBEDDER', 'embed.php');
 
 /**
  * Finds the nearest token that is not whitespace.
@@ -92,11 +107,486 @@ function collect_parameter_names(array $tokens, int $index): array {
   return $names;
 }
 
+/**
+ * Reads the class name and the version constant of a class file.
+ *
+ * @param array<int, array{int, string, int}|string> $tokens
+ *   Tokens from token_get_all().
+ *
+ * @return array{class: string, version: string}
+ *   The class name, or 'unknown' when there is no class. The value of the
+ *   VERSION constant, 'development' while it holds the placeholder token,
+ *   or 'unknown' when it is missing or not a plain version string.
+ */
+function embed_source_identity(array $tokens): array {
+  $class = 'unknown';
+  $version = 'unknown';
+  $count = count($tokens);
+
+  for ($i = 0; $i < $count; $i++) {
+    if (!is_array($tokens[$i])) {
+      continue;
+    }
+
+    if ($tokens[$i][0] === T_CLASS && $class === 'unknown') {
+      $name_index = find_significant_token($tokens, $i + 1, 1);
+
+      if ($name_index !== NULL && is_array($tokens[$name_index]) && $tokens[$name_index][0] === T_STRING) {
+        $class = $tokens[$name_index][1];
+      }
+
+      continue;
+    }
+
+    if ($tokens[$i][0] !== T_CONST || $version !== 'unknown') {
+      continue;
+    }
+
+    $name_index = find_significant_token($tokens, $i + 1, 1);
+
+    if ($name_index === NULL || !is_array($tokens[$name_index]) || $tokens[$name_index][1] !== 'VERSION') {
+      continue;
+    }
+
+    $equals_index = find_significant_token($tokens, $name_index + 1, 1);
+    $value_index = $equals_index === NULL ? NULL : find_significant_token($tokens, $equals_index + 1, 1);
+
+    if ($value_index === NULL || !is_array($tokens[$value_index]) || $tokens[$value_index][0] !== T_CONSTANT_ENCAPSED_STRING) {
+      continue;
+    }
+
+    $value = substr($tokens[$value_index][1], 1, -1);
+
+    if (str_starts_with($value, '__')) {
+      $version = 'development';
+    }
+    elseif (preg_match('/^[0-9A-Za-z][0-9A-Za-z.+_-]*$/', $value) === 1) {
+      $version = $value;
+    }
+  }
+
+  return ['class' => $class, 'version' => $version];
+}
+
+/**
+ * Finds the embed regions of a script.
+ *
+ * @param string $content
+ *   The script content.
+ *
+ * @return list<array{attributes: string, region: string}>
+ *   For each region, the text after the start marker on its line, and the
+ *   bytes between the start marker line and the end marker line.
+ */
+function embed_region_find(string $content): array {
+  preg_match_all(EMBED_REGION_PATTERN, $content, $matches, PREG_SET_ORDER);
+
+  return array_map(fn(array $match): array => ['attributes' => $match[1], 'region' => $match[2]], $matches);
+}
+
+/**
+ * Parses the key=value attributes of a start marker.
+ *
+ * @param string $attributes
+ *   The text after the start marker on its line.
+ *
+ * @return array<string, string>
+ *   Attribute values keyed by name. Text that is not key=value is ignored.
+ */
+function embed_marker_parse(string $attributes): array {
+  preg_match_all('/(?:^|\s)([a-z0-9]+)=(\S+)/', $attributes, $matches, PREG_SET_ORDER);
+
+  $parsed = [];
+
+  foreach ($matches as $match) {
+    $parsed[$match[1]] = $match[2];
+  }
+
+  return $parsed;
+}
+
+/**
+ * Builds a start marker line.
+ *
+ * @param array<string, string> $attributes
+ *   Attribute values keyed by name, in the order they are written.
+ *
+ * @return string
+ *   The start marker line, without a trailing newline.
+ */
+function embed_marker_build(array $attributes): string {
+  $pairs = array_map(fn(string $key, string $value): string => $key . '=' . $value, array_keys($attributes), $attributes);
+
+  return '// ' . EMBED_MARKER_START . ' ' . implode(' ', $pairs);
+}
+
+/**
+ * Parses a SHA256SUMS file as written by 'sha256sum' in text mode.
+ *
+ * @param string $content
+ *   The file content.
+ *
+ * @return array<string, string>
+ *   Lowercase hex digests keyed by file name.
+ *
+ * @throws \RuntimeException
+ *   When a line is malformed, a file is listed twice, or nothing is listed.
+ */
+function embed_sums_parse(string $content): array {
+  $sums = [];
+
+  foreach (explode("\n", $content) as $number => $line) {
+    if ($line === '') {
+      continue;
+    }
+
+    if (preg_match('/^([0-9a-f]{64})  ([^\s*][^\r\n]*)$/', $line, $match) !== 1) {
+      throw new \RuntimeException(sprintf('Line %d of SHA256SUMS is not "<sha256>  <file>".', $number + 1));
+    }
+
+    if (isset($sums[$match[2]])) {
+      throw new \RuntimeException(sprintf('SHA256SUMS lists %s more than once.', $match[2]));
+    }
+
+    $sums[$match[2]] = $match[1];
+  }
+
+  if ($sums === []) {
+    throw new \RuntimeException('SHA256SUMS lists no files.');
+  }
+
+  return $sums;
+}
+
+/**
+ * Checks an embedded script against its marker and a release's SHA256SUMS.
+ *
+ * @param string $script_path
+ *   The embedded script.
+ * @param string|null $sums_path
+ *   The SHA256SUMS of the release, or NULL to check only that the embedded
+ *   code matches the marker.
+ *
+ * @return int
+ *   The exit code: 0 when every check passes, 1 otherwise.
+ */
+function embed_check(string $script_path, ?string $sums_path): int {
+  $content = is_file($script_path) ? file_get_contents($script_path) : FALSE;
+
+  if ($content === FALSE) {
+    fwrite(STDERR, sprintf('Error: Script not found: %s%s', $script_path, PHP_EOL));
+
+    return 1;
+  }
+
+  $regions = embed_region_find(str_replace("\r\n", "\n", $content));
+
+  if (count($regions) !== 1) {
+    fwrite(STDERR, sprintf('Error: Found %d embed regions in %s, expected 1.%s', count($regions), $script_path, PHP_EOL));
+
+    return 1;
+  }
+
+  $attributes = embed_marker_parse($regions[0]['attributes']);
+  $formats = [
+    'class' => '/^[A-Za-z_][A-Za-z0-9_]*$/',
+    'version' => '/^[0-9A-Za-z][0-9A-Za-z.+_-]*$/',
+    'mode' => '/^(' . implode('|', EMBED_MODES) . ')$/',
+    'sha256' => '/^[0-9a-f]{64}$/',
+    'embedder' => '/^[0-9a-f]{64}$/',
+  ];
+
+  foreach ($formats as $key => $format) {
+    if (!isset($attributes[$key]) || preg_match($format, $attributes[$key]) !== 1) {
+      fwrite(STDERR, sprintf('Error: The start marker has no valid "%s" attribute. Re-embed the script to write one.%s', $key, PHP_EOL));
+
+      return 1;
+    }
+  }
+
+  $failed = FALSE;
+  $report = function (bool $passed, string $message) use (&$failed): void {
+    echo sprintf('  %s  %s%s', $passed ? 'OK  ' : 'FAIL', $message, PHP_EOL);
+    $failed = $failed || !$passed;
+  };
+
+  echo sprintf('Embedded %s %s (%s) in %s%s', $attributes['class'], $attributes['version'], $attributes['mode'], $script_path, PHP_EOL);
+
+  $region_hash = hash('sha256', $regions[0]['region']);
+  $report($region_hash === $attributes['sha256'], $region_hash === $attributes['sha256'] ? 'The embedded code matches the marker hash.' : 'The embedded code does not match the marker hash, so it changed after embedding.');
+
+  if ($sums_path === NULL) {
+    echo sprintf('NOT VERIFIED AGAINST A RELEASE. Pass --sums with the verified SHA256SUMS of %s %s to check that the code is the released code.%s', $attributes['class'], $attributes['version'], PHP_EOL);
+
+    return $failed ? 1 : 0;
+  }
+
+  $sums_content = is_file($sums_path) ? file_get_contents($sums_path) : FALSE;
+
+  if ($sums_content === FALSE) {
+    fwrite(STDERR, sprintf('Error: SHA256SUMS not found: %s%s', $sums_path, PHP_EOL));
+
+    return 1;
+  }
+
+  try {
+    $sums = embed_sums_parse($sums_content);
+  }
+  catch (\RuntimeException $runtime_exception) {
+    fwrite(STDERR, sprintf('Error: %s%s', $runtime_exception->getMessage(), PHP_EOL));
+
+    return 1;
+  }
+
+  $is_release = !in_array($attributes['version'], ['development', 'unknown'], TRUE);
+  $report($is_release, $is_release ? sprintf('Version %s is a release version.', $attributes['version']) : sprintf('Version "%s" is not a release, so no release lists this code.', $attributes['version']));
+
+  $payload_name = $attributes['class'] . '.' . $attributes['mode'] . '.payload';
+  $payload_sum = $sums[$payload_name] ?? NULL;
+
+  if ($payload_sum === NULL) {
+    $report(FALSE, sprintf('SHA256SUMS does not list %s.', $payload_name));
+  }
+  else {
+    $report($payload_sum === $region_hash, $payload_sum === $region_hash ? sprintf('The embedded code matches %s in SHA256SUMS.', $payload_name) : sprintf('The embedded code does not match %s in SHA256SUMS.', $payload_name));
+  }
+
+  $embedder_sum = $sums[EMBED_SUMS_EMBEDDER] ?? NULL;
+
+  if ($embedder_sum === NULL) {
+    $report(FALSE, sprintf('SHA256SUMS does not list %s.', EMBED_SUMS_EMBEDDER));
+  }
+  else {
+    $report($embedder_sum === $attributes['embedder'], $embedder_sum === $attributes['embedder'] ? sprintf('The script was embedded by the %s in SHA256SUMS.', EMBED_SUMS_EMBEDDER) : sprintf('The script was embedded by a different %s than the one in SHA256SUMS.', EMBED_SUMS_EMBEDDER));
+  }
+
+  echo sprintf('SHA256SUMS is trusted as given. Verify SHA256SUMS.asc or its attestation before relying on this result.%s', PHP_EOL);
+
+  return $failed ? 1 : 0;
+}
+
+/**
+ * Runs a git command in a directory.
+ *
+ * @param string $dir
+ *   The directory to run in.
+ * @param string $arguments
+ *   The git arguments, already escaped.
+ *
+ * @return string|null
+ *   The first line of output, or NULL when git fails or prints nothing.
+ */
+function embed_git(string $dir, string $arguments): ?string {
+  $output = [];
+  $exit_code = 0;
+  exec('git -C ' . escapeshellarg($dir) . ' ' . $arguments . ' 2>/dev/null', $output, $exit_code);
+
+  return $exit_code === 0 && isset($output[0]) && $output[0] !== '' ? $output[0] : NULL;
+}
+
+/**
+ * Builds the snippets that make an embedded script verifiable.
+ *
+ * @param string $target_path
+ *   The embedded script.
+ * @param array<string, string> $attributes
+ *   The attributes written into the start marker.
+ *
+ * @return string
+ *   The text to print.
+ */
+function embed_guidance(string $target_path, array $attributes): string {
+  $dir = dirname((string) realpath($target_path));
+  $name = basename($target_path);
+  $script = $name;
+  $repo = '<owner>/<repo>';
+
+  $remote = embed_git($dir, 'remote get-url origin');
+
+  if ($remote !== NULL && preg_match('#^(?:https://github\.com/|git@github\.com:|ssh://git@github\.com/)([A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+?)(?:\.git)?/?$#', $remote, $match) === 1) {
+    $repo = $match[1];
+  }
+
+  $root = embed_git($dir, 'rev-parse --show-toplevel');
+  $real_target = (string) realpath($target_path);
+  $real_root = $root === NULL ? FALSE : realpath($root);
+
+  if ($real_root !== FALSE && str_starts_with($real_target, $real_root . DIRECTORY_SEPARATOR)) {
+    $script = substr($real_target, strlen($real_root) + 1);
+  }
+
+  $values = [
+    '{name}' => $name,
+    '{script}' => $script,
+    '{stem}' => (string) preg_replace('/[^a-z0-9]+/', '-', strtolower(pathinfo($name, PATHINFO_FILENAME))),
+    '{repo}' => $repo,
+    '{url}' => 'https://github.com/' . $repo . '/releases/latest/download/' . $name,
+    '{release_repo}' => EMBED_RELEASE_REPO,
+    '{fingerprint}' => EMBED_RELEASE_FINGERPRINT,
+  ];
+
+  $readme = <<<'SNIPPET'
+## Verifying {name}
+
+`{name}` runs on your machine with your permissions, so check that the file you downloaded is the one this repository built. Each release includes a build attestation for `{name}`. GitHub Actions signs it and ties it to the commit and workflow run that built the file.
+
+To verify the file with the [GitHub CLI](https://cli.github.com):
+
+```bash
+curl -fsSL {url} -o {name}
+gh attestation verify {name} --repo {repo}
+php {name}
+```
+
+`gh attestation verify` fails when the file changed after the build or came from another repository's workflows.
+
+To verify the file without the GitHub CLI, compare it with the checksum attached to the release:
+
+```bash
+curl -fsSL {url} -o {name}
+curl -fsSL https://github.com/{repo}/releases/latest/download/{name}.sha256 -o {name}.sha256
+sha256sum -c {name}.sha256    # macOS: shasum -a 256 -c {name}.sha256
+```
+
+When you download `{name}` from a host other than GitHub, tampering with that host alone fails the check, because the checksum comes from GitHub. Both checks trust this repository: anyone who controls it can rebuild the attestation and the checksum along with the file.
+
+### The embedded Prompty library
+
+`{name}` embeds [Prompty](https://github.com/{release_repo}) as minified code that's too long to review in a diff. On every pull request, CI compares that code with the signed Prompty release named in its `// @embed-start` marker. The check fails when 1 byte differs.
+SNIPPET;
+
+  $publish = <<<'SNIPPET'
+name: Publish {name}
+
+on:
+  release:
+    types:
+      - published
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    name: Publish {name}
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write     # Upload to the release.
+      id-token: write     # Sign the attestation.
+      attestations: write # Record the attestation.
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7 # Pin to a commit SHA.
+        with:
+          persist-credentials: false
+
+      # Hash the file exactly as users download it. If a build step changes
+      # it after checkout, run that step first and copy its output instead.
+      - name: Checksum {name}
+        run: |
+          mkdir -p .publish
+          cp {script} .publish/{name}
+          cd .publish
+          sha256sum {name} > {name}.sha256
+
+      - name: Attest {name}
+        uses: actions/attest-build-provenance@v4 # Pin to a commit SHA.
+        with:
+          subject-path: .publish/{name}
+
+      - name: Upload {name} to the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.event.release.tag_name }}
+        run: gh release upload "${TAG}" .publish/{name} .publish/{name}.sha256 --clobber
+SNIPPET;
+
+  $check = <<<'SNIPPET'
+  check-embedded-prompty:
+    name: Check embedded Prompty
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7 # Pin to a commit SHA.
+        with:
+          persist-credentials: false
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2 # Pin to a commit SHA.
+        with:
+          php-version: '8.3'
+
+      - name: Download the Prompty release named in the marker
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version="$(sed -n 's/.*@embed-start.* version=\([^ ]*\).*/\1/p' {script})"
+          gh release download "${version}" --repo {release_repo} --dir .prompty --pattern embed.php --pattern SHA256SUMS --pattern SHA256SUMS.asc
+
+      - name: Verify the Prompty release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh attestation verify .prompty/embed.php --repo {release_repo}
+          curl -fsSL https://raw.githubusercontent.com/{release_repo}/main/PUBLIC_KEY.asc | gpg --batch --import
+          gpg --batch --status-fd 1 --verify .prompty/SHA256SUMS.asc .prompty/SHA256SUMS | grep -q '^\[GNUPG:\] VALIDSIG {fingerprint} '
+          cd .prompty
+          sha256sum --ignore-missing -c SHA256SUMS
+
+      - name: Check the embedded code
+        run: php .prompty/embed.php --check {script} --sums .prompty/SHA256SUMS
+
+      # Proves the check above fails on a changed copy, so it can't pass
+      # without checking anything.
+      - name: Check that a changed copy fails
+        run: |
+          cp {script} .prompty/changed.php
+          sed -i '/@embed-start/{n;s/^/ /;}' .prompty/changed.php
+          ! php .prompty/embed.php --check .prompty/changed.php --sums .prompty/SHA256SUMS
+SNIPPET;
+
+  $snippets = [
+    'a README section' => $readme,
+    '.github/workflows/publish-{stem}.yml' => $publish,
+    'a job for the workflow that tests pull requests' => $check,
+  ];
+
+  $output = PHP_EOL . sprintf('Embedded %s %s (%s). To let your repository and its users verify %s:%s', $attributes['class'], $attributes['version'], $attributes['mode'], $name, PHP_EOL);
+  $index = 0;
+
+  foreach ($snippets as $title => $snippet) {
+    $index++;
+    $output .= PHP_EOL . str_pad(sprintf('-- Snippet %d of %d: %s ', $index, count($snippets), strtr($title, $values)), 78, '-') . PHP_EOL;
+    $output .= strtr($snippet, $values) . PHP_EOL;
+  }
+
+  $output .= str_pad('-- End of snippets ', 78, '-') . PHP_EOL;
+
+  if (in_array($attributes['version'], ['development', 'unknown'], TRUE)) {
+    $output .= sprintf('%s is version "%s", which no release lists, so snippet 3 fails until the script is embedded from a release.%s', $attributes['class'], $attributes['version'], PHP_EOL);
+  }
+
+  if ($repo === '<owner>/<repo>') {
+    $output .= sprintf('Replace <owner>/<repo> in the snippets: no GitHub remote named "origin" was found for %s.%s', $name, PHP_EOL);
+  }
+
+  return $output;
+}
+
 $compact = FALSE;
 $stdout = FALSE;
+$payload_only = FALSE;
+$check = FALSE;
 $no_killswitch = FALSE;
 $no_verify = FALSE;
 $source_override = NULL;
+$sums_path = NULL;
 $positional = [];
 
 for ($arg_i = 1; $arg_i < $argc; $arg_i++) {
@@ -106,21 +596,33 @@ for ($arg_i = 1; $arg_i < $argc; $arg_i++) {
   elseif ($argv[$arg_i] === '--stdout') {
     $stdout = TRUE;
   }
+  elseif ($argv[$arg_i] === '--payload') {
+    $payload_only = TRUE;
+  }
+  elseif ($argv[$arg_i] === '--check') {
+    $check = TRUE;
+  }
   elseif ($argv[$arg_i] === '--no-killswitch') {
     $no_killswitch = TRUE;
   }
   elseif ($argv[$arg_i] === '--no-verify') {
     $no_verify = TRUE;
   }
-  elseif ($argv[$arg_i] === '--source') {
+  elseif ($argv[$arg_i] === '--source' || $argv[$arg_i] === '--sums') {
+    $option = $argv[$arg_i];
     $arg_i++;
 
     if ($arg_i >= $argc) {
-      fwrite(STDERR, sprintf('Error: --source requires a path argument.%s', PHP_EOL));
+      fwrite(STDERR, sprintf('Error: %s requires a path argument.%s', $option, PHP_EOL));
       exit(1);
     }
 
-    $source_override = $argv[$arg_i];
+    if ($option === '--source') {
+      $source_override = $argv[$arg_i];
+    }
+    else {
+      $sums_path = $argv[$arg_i];
+    }
   }
   else {
     $positional[] = $argv[$arg_i];
@@ -134,6 +636,8 @@ Embedder - minifies and embeds a PHP class into a target script.
 Usage:
   php embed.php [options] <target-script> [<output-script>]
   php embed.php [options] --stdout <output-file>
+  php embed.php [options] --payload <output-file>
+  php embed.php --check <embedded-script> [--sums <SHA256SUMS>]
 
 Arguments:
   <target-script>   Script containing // @embed-start and // @embed-end markers.
@@ -148,6 +652,12 @@ Options:
                     variables, and reduce whitespace for a smaller output.
   --stdout          Output the processed class as a standalone PHP file instead
                     of embedding into a target script.
+  --payload         Output exactly the code that embedding inserts between the
+                    markers. Releases publish it as <Class>.<mode>.payload.
+  --check           Check an embedded script: its code against the hash in its
+                    start marker and, with --sums, against a release.
+  --sums <path>     With --check, the SHA256SUMS of the release named in the
+                    start marker. Verify its signature before passing it.
   --no-killswitch   Skip injecting the kill switch block and post-embed
                     verification run.
   --no-verify       Skip the post-embed verification run, still injecting the
@@ -158,13 +668,31 @@ Re-embedding:
   with the latest class content. All code outside the markers is preserved. Use
   --source to point at an updated Prompty.php for version updates.
 
+Verifying:
+  After embedding, embed.php prints a README section and 2 GitHub Actions
+  snippets that let the script's repository and users verify it.
+
 USAGE;
   fwrite(STDERR, $usage);
   exit(1);
 }
 
-if ($stdout) {
-  // --stdout mode takes an output file, not a target script.
+if ((int) $stdout + (int) $payload_only + (int) $check > 1) {
+  fwrite(STDERR, sprintf('Error: Use only 1 of --stdout, --payload and --check.%s', PHP_EOL));
+  exit(1);
+}
+
+if ($sums_path !== NULL && !$check) {
+  fwrite(STDERR, sprintf('Error: --sums is only used with --check.%s', PHP_EOL));
+  exit(1);
+}
+
+if ($check) {
+  exit(embed_check($positional[0], $sums_path));
+}
+
+if ($stdout || $payload_only) {
+  // These modes take an output file, not a target script.
   $stdout_path = $positional[0];
 }
 else {
@@ -198,6 +726,7 @@ if ($source === FALSE) {
 }
 
 $tokens = token_get_all($source);
+$identity = embed_source_identity($tokens);
 
 // Find the class header docblock: the T_DOC_COMMENT immediately before the
 // T_CLASS token.
@@ -582,45 +1111,13 @@ if (preg_match('/^\s*namespace\s+(.+?)\s*;/m', $source, $ns_match)) {
 
 $payload = trim($minified) . "\n";
 
-$payload = preg_replace('/^(class\s)/m', "// @phpstan-ignore-next-line\n$1", $payload, 1);
+$payload = (string) preg_replace('/^(class\s)/m', "// @phpstan-ignore-next-line\n$1", $payload, 1);
 
-$rector_bin = __DIR__ . '/vendor/bin/rector';
-$rector_config = __DIR__ . '/rector.php';
+if ($payload_only) {
+  file_put_contents($stdout_path, $payload);
 
-if (is_file($rector_bin) && is_file($rector_config)) {
-  $tmp_dir = __DIR__ . '/.artifacts/tmp';
-
-  if (!is_dir($tmp_dir)) {
-    mkdir($tmp_dir, 0755, TRUE);
-  }
-
-  $rector_tmp = tempnam($tmp_dir, 'embed_rector_');
-  rename($rector_tmp, $rector_tmp . '.php');
-  $rector_tmp .= '.php';
-
-  // Wrap class content in a valid PHP file for rector.
-  $rector_input = "<?php\n\ndeclare(strict_types=1);\n\n" . $payload;
-  file_put_contents($rector_tmp, $rector_input);
-
-  $rector_output = [];
-  $rector_exit = 0;
-  exec(
-    'php ' . escapeshellarg($rector_bin) . ' process --no-ansi --config=' . escapeshellarg($rector_config) . ' ' . escapeshellarg($rector_tmp) . ' 2>&1',
-    $rector_output,
-    $rector_exit,
-  );
-
-  if ($rector_exit <= 1) {
-    $rector_result = file_get_contents($rector_tmp);
-
-    if ($rector_result !== FALSE) {
-      $rector_result = preg_replace('/^<\?php\s+declare\(strict_types\s*=\s*1\)\s*;\s*/s', '', $rector_result);
-      $payload = trim((string) $rector_result) . "\n";
-    }
-  }
-
-  unlink($rector_tmp);
-  echo sprintf('Rector: processed.%s', PHP_EOL);
+  echo sprintf('Written to %s%s', $stdout_path, PHP_EOL);
+  exit(0);
 }
 
 if ($stdout) {
@@ -648,7 +1145,22 @@ if ($stdout) {
   exit(0);
 }
 
-$embedded = '// ' . EMBED_MARKER_START . "\n";
+$embedder_hash = hash_file('sha256', __FILE__);
+
+if ($embedder_hash === FALSE) {
+  fwrite(STDERR, sprintf('Error: Could not hash %s.%s', __FILE__, PHP_EOL));
+  exit(1);
+}
+
+$attributes = [
+  'class' => $identity['class'],
+  'version' => $identity['version'],
+  'mode' => $compact ? 'compact' : 'min',
+  'sha256' => hash('sha256', $payload),
+  'embedder' => $embedder_hash,
+];
+
+$embedded = embed_marker_build($attributes) . "\n";
 $embedded .= $payload;
 $embedded .= '// ' . EMBED_MARKER_END;
 
@@ -659,18 +1171,21 @@ if ($target === FALSE) {
   exit(1);
 }
 
-$marker_start_re = preg_quote(EMBED_MARKER_START, '/');
-$marker_end_re = preg_quote(EMBED_MARKER_END, '/');
-$pattern = '/^[ \t]*\/\/\s*' . $marker_start_re . '\b.*?^[ \t]*\/\/\s*' . $marker_end_re . '\b[^\n]*/ms';
+$region_count = count(embed_region_find($target));
 
-if (!preg_match($pattern, $target)) {
+if ($region_count === 0) {
   fwrite(STDERR, sprintf('Error: Could not find // %s and // %s markers in target file.%s', EMBED_MARKER_START, EMBED_MARKER_END, PHP_EOL));
+  exit(1);
+}
+
+if ($region_count > 1) {
+  fwrite(STDERR, sprintf('Error: Found %d embed regions in target file, expected 1.%s', $region_count, PHP_EOL));
   exit(1);
 }
 
 // Escape backslashes and dollar signs in the replacement to prevent
 // preg_replace from interpreting \033 as backreference \0 + "33".
-$result = preg_replace($pattern, str_replace(['\\', '$'], ['\\\\', '\\$'], $embedded), $target, 1);
+$result = preg_replace(EMBED_REGION_PATTERN, str_replace(['\\', '$'], ['\\\\', '\\$'], $embedded), $target, 1);
 
 if ($result === NULL) {
   fwrite(STDERR, sprintf('Error: Failed to replace marker region.%s', PHP_EOL));
@@ -699,6 +1214,15 @@ KILLSWITCH;
   }
 }
 
+// The marker hash is only valid if no later rewrite of the file touched the
+// embedded code.
+$written_regions = embed_region_find((string) $result);
+
+if (count($written_regions) !== 1 || $written_regions[0]['region'] !== $payload) {
+  fwrite(STDERR, sprintf('Error: The embedded code differs from the code that was hashed.%s', PHP_EOL));
+  exit(1);
+}
+
 file_put_contents($target_path, $result);
 
 $lint_output = [];
@@ -718,16 +1242,13 @@ $final_has_killswitch = $final !== FALSE && str_contains($final, "if (!getenv('S
 
 if (!$final_has_killswitch) {
   fwrite(STDERR, sprintf('Warning: No kill switch found in the target file. Please test the embedded script manually.%s', PHP_EOL));
-  exit(0);
 }
 
 // Verification runs the embedded script, and --no-killswitch leaves it with
 // nothing to stop before the real work.
-if ($no_killswitch || $no_verify) {
-  exit(0);
-}
+$should_verify = $final_has_killswitch && !$no_killswitch && !$no_verify;
 
-if (stream_isatty(STDIN)) {
+if ($should_verify && stream_isatty(STDIN)) {
   echo sprintf('Verifying embedded script (interactive input required)...%s', PHP_EOL);
 
   $verify_exit = 0;
@@ -737,7 +1258,7 @@ if (stream_isatty(STDIN)) {
     fwrite(STDERR, sprintf('Warning: Embedded script exited with code %d.%s', $verify_exit, PHP_EOL));
   }
 }
-else {
+elseif ($should_verify) {
   echo sprintf('Verifying embedded script...%s', PHP_EOL);
 
   // Non-interactive mode: pipe keystrokes to simulate a quick run.
@@ -762,3 +1283,5 @@ else {
     }
   }
 }
+
+echo embed_guidance($target_path, $attributes);

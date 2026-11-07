@@ -58,6 +58,13 @@ tests/phpunit/Fixtures/       Scripts the functional tests run.
 
 Unit tests extend `PromptyTestCase` and use `PromptyTestTrait` to feed keystrokes into a memory stream, so no real TTY is needed. Functional tests shell out, which makes them slower but catches things the unit tests can't - like whether an embedded script still parses, or how a widget handles keys that arrive over time in a real terminal. `TerminalInputTest` runs a fixture in a pseudo-terminal for that, and skips itself on PHP builds that can't open one.
 
+`embed.php` must produce the same bytes on every PHP version, so a consumer's embed matches the release's `.payload` assets. `EmbedIntegrityTest` minifies `tests/phpunit/Fixtures/embed-source.php` on each PHP version in CI and compares the result with the committed `embed-source.min.payload` and `embed-source.compact.payload`. After a deliberate change to the minifier, regenerate both:
+
+```bash
+php embed.php --source tests/phpunit/Fixtures/embed-source.php --payload tests/phpunit/Fixtures/embed-source.min.payload
+php embed.php --compact --source tests/phpunit/Fixtures/embed-source.php --payload tests/phpunit/Fixtures/embed-source.compact.payload
+```
+
 Use data providers where you can. Name the provider `dataProvider<Something>` and put it *after* the test method it feeds.
 
 Arguments after `--` reach PHPUnit, so a single file or a filter looks like:
@@ -152,9 +159,15 @@ Publishing a GitHub release triggers [`release.yml`](.github/workflows/release.y
 
 1. Substitutes the tag name for the `__PROMPTY_VERSION__` token in `Prompty.php`, so `Prompty::version()` reports the release instead of `development`.
 2. Runs `starter.php` once as a smoke test.
-3. Builds `Prompty.min.php` and `Prompty.compact.php` with `embed.php --stdout`.
+3. Builds `Prompty.min.php` and `Prompty.compact.php` with `embed.php --stdout`, and `Prompty.min.payload` and `Prompty.compact.payload` with `embed.php --payload`.
 4. Generates `SHA256SUMS` over every asset and signs it with the maintainer's GPG key.
-5. Verifies the signature and checksums, uploads everything, then downloads it all again and re-verifies.
+5. Creates a build attestation for every asset, `SHA256SUMS` included.
+6. Verifies the signature and checksums, uploads everything, then downloads it all again and re-verifies the signature, the checksums and the attestations.
+7. Runs [`.util/check-embed-release.php`](.util/check-embed-release.php) on the downloaded assets. It embeds the downloaded `Prompty.php` into a copy of `starter.php` with the downloaded `embed.php`, in both modes. It then confirms that `embed.php --check` passes the embed and fails a copy with 1 changed byte.
+
+The job runs in the `release` environment. Store `GPG_PRIVATE_KEY` as a secret of that environment and give the environment a required reviewer, so each release waits for approval before the job can read the key.
+
+The `Check embed release` job in [`test-php.yml`](.github/workflows/test-php.yml) builds the same payloads and an unsigned `SHA256SUMS` on every pull request, and runs the same script against them.
 
 Release notes are drafted automatically by [`draft-release-notes.yml`](.github/workflows/draft-release-notes.yml) using the categories in [`.github/release-drafter.yml`](.github/release-drafter.yml).
 

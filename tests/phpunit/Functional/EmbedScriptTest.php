@@ -13,77 +13,7 @@ use PHPUnit\Framework\Attributes\Group;
  */
 #[CoversNothing]
 #[Group('functional')]
-final class EmbedScriptTest extends FunctionalTestCase {
-
-  protected function prepareTarget(): string {
-    $target = self::$tmp . '/starter.php';
-    copy(self::$root . '/starter.php', $target);
-
-    return $target;
-  }
-
-  protected function prepareTargetWithoutKillswitch(): string {
-    $content = file_get_contents(self::$root . '/starter.php');
-    $this->assertIsString($content);
-
-    $content = preg_replace('/\/\/ Kill switch.*?if \(!getenv\(\'SHOULD_PROCEED\'\)\) \{\s*return;\s*\}\n*/s', '', $content);
-    $this->assertIsString($content);
-
-    $target = self::$tmp . '/starter.no-killswitch.php';
-    file_put_contents($target, $content);
-
-    return $target;
-  }
-
-  protected function prepareTargetWithoutMarkers(): string {
-    $target = self::$tmp . '/target.no-markers.php';
-    file_put_contents($target, "<?php\necho 'hello';\n");
-
-    return $target;
-  }
-
-  protected function runEmbed(string ...$args): void {
-    $this->runEmbedWithOutput(...$args);
-  }
-
-  /**
-   * Run embed.php and assert success.
-   *
-   * @return string
-   *   Combined stdout+stderr output.
-   */
-  protected function runEmbedWithOutput(string ...$args): string {
-    $this->processRun('php', array_merge([self::$root . '/embed.php'], $args));
-    $this->assertProcessSuccessful();
-
-    return $this->processGet()->getOutput() . $this->processGet()->getErrorOutput();
-  }
-
-  protected function assertPhpLintPasses(string $path): void {
-    $this->processRun('php', ['-l', $path]);
-    $this->assertProcessSuccessful('PHP lint failed');
-  }
-
-  protected function copyPromptySource(): string {
-    $path = self::$tmp . '/Prompty.php';
-    copy(self::$root . '/Prompty.php', $path);
-
-    return $path;
-  }
-
-  protected function generateMinified(): string {
-    $path = self::$tmp . '/Prompty.min.php';
-    $this->runEmbed('--stdout', $path);
-
-    return $path;
-  }
-
-  protected function generateCompacted(): string {
-    $path = self::$tmp . '/Prompty.compact.php';
-    $this->runEmbed('--compact', '--stdout', $path);
-
-    return $path;
-  }
+final class EmbedScriptTest extends EmbedTestCase {
 
   protected function createRectorConfig(): string {
     $config_path = self::$tmp . '/rector.php';
@@ -254,20 +184,17 @@ final class EmbedScriptTest extends FunctionalTestCase {
     $this->assertStringNotContainsString('renderCompleted', $content);
   }
 
-  public function testEmbedRunsRector(): void {
+  public function testEmbedIsRectorClean(): void {
     $target = $this->prepareTarget();
 
     $embed_output = $this->runEmbedWithOutput($target);
-    $this->assertStringContainsString('Rector', $embed_output);
-
-    $content = file_get_contents($target);
-    $this->assertIsString($content);
-    $this->assertStringContainsString('class Prompty', $content);
+    $this->assertStringNotContainsString('Rector', $embed_output);
+    $this->assertStringContainsString('class Prompty', $this->readFile($target));
 
     $this->assertRectorClean($target);
   }
 
-  public function testEmbedStdoutRunsRector(): void {
+  public function testStdoutIsRectorClean(): void {
     $output_path = $this->generateMinified();
 
     $this->assertRectorClean($output_path);
@@ -303,7 +230,7 @@ final class EmbedScriptTest extends FunctionalTestCase {
     $this->assertIsString($content);
 
     $this->assertSame($expected_killswitch ? 1 : 0, substr_count($content, "if (!getenv('SHOULD_PROCEED'))"), 'Kill switch count in the embedded file.');
-    $this->assertSame($expected_verification, str_contains($embed_output, 'Verifying'), 'Verification run in the embedder output.');
+    $this->assertSame($expected_verification, str_contains($embed_output, 'Verifying embedded script'), 'Verification run in the embedder output.');
     $this->assertSame(!$expected_killswitch, str_contains(strtolower($embed_output), 'no kill switch'), 'Missing kill switch warning in the embedder output.');
   }
 
@@ -415,8 +342,9 @@ final class EmbedScriptTest extends FunctionalTestCase {
    * Run embed.php with invalid arguments and assert the error output.
    *
    * @param array<int, string> $args
-   *   Arguments for embed.php. '<target>' and '<target-no-markers>' resolve
-   *   to prepared scripts, '<tmp>' to the temporary directory.
+   *   Arguments for embed.php. '<target>', '<target-no-markers>' and
+   *   '<target-two-regions>' resolve to prepared scripts, '<tmp>' to the
+   *   temporary directory.
    * @param array<int, string> $expected_output
    *   Strings the combined output must contain.
    */
@@ -428,6 +356,7 @@ final class EmbedScriptTest extends FunctionalTestCase {
       $resolved[] = match ($arg) {
         '<target>' => $this->prepareTarget(),
         '<target-no-markers>' => $this->prepareTargetWithoutMarkers(),
+        '<target-two-regions>' => $this->prepareTargetWithTwoRegions(),
         default => str_replace('<tmp>', self::$tmp, $arg),
       };
     }
@@ -438,15 +367,25 @@ final class EmbedScriptTest extends FunctionalTestCase {
   }
 
   public static function dataProviderEmbedErrors(): \Iterator {
-    yield 'no arguments' => [[], ['Usage:', '--source', '--compact', '--stdout', '--no-killswitch', '--no-verify', 'Re-embedding', 'Arguments:', 'Options:']];
+    yield 'no arguments' => [[], ['Usage:', '--source', '--compact', '--stdout', '--payload', '--check', '--sums', '--no-killswitch', '--no-verify', 'Re-embedding', 'Verifying:', 'Arguments:', 'Options:']];
 
     yield 'target without markers' => [['<target-no-markers>'], ['marker']];
+
+    yield 'target with 2 embed regions' => [['<target-two-regions>'], ['Found 2 embed regions in target file, expected 1.']];
 
     yield 'missing target' => [['<tmp>/missing.php'], ['Target script not found']];
 
     yield 'output path in missing directory' => [['<target>', '<tmp>/no-such-dir/output.php'], ['Could not copy target script to output']];
 
     yield '--source without a path' => [['--source'], ['--source requires a path']];
+
+    yield '--sums without a path' => [['--check', '<target>', '--sums'], ['--sums requires a path']];
+
+    yield '--sums without --check' => [['--sums', '<tmp>/SHA256SUMS', '<target>'], ['--sums is only used with --check.']];
+
+    yield '--stdout and --payload' => [['--stdout', '--payload', '<tmp>/out.php'], ['Use only 1 of --stdout, --payload and --check.']];
+
+    yield '--payload and --check' => [['--payload', '--check', '<target>'], ['Use only 1 of --stdout, --payload and --check.']];
 
     yield '--source with missing class' => [['--source', '/nonexistent/Prompty.php', '<target>'], ['Source class not found']];
   }
