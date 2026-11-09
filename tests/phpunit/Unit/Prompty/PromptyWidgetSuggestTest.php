@@ -67,7 +67,7 @@ final class PromptyWidgetSuggestTest extends PromptyTestCase {
    *   The lines of each frame, in the order drawn.
    */
   protected function frames(string $output): array {
-    return array_map(fn(string $frame): array => explode(PHP_EOL, rtrim($frame, PHP_EOL)), explode("\r", $output));
+    return array_map(fn(string $frame): array => explode("\n", rtrim($frame, "\n")), explode("\r", $output));
   }
 
   /**
@@ -263,7 +263,7 @@ final class PromptyWidgetSuggestTest extends PromptyTestCase {
     $r = $this->promptyRun(fn(): mixed => Prompty::suggest('Dish', ...array_merge(['options' => self::DISHES, 'discovered' => $discovered, 'ctx' => $this->defaultCtx(['discovered' => $ctx_discovered])], $args)), '');
 
     $this->assertSame($expected, $r['result']);
-    $this->assertSame('+  Dish' . PHP_EOL . '|  ' . $expected . PHP_EOL . '|' . PHP_EOL, $r['output']);
+    $this->assertSame("+  Dish\n|  " . $expected . "\n|\n", $r['output']);
   }
 
   public static function dataProviderDiscovered(): \Iterator {

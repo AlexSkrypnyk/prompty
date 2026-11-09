@@ -101,7 +101,7 @@ final class PromptyWidgetScrollTest extends PromptyTestCase {
    *   The lines of each frame, in the order drawn.
    */
   protected function frames(string $output): array {
-    return array_map(fn(string $frame): array => explode(PHP_EOL, rtrim($frame, PHP_EOL)), explode("\r", $output));
+    return array_map(fn(string $frame): array => explode("\n", rtrim($frame, "\n")), explode("\r", $output));
   }
 
   /**
