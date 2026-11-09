@@ -512,6 +512,57 @@ final class PromptyWidgetValidateTest extends PromptyTestCase {
     yield 'confirm' => [self::confirmWidget(), TRUE];
   }
 
+  #[DataProvider('dataProviderValidatorReceivesTransformedAnswer')]
+  public function testValidatorReceivesTransformedAnswer(\Closure $widget, string $keystrokes, mixed $discovered, mixed $expected): void {
+    $answers = [];
+    $validate = function (mixed $value) use (&$answers): ?string {
+      $answers[] = $value;
+
+      return NULL;
+    };
+
+    $r = $this->promptyRun(fn(): mixed => $widget($validate, $this->ctx(), $discovered), $keystrokes);
+
+    $this->assertSame($expected, $r['result']);
+    $this->assertSame([$expected], $answers);
+  }
+
+  public static function dataProviderValidatorReceivesTransformedAnswer(): \Iterator {
+    $text = static fn(?\Closure $validate, array $ctx, mixed $discovered): mixed => Prompty::text('Dish name', discovered: $discovered, transform: static fn(string $value): string => ucwords($value), validate: $validate, ctx: $ctx);
+    $select = static fn(?\Closure $validate, array $ctx, mixed $discovered): mixed => Prompty::select('Course', options: self::COURSES, discovered: $discovered, transform: static fn(string $key): string => $key . '-course', validate: $validate, ctx: $ctx);
+    $multiselect = static fn(?\Closure $validate, array $ctx, mixed $discovered): mixed => Prompty::multiselect('Extras', options: self::EXTRAS, discovered: $discovered, transform: static fn(array $keys): array => array_reverse($keys), validate: $validate, ctx: $ctx);
+    $confirm = static fn(?\Closure $validate, array $ctx, mixed $discovered): mixed => Prompty::confirm('Send order?', discovered: $discovered, transform: static fn(bool $send): bool => !$send, validate: $validate, ctx: $ctx);
+
+    yield 'text interactive' => [$text, 'pear tart' . self::KEY_ENTER, NULL, 'Pear Tart'];
+    yield 'text discovered' => [$text, '', 'onion soup', 'Onion Soup'];
+    yield 'select interactive' => [$select, self::KEY_DOWN . self::KEY_ENTER, NULL, 'main-course'];
+    yield 'select discovered' => [$select, '', 'dessert', 'dessert-course'];
+    yield 'multiselect interactive' => [$multiselect, self::KEY_SPACE . self::KEY_DOWN . self::KEY_SPACE . self::KEY_ENTER, NULL, ['olives', 'bread']];
+    yield 'multiselect discovered' => [$multiselect, '', 'bread,herbs', ['herbs', 'bread']];
+    yield 'confirm interactive' => [$confirm, self::KEY_ENTER, NULL, FALSE];
+    yield 'confirm discovered' => [$confirm, '', 'no', TRUE];
+  }
+
+  public function testTransformedAnswerRejectedKeepsTypedInput(): void {
+    $r = $this->promptyRun(fn(): mixed => Prompty::text('Dish name',
+      transform: fn(string $value): string => trim($value),
+      validate: fn(string $dish): ?string => $dish === '' ? self::MESSAGE : NULL,
+      ctx: $this->ctx(),
+    ), self::KEY_SPACE . self::KEY_SPACE . self::KEY_ENTER . 'pear' . self::KEY_ENTER);
+
+    $this->assertSame('pear', $r['result']);
+    $this->assertStringContainsString("|    █\n|  ! " . self::MESSAGE . "\n", $r['output']);
+  }
+
+  public function testDiscoveredRejectedAfterTransform(): void {
+    $this->assertWidgetRejects(fn(): mixed => Prompty::text('Dish name',
+      discovered: 'pear',
+      transform: fn(string $value): string => strtoupper($value),
+      validate: fn(string $dish): ?string => $dish === 'PEAR' ? self::MESSAGE : NULL,
+      ctx: $this->ctx(),
+    ), sprintf('Discovered value "PEAR" for "Dish name" is not valid. %s', self::MESSAGE));
+  }
+
   public function testFlowEnvValueRejected(): void {
     $this->setEnvVars(['dish' => 'pear']);
     $stream = $this->installKeystrokes(self::KEY_ENTER, FALSE);
