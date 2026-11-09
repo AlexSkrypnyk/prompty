@@ -188,6 +188,20 @@ final class PromptyWidgetScrollTest extends PromptyTestCase {
     ];
   }
 
+  /**
+   * Tests the multiselect window.
+   *
+   * @param string $keystrokes
+   *   Keystrokes fed before the final Enter.
+   * @param int $scroll
+   *   The widget's scroll size.
+   * @param list<string> $default
+   *   Option keys to pre-check.
+   * @param list<string> $expected
+   *   The selected option keys.
+   * @param list<string> $expected_frame
+   *   The lines of the last active frame.
+   */
   #[DataProvider('dataProviderMultiselectWindow')]
   public function testMultiselectWindow(string $keystrokes, int $scroll, array $default, array $expected, array $expected_frame): void {
     $r = $this->runMultiselect($keystrokes . self::KEY_ENTER, $scroll, $default);
