@@ -41,7 +41,8 @@ define('EMBED_RELEASE_REPO', 'AlexSkrypnyk/prompty');
 define('EMBED_RELEASE_FINGERPRINT', '755E824E80F849135F5F4043E71EDB25C4F6D89D');
 define('EMBED_SUMS_EMBEDDER', 'embed.php');
 
-// cmd.exe cannot open /dev/null, and a failed redirect skips the command.
+// Windows' cmd.exe cannot open /dev/null, and a failed redirect skips the
+// command.
 define('EMBED_NULL_DEVICE', PHP_OS_FAMILY === 'Windows' ? 'NUL' : '/dev/null');
 
 /**

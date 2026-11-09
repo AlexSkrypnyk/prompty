@@ -54,8 +54,8 @@ class Prompty {
   /**
    * Where shell commands send their errors.
    *
-   * cmd.exe cannot open /dev/null, and a failed redirect skips the command
-   * and prints an error instead.
+   * Windows' cmd.exe cannot open /dev/null, and a failed redirect skips the
+   * command and prints an error instead.
    */
   protected const NULL_DEVICE = PHP_OS_FAMILY === 'Windows' ? 'NUL' : '/dev/null';
 
