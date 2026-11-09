@@ -24,11 +24,11 @@ Namespace: `AlexSkrypnyk\Prompty`. Key files: `Prompty.php` (library),
 
   ```
   label, [options], default, [placeholder], description, [hints], help,
-  discovered, condition, children, ctx
+  discovered, transform, condition, children, ctx
   ```
 
   Bracketed parameters appear only where they apply: `options` and `hints` on
-  `select`/`multiselect`, `placeholder` on `text`. `help` and the trailing 4
+  `select`/`multiselect`, `placeholder` on `text`. `help` and the trailing 5
   are common to every widget. Callers pass `label` positionally and everything
   else by name, so the order matters to the signature, not to call sites.
 

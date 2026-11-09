@@ -95,6 +95,7 @@ The [`playground/`](playground) directory holds runnable demos. Run one to see a
 | `widget-confirm.php`       | Confirm widget variants.                                               |
 | `widget-values.php`        | Where an answer comes from, and what each source is held to.           |
 | `widget-control-chars.php` | What a control character in a value draws as.                          |
+| `widget-transform.php`     | A transform rewriting each widget's answer, and a wrong return type.   |
 | `config.php`               | What `configure()` accepts, how a flow adds to it, what it turns down. |
 | `flow.php`                 | A linear flow with descriptions, hints and help.                       |
 | `flow-nested.php`          | A nested flow with conditionals, 3 levels deep.                        |

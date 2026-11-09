@@ -35,6 +35,7 @@ Prompty asks questions in the terminal for PHP command-line scripts, from a sing
 - 🌍 [**Environment variable discovery**](#environment-variable-discovery) - fill answers from environment variables
 - 🤖 [**Non-interactive mode**](#non-interactive-mode) - answer every prompt from its default, for CI and scripted runs
 - 💬 [**Descriptions, hints and help**](#descriptions-hints-and-help) - text under each label, each option and each input
+- 🔧 [**Transform answers**](#transform-answers) - normalize an answer before the widget returns it
 - ✨ [**Unicode and ASCII**](#unicode-and-ascii) - detected from the locale, or forced
 - 🎨 [**ANSI colors**](#ansi-colors) - on by default, off under `NO_COLOR` or `TERM=dumb`
 - ⚙️ [**Configuration**](#configuration) - symbols, colors, spacing, labels, the variable prefix and the yes/no values
@@ -559,6 +560,34 @@ Every widget takes a `default` that sets its starting state:
 A `discovered:` value or a `PROMPTY_*` variable wins over `default` and skips the prompt. The exception is a blank value for `text`, which takes the default. In [non-interactive mode](#non-interactive-mode), `default` is the answer when neither is set.
 
 For `select` and `multiselect`, every key in `default` must be a key of `options`. See [Discovered and default values must be valid answers](#discovered-and-default-values-must-be-valid-answers).
+
+## Transform answers
+
+Every widget takes a `transform` callback that rewrites the answer before the widget returns it. Use it to normalize free input, such as a dish name typed in any case:
+
+```php
+// Typing '  PEAR tart ' returns 'Pear Tart'.
+$dish = Prompty::text('Dish name',
+  transform: fn(string $value): string => ucwords(strtolower(trim($value))),
+);
+```
+
+The callback receives the answer alone, so a built-in function such as `trim(...)` works as a transform. Its return value is the answer: the completed line shows it, and a flow stores it, so a later step's `condition` receives it. A `discovered:` value, a `PROMPTY_*` variable and the `default` answered in [non-interactive mode](#non-interactive-mode) go through `transform` too. Canceling a widget skips the callback.
+
+The callback returns the type its widget answers with:
+
+| Widget        | Receives and returns       | Completed line shows                                                  |
+|---------------|----------------------------|-----------------------------------------------------------------------|
+| `text`        | `string`                   | The returned text, with control characters removed.                   |
+| `select`      | `string` (option key)      | The option's label for a key of `options`, otherwise the string.      |
+| `multiselect` | `list<string>` (keys)      | Each entry as for `select`, joined by commas. `None` for no entries.  |
+| `confirm`     | `bool`                     | Yes or No.                                                            |
+
+A return value of any other type throws an `UnexpectedValueException` that names the widget:
+
+```text
+Transform for "Dish name" returned null. A transform returns a string, the type the widget answers with.
+```
 
 ## Unicode and ASCII
 

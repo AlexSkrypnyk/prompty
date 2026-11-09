@@ -675,6 +675,9 @@ class Prompty {
    * @param mixed $discovered
    *   Pre-filled value that bypasses interactive input. It is trimmed, and an
    *   empty result resolves as an empty answer: $default, or $placeholder.
+   * @param callable|null $transform
+   *   Optional transform. Receives the answer string and returns the string
+   *   the widget answers with.
    * @param callable|null $condition
    *   Optional condition callback; skips the step when it returns FALSE.
    * @param array<string, mixed> $children
@@ -686,6 +689,9 @@ class Prompty {
    *   While a flow is being defined, a closure, or a step array when a
    *   condition or children are set. Otherwise the entered string, or NULL
    *   when the widget is cancelled.
+   *
+   * @throws \UnexpectedValueException
+   *   When $transform returns anything other than a string.
    */
   public static function text(
     string $label,
@@ -694,6 +700,7 @@ class Prompty {
     string $description = '',
     string $help = '',
     mixed $discovered = NULL,
+    ?callable $transform = NULL,
     ?callable $condition = NULL,
     array $children = [],
     ?array $ctx = NULL,
@@ -706,6 +713,7 @@ class Prompty {
         description: $description,
         help: $help,
         discovered: $discovered,
+        transform: $transform,
         ctx: $ctx,
       );
 
@@ -723,6 +731,7 @@ class Prompty {
       'open' => [],
     ];
     $standalone = !static::$inFlow;
+    $plain_label = $label;
 
     if ($standalone && $p->cfgInteractive) {
       $p->setupTty();
@@ -749,6 +758,7 @@ class Prompty {
         $display = $default !== '' || !$p->cfgInteractive ? $default : $placeholder;
       }
 
+      $display = $p->printable($p->transformString($plain_label, $transform, $display));
       $open = $p->settleOpen($display, $open);
       $p->printLines($p->renderCompleted($label, $display, $depth, $open));
 
@@ -811,6 +821,7 @@ class Prompty {
       if ($key === 'enter') {
         $value = $p->printable($value);
         $display = $value !== '' ? $value : $placeholder;
+        $display = $p->printable($p->transformString($plain_label, $transform, $display));
         $open = $p->settleOpen($display, $open);
         $p->redraw($line_count, $p->renderCompleted($label, $display, $depth, $open));
 
@@ -862,6 +873,10 @@ class Prompty {
    *   Pre-filled value that bypasses interactive input. Must be a key of
    *   $options. A blank value is rejected: a single choice has no answer that
    *   means "nothing chosen".
+   * @param callable|null $transform
+   *   Optional transform. Receives the selected option key and returns the
+   *   string the widget answers with. The completed line shows the option
+   *   label for a key of $options, and the string itself for any other value.
    * @param callable|null $condition
    *   Optional condition callback; skips the step when it returns FALSE.
    * @param array<string, mixed> $children
@@ -877,6 +892,8 @@ class Prompty {
    * @throws \InvalidArgumentException
    *   When $options is empty, or a default or discovered value is not a key of
    *   $options.
+   * @throws \UnexpectedValueException
+   *   When $transform returns anything other than a string.
    */
   public static function select(
     string $label,
@@ -886,6 +903,7 @@ class Prompty {
     array $hints = [],
     string $help = '',
     mixed $discovered = NULL,
+    ?callable $transform = NULL,
     ?callable $condition = NULL,
     array $children = [],
     ?array $ctx = NULL,
@@ -899,6 +917,7 @@ class Prompty {
         hints: $hints,
         help: $help,
         discovered: $discovered,
+        transform: $transform,
         ctx: $ctx,
       );
 
@@ -916,6 +935,7 @@ class Prompty {
       'open' => [],
     ];
     $standalone = !static::$inFlow;
+    $plain_label = $label;
 
     // Validate before raw mode is entered, so a rejected call cannot leave
     // the terminal unrestored.
@@ -926,6 +946,10 @@ class Prompty {
 
     if ($resolved_key === NULL && !$p->cfgInteractive) {
       $resolved_key = $default_key ?? $p->optionKeys($options)[0];
+    }
+
+    if ($resolved_key !== NULL) {
+      $resolved_key = $p->transformString($plain_label, $transform, $resolved_key);
     }
 
     if ($standalone && $p->cfgInteractive) {
@@ -944,7 +968,7 @@ class Prompty {
 
     if ($resolved_key !== NULL) {
       $open = $p->settleOpen($resolved_key, $open);
-      $p->printLines($p->renderCompleted($label, $options[$resolved_key], $depth, $open));
+      $p->printLines($p->renderCompleted($label, $p->optionDisplay($resolved_key, $options), $depth, $open));
 
       if ($standalone) {
         // @codeCoverageIgnoreStart
@@ -1027,8 +1051,9 @@ class Prompty {
       }
 
       if ($key === 'enter') {
-        $open = $p->settleOpen($option_keys[$focused], $open);
-        $p->redraw($line_count, $p->renderCompleted($label, $option_labels[$focused], $depth, $open));
+        $selected_key = $p->transformString($plain_label, $transform, $option_keys[$focused]);
+        $open = $p->settleOpen($selected_key, $open);
+        $p->redraw($line_count, $p->renderCompleted($label, $p->optionDisplay($selected_key, $options), $depth, $open));
 
         if ($standalone) {
           // @codeCoverageIgnoreStart
@@ -1036,7 +1061,7 @@ class Prompty {
           // @codeCoverageIgnoreEnd
         }
 
-        return $option_keys[$focused];
+        return $selected_key;
       }
 
       if ($key === 'up' || $key === 'left') {
@@ -1069,6 +1094,11 @@ class Prompty {
    * @param mixed $discovered
    *   Pre-filled value that bypasses interactive input. Every entry must be a
    *   key of $options. A blank value selects nothing.
+   * @param callable|null $transform
+   *   Optional transform. Receives the list of selected option keys and
+   *   returns the list of strings the widget answers with. The completed line
+   *   shows the option label for each key of $options, and the string itself
+   *   for any other entry.
    * @param callable|null $condition
    *   Optional condition callback; skips the step when it returns FALSE.
    * @param array<string, mixed> $children
@@ -1084,6 +1114,8 @@ class Prompty {
    * @throws \InvalidArgumentException
    *   When $options is empty, or a default or discovered entry is not a key of
    *   $options.
+   * @throws \UnexpectedValueException
+   *   When $transform returns anything other than a list of strings.
    */
   public static function multiselect(
     string $label,
@@ -1093,6 +1125,7 @@ class Prompty {
     array $hints = [],
     string $help = '',
     mixed $discovered = NULL,
+    ?callable $transform = NULL,
     ?callable $condition = NULL,
     array $children = [],
     ?array $ctx = NULL,
@@ -1106,6 +1139,7 @@ class Prompty {
         hints: $hints,
         help: $help,
         discovered: $discovered,
+        transform: $transform,
         ctx: $ctx,
       );
 
@@ -1123,6 +1157,7 @@ class Prompty {
       'open' => [],
     ];
     $standalone = !static::$inFlow;
+    $plain_label = $label;
 
     $resolved = $discovered ?? $ctx['discovered'] ?? NULL;
 
@@ -1143,6 +1178,10 @@ class Prompty {
       $resolved_keys = $default_keys;
     }
 
+    if ($resolved_keys !== NULL) {
+      $resolved_keys = $p->transformKeys($plain_label, $transform, $resolved_keys);
+    }
+
     if ($standalone && $p->cfgInteractive) {
       $p->setupTty();
     }
@@ -1158,9 +1197,8 @@ class Prompty {
     $ordered_hints = array_map(fn(string $key) => $hints[$key] ?? '', $option_keys);
 
     if ($resolved_keys !== NULL) {
-      $display = $resolved_keys !== [] ? implode(', ', array_map(fn(string $key): string => $options[$key], $resolved_keys)) : $p->label('none');
       $open = $p->settleOpen($resolved_keys, $open);
-      $p->printLines($p->renderCompleted($label, $display, $depth, $open));
+      $p->printLines($p->renderCompleted($label, $p->optionsDisplay($resolved_keys, $options), $depth, $open));
 
       if ($standalone) {
         // @codeCoverageIgnoreStart
@@ -1241,17 +1279,16 @@ class Prompty {
 
       if ($key === 'enter') {
         $selected_keys = [];
-        $selected_labels = [];
 
-        foreach ($option_labels as $index => $option_label) {
+        foreach ($option_keys as $index => $option_key) {
           if ($checked[$index]) {
-            $selected_keys[] = $option_keys[$index];
-            $selected_labels[] = $option_label;
+            $selected_keys[] = $option_key;
           }
         }
 
+        $selected_keys = $p->transformKeys($plain_label, $transform, $selected_keys);
         $open = $p->settleOpen($selected_keys, $open);
-        $p->redraw($line_count, $p->renderCompleted($label, $selected_labels !== [] ? implode(', ', $selected_labels) : $p->label('none'), $depth, $open));
+        $p->redraw($line_count, $p->renderCompleted($label, $p->optionsDisplay($selected_keys, $options), $depth, $open));
 
         if ($standalone) {
           // @codeCoverageIgnoreStart
@@ -1291,6 +1328,9 @@ class Prompty {
    *   Pre-filled value that bypasses interactive input. A boolean is taken as
    *   is; anything else must appear in the truthy or falsy list. A blank value
    *   is rejected: yes and no are the only answers.
+   * @param callable|null $transform
+   *   Optional transform. Receives the boolean answer and returns the boolean
+   *   the widget answers with.
    * @param callable|null $condition
    *   Optional condition callback; skips the step when it returns FALSE.
    * @param array<string, mixed> $children
@@ -1305,6 +1345,8 @@ class Prompty {
    *
    * @throws \InvalidArgumentException
    *   When a discovered value appears in neither the truthy nor falsy list.
+   * @throws \UnexpectedValueException
+   *   When $transform returns anything other than a boolean.
    */
   public static function confirm(
     string $label,
@@ -1312,6 +1354,7 @@ class Prompty {
     string $description = '',
     string $help = '',
     mixed $discovered = NULL,
+    ?callable $transform = NULL,
     ?callable $condition = NULL,
     array $children = [],
     ?array $ctx = NULL,
@@ -1323,6 +1366,7 @@ class Prompty {
         description: $description,
         help: $help,
         discovered: $discovered,
+        transform: $transform,
         ctx: $ctx,
       );
 
@@ -1340,6 +1384,7 @@ class Prompty {
       'open' => [],
     ];
     $standalone = !static::$inFlow;
+    $plain_label = $label;
 
     /** @var list<string> $truthy */
     $truthy = $ctx['truthy'] ?? $p->cfgTruthy;
@@ -1353,6 +1398,10 @@ class Prompty {
 
     if ($resolved_bool === NULL && !$p->cfgInteractive) {
       $resolved_bool = $default;
+    }
+
+    if ($resolved_bool !== NULL) {
+      $resolved_bool = $p->transformBool($plain_label, $transform, $resolved_bool);
     }
 
     if ($standalone && $p->cfgInteractive) {
@@ -1426,8 +1475,9 @@ class Prompty {
       }
 
       if ($key === 'enter') {
-        $open = $p->settleOpen($yes, $open);
-        $p->redraw($line_count, $p->renderCompleted($label, $yes ? $p->label('yes') : $p->label('no'), $depth, $open));
+        $answer = $p->transformBool($plain_label, $transform, $yes);
+        $open = $p->settleOpen($answer, $open);
+        $p->redraw($line_count, $p->renderCompleted($label, $answer ? $p->label('yes') : $p->label('no'), $depth, $open));
 
         if ($standalone) {
           // @codeCoverageIgnoreStart
@@ -1435,7 +1485,7 @@ class Prompty {
           // @codeCoverageIgnoreEnd
         }
 
-        return $yes;
+        return $answer;
       }
 
       if (in_array($key, ['left', 'right', 'up', 'down', 'tab'], TRUE)) {
@@ -2098,6 +2148,184 @@ class Prompty {
     $accepted = implode(', ', array_merge($truthy, $falsy));
 
     throw new \InvalidArgumentException(sprintf('Discovered value "%s" for "%s" is not a valid answer. Accepted values: %s.', $display, $label, $accepted));
+  }
+
+  /**
+   * Applies a widget's transform to a string answer.
+   *
+   * @param string $label
+   *   The widget label, used to identify the widget in the error message.
+   * @param callable|null $transform
+   *   The transform, or NULL when the widget has none.
+   * @param string $value
+   *   The answer, as the widget would return it.
+   *
+   * @return string
+   *   The transformed answer, or $value when there is no transform.
+   *
+   * @throws \UnexpectedValueException
+   *   When the transform returns anything other than a string.
+   */
+  protected function transformString(string $label, ?callable $transform, string $value): string {
+    if ($transform === NULL) {
+      return $value;
+    }
+
+    $transformed = $this->runTransform($transform, $value);
+
+    if (!is_string($transformed)) {
+      $this->rejectTransformed($label, get_debug_type($transformed), 'a string');
+    }
+
+    return $transformed;
+  }
+
+  /**
+   * Applies a widget's transform to a list of option keys.
+   *
+   * @param string $label
+   *   The widget label, used to identify the widget in the error message.
+   * @param callable|null $transform
+   *   The transform, or NULL when the widget has none.
+   * @param list<string> $value
+   *   The answer, as the widget would return it.
+   *
+   * @return list<string>
+   *   The transformed answer, or $value when there is no transform.
+   *
+   * @throws \UnexpectedValueException
+   *   When the transform returns anything other than a list of strings.
+   */
+  protected function transformKeys(string $label, ?callable $transform, array $value): array {
+    if ($transform === NULL) {
+      return $value;
+    }
+
+    $transformed = $this->runTransform($transform, $value);
+
+    if (!is_array($transformed) || !array_is_list($transformed)) {
+      $this->rejectTransformed($label, get_debug_type($transformed), 'a list of strings');
+    }
+
+    $keys = [];
+
+    foreach ($transformed as $entry) {
+      if (!is_string($entry)) {
+        $this->rejectTransformed($label, 'a list holding ' . get_debug_type($entry), 'a list of strings');
+      }
+
+      $keys[] = $entry;
+    }
+
+    return $keys;
+  }
+
+  /**
+   * Applies a widget's transform to a boolean answer.
+   *
+   * @param string $label
+   *   The widget label, used to identify the widget in the error message.
+   * @param callable|null $transform
+   *   The transform, or NULL when the widget has none.
+   * @param bool $value
+   *   The answer, as the widget would return it.
+   *
+   * @return bool
+   *   The transformed answer, or $value when there is no transform.
+   *
+   * @throws \UnexpectedValueException
+   *   When the transform returns anything other than a boolean.
+   */
+  protected function transformBool(string $label, ?callable $transform, bool $value): bool {
+    if ($transform === NULL) {
+      return $value;
+    }
+
+    $transformed = $this->runTransform($transform, $value);
+
+    if (!is_bool($transformed)) {
+      $this->rejectTransformed($label, get_debug_type($transformed), 'a boolean');
+    }
+
+    return $transformed;
+  }
+
+  /**
+   * Calls a widget's transform.
+   *
+   * The transform is caller code that can run while the terminal is in raw
+   * mode, so the terminal is restored before any exception leaves the widget.
+   *
+   * @param callable $transform
+   *   The transform.
+   * @param string|bool|list<string> $value
+   *   The answer, as the widget would return it.
+   *
+   * @return mixed
+   *   Whatever the transform returns.
+   */
+  protected function runTransform(callable $transform, string|bool|array $value): mixed {
+    try {
+      return $transform($value);
+    }
+    catch (\Throwable $throwable) {
+      $this->teardownTty();
+
+      throw $throwable;
+    }
+  }
+
+  /**
+   * Rejects a transformed answer of the wrong type.
+   *
+   * @param string $label
+   *   The widget label, used to identify the widget in the error message.
+   * @param string $actual
+   *   A description of what the transform returned.
+   * @param string $expected
+   *   A description of the type the widget answers with.
+   *
+   * @throws \UnexpectedValueException
+   *   Always.
+   */
+  protected function rejectTransformed(string $label, string $actual, string $expected): never {
+    $this->teardownTty();
+
+    throw new \UnexpectedValueException(sprintf('Transform for "%s" returned %s. A transform returns %s, the type the widget answers with.', $label, $actual, $expected));
+  }
+
+  /**
+   * Returns the text the completed line shows for a single answer key.
+   *
+   * @param string $key
+   *   The answer key.
+   * @param array<int|string, string> $options
+   *   Map of option key to display label.
+   *
+   * @return string
+   *   The option label for a key of $options, or the key itself.
+   */
+  protected function optionDisplay(string $key, array $options): string {
+    return array_key_exists($key, $options) ? $options[$key] : $key;
+  }
+
+  /**
+   * Returns the text the completed line shows for a list of answer keys.
+   *
+   * @param list<string> $keys
+   *   The answer keys.
+   * @param array<int|string, string> $options
+   *   Map of option key to display label.
+   *
+   * @return string
+   *   The comma-separated labels, or the 'none' label for an empty list.
+   */
+  protected function optionsDisplay(array $keys, array $options): string {
+    if ($keys === []) {
+      return $this->label('none');
+    }
+
+    return implode(', ', array_map(fn(string $key): string => $this->optionDisplay($key, $options), $keys));
   }
 
   /**
