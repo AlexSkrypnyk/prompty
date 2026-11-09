@@ -41,6 +41,9 @@ define('EMBED_RELEASE_REPO', 'AlexSkrypnyk/prompty');
 define('EMBED_RELEASE_FINGERPRINT', '755E824E80F849135F5F4043E71EDB25C4F6D89D');
 define('EMBED_SUMS_EMBEDDER', 'embed.php');
 
+// cmd.exe cannot open /dev/null, and a failed redirect skips the command.
+define('EMBED_NULL_DEVICE', PHP_OS_FAMILY === 'Windows' ? 'NUL' : '/dev/null');
+
 /**
  * Finds the nearest token that is not whitespace.
  *
@@ -379,7 +382,7 @@ function embed_check(string $script_path, ?string $sums_path): int {
 function embed_git(string $dir, string $arguments): ?string {
   $output = [];
   $exit_code = 0;
-  exec('git -C ' . escapeshellarg($dir) . ' ' . $arguments . ' 2>/dev/null', $output, $exit_code);
+  exec('git -C ' . escapeshellarg($dir) . ' ' . $arguments . ' 2>' . EMBED_NULL_DEVICE, $output, $exit_code);
 
   return $exit_code === 0 && isset($output[0]) && $output[0] !== '' ? $output[0] : NULL;
 }

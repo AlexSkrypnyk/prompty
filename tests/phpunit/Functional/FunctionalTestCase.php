@@ -196,6 +196,7 @@ abstract class FunctionalTestCase extends TestCase {
   protected function runScript(string $script_path, string $keystrokes): string {
     $r = $this->runWithKeystrokes('php ' . escapeshellarg($script_path), $keystrokes);
     $this->assertSame(0, $r['exit_code'], 'Script failed: ' . $r['stderr']);
+    $this->assertSame('', $r['stderr']);
 
     return $this->stripAnsi($r['stdout']);
   }
