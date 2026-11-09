@@ -33,7 +33,7 @@ Prompty asks questions in the terminal for PHP command-line scripts, from a sing
 - 🌳 [**Nested flows**](#nested-flows-with-conditions) - conditional children drawn as a tree
 - ⚡ [**Standalone mode**](#standalone-mode) - use any widget on its own, outside a flow
 - 🌍 [**Environment variable discovery**](#environment-variable-discovery) - fill answers from environment variables
-- 💬 [**Descriptions and hints**](#descriptions-and-hints) - help text under each label and each option
+- 💬 [**Descriptions, hints and help**](#descriptions-hints-and-help) - text under each label, each option and each input
 - ✨ [**Unicode and ASCII**](#unicode-and-ascii) - detected from the locale, or forced
 - 🎨 [**ANSI colors**](#ansi-colors) - on by default, off under `NO_COLOR` or `TERM=dumb`
 - ⚙️ [**Configuration**](#configuration) - symbols, colors, spacing, labels, the variable prefix and the yes/no values
@@ -204,8 +204,8 @@ $extras = Prompty::multiselect('Extras',
     'herbs' => 'Herbs',
   ],
   default: ['bread', 'olives', 'herbs'],
-  description: "Anything served alongside.\n"
-    . 'Space to toggle, enter to confirm.',
+  description: 'Anything served alongside.',
+  help: 'Space to toggle, enter to confirm.',
 );
 ```
 
@@ -443,7 +443,7 @@ Discovered value "" for "Course" is not a valid option. Available options: start
 
 The rule covers both the `discovered:` argument and the `PROMPTY_*` variable.
 
-## Descriptions and hints
+## Descriptions, hints and help
 
 Every widget takes a `description`, shown under the label. A description can span several lines:
 
@@ -471,6 +471,42 @@ Prompty::select('Method',
   ],
 );
 ```
+
+Every widget also takes `help`, a usage tip drawn dim under the input or the option list. Put how to answer in `help` and what the question means in `description`:
+
+```php
+Prompty::multiselect('Extras',
+  options: [
+    'bread' => 'Bread',
+    'olives' => 'Olives',
+    'herbs' => 'Herbs',
+  ],
+  description: 'Anything served alongside.',
+  hints: [
+    'bread' => 'Warm, cut at the table.',
+    'olives' => 'Marinated, served in oil.',
+    'herbs' => 'Picked the same morning.',
+  ],
+  help: 'Space to toggle, enter to confirm.',
+);
+```
+
+The help shows only while the widget waits for an answer. The line drawn after an answer or a cancellation leaves it out. A widget that takes a [discovered](#environment-variable-discovery) value draws no help. On `select` and `multiselect`, the focused option's hint stays under that option, and the help follows the whole list:
+
+```text
+◇  Extras
+│  Anything served alongside.
+│
+│❯ ◻ Bread
+│    ↳ Warm, cut at the table.
+│  ◻ Olives
+│  ◻ Herbs
+│
+│  Space to toggle, enter to confirm.
+│
+```
+
+Like a description, the help can span several lines.
 
 ## Default values
 

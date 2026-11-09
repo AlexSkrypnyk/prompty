@@ -18,8 +18,8 @@ echo "\n--- Text: basic ---\n";
 $r = Prompty::text('Dish name', placeholder: 'pear tart');
 echo '  Result: ' . (is_string($r) ? $r : 'cancelled') . "\n";
 
-echo "\n--- Text: with description ---\n";
-$r = Prompty::text('Guest name', placeholder: 'Jane Doe', description: "Printed on the order ticket.\nLeave blank for takeaway.");
+echo "\n--- Text: with description and help ---\n";
+$r = Prompty::text('Guest name', placeholder: 'Jane Doe', description: 'Printed on the order ticket.', help: 'Leave blank for takeaway.');
 echo '  Result: ' . (is_string($r) ? $r : 'cancelled') . "\n";
 
 echo "\n--- Text: no placeholder ---\n";

@@ -36,13 +36,14 @@ echo '  Result: ' . (is_string($r) ? $r : 'cancelled') . "\n";
 echo "\n--- Multiselect: with hints ---\n";
 $r = Prompty::multiselect('Extras',
   options: ['bread' => 'Bread', 'olives' => 'Olives', 'herbs' => 'Herbs', 'lemon' => 'Lemon'],
-  description: "Anything served alongside.\nSpace to toggle, enter to confirm.",
+  description: 'Anything served alongside.',
   hints: [
     'bread' => 'Warm, cut at the table.',
     'olives' => 'Marinated, served in oil.',
     'herbs' => 'Picked the same morning.',
     'lemon' => 'Sharpens rich dishes.',
   ],
+  help: 'Space to toggle, enter to confirm.',
 );
 $selection = is_array($r) ? array_filter($r, is_string(...)) : NULL;
 echo '  Result: ' . ($selection === NULL ? 'cancelled' : ($selection === [] ? 'none' : implode(', ', $selection))) . "\n";

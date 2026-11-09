@@ -25,7 +25,7 @@ $r = Prompty::select('Dish',
 );
 echo '  Result: ' . (is_string($r) ? $r : 'cancelled') . "\n";
 
-echo "\n--- Select: with hints ---\n";
+echo "\n--- Select: with hints and help ---\n";
 $r = Prompty::select('Method',
   options: ['baked' => 'Baked', 'poached' => 'Poached', 'grilled' => 'Grilled'],
   hints: [
@@ -33,6 +33,7 @@ $r = Prompty::select('Method',
     'poached' => "Gently, in barely moving liquid.\nKeeps delicate things whole.",
     'grilled' => "Over the flame for colour.\nFast, hot, and unforgiving.",
   ],
+  help: 'Up and down to move, enter to choose.',
 );
 echo '  Result: ' . (is_string($r) ? $r : 'cancelled') . "\n";
 

@@ -22,6 +22,6 @@ echo "\n--- Confirm: default no ---\n";
 $r = Prompty::confirm('Add garnish?', default: FALSE);
 echo '  Result: ' . ($r !== NULL ? ($r ? 'yes' : 'no') : 'cancelled') . "\n";
 
-echo "\n--- Confirm: with description ---\n";
-$r = Prompty::confirm('Fire the mains?', description: "The kitchen starts cooking at once.\nMake sure the table is ready.");
+echo "\n--- Confirm: with description and help ---\n";
+$r = Prompty::confirm('Fire the mains?', description: 'The kitchen starts cooking at once.', help: 'Make sure the table is ready.');
 echo '  Result: ' . ($r !== NULL ? ($r ? 'yes' : 'no') : 'cancelled') . "\n";

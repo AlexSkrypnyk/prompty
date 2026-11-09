@@ -19,10 +19,11 @@ $r = Prompty::multiselect('Extras', options: ['bread' => 'Bread', 'olives' => 'O
 $selection = is_array($r) ? array_filter($r, is_string(...)) : NULL;
 echo '  Result: ' . ($selection === NULL ? 'cancelled' : ($selection === [] ? 'none' : implode(', ', $selection))) . "\n";
 
-echo "\n--- Multiselect: with description ---\n";
+echo "\n--- Multiselect: with description and help ---\n";
 $r = Prompty::multiselect('Drinks',
   options: ['tea' => 'Tea', 'coffee' => 'Coffee', 'juice' => 'Juice'],
-  description: "Poured at the table.\nSpace to toggle, enter to confirm.",
+  description: 'Poured at the table.',
+  help: 'Space to toggle, enter to confirm.',
 );
 $selection = is_array($r) ? array_filter($r, is_string(...)) : NULL;
 echo '  Result: ' . ($selection === NULL ? 'cancelled' : ($selection === [] ? 'none' : implode(', ', $selection))) . "\n";
