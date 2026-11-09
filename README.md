@@ -33,6 +33,7 @@ Prompty asks questions in the terminal for PHP command-line scripts, from a sing
 - 🌳 [**Nested flows**](#nested-flows-with-conditions) - conditional children drawn as a tree
 - ⚡ [**Standalone mode**](#standalone-mode) - use any widget on its own, outside a flow
 - 🌍 [**Environment variable discovery**](#environment-variable-discovery) - fill answers from environment variables
+- 🤖 [**Non-interactive mode**](#non-interactive-mode) - answer every prompt from its default, for CI and scripted runs
 - 💬 [**Descriptions, hints and help**](#descriptions-hints-and-help) - text under each label, each option and each input
 - ✨ [**Unicode and ASCII**](#unicode-and-ascii) - detected from the locale, or forced
 - 🎨 [**ANSI colors**](#ansi-colors) - on by default, off under `NO_COLOR` or `TERM=dumb`
@@ -280,7 +281,7 @@ $results = Prompty::flow(fn(): array => [
 
 `flow()` returns the answers keyed by step, or `null` when the user cancels any step.
 
-An input stream with nothing left to read counts as a cancellation. A flow run from a pipe, from `/dev/null` or in CI without a terminal returns `null` at the first prompt it can't read.
+An input stream with nothing left to read counts as a cancellation. A flow run from a pipe, from `/dev/null` or in CI without a terminal returns `null` at the first prompt it can't read. To answer every step from its default instead, use [non-interactive mode](#non-interactive-mode).
 
 `intro`, `outro` and `cancelled` each take a string or a callable. A callable receives the answers collected so far:
 
@@ -443,6 +444,42 @@ Discovered value "" for "Course" is not a valid option. Available options: start
 
 The rule covers both the `discovered:` argument and the `PROMPTY_*` variable.
 
+## Non-interactive mode
+
+A script run in CI or with a `--no-interaction` flag has nobody to answer its prompts. Pass `interactive: FALSE`, and every widget answers without reading a key:
+
+```php
+// For every widget and flow.
+$opts = getopt('', ['no-interaction']);
+Prompty::configure(interactive: !isset($opts['no-interaction']));
+
+// For 1 flow.
+$results = Prompty::flow(fn(): array => [/* ... */], interactive: FALSE);
+```
+
+Each widget takes the first answer it finds, in this order:
+
+1. The `discovered:` argument
+2. The `PROMPTY_*` variable, inside a flow
+3. The `default`
+
+The following table lists the answer each widget gives when its `default` is left empty:
+
+| Widget        | Answer                   |
+|---------------|--------------------------|
+| `text`        | An empty string, `''`    |
+| `select`      | The first option         |
+| `multiselect` | An empty selection, `[]` |
+| `confirm`     | Yes, `true`              |
+
+A placeholder is an example of what to type, so `text` never answers with it in this mode. A blank discovered value takes the `default`, or `''` when no default is set.
+
+The checks in [Discovered and default values must be valid answers](#discovered-and-default-values-must-be-valid-answers) still run, so an invalid `default` throws an `InvalidArgumentException`.
+
+Each widget still draws its completed lines, so the output logs every answer. The help is left out, and Prompty leaves the terminal settings as they are.
+
+Input is on by default, so a flow without a terminal still cancels at its first prompt.
+
 ## Descriptions, hints and help
 
 Every widget takes a `description`, shown under the label. A description can span several lines:
@@ -519,7 +556,7 @@ Every widget takes a `default` that sets its starting state:
 | `multiselect` | `list<int\|string>` (keys) | Pre-checks those options.                  |
 | `confirm`     | `bool`                     | Starts on Yes (`true`) or No (`false`).    |
 
-A `discovered:` value or a `PROMPTY_*` variable wins over `default` and skips the prompt. The exception is a blank value for `text`, which takes the default.
+A `discovered:` value or a `PROMPTY_*` variable wins over `default` and skips the prompt. The exception is a blank value for `text`, which takes the default. In [non-interactive mode](#non-interactive-mode), `default` is the answer when neither is set.
 
 For `select` and `multiselect`, every key in `default` must be a key of `options`. See [Discovered and default values must be valid answers](#discovered-and-default-values-must-be-valid-answers).
 
@@ -635,6 +672,7 @@ The following table lists every option and its default:
 | `labels`          | `array<string, string>` | UI labels: `yes`, `no`, `cancelled`, `none`, `separator`.                     |
 | `truthy`          | `list<string>`          | Values a confirm reads as yes. Default `1`, `true`, `yes`.                    |
 | `falsy`           | `list<string>`          | Values a confirm reads as no. Default `0`, `false`, `no`.                     |
+| `interactive`     | `bool`                  | If false, every widget answers without reading input. Default `true`.         |
 | `symbols_unicode` | `array<string, string>` | Unicode symbol overrides.                                                     |
 | `symbols_ascii`   | `array<string, string>` | ASCII symbol overrides.                                                       |
 | `colors`          | `array<string, string>` | ANSI color escape overrides.                                                  |

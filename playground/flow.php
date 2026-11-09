@@ -13,9 +13,10 @@ require __DIR__ . '/../Prompty.php';
 
 use AlexSkrypnyk\Prompty\Prompty;
 
-$opts = getopt('', ['no-unicode', 'no-ansi']);
+$opts = getopt('', ['no-unicode', 'no-ansi', 'no-interaction']);
 $unicode = !isset($opts['no-unicode']);
 $ansi = !isset($opts['no-ansi']);
+$interactive = !isset($opts['no-interaction']);
 
 $results = Prompty::flow(fn(): array => [
   'dish' => Prompty::text('Dish name', placeholder: 'pear tart', description: "Written on the order ticket and under\n\"Specials\" on the board."),
@@ -73,5 +74,6 @@ $results = Prompty::flow(fn(): array => [
   numbering: TRUE,
   unicode: $unicode,
   ansi: $ansi,
+  interactive: $interactive,
   env_prefix: 'PROMPTY_',
 );

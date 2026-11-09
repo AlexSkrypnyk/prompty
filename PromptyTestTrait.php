@@ -196,6 +196,7 @@ trait PromptyTestTrait {
       'env_prefix' => 'cfgEnvPrefix',
       'truthy' => 'cfgTruthy',
       'falsy' => 'cfgFalsy',
+      'interactive' => 'cfgInteractive',
       'labels' => 'cfgLabels',
       'symbols_unicode' => 'cfgSymbolsUnicode',
       'symbols_ascii' => 'cfgSymbolsAscii',
