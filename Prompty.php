@@ -35,6 +35,7 @@ namespace AlexSkrypnyk\Prompty;
  *   env_prefix: string,
  *   truthy: list<string>,
  *   falsy: list<string>,
+ *   output: resource|\Closure|null,
  * }
  */
 class Prompty {
@@ -225,6 +226,13 @@ class Prompty {
   protected array $cfgFalsy = ['0', 'false', 'no'];
 
   /**
+   * Where rendered output is written (NULL = echo).
+   *
+   * @var resource|\Closure|null
+   */
+  protected $cfgOutput;
+
+  /**
    * Constructs a Prompty instance.
    */
   protected function __construct() {
@@ -281,6 +289,7 @@ class Prompty {
       'env_prefix' => $this->cfgEnvPrefix,
       'truthy' => $this->cfgTruthy,
       'falsy' => $this->cfgFalsy,
+      'output' => $this->cfgOutput,
     ];
   }
 
@@ -301,6 +310,7 @@ class Prompty {
     $this->cfgEnvPrefix = $snapshot['env_prefix'];
     $this->cfgTruthy = $snapshot['truthy'];
     $this->cfgFalsy = $snapshot['falsy'];
+    $this->cfgOutput = $snapshot['output'];
     $this->resolveDisplay();
   }
 
@@ -325,6 +335,7 @@ class Prompty {
       'env_prefix' => $p->cfgEnvPrefix,
       'truthy' => $p->cfgTruthy,
       'falsy' => $p->cfgFalsy,
+      'output' => $p->cfgOutput,
     ];
   }
 
@@ -380,6 +391,10 @@ class Prompty {
    *   Values treated as TRUE.
    * @param list<string>|null $falsy
    *   Values treated as FALSE.
+   * @param mixed $output
+   *   Where rendered output is written: a writable stream resource, or a
+   *   callable that receives each chunk as a string. NULL keeps the current
+   *   target, which is echo until set.
    */
   public static function configure(
     ?array $symbols_unicode = NULL,
@@ -392,6 +407,7 @@ class Prompty {
     ?string $env_prefix = NULL,
     ?array $truthy = NULL,
     ?array $falsy = NULL,
+    mixed $output = NULL,
   ): void {
     $p = static::instance();
 
@@ -424,6 +440,8 @@ class Prompty {
     if ($falsy !== NULL) {
       $p->assertConfigList('falsy', $falsy);
     }
+
+    $output_target = $output !== NULL ? $p->resolveOutputTarget($output) : NULL;
 
     if ($symbols_unicode !== NULL) {
       $p->cfgSymbolsUnicode = array_replace($p->cfgSymbolsUnicode, $symbols_unicode);
@@ -464,6 +482,10 @@ class Prompty {
 
     if ($falsy !== NULL) {
       $p->cfgFalsy = $falsy;
+    }
+
+    if ($output_target !== NULL) {
+      $p->cfgOutput = $output_target;
     }
 
     $p->resolveDisplay();
@@ -511,6 +533,10 @@ class Prompty {
    *   Values treated as TRUE.
    * @param list<string>|null $falsy
    *   Values treated as FALSE.
+   * @param mixed $output
+   *   Where rendered output is written: a writable stream resource, or a
+   *   callable that receives each chunk as a string. NULL keeps the current
+   *   target, which is echo until set.
    *
    * @return array<string, string|bool|int|array<string,string>>|null
    *   Collected results or NULL if cancelled.
@@ -531,6 +557,7 @@ class Prompty {
     ?string $env_prefix = NULL,
     ?array $truthy = NULL,
     ?array $falsy = NULL,
+    mixed $output = NULL,
   ): ?array {
     $p = static::instance();
     $snapshot = NULL;
@@ -544,9 +571,10 @@ class Prompty {
       || $ansi !== NULL
       || $env_prefix !== NULL
       || $truthy !== NULL
-      || $falsy !== NULL) {
+      || $falsy !== NULL
+      || $output !== NULL) {
       $snapshot = $p->snapshotConfig();
-      static::configure($symbols_unicode, $symbols_ascii, $colors, $spacing, $labels, $unicode, $ansi, $env_prefix, $truthy, $falsy);
+      static::configure($symbols_unicode, $symbols_ascii, $colors, $spacing, $labels, $unicode, $ansi, $env_prefix, $truthy, $falsy, $output);
     }
 
     $p->results = [];
@@ -1570,14 +1598,14 @@ class Prompty {
    * Shows the terminal cursor.
    */
   protected function showCursor(): void {
-    echo "\033[?25h";
+    $this->write("\033[?25h");
   }
 
   /**
    * Hides the terminal cursor.
    */
   protected function hideCursor(): void {
-    echo "\033[?25l";
+    $this->write("\033[?25l");
   }
 
   /**
@@ -1621,7 +1649,29 @@ class Prompty {
   }
 
   /**
-   * Prints an array of lines to stdout and returns the line count.
+   * Writes a chunk of rendered output to the configured target.
+   *
+   * @param string $chunk
+   *   The bytes to write, escape sequences included.
+   */
+  protected function write(string $chunk): void {
+    if ($this->cfgOutput instanceof \Closure) {
+      ($this->cfgOutput)($chunk);
+
+      return;
+    }
+
+    if ($this->cfgOutput !== NULL) {
+      fwrite($this->cfgOutput, $chunk);
+
+      return;
+    }
+
+    echo $chunk;
+  }
+
+  /**
+   * Prints an array of lines to the output target and returns the line count.
    *
    * @param array<int, string> $lines
    *   Lines to print.
@@ -1630,7 +1680,7 @@ class Prompty {
    *   The number of lines printed.
    */
   protected function printLines(array $lines): int {
-    echo implode(PHP_EOL, $lines) . PHP_EOL;
+    $this->write(implode(PHP_EOL, $lines) . PHP_EOL);
 
     return count($lines);
   }
@@ -1648,7 +1698,7 @@ class Prompty {
    */
   protected function redraw(int $prev_line_count, array $lines): int {
     if ($prev_line_count > 0) {
-      echo "\033[{$prev_line_count}A\r\033[J";
+      $this->write("\033[{$prev_line_count}A\r\033[J");
     }
 
     return $this->printLines($lines);
@@ -1780,6 +1830,36 @@ class Prompty {
         throw new \InvalidArgumentException(sprintf('Blank value declared for "%s". Every value must hold a non-space character.', $parameter));
       }
     }
+  }
+
+  /**
+   * Validates an output target and returns it in the form write() uses.
+   *
+   * @param mixed $output
+   *   The supplied target.
+   *
+   * @return resource|\Closure
+   *   The stream as given, or the callable as a closure.
+   *
+   * @throws \InvalidArgumentException
+   *   When the target is neither a callable nor an open, writable stream.
+   */
+  protected function resolveOutputTarget(mixed $output) {
+    if (is_callable($output)) {
+      return $output(...);
+    }
+
+    if (!is_resource($output) || get_resource_type($output) !== 'stream') {
+      throw new \InvalidArgumentException(sprintf('Output target of type "%s" for "output" is not valid. Provide a writable stream or a callable that receives each chunk.', get_debug_type($output)));
+    }
+
+    $mode = stream_get_meta_data($output)['mode'];
+
+    if (strpbrk($mode, 'waxc+') === FALSE) {
+      throw new \InvalidArgumentException(sprintf('Output stream for "output" is opened in read-only mode "%s". Provide a writable stream.', $mode));
+    }
+
+    return $output;
   }
 
   /**

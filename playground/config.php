@@ -15,7 +15,8 @@
  * the valid keys.
  *
  * Each rejected call below prints its message. The accepted call then draws a
- * confirm with the labels it set.
+ * confirm with the labels it set. The output target section sends a confirm
+ * to a callable, then prints what the callable collected.
  */
 
 declare(strict_types=1);
@@ -88,6 +89,10 @@ attempt('An empty truthy list, which confirm() could never match', function (): 
   Prompty::configure(truthy: []);
 });
 
+attempt('An output target given as a file name rather than an open stream', function (): void {
+  Prompty::configure(output: 'kitchen-orders.txt');
+});
+
 attempt('A label key that does exist', function (): void {
   Prompty::configure(labels: ['yes' => 'Aye', 'no' => 'Nay']);
 });
@@ -99,6 +104,15 @@ echo PHP_EOL . '--- An empty env_prefix is accepted ---' . PHP_EOL;
 echo 'It is a coherent thing to ask for, so it is allowed, but a step named' . PHP_EOL;
 echo 'path, home or user then reads PATH, HOME or USER from the environment' . PHP_EOL;
 echo 'the script was started with. Keep a prefix unless that is the intent.' . PHP_EOL;
+
+echo PHP_EOL . '--- A callable output target collects what a widget draws ---' . PHP_EOL;
+$collected = '';
+Prompty::configure(output: function (string $chunk) use (&$collected): void {
+  $collected .= $chunk;
+});
+Prompty::confirm('Send order?', discovered: TRUE);
+Prompty::configure(output: STDOUT);
+echo 'Collected ' . strlen($collected) . ' bytes, printed now:' . PHP_EOL . $collected;
 
 echo PHP_EOL . '--- A flow merges its own arguments on top ---' . PHP_EOL;
 
