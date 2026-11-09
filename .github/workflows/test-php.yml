@@ -21,7 +21,7 @@ permissions:
 
 jobs:
   lint:
-    name: Lint
+    name: Lint, ubuntu-latest
     runs-on: ubuntu-latest
 
     permissions:
@@ -57,7 +57,7 @@ jobs:
         continue-on-error: ${{ vars.CI_LINT_IGNORE_FAILURE == '1' }}
 
   check-embed-release:
-    name: Check embed release
+    name: Check embed release, ubuntu-latest
     runs-on: ubuntu-latest
 
     permissions:
@@ -89,7 +89,7 @@ jobs:
         run: php .util/check-embed-release.php .artifacts/release
 
   test-php:
-    name: PHP ${{ matrix.php-versions }}, Deps ${{ matrix.deps }}
+    name: PHP ${{ matrix.php-versions }}, Deps ${{ matrix.deps }}, ubuntu-latest
     runs-on: ubuntu-latest
 
     permissions:
@@ -196,7 +196,7 @@ jobs:
         timeout-minutes: 30
 
   test-php-os:
-    name: PHP ${{ matrix.php-versions }}, ${{ matrix.os }}
+    name: PHP ${{ matrix.php-versions }}, Deps normal, ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
 
     permissions:

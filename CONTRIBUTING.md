@@ -183,7 +183,7 @@ Publishing a GitHub release triggers [`release.yml`](.github/workflows/release.y
 
 The job runs in the `release` environment. Store `GPG_PRIVATE_KEY` as a secret of that environment and give the environment a required reviewer, so each release waits for approval before the job can read the key.
 
-The `Check embed release` job in [`test-php.yml`](.github/workflows/test-php.yml) builds the same payloads and an unsigned `SHA256SUMS` on every pull request, and runs the same script against them.
+The `Check embed release, ubuntu-latest` job in [`test-php.yml`](.github/workflows/test-php.yml) builds the same payloads and an unsigned `SHA256SUMS` on every pull request, and runs the same script against them.
 
 [`draft-release-notes.yml`](.github/workflows/draft-release-notes.yml) drafts the release notes, using the categories in [`.github/release-drafter.yml`](.github/release-drafter.yml).
 

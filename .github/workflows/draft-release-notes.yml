@@ -12,7 +12,7 @@ permissions:
 
 jobs:
   release-drafter:
-    name: Draft release notes
+    name: Draft release notes, ubuntu-latest
     runs-on: ubuntu-latest
 
     permissions:
