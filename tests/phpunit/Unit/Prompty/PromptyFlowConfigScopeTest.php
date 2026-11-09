@@ -113,6 +113,13 @@ final class PromptyFlowConfigScopeTest extends PromptyTestCase {
       },
       'colors',
     ];
+
+    yield 'scroll' => [
+      static function () use ($steps): void {
+        Prompty::flow($steps, scroll: 5);
+      },
+      'scroll',
+    ];
   }
 
   public function testSecondFlowSeesTheGlobalConfiguration(): void {

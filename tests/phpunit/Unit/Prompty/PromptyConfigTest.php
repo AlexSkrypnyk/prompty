@@ -30,12 +30,13 @@ final class PromptyConfigTest extends PromptyTestCase {
     $this->assertSame('PROMPTY_', $this->getProperty($p, 'cfgEnvPrefix'));
     $this->assertSame(['1', 'true', 'yes'], $this->getProperty($p, 'cfgTruthy'));
     $this->assertSame(['0', 'false', 'no'], $this->getProperty($p, 'cfgFalsy'));
+    $this->assertSame(0, $this->getProperty($p, 'cfgScroll'));
   }
 
   public function testDefaultConfigSymbolKeys(): void {
     $p = $this->createInstance();
 
-    $expected_symbol_keys = ['bar', 'completed', 'active', 'intro', 'outro', 'pointer', 'radio_on', 'radio_off', 'check_on', 'check_off', 'hint_arrow'];
+    $expected_symbol_keys = ['bar', 'completed', 'active', 'intro', 'outro', 'pointer', 'radio_on', 'radio_off', 'check_on', 'check_off', 'hint_arrow', 'scroll_up', 'scroll_down'];
     /** @var array<string, string> $symbols_unicode */
     $symbols_unicode = $this->getProperty($p, 'cfgSymbolsUnicode');
     /** @var array<string, string> $symbols_ascii */
@@ -148,6 +149,10 @@ final class PromptyConfigTest extends PromptyTestCase {
     yield 'unicode true' => [['unicode' => TRUE], 'cfgUnicode', TRUE];
 
     yield 'unicode false' => [['unicode' => FALSE], 'cfgUnicode', FALSE];
+
+    yield 'scroll' => [['scroll' => 10], 'cfgScroll', 10];
+
+    yield 'scroll 0' => [['scroll' => 0], 'cfgScroll', 0];
   }
 
   #[DataProvider('dataProviderConfigurePartialArrayMerge')]
@@ -341,6 +346,7 @@ final class PromptyConfigTest extends PromptyTestCase {
     yield 'space-only truthy value' => [['truthy' => ['  ']], 'Blank value declared for "truthy". Every value must hold a non-space character.'];
     yield 'empty falsy value' => [['falsy' => ['no', '']], 'Blank value declared for "falsy". Every value must hold a non-space character.'];
     yield 'tab-only falsy value' => [['falsy' => ["\t"]], 'Blank value declared for "falsy". Every value must hold a non-space character.'];
+    yield 'negative scroll' => [['scroll' => -1], 'Scroll size -1 for "scroll" is not valid. Use 0 to show every option, or the number of options to show at once.'];
   }
 
   /**
@@ -378,6 +384,8 @@ final class PromptyConfigTest extends PromptyTestCase {
       ['colors' => ['cyan' => "\033[35m"], 'labels' => ['yes' => 'Aye'], 'truthy' => []],
       ['labels', 'colors', 'truthy'],
     ];
+
+    yield 'rejected scroll after valid arguments' => [['labels' => ['yes' => 'Aye'], 'env_prefix' => 'KITCHEN_', 'scroll' => -3], ['labels', 'env_prefix', 'scroll']];
   }
 
   public function testVersionReturnsDevelopment(): void {

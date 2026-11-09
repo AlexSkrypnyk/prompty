@@ -218,6 +218,31 @@ final class PromptyWidgetValidationTest extends PromptyTestCase {
     ];
   }
 
+  #[DataProvider('dataProviderRejectsNegativeScroll')]
+  public function testRejectsNegativeScroll(\Closure $widget, ?string $ctx_discovered, string $message): void {
+    $this->assertWidgetRejects(fn(): mixed => $widget($this->defaultCtx(['discovered' => $ctx_discovered])), $message);
+  }
+
+  public static function dataProviderRejectsNegativeScroll(): \Iterator {
+    $select_message = 'Scroll size -1 for "Course" is not valid. Use 0 to show every option, or the number of options to show at once.';
+    $multiselect_message = 'Scroll size -2 for "Extras" is not valid. Use 0 to show every option, or the number of options to show at once.';
+
+    yield 'select' => [static fn(array $ctx): mixed => Prompty::select('Course', options: self::COURSES, scroll: -1, ctx: $ctx), NULL, $select_message];
+    yield 'select discovered argument' => [
+      static fn(array $ctx): mixed => Prompty::select('Course', options: self::COURSES, scroll: -1, discovered: 'main', ctx: $ctx),
+      NULL,
+      $select_message,
+    ];
+    yield 'select env value' => [static fn(array $ctx): mixed => Prompty::select('Course', options: self::COURSES, scroll: -1, ctx: $ctx), 'main', $select_message];
+    yield 'multiselect' => [static fn(array $ctx): mixed => Prompty::multiselect('Extras', options: self::EXTRAS, scroll: -2, ctx: $ctx), NULL, $multiselect_message];
+    yield 'multiselect discovered argument' => [
+      static fn(array $ctx): mixed => Prompty::multiselect('Extras', options: self::EXTRAS, scroll: -2, discovered: ['bread'], ctx: $ctx),
+      NULL,
+      $multiselect_message,
+    ];
+    yield 'multiselect env value' => [static fn(array $ctx): mixed => Prompty::multiselect('Extras', options: self::EXTRAS, scroll: -2, ctx: $ctx), 'bread', $multiselect_message];
+  }
+
   public function testFlowRejectsDefaultOutsideOptions(): void {
     $this->installKeystrokes(self::KEY_ENTER, FALSE);
 

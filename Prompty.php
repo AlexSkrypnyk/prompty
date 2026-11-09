@@ -36,6 +36,7 @@ namespace AlexSkrypnyk\Prompty;
  *   truthy: list<string>,
  *   falsy: list<string>,
  *   output: resource|\Closure|null,
+ *   scroll: int,
  * }
  */
 class Prompty {
@@ -120,6 +121,8 @@ class Prompty {
     'check_on' => '◼',
     'check_off' => '◻',
     'hint_arrow' => '↳',
+    'scroll_up' => '↑',
+    'scroll_down' => '↓',
   ];
 
   /**
@@ -139,6 +142,8 @@ class Prompty {
     'check_on' => '[x]',
     'check_off' => '[ ]',
     'hint_arrow' => '-->',
+    'scroll_up' => '^',
+    'scroll_down' => 'v',
   ];
 
   /**
@@ -194,6 +199,7 @@ class Prompty {
     'cancelled' => '(cancelled)',
     'none' => 'None',
     'separator' => '/',
+    'more' => 'more',
   ];
 
   /**
@@ -231,6 +237,11 @@ class Prompty {
    * @var resource|\Closure|null
    */
   protected $cfgOutput;
+
+  /**
+   * Options a select or multiselect draws at once (0 = all).
+   */
+  protected int $cfgScroll = 0;
 
   /**
    * Constructs a Prompty instance.
@@ -290,6 +301,7 @@ class Prompty {
       'truthy' => $this->cfgTruthy,
       'falsy' => $this->cfgFalsy,
       'output' => $this->cfgOutput,
+      'scroll' => $this->cfgScroll,
     ];
   }
 
@@ -311,6 +323,7 @@ class Prompty {
     $this->cfgTruthy = $snapshot['truthy'];
     $this->cfgFalsy = $snapshot['falsy'];
     $this->cfgOutput = $snapshot['output'];
+    $this->cfgScroll = $snapshot['scroll'];
     $this->resolveDisplay();
   }
 
@@ -336,6 +349,7 @@ class Prompty {
       'truthy' => $p->cfgTruthy,
       'falsy' => $p->cfgFalsy,
       'output' => $p->cfgOutput,
+      'scroll' => $p->cfgScroll,
     ];
   }
 
@@ -395,6 +409,12 @@ class Prompty {
    *   Where rendered output is written: a writable stream resource, or a
    *   callable that receives each chunk as a string. NULL keeps the current
    *   target, which is echo until set.
+   * @param int|null $scroll
+   *   Options a select or multiselect draws at once. 0 draws every option.
+   *
+   * @throws \InvalidArgumentException
+   *   When a map holds an unknown key, a list is empty or holds a blank value,
+   *   $output is not a writable stream or a callable, or $scroll is negative.
    */
   public static function configure(
     ?array $symbols_unicode = NULL,
@@ -408,6 +428,7 @@ class Prompty {
     ?array $truthy = NULL,
     ?array $falsy = NULL,
     mixed $output = NULL,
+    ?int $scroll = NULL,
   ): void {
     $p = static::instance();
 
@@ -442,6 +463,10 @@ class Prompty {
     }
 
     $output_target = $output !== NULL ? $p->resolveOutputTarget($output) : NULL;
+
+    if ($scroll !== NULL) {
+      $p->assertScroll($scroll, 'scroll');
+    }
 
     if ($symbols_unicode !== NULL) {
       $p->cfgSymbolsUnicode = array_replace($p->cfgSymbolsUnicode, $symbols_unicode);
@@ -486,6 +511,10 @@ class Prompty {
 
     if ($output_target !== NULL) {
       $p->cfgOutput = $output_target;
+    }
+
+    if ($scroll !== NULL) {
+      $p->cfgScroll = $scroll;
     }
 
     $p->resolveDisplay();
@@ -537,6 +566,8 @@ class Prompty {
    *   Where rendered output is written: a writable stream resource, or a
    *   callable that receives each chunk as a string. NULL keeps the current
    *   target, which is echo until set.
+   * @param int|null $scroll
+   *   Options a select or multiselect draws at once. 0 draws every option.
    *
    * @return array<string, string|bool|int|array<string,string>>|null
    *   Collected results or NULL if cancelled.
@@ -558,6 +589,7 @@ class Prompty {
     ?array $truthy = NULL,
     ?array $falsy = NULL,
     mixed $output = NULL,
+    ?int $scroll = NULL,
   ): ?array {
     $p = static::instance();
     $snapshot = NULL;
@@ -572,9 +604,10 @@ class Prompty {
       || $env_prefix !== NULL
       || $truthy !== NULL
       || $falsy !== NULL
-      || $output !== NULL) {
+      || $output !== NULL
+      || $scroll !== NULL) {
       $snapshot = $p->snapshotConfig();
-      static::configure($symbols_unicode, $symbols_ascii, $colors, $spacing, $labels, $unicode, $ansi, $env_prefix, $truthy, $falsy, $output);
+      static::configure($symbols_unicode, $symbols_ascii, $colors, $spacing, $labels, $unicode, $ansi, $env_prefix, $truthy, $falsy, $output, $scroll);
     }
 
     $p->results = [];
@@ -830,6 +863,9 @@ class Prompty {
    *   Optional description rendered below the label.
    * @param array<int|string, string> $hints
    *   Map of option key to hint text.
+   * @param int|null $scroll
+   *   Options drawn at once; the window shifts to keep the focused option in
+   *   view. 0 draws every option, and NULL uses the configured value.
    * @param string $help
    *   Optional help rendered below the options while the widget is active.
    * @param mixed $discovered
@@ -849,8 +885,8 @@ class Prompty {
    *   NULL when the widget is cancelled.
    *
    * @throws \InvalidArgumentException
-   *   When $options is empty, or a default or discovered value is not a key of
-   *   $options.
+   *   When $options is empty, a default or discovered value is not a key of
+   *   $options, or $scroll is negative.
    */
   public static function select(
     string $label,
@@ -858,6 +894,7 @@ class Prompty {
     string $default = '',
     string $description = '',
     array $hints = [],
+    ?int $scroll = NULL,
     string $help = '',
     mixed $discovered = NULL,
     ?callable $condition = NULL,
@@ -871,6 +908,7 @@ class Prompty {
         default: $default,
         description: $description,
         hints: $hints,
+        scroll: $scroll,
         help: $help,
         discovered: $discovered,
         ctx: $ctx,
@@ -897,6 +935,7 @@ class Prompty {
     $default_key = $default === '' ? NULL : $p->assertOptionKey('Default', $label, $default, $options);
     $resolved = $discovered ?? $ctx['discovered'] ?? NULL;
     $resolved_key = $resolved === NULL ? NULL : $p->assertOptionKey('Discovered', $label, $resolved, $options);
+    $visible = $p->visibleOptions($label, $scroll, count($options));
 
     if ($standalone) {
       $p->setupTty();
@@ -925,23 +964,27 @@ class Prompty {
       return $resolved_key;
     }
 
-    $render_active = function (int $focused) use ($p, $label, $option_labels, $description, $ordered_hints, $help, $depth, $open): array {
+    $render_active = function (int $focused, int $first) use ($p, $label, $option_labels, $description, $ordered_hints, $help, $visible, $depth, $open): array {
+      $window = array_slice($option_labels, $first, $visible, TRUE);
+      $rows = [];
+
       if ($depth === 0) {
         $lines = [$p->color($p->cfgSymbols['active'], 'cyan') . $p->cfgSpacing['indent'] . $label];
         $lines = array_merge($lines, $description !== '' ? $p->renderDescription($description) : [$p->bar()]);
 
-        foreach ($option_labels as $index => $option) {
+        foreach ($window as $index => $option) {
           $is_focused = $index === $focused;
           $radio = $p->color($p->cfgSymbols[$is_focused ? 'radio_on' : 'radio_off'], $is_focused ? 'green' : 'dim');
           $text = $is_focused ? $option : $p->color($option, 'dim');
 
-          $lines[] = $p->bar() . $p->pointer($is_focused) . $radio . ' ' . $text;
+          $rows[] = $p->bar() . $p->pointer($is_focused) . $radio . ' ' . $text;
 
           if ($is_focused && ($ordered_hints[$index] ?? '') !== '') {
-            $lines = array_merge($lines, $p->renderHint($ordered_hints[$index]));
+            $rows = array_merge($rows, $p->renderHint($ordered_hints[$index]));
           }
         }
 
+        $lines = array_merge($lines, $p->renderScrollWindow($rows, $first, $visible, count($option_labels)));
         $lines = array_merge($lines, $p->renderHelp($help));
         $lines[] = $p->bar();
 
@@ -954,18 +997,19 @@ class Prompty {
       $lines = [$label_prefix . $p->color($p->cfgSymbols['active'], 'cyan') . $p->cfgSpacing['indent'] . $label];
       $lines = array_merge($lines, $description !== '' ? $p->renderDescription($description, $depth, $open) : [$p->bar() . $body_prefix]);
 
-      foreach ($option_labels as $index => $option) {
+      foreach ($window as $index => $option) {
         $is_focused = $index === $focused;
         $radio = $p->color($p->cfgSymbols[$is_focused ? 'radio_on' : 'radio_off'], $is_focused ? 'green' : 'dim');
         $text = $is_focused ? $option : $p->color($option, 'dim');
 
-        $lines[] = $p->bar() . $body_prefix . $p->pointer($is_focused) . $radio . ' ' . $text;
+        $rows[] = $p->bar() . $body_prefix . $p->pointer($is_focused) . $radio . ' ' . $text;
 
         if ($is_focused && ($ordered_hints[$index] ?? '') !== '') {
-          $lines = array_merge($lines, $p->renderHint($ordered_hints[$index], $depth, $open));
+          $rows = array_merge($rows, $p->renderHint($ordered_hints[$index], $depth, $open));
         }
       }
 
+      $lines = array_merge($lines, $p->renderScrollWindow($rows, $first, $visible, count($option_labels), $depth, $open));
       $lines = array_merge($lines, $p->renderHelp($help, $depth, $open));
       $lines[] = $p->bar() . $body_prefix;
 
@@ -979,7 +1023,8 @@ class Prompty {
       $focused = (int) array_search($default_key, $option_keys, TRUE);
     }
 
-    $line_count = $p->printLines($render_active($focused));
+    $first = $p->scrollWindow(0, $focused, $visible);
+    $line_count = $p->printLines($render_active($focused, $first));
 
     while (TRUE) {
       $key = $p->readKey();
@@ -1016,7 +1061,8 @@ class Prompty {
         $focused = ($focused + 1) % count($option_labels);
       }
 
-      $line_count = $p->redraw($line_count, $render_active($focused));
+      $first = $p->scrollWindow($first, $focused, $visible);
+      $line_count = $p->redraw($line_count, $render_active($focused, $first));
     }
   }
 
@@ -1034,6 +1080,10 @@ class Prompty {
    *   Optional description rendered below the label.
    * @param array<int|string, string> $hints
    *   Map of option key to hint text.
+   * @param int|null $scroll
+   *   Options drawn at once; the window shifts to keep the focused option in
+   *   view, and opens on the first pre-checked option. 0 draws every option,
+   *   and NULL uses the configured value.
    * @param string $help
    *   Optional help rendered below the options while the widget is active.
    * @param mixed $discovered
@@ -1052,8 +1102,8 @@ class Prompty {
    *   deduplicated and in option order, or NULL when the widget is cancelled.
    *
    * @throws \InvalidArgumentException
-   *   When $options is empty, or a default or discovered entry is not a key of
-   *   $options.
+   *   When $options is empty, a default or discovered entry is not a key of
+   *   $options, or $scroll is negative.
    */
   public static function multiselect(
     string $label,
@@ -1061,6 +1111,7 @@ class Prompty {
     array $default = [],
     string $description = '',
     array $hints = [],
+    ?int $scroll = NULL,
     string $help = '',
     mixed $discovered = NULL,
     ?callable $condition = NULL,
@@ -1074,6 +1125,7 @@ class Prompty {
         default: $default,
         description: $description,
         hints: $hints,
+        scroll: $scroll,
         help: $help,
         discovered: $discovered,
         ctx: $ctx,
@@ -1108,6 +1160,7 @@ class Prompty {
     $p->assertDeclaredOptions($label, $options);
     $default_keys = $p->assertOptionKeys('Default', $label, $default, $options);
     $resolved_keys = $resolved === NULL ? NULL : $p->assertOptionKeys('Discovered', $label, $resolved, $options);
+    $visible = $p->visibleOptions($label, $scroll, count($options));
 
     if ($standalone) {
       $p->setupTty();
@@ -1137,24 +1190,28 @@ class Prompty {
       return $resolved_keys;
     }
 
-    $render_active = function (int $focused, array $checked) use ($p, $label, $option_labels, $description, $ordered_hints, $help, $depth, $open): array {
+    $render_active = function (int $focused, array $checked, int $first) use ($p, $label, $option_labels, $description, $ordered_hints, $help, $visible, $depth, $open): array {
+      $window = array_slice($option_labels, $first, $visible, TRUE);
+      $rows = [];
+
       if ($depth === 0) {
         $lines = [$p->color($p->cfgSymbols['active'], 'cyan') . $p->cfgSpacing['indent'] . $label];
         $lines = array_merge($lines, $description !== '' ? $p->renderDescription($description) : [$p->bar()]);
 
-        foreach ($option_labels as $index => $option) {
+        foreach ($window as $index => $option) {
           $is_checked = $checked[$index] ?? FALSE;
           $is_focused = $index === $focused;
           $check = $p->color($p->cfgSymbols[$is_checked ? 'check_on' : 'check_off'], $is_focused || $is_checked ? 'green' : 'dim');
           $text = $is_focused || $is_checked ? $option : $p->color($option, 'dim');
 
-          $lines[] = $p->bar() . $p->pointer($is_focused) . $check . ' ' . $text;
+          $rows[] = $p->bar() . $p->pointer($is_focused) . $check . ' ' . $text;
 
           if ($is_focused && ($ordered_hints[$index] ?? '') !== '') {
-            $lines = array_merge($lines, $p->renderHint($ordered_hints[$index]));
+            $rows = array_merge($rows, $p->renderHint($ordered_hints[$index]));
           }
         }
 
+        $lines = array_merge($lines, $p->renderScrollWindow($rows, $first, $visible, count($option_labels)));
         $lines = array_merge($lines, $p->renderHelp($help));
         $lines[] = $p->bar();
 
@@ -1167,19 +1224,20 @@ class Prompty {
       $lines = [$label_prefix . $p->color($p->cfgSymbols['active'], 'cyan') . $p->cfgSpacing['indent'] . $label];
       $lines = array_merge($lines, $description !== '' ? $p->renderDescription($description, $depth, $open) : [$p->bar() . $body_prefix]);
 
-      foreach ($option_labels as $index => $option) {
+      foreach ($window as $index => $option) {
         $is_checked = $checked[$index] ?? FALSE;
         $is_focused = $index === $focused;
         $check = $p->color($p->cfgSymbols[$is_checked ? 'check_on' : 'check_off'], $is_focused || $is_checked ? 'green' : 'dim');
         $text = $is_focused || $is_checked ? $option : $p->color($option, 'dim');
 
-        $lines[] = $p->bar() . $body_prefix . $p->pointer($is_focused) . $check . ' ' . $text;
+        $rows[] = $p->bar() . $body_prefix . $p->pointer($is_focused) . $check . ' ' . $text;
 
         if ($is_focused && ($ordered_hints[$index] ?? '') !== '') {
-          $lines = array_merge($lines, $p->renderHint($ordered_hints[$index], $depth, $open));
+          $rows = array_merge($rows, $p->renderHint($ordered_hints[$index], $depth, $open));
         }
       }
 
+      $lines = array_merge($lines, $p->renderScrollWindow($rows, $first, $visible, count($option_labels), $depth, $open));
       $lines = array_merge($lines, $p->renderHelp($help, $depth, $open));
       $lines[] = $p->bar() . $body_prefix;
 
@@ -1187,8 +1245,16 @@ class Prompty {
     };
 
     $focused = 0;
+
+    // A window that opened at the top could hide every pre-checked option, so
+    // it opens on the first one. A list drawn in full keeps focus at the top.
+    if ($visible < count($option_keys) && $default_keys !== []) {
+      $focused = (int) array_search($default_keys[0], $option_keys, TRUE);
+    }
+
     $checked = array_map(fn(string $key): bool => in_array($key, $default_keys, TRUE), $option_keys);
-    $line_count = $p->printLines($render_active($focused, $checked));
+    $first = $p->scrollWindow(0, $focused, $visible);
+    $line_count = $p->printLines($render_active($focused, $checked, $first));
 
     while (TRUE) {
       $key = $p->readKey();
@@ -1238,7 +1304,8 @@ class Prompty {
         $focused = ($focused + 1) % count($option_labels);
       }
 
-      $line_count = $p->redraw($line_count, $render_active($focused, $checked));
+      $first = $p->scrollWindow($first, $focused, $visible);
+      $line_count = $p->redraw($line_count, $render_active($focused, $checked, $first));
     }
   }
 
@@ -1811,6 +1878,55 @@ class Prompty {
   }
 
   /**
+   * Resolves how many of a widget's options are drawn at once.
+   *
+   * @param string $label
+   *   The widget label, used to identify the widget in the error message.
+   * @param int|null $scroll
+   *   The widget's scroll size, or NULL to use the configured one.
+   * @param int $count
+   *   The number of declared options.
+   *
+   * @return int
+   *   The number of options to draw, at most $count.
+   *
+   * @throws \InvalidArgumentException
+   *   When the scroll size is negative.
+   */
+  protected function visibleOptions(string $label, ?int $scroll, int $count): int {
+    $scroll ??= $this->cfgScroll;
+    $this->assertScroll($scroll, $label);
+
+    return $scroll === 0 ? $count : min($scroll, $count);
+  }
+
+  /**
+   * Moves a window of options so that it contains the focused option.
+   *
+   * @param int $first
+   *   Index of the first option in the window.
+   * @param int $focused
+   *   Index of the focused option.
+   * @param int $visible
+   *   The number of options in the window.
+   *
+   * @return int
+   *   Index of the first option in the moved window. It changes only when the
+   *   focused option is outside the window.
+   */
+  protected function scrollWindow(int $first, int $focused, int $visible): int {
+    if ($focused < $first) {
+      return $focused;
+    }
+
+    if ($focused >= $first + $visible) {
+      return $focused - $visible + 1;
+    }
+
+    return $first;
+  }
+
+  /**
    * Rejects configuration keys outside the set the default declares.
    *
    * @param string $parameter
@@ -1884,6 +2000,23 @@ class Prompty {
     }
 
     return $output;
+  }
+
+  /**
+   * Rejects a scroll size that cannot be drawn.
+   *
+   * @param int $scroll
+   *   The supplied scroll size.
+   * @param string $subject
+   *   The widget label, or the configure() parameter that supplied the size.
+   *
+   * @throws \InvalidArgumentException
+   *   When the size is negative.
+   */
+  protected function assertScroll(int $scroll, string $subject): void {
+    if ($scroll < 0) {
+      throw new \InvalidArgumentException(sprintf('Scroll size %d for "%s" is not valid. Use 0 to show every option, or the number of options to show at once.', $scroll, $subject));
+    }
   }
 
   /**
@@ -2151,6 +2284,46 @@ class Prompty {
       $hint_lines,
       array_keys($hint_lines),
     );
+  }
+
+  /**
+   * Frames a window of option rows with the count hidden on each side.
+   *
+   * Both indicator rows are drawn while the list is windowed, blank on a side
+   * with nothing hidden, so the widget keeps its height as the window moves.
+   *
+   * @param array<int, string> $rows
+   *   The rendered rows of the options in the window, hints included.
+   * @param int $first
+   *   Index of the first option in the window.
+   * @param int $visible
+   *   The number of options in the window.
+   * @param int $count
+   *   The number of declared options.
+   * @param int $depth
+   *   The current nesting depth.
+   * @param array<int, bool> $open
+   *   Tracks which depth levels have continuing siblings.
+   *
+   * @return array<int, string>
+   *   The rows between the indicators, or the rows alone when every option is
+   *   in the window.
+   */
+  protected function renderScrollWindow(array $rows, int $first, int $visible, int $count, int $depth = 0, array $open = []): array {
+    if ($visible >= $count) {
+      return $rows;
+    }
+
+    $prefix = $this->bar() . ($depth > 0 ? $this->bodyPrefix($depth, $open) : '');
+    $indicator = fn(string $symbol, int $hidden): string => $hidden > 0
+      ? $prefix . $this->pointer(FALSE) . $this->color($this->cfgSymbols[$symbol] . ' ' . $hidden . ' ' . $this->label('more'), 'dim')
+      : $prefix;
+
+    return [
+      $indicator('scroll_up', $first),
+      ...$rows,
+      $indicator('scroll_down', $count - $first - $visible),
+    ];
   }
 
   /**
