@@ -30,6 +30,7 @@ final class PromptyConfigTest extends PromptyTestCase {
     $this->assertSame('PROMPTY_', $this->getProperty($p, 'cfgEnvPrefix'));
     $this->assertSame(['1', 'true', 'yes'], $this->getProperty($p, 'cfgTruthy'));
     $this->assertSame(['0', 'false', 'no'], $this->getProperty($p, 'cfgFalsy'));
+    $this->assertTrue($this->getProperty($p, 'cfgInteractive'));
   }
 
   public function testDefaultConfigSymbolKeys(): void {
@@ -148,6 +149,10 @@ final class PromptyConfigTest extends PromptyTestCase {
     yield 'unicode true' => [['unicode' => TRUE], 'cfgUnicode', TRUE];
 
     yield 'unicode false' => [['unicode' => FALSE], 'cfgUnicode', FALSE];
+
+    yield 'interactive false' => [['interactive' => FALSE], 'cfgInteractive', FALSE];
+
+    yield 'interactive true' => [['interactive' => TRUE], 'cfgInteractive', TRUE];
   }
 
   #[DataProvider('dataProviderConfigurePartialArrayMerge')]
@@ -235,6 +240,12 @@ final class PromptyConfigTest extends PromptyTestCase {
     $this->assertFalse($cfg['ansi']);
   }
 
+  public function testInteractiveInConfig(): void {
+    $this->createAndSetInstance(['interactive' => FALSE]);
+
+    $this->assertFalse(Prompty::config()['interactive']);
+  }
+
   public function testConfigureUnicodeResolvesSymbols(): void {
     $p = $this->createAndSetInstance(['unicode' => FALSE]);
 
@@ -257,6 +268,7 @@ final class PromptyConfigTest extends PromptyTestCase {
     Prompty::configure();
 
     $this->assertSame($original_prefix, $this->getProperty($p, 'cfgEnvPrefix'));
+    $this->assertTrue($this->getProperty($p, 'cfgInteractive'));
   }
 
   /**

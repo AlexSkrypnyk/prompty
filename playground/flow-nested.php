@@ -11,9 +11,10 @@ require __DIR__ . '/../Prompty.php';
 
 use AlexSkrypnyk\Prompty\Prompty;
 
-$opts = getopt('', ['no-unicode', 'no-ansi']);
+$opts = getopt('', ['no-unicode', 'no-ansi', 'no-interaction']);
 $unicode = !isset($opts['no-unicode']);
 $ansi = !isset($opts['no-ansi']);
+$interactive = !isset($opts['no-interaction']);
 
 $results = Prompty::flow(fn(): array => [
   'course' => Prompty::select('Course',
@@ -152,4 +153,5 @@ $results = Prompty::flow(fn(): array => [
   unicode: $unicode,
   ansi: $ansi,
   env_prefix: 'KITCHEN_',
+  interactive: $interactive,
 );

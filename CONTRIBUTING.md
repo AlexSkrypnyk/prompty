@@ -114,6 +114,8 @@ All of them except `flow-step-keys.php` accept `--no-unicode` and `--no-ansi` to
 php playground/flow.php --no-unicode --no-ansi
 ```
 
+`flow.php` and `flow-nested.php` also accept `--no-interaction`, which switches on [non-interactive mode](README.md#non-interactive-mode).
+
 ### The embedded demo
 
 Consumer scripts run an embedded copy of Prompty, so that copy has to keep working. `flow-embed.php` is the demo that tests it. Embedding writes `flow-embed.dist.php`, which carries the class inline and runs from any directory. To build the copy and run both versions:

@@ -36,6 +36,7 @@ namespace AlexSkrypnyk\Prompty;
  *   truthy: list<string>,
  *   falsy: list<string>,
  *   output: resource|\Closure|null,
+ *   interactive: bool,
  * }
  */
 class Prompty {
@@ -233,6 +234,11 @@ class Prompty {
   protected $cfgOutput;
 
   /**
+   * Whether widgets read input, or answer from their default.
+   */
+  protected bool $cfgInteractive = TRUE;
+
+  /**
    * Constructs a Prompty instance.
    */
   protected function __construct() {
@@ -290,6 +296,7 @@ class Prompty {
       'truthy' => $this->cfgTruthy,
       'falsy' => $this->cfgFalsy,
       'output' => $this->cfgOutput,
+      'interactive' => $this->cfgInteractive,
     ];
   }
 
@@ -311,6 +318,7 @@ class Prompty {
     $this->cfgTruthy = $snapshot['truthy'];
     $this->cfgFalsy = $snapshot['falsy'];
     $this->cfgOutput = $snapshot['output'];
+    $this->cfgInteractive = $snapshot['interactive'];
     $this->resolveDisplay();
   }
 
@@ -336,6 +344,7 @@ class Prompty {
       'truthy' => $p->cfgTruthy,
       'falsy' => $p->cfgFalsy,
       'output' => $p->cfgOutput,
+      'interactive' => $p->cfgInteractive,
     ];
   }
 
@@ -395,6 +404,9 @@ class Prompty {
    *   Where rendered output is written: a writable stream resource, or a
    *   callable that receives each chunk as a string. NULL keeps the current
    *   target, which is echo until set.
+   * @param bool|null $interactive
+   *   Read input (TRUE), or answer every widget without reading it (FALSE).
+   *   NULL keeps the current setting, which is TRUE until set.
    */
   public static function configure(
     ?array $symbols_unicode = NULL,
@@ -408,6 +420,7 @@ class Prompty {
     ?array $truthy = NULL,
     ?array $falsy = NULL,
     mixed $output = NULL,
+    ?bool $interactive = NULL,
   ): void {
     $p = static::instance();
 
@@ -488,6 +501,10 @@ class Prompty {
       $p->cfgOutput = $output_target;
     }
 
+    if ($interactive !== NULL) {
+      $p->cfgInteractive = $interactive;
+    }
+
     $p->resolveDisplay();
   }
 
@@ -537,6 +554,9 @@ class Prompty {
    *   Where rendered output is written: a writable stream resource, or a
    *   callable that receives each chunk as a string. NULL keeps the current
    *   target, which is echo until set.
+   * @param bool|null $interactive
+   *   Read input (TRUE), or answer every step without reading it (FALSE).
+   *   NULL keeps the current setting, which is TRUE until set.
    *
    * @return array<string, string|bool|int|array<string,string>>|null
    *   Collected results or NULL if cancelled.
@@ -558,6 +578,7 @@ class Prompty {
     ?array $truthy = NULL,
     ?array $falsy = NULL,
     mixed $output = NULL,
+    ?bool $interactive = NULL,
   ): ?array {
     $p = static::instance();
     $snapshot = NULL;
@@ -572,9 +593,10 @@ class Prompty {
       || $env_prefix !== NULL
       || $truthy !== NULL
       || $falsy !== NULL
-      || $output !== NULL) {
+      || $output !== NULL
+      || $interactive !== NULL) {
       $snapshot = $p->snapshotConfig();
-      static::configure($symbols_unicode, $symbols_ascii, $colors, $spacing, $labels, $unicode, $ansi, $env_prefix, $truthy, $falsy, $output);
+      static::configure($symbols_unicode, $symbols_ascii, $colors, $spacing, $labels, $unicode, $ansi, $env_prefix, $truthy, $falsy, $output, $interactive);
     }
 
     $p->results = [];
@@ -588,7 +610,9 @@ class Prompty {
         'numbering' => $numbering,
       ];
 
-      $p->setupTty();
+      if ($p->cfgInteractive) {
+        $p->setupTty();
+      }
 
       if ($p->prevTty !== NULL) {
         // @codeCoverageIgnoreStart
@@ -642,7 +666,8 @@ class Prompty {
    *   also the answer when nothing is typed.
    * @param string $placeholder
    *   Placeholder text shown when the input is empty. It is the answer when
-   *   nothing is typed and no default was seeded.
+   *   nothing is typed and no default was seeded. A non-interactive widget
+   *   never answers with it.
    * @param string $description
    *   Optional description rendered below the label.
    * @param string $help
@@ -699,7 +724,7 @@ class Prompty {
     ];
     $standalone = !static::$inFlow;
 
-    if ($standalone) {
+    if ($standalone && $p->cfgInteractive) {
       $p->setupTty();
     }
 
@@ -713,14 +738,15 @@ class Prompty {
     $placeholder = $p->printable($placeholder);
     $resolved = $discovered ?? $ctx['discovered'] ?? NULL;
 
-    if ($resolved !== NULL) {
-      /** @var int|float|string|bool $resolved */
+    if ($resolved !== NULL || !$p->cfgInteractive) {
+      /** @var int|float|string|bool|null $resolved */
       $display = trim($p->printable((string) $resolved));
 
       // An empty answer resolves as it does interactively: the seeded default,
-      // or the placeholder when nothing was seeded.
+      // or the placeholder when nothing was seeded. Without input the
+      // placeholder is never shown, so it is not an answer either.
       if ($display === '') {
-        $display = $default !== '' ? $default : $placeholder;
+        $display = $default !== '' || !$p->cfgInteractive ? $default : $placeholder;
       }
 
       $open = $p->settleOpen($display, $open);
@@ -898,7 +924,11 @@ class Prompty {
     $resolved = $discovered ?? $ctx['discovered'] ?? NULL;
     $resolved_key = $resolved === NULL ? NULL : $p->assertOptionKey('Discovered', $label, $resolved, $options);
 
-    if ($standalone) {
+    if ($resolved_key === NULL && !$p->cfgInteractive) {
+      $resolved_key = $default_key ?? $p->optionKeys($options)[0];
+    }
+
+    if ($standalone && $p->cfgInteractive) {
       $p->setupTty();
     }
 
@@ -1109,7 +1139,11 @@ class Prompty {
     $default_keys = $p->assertOptionKeys('Default', $label, $default, $options);
     $resolved_keys = $resolved === NULL ? NULL : $p->assertOptionKeys('Discovered', $label, $resolved, $options);
 
-    if ($standalone) {
+    if ($resolved_keys === NULL && !$p->cfgInteractive) {
+      $resolved_keys = $default_keys;
+    }
+
+    if ($standalone && $p->cfgInteractive) {
       $p->setupTty();
     }
 
@@ -1317,7 +1351,11 @@ class Prompty {
     $resolved = $discovered ?? $ctx['discovered'] ?? NULL;
     $resolved_bool = $resolved === NULL ? NULL : $p->assertDiscoveredBool($label, $resolved, $truthy, $falsy);
 
-    if ($standalone) {
+    if ($resolved_bool === NULL && !$p->cfgInteractive) {
+      $resolved_bool = $default;
+    }
+
+    if ($standalone && $p->cfgInteractive) {
       $p->setupTty();
     }
 
