@@ -515,6 +515,38 @@ final class PromptyWidgetResolvedTest extends PromptyTestCase {
     ];
   }
 
+  #[DataProvider('dataProviderWidgetWithHelpDrawsNoHelp')]
+  public function testWidgetWithHelpDrawsNoHelp(\Closure $call, mixed $expected, string $expected_output): void {
+    $r = $this->runWidget(fn(): mixed => $call($this));
+
+    $this->assertSame($expected, $r['result']);
+    $this->assertStringContainsString($expected_output, $r['output']);
+    $this->assertStringNotContainsString('Ask the kitchen first.', $r['output']);
+  }
+
+  public static function dataProviderWidgetWithHelpDrawsNoHelp(): \Iterator {
+    yield 'text' => [
+      static fn(self $test): mixed => Prompty::text('Dish name', help: 'Ask the kitchen first.', discovered: 'pear tart', ctx: $test->ctx()),
+      'pear tart',
+      'pear tart',
+    ];
+    yield 'select' => [
+      static fn(self $test): mixed => Prompty::select('Course', options: self::COURSES, help: 'Ask the kitchen first.', discovered: 'main', ctx: $test->ctx()),
+      'main',
+      'Main',
+    ];
+    yield 'multiselect' => [
+      static fn(self $test): mixed => Prompty::multiselect('Extras', options: self::EXTRAS_PAIR, help: 'Ask the kitchen first.', discovered: ['bread'], ctx: $test->ctx()),
+      ['bread'],
+      'Bread',
+    ];
+    yield 'confirm' => [
+      static fn(self $test): mixed => Prompty::confirm('Send order?', help: 'Ask the kitchen first.', discovered: TRUE, ctx: $test->ctx()),
+      TRUE,
+      'Yes',
+    ];
+  }
+
   public function testWidgetsWithNumbering(): void {
     $r = $this->runWidget(fn(): mixed => Prompty::text('Name', discovered: 'val', ctx: $this->ctx(['number' => '2.1'])));
 

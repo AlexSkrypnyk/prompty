@@ -34,6 +34,16 @@ final class PromptyWidgetInteractiveTest extends PromptyTestCase {
    */
   protected const CTX_AT_DEPTH_LAST = ['depth' => 1, 'is_last' => TRUE, 'open' => []];
 
+  /**
+   * Help line for each widget, keyed by widget.
+   */
+  protected const HELP = [
+    'text' => 'Use the name on the menu card.',
+    'select' => 'Up and down to move, enter to choose.',
+    'multiselect' => 'Space to toggle, enter to confirm.',
+    'confirm' => 'The ticket cannot be changed once sent.',
+  ];
+
   // Text widget.
 
   /**
@@ -568,6 +578,181 @@ final class PromptyWidgetInteractiveTest extends PromptyTestCase {
       ['❯'],
       [],
     ];
+  }
+
+  // Help shared by all 4 widgets.
+
+  /**
+   * Widget calls that each carry the help line HELP holds for them.
+   *
+   * @return array<string, \Closure>
+   *   Closures receiving a context and returning the widget's answer, keyed
+   *   as HELP is.
+   */
+  protected static function helpWidgets(): array {
+    return [
+      'text' => static fn(array $ctx): mixed => Prompty::text('Dish name',
+        placeholder: 'pear tart',
+        description: 'Written on the order ticket.',
+        help: self::HELP['text'],
+        ctx: $ctx,
+      ),
+      'select' => static fn(array $ctx): mixed => Prompty::select('Course',
+        options: ['starter' => 'Starter', 'main' => 'Main'],
+        hints: ['starter' => 'Served first, in a small portion.'],
+        help: self::HELP['select'],
+        ctx: $ctx,
+      ),
+      'multiselect' => static fn(array $ctx): mixed => Prompty::multiselect('Extras',
+        options: ['bread' => 'Bread', 'olives' => 'Olives'],
+        hints: ['bread' => 'Warm, cut at the table.'],
+        help: self::HELP['multiselect'],
+        ctx: $ctx,
+      ),
+      'confirm' => static fn(array $ctx): mixed => Prompty::confirm('Send order?',
+        help: self::HELP['confirm'],
+        ctx: $ctx,
+      ),
+    ];
+  }
+
+  /**
+   * Run a widget from helpWidgets() and split its output into frames.
+   *
+   * @param string $widget
+   *   A key of helpWidgets().
+   * @param string $keystrokes
+   *   Raw keystroke bytes to feed.
+   * @param array<string, mixed> $ctx_overrides
+   *   Optional context overrides.
+   *
+   * @return list<string>
+   *   The frames in drawing order. A redraw leaves a carriage return once the
+   *   ANSI sequences are stripped, so each frame starts after one.
+   */
+  protected function runHelpWidget(string $widget, string $keystrokes, array $ctx_overrides = []): array {
+    $call = self::helpWidgets()[$widget];
+    $r = $this->promptyRun(fn(): mixed => $call($this->ctx($ctx_overrides)), $keystrokes);
+
+    return explode("\r", $r['output']);
+  }
+
+  #[DataProvider('dataProviderHelpDrawnWhileActive')]
+  public function testHelpDrawnWhileActive(string $widget, string $expected_frame): void {
+    $frames = $this->runHelpWidget($widget, self::KEY_ENTER);
+
+    $this->assertSame($expected_frame, $frames[0]);
+  }
+
+  public static function dataProviderHelpDrawnWhileActive(): \Iterator {
+    yield 'text' => [
+      'text',
+      <<<'EXPECTED'
+o  Dish name
+|  Written on the order ticket.
+|
+|  pear tart█
+|
+|  Use the name on the menu card.
+|
+
+EXPECTED,
+    ];
+    yield 'select draws the help after the focused option hint' => [
+      'select',
+      <<<'EXPECTED'
+o  Course
+|
+|> (*) Starter
+|    --> Served first, in a small portion.
+|  ( ) Main
+|
+|  Up and down to move, enter to choose.
+|
+
+EXPECTED,
+    ];
+    yield 'multiselect draws the help after the focused option hint' => [
+      'multiselect',
+      <<<'EXPECTED'
+o  Extras
+|
+|> [ ] Bread
+|    --> Warm, cut at the table.
+|  [ ] Olives
+|
+|  Space to toggle, enter to confirm.
+|
+
+EXPECTED,
+    ];
+    yield 'confirm' => [
+      'confirm',
+      <<<'EXPECTED'
+o  Send order?
+|
+|  (*) Yes / ( ) No
+|
+|  The ticket cannot be changed once sent.
+|
+
+EXPECTED,
+    ];
+  }
+
+  #[DataProvider('dataProviderHelpDrawnAtDepth')]
+  public function testHelpDrawnAtDepth(string $widget): void {
+    $frames = $this->runHelpWidget($widget, self::KEY_ENTER, self::CTX_AT_DEPTH);
+
+    // bodyPrefix(1, [1=>TRUE]) = '  |  ', so the blank lines end in spaces.
+    $this->assertStringContainsString("\n|  |  \n|  |  " . self::HELP[$widget] . "\n|  |  \n", $frames[0]);
+  }
+
+  public static function dataProviderHelpDrawnAtDepth(): \Iterator {
+    foreach (array_keys(self::HELP) as $widget) {
+      yield $widget => [$widget];
+    }
+  }
+
+  #[DataProvider('dataProviderHelpNotDrawnOnceDone')]
+  public function testHelpNotDrawnOnceDone(string $widget, string $keystrokes, string $expected_output): void {
+    $frames = $this->runHelpWidget($widget, $keystrokes);
+    $last_frame = end($frames);
+
+    $this->assertGreaterThan(1, count($frames));
+    $this->assertStringContainsString(self::HELP[$widget], $frames[0]);
+    $this->assertStringContainsString($expected_output, $last_frame);
+    $this->assertStringNotContainsString(self::HELP[$widget], $last_frame);
+  }
+
+  public static function dataProviderHelpNotDrawnOnceDone(): \Iterator {
+    yield 'text completed' => ['text', 'onion soup' . self::KEY_ENTER, 'onion soup'];
+    yield 'text cancelled' => ['text', self::KEY_ESCAPE, '(cancelled)'];
+    yield 'select completed' => ['select', self::KEY_DOWN . self::KEY_ENTER, 'Main'];
+    yield 'select cancelled' => ['select', self::KEY_CTRL_C, '(cancelled)'];
+    yield 'multiselect completed' => ['multiselect', self::KEY_SPACE . self::KEY_ENTER, 'Bread'];
+    yield 'multiselect cancelled' => ['multiselect', self::KEY_ESCAPE, '(cancelled)'];
+    yield 'confirm completed' => ['confirm', self::KEY_LEFT . self::KEY_ENTER, 'No'];
+    yield 'confirm cancelled' => ['confirm', self::KEY_CTRL_C, '(cancelled)'];
+  }
+
+  #[DataProvider('dataProviderHelpThreadsThroughFlowClosure')]
+  public function testHelpThreadsThroughFlowClosure(\Closure $widget, string $help): void {
+    $r = $this->promptyRun(function () use ($widget): mixed {
+      $closure = $widget();
+      $this->assertInstanceOf(\Closure::class, $closure);
+
+      return $closure($this->ctx());
+    }, self::KEY_ENTER);
+
+    $this->assertStringContainsString($help, $r['output']);
+  }
+
+  public static function dataProviderHelpThreadsThroughFlowClosure(): \Iterator {
+    yield 'text' => [static fn(): mixed => Prompty::text('Dish name', help: self::HELP['text']), self::HELP['text']];
+    yield 'select' => [static fn(): mixed => Prompty::select('Course', options: ['main' => 'Main'], help: self::HELP['select']), self::HELP['select']];
+    yield 'multiselect' => [static fn(): mixed => Prompty::multiselect('Extras', options: ['bread' => 'Bread'], help: self::HELP['multiselect']), self::HELP['multiselect']];
+    yield 'confirm' => [static fn(): mixed => Prompty::confirm('Send order?', help: self::HELP['confirm']), self::HELP['confirm']];
   }
 
   // PromptyTestTrait usage example.

@@ -178,6 +178,76 @@ EXPECTED,
     ];
   }
 
+  #[DataProvider('dataProviderRenderHelp')]
+  public function testRenderHelp(string $help, int $depth, array $open, string $expected): void {
+    $p = $this->createInstance();
+
+    $lines = $this->callProtectedLines($p, 'renderHelp', $help, $depth, $open);
+
+    $actual = $this->stripAnsi(implode("\n", $lines));
+
+    $this->assertSame($expected, $actual);
+  }
+
+  public static function dataProviderRenderHelp(): \Iterator {
+    yield 'empty draws nothing' => ['', 0, [], ''];
+
+    yield 'single line, depth 0' => [
+      'Space to toggle, enter to confirm.',
+      0,
+      [],
+      <<<'EXPECTED'
+|
+|  Space to toggle, enter to confirm.
+EXPECTED,
+    ];
+
+    yield 'multi-line, depth 0' => [
+      "Leave blank for takeaway.\nThe ticket shows the table instead.",
+      0,
+      [],
+      <<<'EXPECTED'
+|
+|  Leave blank for takeaway.
+|  The ticket shows the table instead.
+EXPECTED,
+    ];
+
+    yield 'control characters, depth 0' => [
+      "Leave\tblank \033[31mfor\033[0m takeaway.",
+      0,
+      [],
+      <<<'EXPECTED'
+|
+|  Leave blank for takeaway.
+EXPECTED,
+    ];
+
+    yield 'single line, depth 1, open' => [
+      'Make sure the table is ready.',
+      1,
+      [1 => TRUE],
+      // bodyPrefix(1, [1=>TRUE]) = '  |  ', so the first line ends in spaces.
+      "|  |  \n|  |  Make sure the table is ready.",
+    ];
+
+    yield 'single line, depth 1, last' => [
+      'Make sure the table is ready.',
+      1,
+      [],
+      // bodyPrefix(1, []) = '     ', so the first line ends in spaces.
+      "|     \n|     Make sure the table is ready.",
+    ];
+  }
+
+  public function testRenderHelpIsDim(): void {
+    $p = $this->createInstance(['ansi' => TRUE]);
+
+    $lines = $this->callProtectedLines($p, 'renderHelp', 'Leave blank for takeaway.');
+
+    $this->assertStringContainsString("\033[2mLeave blank for takeaway.\033[0m", $lines[1]);
+  }
+
   #[DataProvider('dataProviderRenderCompleted')]
   public function testRenderCompleted(string $label, string $value, int $depth, array $open, string $expected): void {
     $p = $this->createInstance();
