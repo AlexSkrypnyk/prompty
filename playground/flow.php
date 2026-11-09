@@ -30,7 +30,7 @@ $results = Prompty::flow(fn(): array => [
   ),
   'extras' => Prompty::multiselect('Extras',
     options: ['bread' => 'Bread', 'olives' => 'Olives', 'herbs' => 'Herbs', 'lemon' => 'Lemon', 'honey' => 'Honey'],
-    description: "Anything served alongside.\nSpace to toggle, enter to confirm.",
+    description: 'Anything served alongside.',
     hints: [
       'bread' => 'Warm, cut at the table.',
       'olives' => 'Marinated, served in oil.',
@@ -38,6 +38,7 @@ $results = Prompty::flow(fn(): array => [
       'lemon' => 'Sharpens rich dishes.',
       'honey' => 'Runny, spooned over to finish.',
     ],
+    help: 'Space to toggle, enter to confirm.',
   ),
   'table' => Prompty::select('Table',
     options: ['4' => 'Table 4', '7' => 'Table 7', '12' => 'Table 12'],

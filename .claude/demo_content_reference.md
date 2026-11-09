@@ -56,7 +56,7 @@ Tables and seats are the theme's numeric-keyed fields: their option keys are num
 
 ## Canonical fields
 
-Use these exact labels, keys, values and hints. Keys are lowercase single words wherever possible. Descriptions and hints longer than one sentence may render across two lines in a demo, split at the sentence boundary.
+Use these exact labels, keys, values, hints and help lines. Keys are lowercase single words wherever possible. Descriptions and hints longer than one sentence may render across two lines in a demo, split at the sentence boundary. A help line is a short usage tip shown under the input, kept apart from the description.
 
 ### Dish name (text)
 
@@ -70,7 +70,8 @@ Use these exact labels, keys, values and hints. Keys are lowercase single words 
 - Label: `Guest name`
 - Placeholder: `Jane Doe`
 - Key: `guest`
-- Description: `Printed on the order ticket. Leave blank for takeaway.`
+- Description: `Printed on the order ticket.`
+- Help: `Leave blank for takeaway.`
 
 ### Allergy note (text)
 
@@ -108,6 +109,7 @@ Use these exact labels, keys, values and hints. Keys are lowercase single words 
 - Key: `extras`
 - Options: `bread` => `Bread`, `olives` => `Olives`, `herbs` => `Herbs`
 - Description: `Anything served alongside.`
+- Help: `Space to toggle, enter to confirm.`
 - Hints:
   - `bread`: `Warm, cut at the table.`
   - `olives`: `Marinated, served in oil.`
@@ -148,6 +150,7 @@ Use these exact labels, keys, values and hints. Keys are lowercase single words 
 - Key: `method`
 - Options: `baked` => `Baked`, `poached` => `Poached`, `grilled` => `Grilled`
 - Description: `How the dish is cooked.`
+- Help: `Up and down to move, enter to choose.`
 - Hints:
   - `baked`: `Dry heat, all the way through.`
   - `poached`: `Gently, in barely moving liquid. Keeps delicate things whole.`
@@ -212,6 +215,7 @@ Use these exact labels, keys, values and hints. Keys are lowercase single words 
 - Key: `drinks`
 - Options: `tea` => `Tea`, `coffee` => `Coffee`, `juice` => `Juice`
 - Description: `Poured at the table.`
+- Help: `Space to toggle, enter to confirm.`
 - Hints:
   - `tea`: `Loose leaf, warmed in the pot.`
   - `coffee`: `Ground for each cup. Slower, but worth the wait.`
@@ -247,7 +251,7 @@ Use these exact labels, keys, values and hints. Keys are lowercase single words 
 - `Include bread?` (key `bread`) - `Cut and warmed to order.`
 - `Toast the bread?` (key `toast`) - `Browned just before serving.`
 - `Cut into wedges?` (key `wedges`) - `Quartered rather than sliced.`
-- `Fire the mains?` (key `fire`) - `The kitchen starts cooking at once. Make sure the table is ready.`
+- `Fire the mains?` (key `fire`) - `The kitchen starts cooking at once.`, with the help line `Make sure the table is ready.`
 
 ## Nested flow shape
 
