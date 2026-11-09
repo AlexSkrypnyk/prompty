@@ -36,7 +36,7 @@ final class PromptyOutputTest extends PromptyTestCase {
    * @param string $expected
    *   Text the output must contain once ANSI codes are stripped.
    */
-  #[DataProvider('dataProviderWrites')]
+  #[DataProvider('dataProviderStreamTarget')]
   public function testStreamTarget(\Closure $call, string $keystrokes, string $expected): void {
     $echoed = $this->render($call, $keystrokes);
 
@@ -64,7 +64,7 @@ final class PromptyOutputTest extends PromptyTestCase {
    * @param string $expected
    *   Text the output must contain once ANSI codes are stripped.
    */
-  #[DataProvider('dataProviderWrites')]
+  #[DataProvider('dataProviderCallableTarget')]
   public function testCallableTarget(\Closure $call, string $keystrokes, string $expected): void {
     $echoed = $this->render($call, $keystrokes);
 
@@ -79,10 +79,26 @@ final class PromptyOutputTest extends PromptyTestCase {
     $this->assertStringContainsString($expected, $this->stripAnsi($echoed));
   }
 
-  public static function dataProviderWrites(): \Iterator {
-    yield 'intro' => [fn(): mixed => Prompty::intro('Kitchen order'), '', 'Kitchen order'];
+  public static function dataProviderCallableTarget(): \Iterator {
+    return self::dataProviderStreamTarget();
+  }
 
-    yield 'outro' => [fn(): mixed => Prompty::outro('Order sent to the kitchen!'), '', 'Order sent to the kitchen!'];
+  public static function dataProviderStreamTarget(): \Iterator {
+    yield 'intro' => [
+      static function (): void {
+        Prompty::intro('Kitchen order');
+      },
+      '',
+      'Kitchen order',
+    ];
+
+    yield 'outro' => [
+      static function (): void {
+        Prompty::outro('Order sent to the kitchen!');
+      },
+      '',
+      'Order sent to the kitchen!',
+    ];
 
     yield 'output' => [fn(): mixed => Prompty::output(['Table 4', 'Seat 2']), '', 'Table 4' . PHP_EOL . 'Seat 2'];
 
@@ -131,7 +147,7 @@ final class PromptyOutputTest extends PromptyTestCase {
     Prompty::configure(output: $callable);
 
     $this->assertInstanceOf(\Closure::class, Prompty::config()['output']);
-    $this->assertSame('', $this->captureOutput(fn() => Prompty::output(['Table 7'])));
+    $this->assertSame('', $this->captureOutput(fn(): int => Prompty::output(['Table 7'])));
     $this->assertSame('Table 7' . PHP_EOL, $read());
   }
 
@@ -140,6 +156,9 @@ final class PromptyOutputTest extends PromptyTestCase {
       static function (): array {
         $collector = new class() {
 
+          /**
+           * Chunks received so far.
+           */
           public string $written = '';
 
           public function __invoke(string $chunk): void {
@@ -148,7 +167,10 @@ final class PromptyOutputTest extends PromptyTestCase {
 
         };
 
-        return [$collector, fn(): string => $collector->written];
+        return [
+          $collector,
+          fn(): string => $collector->written,
+        ];
       },
     ];
 
@@ -156,6 +178,9 @@ final class PromptyOutputTest extends PromptyTestCase {
       static function (): array {
         $collector = new class() {
 
+          /**
+           * Chunks received so far.
+           */
           public string $written = '';
 
           public function collect(string $chunk): void {
@@ -164,7 +189,14 @@ final class PromptyOutputTest extends PromptyTestCase {
 
         };
 
-        return [[$collector, 'collect'], fn(): string => $collector->written];
+        // A literal method name would be rewritten to a first-class callable,
+        // which is already a closure.
+        $method = 'collect';
+
+        return [
+          [$collector, $method],
+          fn(): string => $collector->written,
+        ];
       },
     ];
   }
@@ -195,7 +227,7 @@ final class PromptyOutputTest extends PromptyTestCase {
     Prompty::configure(output: function (string $chunk) use (&$written): void {
       $written .= $chunk;
     });
-    Prompty::configure(output: NULL);
+    Prompty::configure();
     Prompty::output(['Table 4']);
 
     $this->assertSame('Table 4' . PHP_EOL, $written);
@@ -233,14 +265,17 @@ final class PromptyOutputTest extends PromptyTestCase {
     yield 'closed stream' => [
       static function () {
         $stream = fopen('php://memory', 'w+');
-        fclose($stream);
+
+        if ($stream !== FALSE) {
+          fclose($stream);
+        }
 
         return $stream;
       },
       sprintf($invalid, 'resource (closed)'),
     ];
 
-    yield 'stream context' => [fn() => stream_context_create(), sprintf($invalid, 'resource (stream-context)')];
+    yield 'stream context' => [stream_context_create(...), sprintf($invalid, 'resource (stream-context)')];
 
     yield 'read-only stream' => [fn() => fopen(__FILE__, 'r'), 'Output stream for "output" is opened in read-only mode "r". Provide a writable stream.'];
 
