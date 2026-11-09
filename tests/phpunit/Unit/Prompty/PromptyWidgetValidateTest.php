@@ -222,6 +222,20 @@ final class PromptyWidgetValidateTest extends PromptyTestCase {
     yield 'multiselect nested' => [self::multiselectWidget(), '', self::CTX_AT_DEPTH, [], "|  |    [ ] Herbs\n|  |  ! " . self::MESSAGE . "\n|  |  \n"];
     yield 'confirm' => [self::confirmWidget(), '', [], [], "|  (*) Yes / ( ) No\n|  ! " . self::MESSAGE . "\n|\n"];
     yield 'confirm nested' => [self::confirmWidget(), '', self::CTX_AT_DEPTH, [], "|  |  (*) Yes / ( ) No\n|  |  ! " . self::MESSAGE . "\n|  |  \n"];
+    yield 'text error sits above help' => [
+      static fn(?\Closure $validate, array $ctx): mixed => Prompty::text('Dish name', help: 'Written on the order ticket.', validate: $validate, ctx: $ctx),
+      'pear',
+      [],
+      [],
+      "|  pear█\n|  ! " . self::MESSAGE . "\n|\n|  Written on the order ticket.\n|\n",
+    ];
+    yield 'select error sits above help nested' => [
+      static fn(?\Closure $validate, array $ctx): mixed => Prompty::select('Course', options: self::COURSES, help: 'Arrows to move, enter to confirm.', validate: $validate, ctx: $ctx),
+      '',
+      self::CTX_AT_DEPTH,
+      [],
+      "|  |    ( ) Dessert\n|  |  ! " . self::MESSAGE . "\n|  |  \n|  |  Arrows to move, enter to confirm.\n|  |  \n",
+    ];
   }
 
   #[DataProvider('dataProviderRenderError')]
