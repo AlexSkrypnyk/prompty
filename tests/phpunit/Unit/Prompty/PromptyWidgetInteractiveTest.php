@@ -717,7 +717,7 @@ EXPECTED,
   #[DataProvider('dataProviderHelpNotDrawnOnceDone')]
   public function testHelpNotDrawnOnceDone(string $widget, string $keystrokes, string $expected_output): void {
     $frames = $this->runHelpWidget($widget, $keystrokes);
-    $last_frame = end($frames);
+    $last_frame = $frames[array_key_last($frames)];
 
     $this->assertGreaterThan(1, count($frames));
     $this->assertStringContainsString(self::HELP[$widget], $frames[0]);
