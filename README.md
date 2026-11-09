@@ -572,7 +572,7 @@ $dish = Prompty::text('Dish name',
 );
 ```
 
-The callback receives the answer alone, so a built-in function such as `trim(...)` works as a transform. Its return value is the answer: the completed line shows it, and a flow stores it, so a later step's `condition` receives it. A `discovered:` value and a `PROMPTY_*` variable go through `transform` too. Canceling a widget skips the callback.
+The callback receives the answer alone, so a built-in function such as `trim(...)` works as a transform. Its return value is the answer: the completed line shows it, and a flow stores it, so a later step's `condition` receives it. A `discovered:` value, a `PROMPTY_*` variable and the `default` answered in [non-interactive mode](#non-interactive-mode) go through `transform` too. Canceling a widget skips the callback.
 
 The callback returns the type its widget answers with:
 

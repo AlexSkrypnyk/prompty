@@ -182,6 +182,40 @@ final class PromptyWidgetTransformTest extends PromptyTestCase {
     $this->assertStringNotContainsString('ONION SOUP', $output);
   }
 
+  /**
+   * Tests a default answered without input goes through the transform.
+   *
+   * @param \Closure $widget
+   *   The widget call.
+   * @param mixed $expected
+   *   The transformed default.
+   * @param string $completed
+   *   Text the completed line shows.
+   */
+  #[DataProvider('dataProviderNonInteractiveDefaultIsTransformed')]
+  public function testNonInteractiveDefaultIsTransformed(\Closure $widget, mixed $expected, string $completed): void {
+    $this->createAndSetInstance(['unicode' => FALSE]);
+    Prompty::configure(interactive: FALSE);
+
+    $result = NULL;
+    $output = $this->captureOutput(function () use ($widget, &$result): void {
+      $result = $widget();
+    });
+
+    $this->assertSame($expected, $result);
+    $this->assertStringContainsString('|  ' . $completed . PHP_EOL, $output);
+  }
+
+  public static function dataProviderNonInteractiveDefaultIsTransformed(): \Iterator {
+    yield 'text' => [fn(): mixed => Prompty::text('Order', default: 'pear tart', transform: strtoupper(...)), 'PEAR TART', 'PEAR TART'];
+
+    yield 'select' => [fn(): mixed => Prompty::select('Order', options: self::COURSES, default: 'starter', transform: fn(string $key): string => $key === 'starter' ? 'main' : $key), 'main', 'Main'];
+
+    yield 'multiselect' => [fn(): mixed => Prompty::multiselect('Order', options: self::EXTRAS, default: ['olives'], transform: fn(array $keys): array => ['bread', ...$keys]), ['bread', 'olives'], 'Bread, Olives'];
+
+    yield 'confirm' => [fn(): mixed => Prompty::confirm('Order', default: TRUE, transform: fn(bool $yes): bool => !$yes), FALSE, 'No'];
+  }
+
   public function testSiblingConditionSeesTransformedAnswer(): void {
     $r = $this->promptyRun(fn(): mixed => Prompty::flow(fn(): array => [
       'course' => Prompty::select('Course', options: self::COURSES, transform: fn(string $key): string => $key === 'starter' ? 'dessert' : $key),
