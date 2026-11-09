@@ -36,6 +36,7 @@ Prompty asks questions in the terminal for PHP command-line scripts, from a sing
 - 🤖 [**Non-interactive mode**](#non-interactive-mode) - answer every prompt from its default, for CI and scripted runs
 - 💬 [**Descriptions, hints and help**](#descriptions-hints-and-help) - text under each label, each option and each input
 - 🔧 [**Transform answers**](#transform-answers) - normalize an answer before the widget returns it
+- ✅ [**Validation**](#validation) - reject an answer, show why and ask again
 - ✨ [**Unicode and ASCII**](#unicode-and-ascii) - detected from the locale, or forced
 - 🎨 [**ANSI colors**](#ansi-colors) - on by default, off under `NO_COLOR` or `TERM=dumb`
 - ⚙️ [**Configuration**](#configuration) - symbols, colors, spacing, labels, the variable prefix and the yes/no values
@@ -409,6 +410,7 @@ A discovered value must be an answer the widget accepts interactively:
 
 - For `select` and `multiselect`, a key of `options`
 - For `confirm`, a value in the `truthy` or `falsy` list
+- For any widget with a [`validate`](#validation) callback, an answer the callback accepts
 
 Any other value throws an `InvalidArgumentException` that names the widget, the value and the accepted values:
 
@@ -589,6 +591,67 @@ A return value of any other type throws an `UnexpectedValueException` that names
 Transform for "Dish name" returned null. A transform returns a string, the type the widget answers with.
 ```
 
+## Validation
+
+Every widget takes a `validate` callback that can reject an answer. The callback receives the answer and returns `null` for a valid answer, or an error message:
+
+```php
+$dish = Prompty::text('Dish name',
+  placeholder: 'pear tart',
+  validate: fn(string $dish): ?string => str_contains($dish, ' ')
+    ? NULL : 'Name the whole dish, such as "pear tart".',
+);
+```
+
+When the callback returns a message, the widget stays open and draws the message in red under the input. The message clears when the answer changes. Each <kbd>Enter</kbd> runs the callback again, and the widget completes only on an answer that passes.
+
+The answer has the type the widget returns:
+
+| Widget        | `validate` receives                                                     |
+|---------------|-------------------------------------------------------------------------|
+| `text`        | The string, including a `default` or `placeholder` taken on empty input |
+| `select`      | The option key                                                          |
+| `multiselect` | The list of option keys                                                 |
+| `confirm`     | `true` or `false`                                                       |
+
+On a widget with a [`transform`](#transform-answers), `validate` receives the transformed answer, so the rule checks what the widget returns.
+
+Inside a flow, the second argument holds the answers collected so far, so a rule can depend on an earlier step. Outside a flow, it's an empty array:
+
+```php
+$results = Prompty::flow(fn(): array => [
+  'course' => Prompty::select('Course', options: $courses),
+  'extras' => Prompty::multiselect('Extras', options: $extras,
+    validate: fn(array $extras, array $r): ?string =>
+      $r['course'] === 'dessert' && in_array('olives', $extras, TRUE)
+        ? 'Olives are not served with dessert.' : NULL,
+  ),
+]);
+```
+
+To require an answer, reject the empty string:
+
+```php
+$guest = Prompty::text('Guest name',
+  validate: fn(string $guest): ?string => $guest === ''
+    ? 'Enter a name for the ticket.' : NULL,
+);
+```
+
+An empty message counts as valid, like `null`. Any other return type throws an `UnexpectedValueException`, so a callback written to return a boolean fails at the first answer:
+
+```text
+Validator for "Dish name" returned bool. A validator returns NULL for a valid answer or an error message string.
+```
+
+A `discovered:` value or a `PROMPTY_*` variable goes through `validate` too. With nobody to ask again, a rejected value throws an `InvalidArgumentException` before the widget draws:
+
+```text
+Discovered value "pear" for "Dish name" is not valid. Name the whole dish, such as "pear tart".
+```
+
+The message shows a `multiselect` answer comma-separated and a `confirm` answer as `true` or `false`. The checks against `options` and the `truthy` and `falsy` lists run first, so `validate` receives only answers the widget accepts.
+
 ## Unicode and ASCII
 
 Prompty detects Unicode support from the locale in `LANG`, `LC_ALL` or `LC_CTYPE`. A UTF-8 locale gets symbols such as `◆`, `◇`, `│` and `●`. Any other locale gets their ASCII forms: `+`, `o`, `|` and `(*)`.
@@ -710,7 +773,7 @@ The following table lists every option and its default:
 
 The map-valued options take these keys:
 
-- `symbols_unicode`, `symbols_ascii`: `bar`, `completed`, `active`, `intro`, `outro`, `pointer`, `radio_on`, `radio_off`, `check_on`, `check_off`, `hint_arrow`
+- `symbols_unicode`, `symbols_ascii`: `bar`, `completed`, `active`, `intro`, `outro`, `pointer`, `radio_on`, `radio_off`, `check_on`, `check_off`, `hint_arrow`, `error`
 - `colors`: `reset`, `dim`, `dim_italic`, `cyan`, `green`, `red`, `gray`, `bold`, `white`
 - `spacing`: `indent`, `hint_indent`, `hint_cont`
 - `labels`: `yes`, `no`, `cancelled`, `none`, `separator`
