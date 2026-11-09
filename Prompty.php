@@ -121,6 +121,7 @@ class Prompty {
     'check_on' => '◼',
     'check_off' => '◻',
     'hint_arrow' => '↳',
+    'error' => '▲',
   ];
 
   /**
@@ -140,6 +141,7 @@ class Prompty {
     'check_on' => '[x]',
     'check_off' => '[ ]',
     'hint_arrow' => '-->',
+    'error' => '!',
   ];
 
   /**
@@ -678,6 +680,10 @@ class Prompty {
    * @param callable|null $transform
    *   Optional transform. Receives the answer string and returns the string
    *   the widget answers with.
+   * @param callable|null $validate
+   *   Optional validator. Receives the answer string and the flow results
+   *   collected so far, and returns NULL when the answer is valid or an error
+   *   message when it is not.
    * @param callable|null $condition
    *   Optional condition callback; skips the step when it returns FALSE.
    * @param array<string, mixed> $children
@@ -690,8 +696,12 @@ class Prompty {
    *   condition or children are set. Otherwise the entered string, or NULL
    *   when the widget is cancelled.
    *
+   * @throws \InvalidArgumentException
+   *   When a discovered value, or the default answered without input, fails
+   *   $validate.
    * @throws \UnexpectedValueException
-   *   When $transform returns anything other than a string.
+   *   When $transform returns anything other than a string, or $validate
+   *   returns neither NULL nor a string.
    */
   public static function text(
     string $label,
@@ -701,6 +711,7 @@ class Prompty {
     string $help = '',
     mixed $discovered = NULL,
     ?callable $transform = NULL,
+    ?callable $validate = NULL,
     ?callable $condition = NULL,
     array $children = [],
     ?array $ctx = NULL,
@@ -714,6 +725,7 @@ class Prompty {
         help: $help,
         discovered: $discovered,
         transform: $transform,
+        validate: $validate,
         ctx: $ctx,
       );
 
@@ -731,7 +743,31 @@ class Prompty {
       'open' => [],
     ];
     $standalone = !static::$inFlow;
+    /** @var array<string, mixed> $results */
+    $results = $ctx['results'] ?? [];
     $plain_label = $label;
+
+    $default = $p->printable($default);
+    $placeholder = $p->printable($placeholder);
+    $resolved = $discovered ?? $ctx['discovered'] ?? NULL;
+    $resolved_display = NULL;
+
+    if ($resolved !== NULL || !$p->cfgInteractive) {
+      /** @var int|float|string|bool|null $resolved */
+      $resolved_display = trim($p->printable((string) $resolved));
+
+      // An empty answer resolves as it does interactively: the seeded default,
+      // or the placeholder when nothing was seeded. Without input the
+      // placeholder is never shown, so it is not an answer either.
+      if ($resolved_display === '') {
+        $resolved_display = $default !== '' || !$p->cfgInteractive ? $default : $placeholder;
+      }
+
+      // Transform and validate before raw mode is entered, so a rejected value
+      // cannot leave the terminal unrestored.
+      $resolved_display = $p->printable($p->transformString($plain_label, $transform, $resolved_display));
+      $p->assertResolvedValid($resolved !== NULL ? 'Discovered' : 'Default', $plain_label, $validate, $resolved_display, $results);
+    }
 
     if ($standalone && $p->cfgInteractive) {
       $p->setupTty();
@@ -743,24 +779,9 @@ class Prompty {
     $open = $ctx['open'] ?? [];
     $label = $p->numberLabel($label, $ctx);
 
-    $default = $p->printable($default);
-    $placeholder = $p->printable($placeholder);
-    $resolved = $discovered ?? $ctx['discovered'] ?? NULL;
-
-    if ($resolved !== NULL || !$p->cfgInteractive) {
-      /** @var int|float|string|bool|null $resolved */
-      $display = trim($p->printable((string) $resolved));
-
-      // An empty answer resolves as it does interactively: the seeded default,
-      // or the placeholder when nothing was seeded. Without input the
-      // placeholder is never shown, so it is not an answer either.
-      if ($display === '') {
-        $display = $default !== '' || !$p->cfgInteractive ? $default : $placeholder;
-      }
-
-      $display = $p->printable($p->transformString($plain_label, $transform, $display));
-      $open = $p->settleOpen($display, $open);
-      $p->printLines($p->renderCompleted($label, $display, $depth, $open));
+    if ($resolved_display !== NULL) {
+      $open = $p->settleOpen($resolved_display, $open);
+      $p->printLines($p->renderCompleted($label, $resolved_display, $depth, $open));
 
       if ($standalone) {
         // @codeCoverageIgnoreStart
@@ -768,10 +789,10 @@ class Prompty {
         // @codeCoverageIgnoreEnd
       }
 
-      return $display;
+      return $resolved_display;
     }
 
-    $render_active = function (string $value) use ($p, $label, $placeholder, $description, $help, $depth, $open): array {
+    $render_active = function (string $value, ?string $error) use ($p, $label, $placeholder, $description, $help, $depth, $open): array {
       // The buffer holds bytes as typed, and a paste can put a control
       // character among them.
       $value = $p->printable($value);
@@ -782,6 +803,7 @@ class Prompty {
         $lines = [$p->color($p->cfgSymbols['active'], 'cyan') . $p->cfgSpacing['indent'] . $label];
         $lines = array_merge($lines, $description !== '' ? $p->renderDescription($description) : [$p->bar()]);
         $lines[] = $p->bar() . $p->cfgSpacing['indent'] . $display;
+        $lines = array_merge($lines, $p->renderError($error));
         $lines = array_merge($lines, $p->renderHelp($help));
         $lines[] = $p->bar();
 
@@ -794,6 +816,7 @@ class Prompty {
       $lines = [$label_prefix . $p->color($p->cfgSymbols['active'], 'cyan') . $p->cfgSpacing['indent'] . $label];
       $lines = array_merge($lines, $description !== '' ? $p->renderDescription($description, $depth, $open) : [$p->bar() . $body_prefix]);
       $lines[] = $p->bar() . $body_prefix . $display;
+      $lines = array_merge($lines, $p->renderError($error, $depth, $open));
       $lines = array_merge($lines, $p->renderHelp($help, $depth, $open));
       $lines[] = $p->bar() . $body_prefix;
 
@@ -801,7 +824,8 @@ class Prompty {
     };
 
     $value = $default;
-    $line_count = $p->printLines($render_active($value));
+    $error = NULL;
+    $line_count = $p->printLines($render_active($value, $error));
 
     while (TRUE) {
       $key = $p->readKey();
@@ -822,17 +846,27 @@ class Prompty {
         $value = $p->printable($value);
         $display = $value !== '' ? $value : $placeholder;
         $display = $p->printable($p->transformString($plain_label, $transform, $display));
-        $open = $p->settleOpen($display, $open);
-        $p->redraw($line_count, $p->renderCompleted($label, $display, $depth, $open));
+        $error = $p->validateAnswer($plain_label, $validate, $display, $results);
 
-        if ($standalone) {
-          // @codeCoverageIgnoreStart
-          $p->teardownTty();
-          // @codeCoverageIgnoreEnd
+        if ($error === NULL) {
+          $open = $p->settleOpen($display, $open);
+          $p->redraw($line_count, $p->renderCompleted($label, $display, $depth, $open));
+
+          if ($standalone) {
+            // @codeCoverageIgnoreStart
+            $p->teardownTty();
+            // @codeCoverageIgnoreEnd
+          }
+
+          return $display;
         }
 
-        return $display;
+        $line_count = $p->redraw($line_count, $render_active($value, $error));
+
+        continue;
       }
+
+      $previous = $value;
 
       if ($key === 'backspace') {
         // Text that is not valid UTF-8 fails the /u match, so it loses its
@@ -849,7 +883,11 @@ class Prompty {
         $value .= $key;
       }
 
-      $line_count = $p->redraw($line_count, $render_active($value));
+      if ($value !== $previous) {
+        $error = NULL;
+      }
+
+      $line_count = $p->redraw($line_count, $render_active($value, $error));
     }
   }
 
@@ -877,6 +915,10 @@ class Prompty {
    *   Optional transform. Receives the selected option key and returns the
    *   string the widget answers with. The completed line shows the option
    *   label for a key of $options, and the string itself for any other value.
+   * @param callable|null $validate
+   *   Optional validator. Receives the selected option key and the flow
+   *   results collected so far, and returns NULL when the answer is valid or
+   *   an error message when it is not.
    * @param callable|null $condition
    *   Optional condition callback; skips the step when it returns FALSE.
    * @param array<string, mixed> $children
@@ -890,10 +932,11 @@ class Prompty {
    *   NULL when the widget is cancelled.
    *
    * @throws \InvalidArgumentException
-   *   When $options is empty, or a default or discovered value is not a key of
-   *   $options.
+   *   When $options is empty, a default or discovered value is not a key of
+   *   $options, or the answer resolved without input fails $validate.
    * @throws \UnexpectedValueException
-   *   When $transform returns anything other than a string.
+   *   When $transform returns anything other than a string, or $validate
+   *   returns neither NULL nor a string.
    */
   public static function select(
     string $label,
@@ -904,6 +947,7 @@ class Prompty {
     string $help = '',
     mixed $discovered = NULL,
     ?callable $transform = NULL,
+    ?callable $validate = NULL,
     ?callable $condition = NULL,
     array $children = [],
     ?array $ctx = NULL,
@@ -918,6 +962,7 @@ class Prompty {
         help: $help,
         discovered: $discovered,
         transform: $transform,
+        validate: $validate,
         ctx: $ctx,
       );
 
@@ -943,6 +988,8 @@ class Prompty {
     $default_key = $default === '' ? NULL : $p->assertOptionKey('Default', $label, $default, $options);
     $resolved = $discovered ?? $ctx['discovered'] ?? NULL;
     $resolved_key = $resolved === NULL ? NULL : $p->assertOptionKey('Discovered', $label, $resolved, $options);
+    /** @var array<string, mixed> $results */
+    $results = $ctx['results'] ?? [];
 
     if ($resolved_key === NULL && !$p->cfgInteractive) {
       $resolved_key = $default_key ?? $p->optionKeys($options)[0];
@@ -950,6 +997,7 @@ class Prompty {
 
     if ($resolved_key !== NULL) {
       $resolved_key = $p->transformString($plain_label, $transform, $resolved_key);
+      $p->assertResolvedValid($resolved !== NULL ? 'Discovered' : 'Default', $plain_label, $validate, $resolved_key, $results);
     }
 
     if ($standalone && $p->cfgInteractive) {
@@ -979,7 +1027,7 @@ class Prompty {
       return $resolved_key;
     }
 
-    $render_active = function (int $focused) use ($p, $label, $option_labels, $description, $ordered_hints, $help, $depth, $open): array {
+    $render_active = function (int $focused, ?string $error) use ($p, $label, $option_labels, $description, $ordered_hints, $help, $depth, $open): array {
       if ($depth === 0) {
         $lines = [$p->color($p->cfgSymbols['active'], 'cyan') . $p->cfgSpacing['indent'] . $label];
         $lines = array_merge($lines, $description !== '' ? $p->renderDescription($description) : [$p->bar()]);
@@ -996,6 +1044,7 @@ class Prompty {
           }
         }
 
+        $lines = array_merge($lines, $p->renderError($error));
         $lines = array_merge($lines, $p->renderHelp($help));
         $lines[] = $p->bar();
 
@@ -1020,6 +1069,7 @@ class Prompty {
         }
       }
 
+      $lines = array_merge($lines, $p->renderError($error, $depth, $open));
       $lines = array_merge($lines, $p->renderHelp($help, $depth, $open));
       $lines[] = $p->bar() . $body_prefix;
 
@@ -1033,7 +1083,8 @@ class Prompty {
       $focused = (int) array_search($default_key, $option_keys, TRUE);
     }
 
-    $line_count = $p->printLines($render_active($focused));
+    $error = NULL;
+    $line_count = $p->printLines($render_active($focused, $error));
 
     while (TRUE) {
       $key = $p->readKey();
@@ -1052,17 +1103,27 @@ class Prompty {
 
       if ($key === 'enter') {
         $selected_key = $p->transformString($plain_label, $transform, $option_keys[$focused]);
-        $open = $p->settleOpen($selected_key, $open);
-        $p->redraw($line_count, $p->renderCompleted($label, $p->optionDisplay($selected_key, $options), $depth, $open));
+        $error = $p->validateAnswer($plain_label, $validate, $selected_key, $results);
 
-        if ($standalone) {
-          // @codeCoverageIgnoreStart
-          $p->teardownTty();
-          // @codeCoverageIgnoreEnd
+        if ($error === NULL) {
+          $open = $p->settleOpen($selected_key, $open);
+          $p->redraw($line_count, $p->renderCompleted($label, $p->optionDisplay($selected_key, $options), $depth, $open));
+
+          if ($standalone) {
+            // @codeCoverageIgnoreStart
+            $p->teardownTty();
+            // @codeCoverageIgnoreEnd
+          }
+
+          return $selected_key;
         }
 
-        return $selected_key;
+        $line_count = $p->redraw($line_count, $render_active($focused, $error));
+
+        continue;
       }
+
+      $previous = $focused;
 
       if ($key === 'up' || $key === 'left') {
         $focused = ($focused - 1 + count($option_labels)) % count($option_labels);
@@ -1071,7 +1132,11 @@ class Prompty {
         $focused = ($focused + 1) % count($option_labels);
       }
 
-      $line_count = $p->redraw($line_count, $render_active($focused));
+      if ($focused !== $previous) {
+        $error = NULL;
+      }
+
+      $line_count = $p->redraw($line_count, $render_active($focused, $error));
     }
   }
 
@@ -1099,6 +1164,10 @@ class Prompty {
    *   returns the list of strings the widget answers with. The completed line
    *   shows the option label for each key of $options, and the string itself
    *   for any other entry.
+   * @param callable|null $validate
+   *   Optional validator. Receives the list of selected option keys and the
+   *   flow results collected so far, and returns NULL when the answer is valid
+   *   or an error message when it is not.
    * @param callable|null $condition
    *   Optional condition callback; skips the step when it returns FALSE.
    * @param array<string, mixed> $children
@@ -1112,10 +1181,11 @@ class Prompty {
    *   deduplicated and in option order, or NULL when the widget is cancelled.
    *
    * @throws \InvalidArgumentException
-   *   When $options is empty, or a default or discovered entry is not a key of
-   *   $options.
+   *   When $options is empty, a default or discovered entry is not a key of
+   *   $options, or the answer resolved without input fails $validate.
    * @throws \UnexpectedValueException
-   *   When $transform returns anything other than a list of strings.
+   *   When $transform returns anything other than a list of strings, or
+   *   $validate returns neither NULL nor a string.
    */
   public static function multiselect(
     string $label,
@@ -1126,6 +1196,7 @@ class Prompty {
     string $help = '',
     mixed $discovered = NULL,
     ?callable $transform = NULL,
+    ?callable $validate = NULL,
     ?callable $condition = NULL,
     array $children = [],
     ?array $ctx = NULL,
@@ -1140,6 +1211,7 @@ class Prompty {
         help: $help,
         discovered: $discovered,
         transform: $transform,
+        validate: $validate,
         ctx: $ctx,
       );
 
@@ -1173,6 +1245,8 @@ class Prompty {
     $p->assertDeclaredOptions($label, $options);
     $default_keys = $p->assertOptionKeys('Default', $label, $default, $options);
     $resolved_keys = $resolved === NULL ? NULL : $p->assertOptionKeys('Discovered', $label, $resolved, $options);
+    /** @var array<string, mixed> $results */
+    $results = $ctx['results'] ?? [];
 
     if ($resolved_keys === NULL && !$p->cfgInteractive) {
       $resolved_keys = $default_keys;
@@ -1180,6 +1254,7 @@ class Prompty {
 
     if ($resolved_keys !== NULL) {
       $resolved_keys = $p->transformKeys($plain_label, $transform, $resolved_keys);
+      $p->assertResolvedValid($resolved !== NULL ? 'Discovered' : 'Default', $plain_label, $validate, $resolved_keys, $results);
     }
 
     if ($standalone && $p->cfgInteractive) {
@@ -1209,7 +1284,7 @@ class Prompty {
       return $resolved_keys;
     }
 
-    $render_active = function (int $focused, array $checked) use ($p, $label, $option_labels, $description, $ordered_hints, $help, $depth, $open): array {
+    $render_active = function (int $focused, array $checked, ?string $error) use ($p, $label, $option_labels, $description, $ordered_hints, $help, $depth, $open): array {
       if ($depth === 0) {
         $lines = [$p->color($p->cfgSymbols['active'], 'cyan') . $p->cfgSpacing['indent'] . $label];
         $lines = array_merge($lines, $description !== '' ? $p->renderDescription($description) : [$p->bar()]);
@@ -1227,6 +1302,7 @@ class Prompty {
           }
         }
 
+        $lines = array_merge($lines, $p->renderError($error));
         $lines = array_merge($lines, $p->renderHelp($help));
         $lines[] = $p->bar();
 
@@ -1252,6 +1328,7 @@ class Prompty {
         }
       }
 
+      $lines = array_merge($lines, $p->renderError($error, $depth, $open));
       $lines = array_merge($lines, $p->renderHelp($help, $depth, $open));
       $lines[] = $p->bar() . $body_prefix;
 
@@ -1260,7 +1337,8 @@ class Prompty {
 
     $focused = 0;
     $checked = array_map(fn(string $key): bool => in_array($key, $default_keys, TRUE), $option_keys);
-    $line_count = $p->printLines($render_active($focused, $checked));
+    $error = NULL;
+    $line_count = $p->printLines($render_active($focused, $checked, $error));
 
     while (TRUE) {
       $key = $p->readKey();
@@ -1287,17 +1365,27 @@ class Prompty {
         }
 
         $selected_keys = $p->transformKeys($plain_label, $transform, $selected_keys);
-        $open = $p->settleOpen($selected_keys, $open);
-        $p->redraw($line_count, $p->renderCompleted($label, $p->optionsDisplay($selected_keys, $options), $depth, $open));
+        $error = $p->validateAnswer($plain_label, $validate, $selected_keys, $results);
 
-        if ($standalone) {
-          // @codeCoverageIgnoreStart
-          $p->teardownTty();
-          // @codeCoverageIgnoreEnd
+        if ($error === NULL) {
+          $open = $p->settleOpen($selected_keys, $open);
+          $p->redraw($line_count, $p->renderCompleted($label, $p->optionsDisplay($selected_keys, $options), $depth, $open));
+
+          if ($standalone) {
+            // @codeCoverageIgnoreStart
+            $p->teardownTty();
+            // @codeCoverageIgnoreEnd
+          }
+
+          return $selected_keys;
         }
 
-        return $selected_keys;
+        $line_count = $p->redraw($line_count, $render_active($focused, $checked, $error));
+
+        continue;
       }
+
+      $previous = $checked;
 
       if ($key === 'space') {
         $checked[$focused] = !$checked[$focused];
@@ -1309,7 +1397,11 @@ class Prompty {
         $focused = ($focused + 1) % count($option_labels);
       }
 
-      $line_count = $p->redraw($line_count, $render_active($focused, $checked));
+      if ($checked !== $previous) {
+        $error = NULL;
+      }
+
+      $line_count = $p->redraw($line_count, $render_active($focused, $checked, $error));
     }
   }
 
@@ -1331,6 +1423,10 @@ class Prompty {
    * @param callable|null $transform
    *   Optional transform. Receives the boolean answer and returns the boolean
    *   the widget answers with.
+   * @param callable|null $validate
+   *   Optional validator. Receives the boolean answer and the flow results
+   *   collected so far, and returns NULL when the answer is valid or an error
+   *   message when it is not.
    * @param callable|null $condition
    *   Optional condition callback; skips the step when it returns FALSE.
    * @param array<string, mixed> $children
@@ -1344,9 +1440,11 @@ class Prompty {
    *   or NULL when the widget is cancelled.
    *
    * @throws \InvalidArgumentException
-   *   When a discovered value appears in neither the truthy nor falsy list.
+   *   When a discovered value appears in neither the truthy nor falsy list,
+   *   or the answer resolved without input fails $validate.
    * @throws \UnexpectedValueException
-   *   When $transform returns anything other than a boolean.
+   *   When $transform returns anything other than a boolean, or $validate
+   *   returns neither NULL nor a string.
    */
   public static function confirm(
     string $label,
@@ -1355,6 +1453,7 @@ class Prompty {
     string $help = '',
     mixed $discovered = NULL,
     ?callable $transform = NULL,
+    ?callable $validate = NULL,
     ?callable $condition = NULL,
     array $children = [],
     ?array $ctx = NULL,
@@ -1367,6 +1466,7 @@ class Prompty {
         help: $help,
         discovered: $discovered,
         transform: $transform,
+        validate: $validate,
         ctx: $ctx,
       );
 
@@ -1395,6 +1495,8 @@ class Prompty {
     // the terminal unrestored.
     $resolved = $discovered ?? $ctx['discovered'] ?? NULL;
     $resolved_bool = $resolved === NULL ? NULL : $p->assertDiscoveredBool($label, $resolved, $truthy, $falsy);
+    /** @var array<string, mixed> $results */
+    $results = $ctx['results'] ?? [];
 
     if ($resolved_bool === NULL && !$p->cfgInteractive) {
       $resolved_bool = $default;
@@ -1402,6 +1504,7 @@ class Prompty {
 
     if ($resolved_bool !== NULL) {
       $resolved_bool = $p->transformBool($plain_label, $transform, $resolved_bool);
+      $p->assertResolvedValid($resolved !== NULL ? 'Discovered' : 'Default', $plain_label, $validate, $resolved_bool, $results);
     }
 
     if ($standalone && $p->cfgInteractive) {
@@ -1427,7 +1530,7 @@ class Prompty {
       return $resolved_bool;
     }
 
-    $render_active = function (bool $focused_yes) use ($p, $label, $description, $help, $depth, $open): array {
+    $render_active = function (bool $focused_yes, ?string $error) use ($p, $label, $description, $help, $depth, $open): array {
       $options_display = $focused_yes
         ? $p->color($p->cfgSymbols['radio_on'], 'green') . ' ' . $p->label('yes') . ' ' . $p->color($p->label('separator'), 'dim')
           . ' ' . $p->color($p->cfgSymbols['radio_off'], 'dim') . ' ' . $p->color($p->label('no'), 'dim')
@@ -1438,6 +1541,7 @@ class Prompty {
         $lines = [$p->color($p->cfgSymbols['active'], 'cyan') . $p->cfgSpacing['indent'] . $label];
         $lines = array_merge($lines, $description !== '' ? $p->renderDescription($description) : [$p->bar()]);
         $lines[] = $p->bar() . $p->cfgSpacing['indent'] . $options_display;
+        $lines = array_merge($lines, $p->renderError($error));
         $lines = array_merge($lines, $p->renderHelp($help));
         $lines[] = $p->bar();
 
@@ -1450,6 +1554,7 @@ class Prompty {
       $lines = [$label_prefix . $p->color($p->cfgSymbols['active'], 'cyan') . $p->cfgSpacing['indent'] . $label];
       $lines = array_merge($lines, $description !== '' ? $p->renderDescription($description, $depth, $open) : [$p->bar() . $body_prefix]);
       $lines[] = $p->bar() . $body_prefix . $options_display;
+      $lines = array_merge($lines, $p->renderError($error, $depth, $open));
       $lines = array_merge($lines, $p->renderHelp($help, $depth, $open));
       $lines[] = $p->bar() . $body_prefix;
 
@@ -1457,7 +1562,8 @@ class Prompty {
     };
 
     $yes = $default;
-    $line_count = $p->printLines($render_active($yes));
+    $error = NULL;
+    $line_count = $p->printLines($render_active($yes, $error));
 
     while (TRUE) {
       $key = $p->readKey();
@@ -1476,17 +1582,27 @@ class Prompty {
 
       if ($key === 'enter') {
         $answer = $p->transformBool($plain_label, $transform, $yes);
-        $open = $p->settleOpen($answer, $open);
-        $p->redraw($line_count, $p->renderCompleted($label, $answer ? $p->label('yes') : $p->label('no'), $depth, $open));
+        $error = $p->validateAnswer($plain_label, $validate, $answer, $results);
 
-        if ($standalone) {
-          // @codeCoverageIgnoreStart
-          $p->teardownTty();
-          // @codeCoverageIgnoreEnd
+        if ($error === NULL) {
+          $open = $p->settleOpen($answer, $open);
+          $p->redraw($line_count, $p->renderCompleted($label, $answer ? $p->label('yes') : $p->label('no'), $depth, $open));
+
+          if ($standalone) {
+            // @codeCoverageIgnoreStart
+            $p->teardownTty();
+            // @codeCoverageIgnoreEnd
+          }
+
+          return $answer;
         }
 
-        return $answer;
+        $line_count = $p->redraw($line_count, $render_active($yes, $error));
+
+        continue;
       }
+
+      $previous = $yes;
 
       if (in_array($key, ['left', 'right', 'up', 'down', 'tab'], TRUE)) {
         $yes = !$yes;
@@ -1498,7 +1614,11 @@ class Prompty {
         $yes = FALSE;
       }
 
-      $line_count = $p->redraw($line_count, $render_active($yes));
+      if ($yes !== $previous) {
+        $error = NULL;
+      }
+
+      $line_count = $p->redraw($line_count, $render_active($yes, $error));
     }
   }
 
@@ -2329,6 +2449,88 @@ class Prompty {
   }
 
   /**
+   * Runs a widget's validator against an answer.
+   *
+   * The validator is caller code that can run while the terminal is in raw
+   * mode, so the terminal is restored before any exception leaves the widget.
+   *
+   * @param string $label
+   *   The widget label, used to identify the widget in the error message.
+   * @param callable|null $validate
+   *   The validator, or NULL when the widget has none.
+   * @param string|bool|list<string> $value
+   *   The answer, as the widget would return it.
+   * @param array<string, mixed> $results
+   *   The flow results collected so far.
+   *
+   * @return string|null
+   *   The trimmed error message, or NULL when the answer is valid. A message
+   *   with no printable text counts as valid.
+   *
+   * @throws \UnexpectedValueException
+   *   When the validator returns neither NULL nor a string.
+   */
+  protected function validateAnswer(string $label, ?callable $validate, string|bool|array $value, array $results): ?string {
+    if ($validate === NULL) {
+      return NULL;
+    }
+
+    try {
+      $error = $validate($value, $results);
+
+      if ($error !== NULL && !is_string($error)) {
+        throw new \UnexpectedValueException(sprintf('Validator for "%s" returned %s. A validator returns NULL for a valid answer or an error message string.', $label, get_debug_type($error)));
+      }
+    }
+    catch (\Throwable $throwable) {
+      $this->teardownTty();
+
+      throw $throwable;
+    }
+
+    if ($error === NULL || trim($this->printable($error)) === '') {
+      return NULL;
+    }
+
+    return trim($error);
+  }
+
+  /**
+   * Rejects an answer resolved without input that fails the validator.
+   *
+   * @param string $parameter
+   *   The source of the answer, capitalized, opening the error message:
+   *   'Discovered' or 'Default'.
+   * @param string $label
+   *   The widget label, used to identify the widget in the error message.
+   * @param callable|null $validate
+   *   The validator, or NULL when the widget has none.
+   * @param string|bool|list<string> $value
+   *   The resolved answer, as the widget would return it.
+   * @param array<string, mixed> $results
+   *   The flow results collected so far.
+   *
+   * @throws \InvalidArgumentException
+   *   When the validator returns an error message.
+   */
+  protected function assertResolvedValid(string $parameter, string $label, ?callable $validate, string|bool|array $value, array $results): void {
+    $error = $this->validateAnswer($label, $validate, $value, $results);
+
+    if ($error === NULL) {
+      return;
+    }
+
+    // A list is shown in the comma-separated form a variable supplies it in.
+    $display = match (TRUE) {
+      is_bool($value) => $value ? 'true' : 'false',
+      is_array($value) => implode(',', $value),
+      default => $value,
+    };
+
+    throw new \InvalidArgumentException(sprintf('%s value "%s" for "%s" is not valid. %s', $parameter, $display, $label, $error));
+  }
+
+  /**
    * Renders the intro banner lines.
    *
    * @param string $message
@@ -2449,6 +2651,29 @@ class Prompty {
     }
 
     return $lines;
+  }
+
+  /**
+   * Renders a validation error line with depth indentation.
+   *
+   * @param string|null $error
+   *   The error message, or NULL when the answer has not been rejected.
+   * @param int $depth
+   *   The current nesting depth.
+   * @param array<int, bool> $open
+   *   Tracks which depth levels have continuing siblings.
+   *
+   * @return array<int, string>
+   *   The rendered error line, or no lines when $error is NULL.
+   */
+  protected function renderError(?string $error, int $depth = 0, array $open = []): array {
+    if ($error === NULL) {
+      return [];
+    }
+
+    $body_prefix = $depth > 0 ? $this->bodyPrefix($depth, $open) : $this->cfgSpacing['indent'];
+
+    return [$this->bar() . $body_prefix . $this->color($this->cfgSymbols['error'] . ' ' . $this->printable($error), 'red')];
   }
 
   /**
