@@ -23,6 +23,8 @@ final class PromptyNonInteractiveTest extends PromptyTestCase {
 
   protected const EXTRAS = ['bread' => 'Bread', 'olives' => 'Olives', 'herbs' => 'Herbs'];
 
+  protected const DISHES = ['pear tart', 'onion soup', 'plum compote'];
+
   /**
    * Keystrokes that would change every widget's answer if they were read.
    */
@@ -67,6 +69,8 @@ final class PromptyNonInteractiveTest extends PromptyTestCase {
     yield 'text default is not trimmed' => [fn(): mixed => Prompty::text('Dish name', default: ' pear tart '), ' pear tart ', ' pear tart '];
     yield 'text empty default ignores the placeholder' => [fn(): mixed => Prompty::text('Dish name', placeholder: 'pear tart'), '', ''];
     yield 'text default is made printable' => [fn(): mixed => Prompty::text('Dish name', default: "pear\ttart"), 'pear tart', 'pear tart'];
+    yield 'suggest default' => [fn(): mixed => Prompty::suggest('Dish name', options: self::DISHES, default: 'pear tart', placeholder: 'onion soup'), 'pear tart', 'pear tart'];
+    yield 'suggest empty default ignores the placeholder' => [fn(): mixed => Prompty::suggest('Dish name', options: self::DISHES, placeholder: 'pear tart'), '', ''];
     yield 'select default' => [fn(): mixed => Prompty::select('Course', options: self::COURSES, default: 'dessert'), 'dessert', 'Dessert'];
     yield 'select empty default takes the first option' => [fn(): mixed => Prompty::select('Course', options: self::COURSES), 'starter', 'Starter'];
     yield 'select numeric keys are returned as strings' => [fn(): mixed => Prompty::select('Table', options: ['4' => 'Table 4', '7' => 'Table 7']), '4', 'Table 4'];
@@ -89,6 +93,8 @@ final class PromptyNonInteractiveTest extends PromptyTestCase {
     yield 'text' => [fn(): mixed => Prompty::text('Dish name', default: 'pear tart', discovered: 'onion soup'), 'onion soup'];
     yield 'text blank discovered takes the default' => [fn(): mixed => Prompty::text('Dish name', default: 'pear tart', placeholder: 'onion soup', discovered: '  '), 'pear tart'];
     yield 'text blank discovered ignores the placeholder' => [fn(): mixed => Prompty::text('Dish name', placeholder: 'onion soup', discovered: ''), ''];
+    yield 'suggest' => [fn(): mixed => Prompty::suggest('Dish name', options: self::DISHES, default: 'pear tart', discovered: 'plum compote'), 'plum compote'];
+    yield 'suggest blank discovered takes the default' => [fn(): mixed => Prompty::suggest('Dish name', options: self::DISHES, default: 'pear tart', placeholder: 'onion soup', discovered: '  '), 'pear tart'];
     yield 'select' => [fn(): mixed => Prompty::select('Course', options: self::COURSES, default: 'main', discovered: 'dessert'), 'dessert'];
     yield 'multiselect' => [fn(): mixed => Prompty::multiselect('Extras', options: self::EXTRAS, default: ['bread'], discovered: 'olives,herbs'), ['olives', 'herbs']];
     yield 'multiselect blank discovered selects nothing' => [fn(): mixed => Prompty::multiselect('Extras', options: self::EXTRAS, default: ['bread'], discovered: ''), []];
@@ -111,6 +117,7 @@ final class PromptyNonInteractiveTest extends PromptyTestCase {
     yield 'select default' => [fn(): mixed => Prompty::select('Course', options: self::COURSES, default: 'pudding'), 'Default value "pudding" for "Course" is not a valid option. Available options: starter, main, dessert.'];
     yield 'select discovered' => [fn(): mixed => Prompty::select('Course', options: self::COURSES, discovered: 'pudding'), 'Discovered value "pudding" for "Course" is not a valid option. Available options: starter, main, dessert.'];
     yield 'select without options' => [fn(): mixed => Prompty::select('Course'), 'No options declared for "Course". Provide at least one option.'];
+    yield 'suggest without options' => [fn(): mixed => Prompty::suggest('Dish name'), 'No options declared for "Dish name". Provide at least one option.'];
     yield 'multiselect default' => [fn(): mixed => Prompty::multiselect('Extras', options: self::EXTRAS, default: ['honey']), 'Default value "honey" for "Extras" is not a valid option. Available options: bread, olives, herbs.'];
     yield 'confirm discovered' => [fn(): mixed => Prompty::confirm('Send order?', discovered: 'maybe'), 'Discovered value "maybe" for "Send order?" is not a valid answer. Accepted values: 1, true, yes, 0, false, no.'];
   }
@@ -126,6 +133,7 @@ final class PromptyNonInteractiveTest extends PromptyTestCase {
     yield 'text' => [fn(): mixed => Prompty::text('Guest name', help: 'Leave blank for takeaway.')];
     yield 'select' => [fn(): mixed => Prompty::select('Course', options: self::COURSES, help: 'Leave blank for takeaway.')];
     yield 'multiselect' => [fn(): mixed => Prompty::multiselect('Extras', options: self::EXTRAS, help: 'Leave blank for takeaway.')];
+    yield 'suggest' => [fn(): mixed => Prompty::suggest('Dish name', options: self::DISHES, help: 'Leave blank for takeaway.')];
     yield 'confirm' => [fn(): mixed => Prompty::confirm('Send order?', help: 'Leave blank for takeaway.')];
   }
 

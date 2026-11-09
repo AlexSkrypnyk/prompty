@@ -1567,7 +1567,7 @@ class Prompty {
 
     $p->assertScroll($scroll ?? $p->cfgScroll, $label);
 
-    if ($standalone) {
+    if ($standalone && $p->cfgInteractive) {
       $p->setupTty();
     }
 
@@ -1581,14 +1581,15 @@ class Prompty {
     $placeholder = $p->printable($placeholder);
     $resolved = $discovered ?? $ctx['discovered'] ?? NULL;
 
-    if ($resolved !== NULL) {
-      /** @var int|float|string|bool $resolved */
+    if ($resolved !== NULL || !$p->cfgInteractive) {
+      /** @var int|float|string|bool|null $resolved */
       $display = trim($p->printable((string) $resolved));
 
       // An empty answer resolves as it does interactively: the seeded default,
-      // or the placeholder when nothing was seeded.
+      // or the placeholder when nothing was seeded. Without input the
+      // placeholder is never shown, so it is not an answer either.
       if ($display === '') {
-        $display = $default !== '' ? $default : $placeholder;
+        $display = $default !== '' || !$p->cfgInteractive ? $default : $placeholder;
       }
 
       $open = $p->settleOpen($display, $open);

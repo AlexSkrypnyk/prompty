@@ -533,9 +533,10 @@ The following table lists the answer each widget gives when its `default` is lef
 | `text`        | An empty string, `''`    |
 | `select`      | The first option         |
 | `multiselect` | An empty selection, `[]` |
+| `suggest`     | An empty string, `''`    |
 | `confirm`     | Yes, `true`              |
 
-A placeholder is an example of what to type, so `text` never answers with it in this mode. A blank discovered value takes the `default`, or `''` when no default is set.
+A placeholder is an example of what to type, so `text` and `suggest` never answer with it in this mode. A blank discovered value takes the `default`, or `''` when no default is set.
 
 The checks in [Discovered and default values must be valid answers](#discovered-and-default-values-must-be-valid-answers) still run, so an invalid `default` throws an `InvalidArgumentException`.
 
