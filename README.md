@@ -639,6 +639,7 @@ The following table lists every option and its default:
 | `symbols_ascii`   | `array<string, string>` | ASCII symbol overrides.                                                       |
 | `colors`          | `array<string, string>` | ANSI color escape overrides.                                                  |
 | `spacing`         | `array<string, string>` | Indentation strings.                                                          |
+| `output`          | `resource\|callable`    | Where Prompty writes: a writable stream or a callable. Default `echo`.        |
 
 The map-valued options take these keys:
 
@@ -669,6 +670,25 @@ Prompty::configure(
 ```
 
 An empty `env_prefix` makes discovery read the uppercased step key alone. A step named `path`, `home` or `user` then reads `PATH`, `HOME` or `USER`, so keep a prefix unless you mean that.
+
+### Output target
+
+Prompty writes with `echo` by default. To send its output to your own writer, pass `output` a writable stream or a callable. The callable receives each chunk as a string:
+
+```php
+// A stream.
+Prompty::configure(output: STDERR);
+
+// A callable.
+$buffer = '';
+Prompty::configure(output: function (string $chunk) use (&$buffer): void {
+  $buffer .= $chunk;
+});
+```
+
+The target receives everything Prompty writes: widget frames, redraws, the cursor show and hide sequences, `intro()`, `outro()` and `output()`. A redraw moves the cursor up with escape sequences, so an interactive widget draws correctly only when those bytes reach the terminal.
+
+A filename, a closed stream and a read-only stream each throw an `InvalidArgumentException`. To write to standard output again, pass `STDOUT`.
 
 ### Other methods
 
