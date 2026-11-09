@@ -138,6 +138,24 @@ Use these exact labels, keys, values, hints and help lines. Keys are lowercase s
 - Description: `Who at the table is having this dish.`
 - Default: `[2, 4]`
 
+### Menu (select, long list)
+
+- Label: `Menu`
+- Key: `menu`
+- Options: every dish, in vocabulary order: `tart` => `Pear Tart`, `crumble` => `Apple Crumble`, `soup` => `Onion Soup`, `stew` => `Lentil Stew`, `omelette` => `Herb Omelette`, `salad` => `Barley Salad`, `compote` => `Plum Compote`, `loaf` => `Walnut Loaf`
+- Description: `The whole menu, 3 dishes at a time.`
+- Default: `compote`
+- Scroll: `3`
+
+### Pantry (multiselect, long list)
+
+- Label: `Pantry`
+- Key: `pantry`
+- Options: every extra, then every fruit: `bread` => `Bread`, `olives` => `Olives`, `herbs` => `Herbs`, `lemon` => `Lemon`, `honey` => `Honey`, `almonds` => `Almonds`, `apple` => `Apple`, `pear` => `Pear`, `plum` => `Plum`, `quince` => `Quince`
+- Description: `Set out for the order.`
+- Default: `['honey', 'pear']`
+- Scroll: `4`
+
 ### Send order (confirm)
 
 - Label: `Send order?`

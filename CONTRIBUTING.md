@@ -93,6 +93,7 @@ The [`playground/`](playground) directory holds runnable demos. Run one to see a
 | `widget-select.php`        | Select widget variants.                                                |
 | `widget-multiselect.php`   | Multiselect widget variants.                                           |
 | `widget-confirm.php`       | Confirm widget variants.                                               |
+| `widget-scroll.php`        | Select and multiselect with long lists shown a few options at a time.  |
 | `widget-values.php`        | Where an answer comes from, and what each source is held to.           |
 | `widget-control-chars.php` | What a control character in a value draws as.                          |
 | `config.php`               | What `configure()` accepts, how a flow adds to it, what it turns down. |
