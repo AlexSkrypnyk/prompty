@@ -476,7 +476,7 @@ A placeholder is an example of what to type, so `text` never answers with it in 
 
 The checks in [Discovered and default values must be valid answers](#discovered-and-default-values-must-be-valid-answers) still run, so an invalid `default` throws an `InvalidArgumentException`.
 
-Each widget still draws its completed lines, so the output logs every answer. The help is left out, and Prompty leaves the terminal settings as they are.
+Each widget still draws its completed lines, so the output logs every answer. To write that log elsewhere, set the [output target](#output-target). The help is left out, and Prompty leaves the terminal settings as they are.
 
 Input is on by default, so a flow without a terminal still cancels at its first prompt.
 
