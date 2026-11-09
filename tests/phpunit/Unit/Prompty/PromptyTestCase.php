@@ -155,7 +155,7 @@ abstract class PromptyTestCase extends TestCase {
       $output = ob_get_clean();
     }
 
-    return $this->promptyStripAnsi($output ?: '');
+    return $this->promptyNormalizeOutput($output ?: '');
   }
 
   /**
@@ -183,7 +183,7 @@ abstract class PromptyTestCase extends TestCase {
       $this->assertInstanceOf($exception, $throwable);
       $this->assertSame($message, $throwable->getMessage());
 
-      return $this->promptyStripAnsi($output ?: '');
+      return $this->promptyNormalizeOutput($output ?: '');
     }
 
     $this->fail(sprintf('Expected %s was not thrown. Output: %s', $exception, ob_get_clean() ?: ''));

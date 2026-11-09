@@ -73,7 +73,7 @@ trait PromptyTestTrait {
    *
    * @return array{result: mixed, output: string}
    *   - result: whatever the callback returns.
-   *   - output: ANSI-stripped terminal output.
+   *   - output: terminal output, normalized by promptyNormalizeOutput().
    */
   protected function promptyRun(callable $callback, string $keystrokes = '', array $config = []): array {
     $stream = fopen('php://memory', 'r+') ?: NULL;
@@ -96,7 +96,7 @@ trait PromptyTestTrait {
     $result = $callback();
     $raw_output = ob_get_clean();
 
-    $output = $this->promptyStripAnsi($raw_output ?: '');
+    $output = $this->promptyNormalizeOutput($raw_output ?: '');
 
     if ($stream !== NULL) {
       fclose($stream);
@@ -122,7 +122,7 @@ trait PromptyTestTrait {
    *   Raw keystroke bytes to feed.
    *
    * @return array{output: string}
-   *   ANSI-stripped terminal output.
+   *   Terminal output, normalized by promptyNormalizeOutput().
    */
   protected function promptyRunScript(callable $callback, string $keystrokes = ''): array {
     $stream = fopen('php://memory', 'r+') ?: NULL;
@@ -144,13 +144,23 @@ trait PromptyTestTrait {
     $callback();
     $raw_output = ob_get_clean();
 
-    $output = $this->promptyStripAnsi($raw_output ?: '');
+    $output = $this->promptyNormalizeOutput($raw_output ?: '');
 
     if ($stream !== NULL) {
       fclose($stream);
     }
 
     return ['output' => $output];
+  }
+
+  /**
+   * Strip ANSI escape codes and fold line endings to "\n".
+   *
+   * Prompty ends each line with PHP_EOL, which is "\r\n" on Windows, so an
+   * assertion written with "\n" holds on every platform.
+   */
+  protected function promptyNormalizeOutput(string $text): string {
+    return str_replace(PHP_EOL, "\n", $this->promptyStripAnsi($text));
   }
 
   /**
