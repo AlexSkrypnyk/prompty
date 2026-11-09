@@ -289,7 +289,8 @@ final class PromptyInputTest extends PromptyTestCase {
    */
   #[DataProvider('dataProviderReadKeyFromLiveStream')]
   public function testReadKeyFromLiveStream(array $writes, array $expected): void {
-    $sockets = stream_socket_pair(STREAM_PF_UNIX, STREAM_SOCK_STREAM, STREAM_IPPROTO_IP);
+    // Windows has no Unix domain sockets, and PHP pairs loopback sockets there.
+    $sockets = stream_socket_pair(PHP_OS_FAMILY === 'Windows' ? STREAM_PF_INET : STREAM_PF_UNIX, STREAM_SOCK_STREAM, STREAM_IPPROTO_IP);
     $this->assertIsArray($sockets);
     [$input, $sender] = $sockets;
     // A read that waits for a byte the test never sends gives up after this,
