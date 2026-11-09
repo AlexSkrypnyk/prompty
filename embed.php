@@ -407,12 +407,12 @@ function embed_guidance(string $target_path, array $attributes): string {
     $repo = $match[1];
   }
 
-  $root = embed_git($dir, 'rev-parse --show-toplevel');
-  $real_target = (string) realpath($target_path);
-  $real_root = $root === NULL ? FALSE : realpath($root);
+  // Git prints the prefix with '/' on every platform, which is what the
+  // snippets need: they run in GitHub Actions and in a POSIX shell.
+  $prefix = embed_git($dir, 'rev-parse --show-prefix');
 
-  if ($real_root !== FALSE && str_starts_with($real_target, $real_root . DIRECTORY_SEPARATOR)) {
-    $script = substr($real_target, strlen($real_root) + 1);
+  if ($prefix !== NULL) {
+    $script = $prefix . $name;
   }
 
   $values = [
