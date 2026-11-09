@@ -626,7 +626,7 @@ final class PromptyWidgetInteractiveTest extends PromptyTestCase {
    * @param array<string, mixed> $ctx_overrides
    *   Optional context overrides.
    *
-   * @return list<string>
+   * @return non-empty-list<string>
    *   The frames in drawing order. A redraw leaves a carriage return once the
    *   ANSI sequences are stripped, so each frame starts after one.
    */
@@ -717,10 +717,11 @@ EXPECTED,
   #[DataProvider('dataProviderHelpNotDrawnOnceDone')]
   public function testHelpNotDrawnOnceDone(string $widget, string $keystrokes, string $expected_output): void {
     $frames = $this->runHelpWidget($widget, $keystrokes);
-    $last_frame = $frames[array_key_last($frames)];
 
     $this->assertGreaterThan(1, count($frames));
     $this->assertStringContainsString(self::HELP[$widget], $frames[0]);
+
+    $last_frame = array_pop($frames);
     $this->assertStringContainsString($expected_output, $last_frame);
     $this->assertStringNotContainsString(self::HELP[$widget], $last_frame);
   }
