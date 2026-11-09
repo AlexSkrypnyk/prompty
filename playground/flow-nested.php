@@ -152,6 +152,6 @@ $results = Prompty::flow(fn(): array => [
   numbering: TRUE,
   unicode: $unicode,
   ansi: $ansi,
-  interactive: $interactive,
   env_prefix: 'KITCHEN_',
+  interactive: $interactive,
 );

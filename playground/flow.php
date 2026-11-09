@@ -74,6 +74,6 @@ $results = Prompty::flow(fn(): array => [
   numbering: TRUE,
   unicode: $unicode,
   ansi: $ansi,
-  interactive: $interactive,
   env_prefix: 'PROMPTY_',
+  interactive: $interactive,
 );
