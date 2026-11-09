@@ -202,6 +202,7 @@ trait PromptyTestTrait {
       'symbols_ascii' => 'cfgSymbolsAscii',
       'colors' => 'cfgColors',
       'spacing' => 'cfgSpacing',
+      'scroll' => 'cfgScroll',
     ];
 
     foreach ($config as $key => $value) {

@@ -28,13 +28,14 @@ Prompty asks questions in the terminal for PHP command-line scripts, from a sing
 ## Features
 
 - 📦 [**Zero dependencies**](#installation) - drop `Prompty.php` into your project or [embed](#embedding) it in your script
-- 🧩 [**Widgets**](#widgets) - `text`, `select`, `multiselect` and `confirm`
+- 🧩 [**Widgets**](#widgets) - `text`, `select`, `multiselect`, `suggest` and `confirm`
 - 🔀 [**Flows**](#flows) - group prompts into a wizard with an intro, an outro, numbering and cancellation
 - 🌳 [**Nested flows**](#nested-flows-with-conditions) - conditional children drawn as a tree
 - ⚡ [**Standalone mode**](#standalone-mode) - use any widget on its own, outside a flow
 - 🌍 [**Environment variable discovery**](#environment-variable-discovery) - fill answers from environment variables
 - 🤖 [**Non-interactive mode**](#non-interactive-mode) - answer every prompt from its default, for CI and scripted runs
 - 💬 [**Descriptions, hints and help**](#descriptions-hints-and-help) - text under each label, each option and each input
+- 📜 [**Long option lists**](#long-option-lists) - show a long `select` or `multiselect` a few options at a time
 - 🔧 [**Transform answers**](#transform-answers) - normalize an answer before the widget returns it
 - ✅ [**Validation**](#validation) - reject an answer, show why and ask again
 - ✨ [**Unicode and ASCII**](#unicode-and-ascii) - detected from the locale, or forced
@@ -94,9 +95,9 @@ To ship a single file instead, [embed](#embedding) the minified class in your sc
 
 ## Widgets
 
-Prompty has 4 widgets. Each returns the answer, or `null` when the user presses <kbd>Escape</kbd> or <kbd>Ctrl+C</kbd>.
+Prompty has 5 widgets. Each returns the answer, or `null` when the user presses <kbd>Escape</kbd> or <kbd>Ctrl+C</kbd>.
 
-Widgets draw only printable text. A newline or tab in a value, label or option label becomes a space. Escape sequences and other control characters are removed, so a value can't break the tree or control the terminal. `text` returns the same printable text it drew.
+Widgets draw only printable text. A newline or tab in a value, label or option label becomes a space. Escape sequences and other control characters are removed, so a value can't break the tree or control the terminal. `text` and `suggest` return the same printable text they drew.
 
 <p align="center">
   <img src=".util/assets/widgets.svg" width="100%" alt="Text, select, multiselect and confirm widgets in sequence">
@@ -213,6 +214,64 @@ $extras = Prompty::multiselect('Extras',
 ```
 
 As with [select](#select), an empty `options` throws an `InvalidArgumentException` that names the widget.
+
+### Suggest
+
+Free-form text input with suggestions. As you type, the options that contain the typed text show under the input, ignoring case. Press <kbd>↑</kbd> or <kbd>↓</kbd> to focus a suggestion and <kbd>Enter</kbd> to take it. With no suggestion focused, <kbd>Enter</kbd> takes the typed text as is, so the answer can be anything:
+
+```php
+$dish = Prompty::suggest('Dish',
+  options: [
+    'Pear Tart',
+    'Apple Crumble',
+    'Onion Soup',
+    'Lentil Stew',
+    'Herb Omelette',
+    'Barley Salad',
+    'Plum Compote',
+    'Walnut Loaf',
+  ],
+  placeholder: 'Pear Tart',
+  description: 'Pick from the menu, or type a dish that is not on it.',
+  scroll: 4,
+);
+```
+
+After typing `a` and pressing <kbd>↓</kbd>:
+
+```text
+◇  Dish
+│  Pick from the menu, or type a dish that is not on it.
+│
+│  a█
+│❯ Pear Tart
+│  Apple Crumble
+│  Barley Salad
+│  Walnut Loaf
+│
+```
+
+Pressing <kbd>↓</kbd> on the last suggestion, or <kbd>↑</kbd> on the first, unfocuses it and leaves the typed text as the answer. Typing or deleting a character also clears the focus.
+
+`default`, `placeholder` and [discovered](#environment-variable-discovery) values work as they do for [text](#text). A discovered value can be any text, in `options` or not. To show a long list a few suggestions at a time, pass `scroll`, as described in [Long option lists](#long-option-lists).
+
+An empty `options` list throws an `InvalidArgumentException`, as with [select](#select). The keys of `options` are ignored; the widget returns the suggestion text.
+
+To compute the suggestions yourself, pass a closure as `options`. It receives the typed text and returns the suggestions to draw, which Prompty draws without filtering:
+
+```php
+$menu = ['Pear Tart', 'Plum Compote', 'Walnut Loaf'];
+
+// Suggests only the dishes that start with the typed text.
+$starts_with = fn(string $typed): array => array_values(array_filter(
+  $menu,
+  fn(string $dish): bool => stripos($dish, $typed) === 0,
+));
+
+$dish = Prompty::suggest('Dish', options: $starts_with);
+```
+
+`options` takes a closure, so pass a named function as `find_dishes(...)`. Prompty calls the closure each time the typed text changes, and never for a discovered value. A return value that isn't an array suggests nothing, and entries that aren't strings or numbers are skipped.
 
 <table>
   <tr>
@@ -435,6 +494,7 @@ A blank value is empty or holds only whitespace. An exported variable that was n
 | Widget        | A blank value resolves to                                       |
 |---------------|-----------------------------------------------------------------|
 | `text`        | The `default`, or the `placeholder` when no default was seeded  |
+| `suggest`     | The `default`, or the `placeholder` when no default was seeded  |
 | `multiselect` | An empty selection, `[]`                                        |
 | `select`      | Rejected - one choice has no answer that means "nothing chosen" |
 | `confirm`     | Rejected - yes and no are the only answers                      |
@@ -473,9 +533,10 @@ The following table lists the answer each widget gives when its `default` is lef
 | `text`        | An empty string, `''`    |
 | `select`      | The first option         |
 | `multiselect` | An empty selection, `[]` |
+| `suggest`     | An empty string, `''`    |
 | `confirm`     | Yes, `true`              |
 
-A placeholder is an example of what to type, so `text` never answers with it in this mode. A blank discovered value takes the `default`, or `''` when no default is set.
+A placeholder is an example of what to type, so `text` and `suggest` never answer with it in this mode. A blank discovered value takes the `default`, or `''` when no default is set.
 
 The checks in [Discovered and default values must be valid answers](#discovered-and-default-values-must-be-valid-answers) still run, so an invalid `default` throws an `InvalidArgumentException`.
 
@@ -548,6 +609,56 @@ The help shows only while the widget waits for an answer. The line drawn after a
 
 Like a description, the help can span several lines.
 
+## Long option lists
+
+`select`, `multiselect` and `suggest` draw every option by default. For a long list, pass `scroll` with the number of options to show at once:
+
+```php
+$dish = Prompty::select('Menu',
+  options: [
+    'tart' => 'Pear Tart',
+    'crumble' => 'Apple Crumble',
+    'soup' => 'Onion Soup',
+    'stew' => 'Lentil Stew',
+    'omelette' => 'Herb Omelette',
+    'salad' => 'Barley Salad',
+    'compote' => 'Plum Compote',
+    'loaf' => 'Walnut Loaf',
+  ],
+  default: 'compote',
+  scroll: 3,
+);
+```
+
+The window opens with the focused option in view. Moving the focus past the top or bottom row shifts the window by 1 option. The rows above and below the window count the options hidden on each side:
+
+```text
+◇  Menu
+│
+│  ↑ 4 more
+│  ○ Herb Omelette
+│  ○ Barley Salad
+│❯ ● Plum Compote
+│  ↓ 1 more
+│
+```
+
+In a scrolled `multiselect`, focus starts on the first pre-checked option, so the window opens with it in view. A list drawn in full keeps focus on the first option. The answer line shows the chosen options, the same as in a list drawn in full.
+
+In `suggest`, the window holds the matches for the typed text. It opens at the top of the matches each time the typed text changes.
+
+A `scroll` of `0`, or one at or above the number of options, draws every option. A negative `scroll` throws an `InvalidArgumentException` before the widget draws anything:
+
+```text
+Scroll size -1 for "Menu" is not valid. Use 0 to show every option, or the number of options to show at once.
+```
+
+To set the size for every `select`, `multiselect` and `suggest`, pass `scroll` to [`Prompty::configure()`](#configuration). To set it for 1 flow, pass it to `Prompty::flow()`. A widget's own `scroll` takes precedence over both:
+
+```php
+Prompty::configure(scroll: 10);
+```
+
 ## Default values
 
 Every widget takes a `default` that sets its starting state:
@@ -557,9 +668,10 @@ Every widget takes a `default` that sets its starting state:
 | `text`        | `string`                   | Pre-fills the editable input buffer.       |
 | `select`      | `string` (option key)      | Focuses that option instead of the first.  |
 | `multiselect` | `list<int\|string>` (keys) | Pre-checks those options.                  |
+| `suggest`     | `string`                   | Pre-fills the editable input buffer.       |
 | `confirm`     | `bool`                     | Starts on Yes (`true`) or No (`false`).    |
 
-A `discovered:` value or a `PROMPTY_*` variable wins over `default` and skips the prompt. The exception is a blank value for `text`, which takes the default. In [non-interactive mode](#non-interactive-mode), `default` is the answer when neither is set.
+A `discovered:` value or a `PROMPTY_*` variable wins over `default` and skips the prompt. The exception is a blank value for `text` or `suggest`, which takes the default. In [non-interactive mode](#non-interactive-mode), `default` is the answer when neither is set.
 
 For `select` and `multiselect`, every key in `default` must be a key of `options`. See [Discovered and default values must be valid answers](#discovered-and-default-values-must-be-valid-answers).
 
@@ -763,10 +875,11 @@ The following table lists every option and its default:
 | `unicode`         | `bool`                  | Forces Unicode or ASCII symbols. Detected from the locale by default.         |
 | `ansi`            | `bool`                  | Forces ANSI colors on or off. On unless `NO_COLOR` or `TERM=dumb` is set.     |
 | `env_prefix`      | `string`                | Prefix for environment variable discovery. Default `PROMPTY_`.                |
-| `labels`          | `array<string, string>` | UI labels: `yes`, `no`, `cancelled`, `none`, `separator`.                     |
+| `labels`          | `array<string, string>` | UI labels: `yes`, `no`, `cancelled`, `none`, `separator`, `more`.             |
 | `truthy`          | `list<string>`          | Values a confirm reads as yes. Default `1`, `true`, `yes`.                    |
 | `falsy`           | `list<string>`          | Values a confirm reads as no. Default `0`, `false`, `no`.                     |
 | `interactive`     | `bool`                  | If false, every widget answers without reading input. Default `true`.         |
+| `scroll`          | `int`                   | Options select, multiselect and suggest show at once. Default `0` shows all.   |
 | `symbols_unicode` | `array<string, string>` | Unicode symbol overrides.                                                     |
 | `symbols_ascii`   | `array<string, string>` | ASCII symbol overrides.                                                       |
 | `colors`          | `array<string, string>` | ANSI color escape overrides.                                                  |
@@ -775,17 +888,17 @@ The following table lists every option and its default:
 
 The map-valued options take these keys:
 
-- `symbols_unicode`, `symbols_ascii`: `bar`, `completed`, `active`, `intro`, `outro`, `pointer`, `radio_on`, `radio_off`, `check_on`, `check_off`, `hint_arrow`, `error`
+- `symbols_unicode`, `symbols_ascii`: `bar`, `completed`, `active`, `intro`, `outro`, `pointer`, `radio_on`, `radio_off`, `check_on`, `check_off`, `hint_arrow`, `error`, `scroll_up`, `scroll_down`
 - `colors`: `reset`, `dim`, `dim_italic`, `cyan`, `green`, `red`, `gray`, `bold`, `white`
 - `spacing`: `indent`, `hint_indent`, `hint_cont`
-- `labels`: `yes`, `no`, `cancelled`, `none`, `separator`
+- `labels`: `yes`, `no`, `cancelled`, `none`, `separator`, `more`
 
 ### Unknown keys are rejected
 
 The map-valued options accept only the keys in the preceding list, which `Prompty::config()` also returns. An unknown key throws an `InvalidArgumentException` that lists the valid keys, so a misspelling fails at the call:
 
 ```text
-Configuration key "bogus" for "labels" is not valid. Available keys: yes, no, cancelled, none, separator.
+Configuration key "bogus" for "labels" is not valid. Available keys: yes, no, cancelled, none, separator, more.
 ```
 
 `truthy` and `falsy` must each hold at least 1 value, and neither accepts a blank value. Values match after trimming, so a blank entry would accept the empty value that `confirm` otherwise rejects.
@@ -824,7 +937,7 @@ A filename, a closed stream and a read-only stream each throw an `InvalidArgumen
 
 ### Other methods
 
-Besides the 4 widgets, `flow()` and `configure()`, the class has these methods:
+Besides the 5 widgets, `flow()` and `configure()`, the class has these methods:
 
 | Method                       | Returns  | Description                                                     |
 |------------------------------|----------|-----------------------------------------------------------------|
