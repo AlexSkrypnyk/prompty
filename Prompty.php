@@ -1475,6 +1475,245 @@ class Prompty {
   }
 
   /**
+   * Renders a text input that suggests matching options as the user types.
+   *
+   * @param string $label
+   *   The widget label shown to the user.
+   * @param array<int|string, string>|\Closure $options
+   *   The suggestions, or a closure that receives the typed text and returns
+   *   the suggestions for it. A list is filtered to the entries that contain
+   *   the typed text, ignoring case; its keys are ignored. A closure's return
+   *   value is drawn as given: a value that is not an array suggests nothing,
+   *   and entries that are not scalar are skipped. A list must not be empty.
+   * @param string $default
+   *   Pre-filled, editable initial value seeded into the input buffer. It is
+   *   also the answer when nothing is typed.
+   * @param string $placeholder
+   *   Placeholder text shown when the input is empty. It is the answer when
+   *   nothing is typed and no default was seeded.
+   * @param string $description
+   *   Optional description rendered below the label.
+   * @param int|null $scroll
+   *   Suggestions drawn at once; the window shifts to keep the focused one in
+   *   view. 0 draws every suggestion, and NULL uses the configured value.
+   * @param string $help
+   *   Optional help rendered below the suggestions while the widget is active.
+   * @param mixed $discovered
+   *   Pre-filled value that bypasses interactive input. It is trimmed, and an
+   *   empty result resolves as an empty answer: $default, or $placeholder. It
+   *   need not be one of the suggestions.
+   * @param callable|null $condition
+   *   Optional condition callback; skips the step when it returns FALSE.
+   * @param array<string, mixed> $children
+   *   Child steps to execute after this widget.
+   * @param array<string, mixed>|null $ctx
+   *   Flow context passed by the flow walker.
+   *
+   * @return \Closure|array<string, mixed>|string|null
+   *   While a flow is being defined, a closure, or a step array when a
+   *   condition or children are set. Otherwise the focused suggestion, or the
+   *   typed text when no suggestion is focused, or NULL when the widget is
+   *   cancelled.
+   *
+   * @throws \InvalidArgumentException
+   *   When $options is an empty list, or $scroll is negative.
+   */
+  public static function suggest(
+    string $label,
+    array|\Closure $options = [],
+    string $default = '',
+    string $placeholder = '',
+    string $description = '',
+    ?int $scroll = NULL,
+    string $help = '',
+    mixed $discovered = NULL,
+    ?callable $condition = NULL,
+    array $children = [],
+    ?array $ctx = NULL,
+  ): \Closure|array|string|null {
+    if (static::$inFlow && $ctx === NULL) {
+      $call = fn(array $ctx): \Closure|array|string|null => static::suggest(
+        $label,
+        options: $options,
+        default: $default,
+        placeholder: $placeholder,
+        description: $description,
+        scroll: $scroll,
+        help: $help,
+        discovered: $discovered,
+        ctx: $ctx,
+      );
+
+      if ($condition !== NULL || $children !== []) {
+        return ['__call' => $call, '__children' => $children, '__condition' => $condition];
+      }
+
+      return $call;
+    }
+
+    $p = static::instance();
+    $ctx ??= [
+      'depth' => 0,
+      'is_last' => FALSE,
+      'open' => [],
+    ];
+    $standalone = !static::$inFlow;
+
+    // Validate before raw mode is entered, so a rejected call cannot leave
+    // the terminal unrestored.
+    if (is_array($options)) {
+      $p->assertDeclaredOptions($label, $options);
+    }
+
+    $p->assertScroll($scroll ?? $p->cfgScroll, $label);
+
+    if ($standalone) {
+      $p->setupTty();
+    }
+
+    /** @var int $depth */
+    $depth = $ctx['depth'] ?? 0;
+    /** @var array<int, bool> $open */
+    $open = $ctx['open'] ?? [];
+    $label = $p->numberLabel($label, $ctx);
+
+    $default = $p->printable($default);
+    $placeholder = $p->printable($placeholder);
+    $resolved = $discovered ?? $ctx['discovered'] ?? NULL;
+
+    if ($resolved !== NULL) {
+      /** @var int|float|string|bool $resolved */
+      $display = trim($p->printable((string) $resolved));
+
+      // An empty answer resolves as it does interactively: the seeded default,
+      // or the placeholder when nothing was seeded.
+      if ($display === '') {
+        $display = $default !== '' ? $default : $placeholder;
+      }
+
+      $open = $p->settleOpen($display, $open);
+      $p->printLines($p->renderCompleted($label, $display, $depth, $open));
+
+      if ($standalone) {
+        // @codeCoverageIgnoreStart
+        $p->teardownTty();
+        // @codeCoverageIgnoreEnd
+      }
+
+      return $display;
+    }
+
+    $render_active = function (string $value, array $matches, ?int $focused, int $first, int $visible) use ($p, $label, $placeholder, $description, $help, $depth, $open): array {
+      // The buffer holds bytes as typed, and a paste can put a control
+      // character among them.
+      $value = $p->printable($value);
+      $cursor = $p->color('█', 'cyan');
+      $display = $value === '' ? $p->color($placeholder, 'gray') . $cursor : $p->color($value, 'white') . $cursor;
+      $body_prefix = $depth > 0 ? $p->bodyPrefix($depth, $open) : '';
+      $rows = [];
+
+      foreach (array_slice($matches, $first, $visible, TRUE) as $index => $match) {
+        $is_focused = $index === $focused;
+        $rows[] = $p->bar() . $body_prefix . $p->pointer($is_focused) . ($is_focused ? $match : $p->color($match, 'dim'));
+      }
+
+      if ($depth === 0) {
+        $lines = [$p->color($p->cfgSymbols['active'], 'cyan') . $p->cfgSpacing['indent'] . $label];
+        $lines = array_merge($lines, $description !== '' ? $p->renderDescription($description) : [$p->bar()]);
+        $lines[] = $p->bar() . $p->cfgSpacing['indent'] . $display;
+        $lines = array_merge($lines, $p->renderScrollWindow($rows, $first, $visible, count($matches)));
+        $lines = array_merge($lines, $p->renderHelp($help));
+        $lines[] = $p->bar();
+
+        return $lines;
+      }
+
+      $label_prefix = $p->bar() . $p->labelPrefix($depth, $open);
+
+      $lines = [$label_prefix . $p->color($p->cfgSymbols['active'], 'cyan') . $p->cfgSpacing['indent'] . $label];
+      $lines = array_merge($lines, $description !== '' ? $p->renderDescription($description, $depth, $open) : [$p->bar() . $body_prefix]);
+      $lines[] = $p->bar() . $body_prefix . $display;
+      $lines = array_merge($lines, $p->renderScrollWindow($rows, $first, $visible, count($matches), $depth, $open));
+      $lines = array_merge($lines, $p->renderHelp($help, $depth, $open));
+      $lines[] = $p->bar() . $body_prefix;
+
+      return $lines;
+    };
+
+    $value = $default;
+    $matches = $p->suggestMatches($options, $value);
+    $visible = $p->visibleOptions($label, $scroll, count($matches));
+    $focused = NULL;
+    $first = 0;
+    $line_count = $p->printLines($render_active($value, $matches, $focused, $first, $visible));
+
+    while (TRUE) {
+      $key = $p->readKey();
+
+      if ($p->isCancelKey($key)) {
+        $p->redraw($line_count, $p->renderCancelled($label, $focused !== NULL ? $matches[$focused] : $value, $depth, $open));
+
+        if ($standalone) {
+          // @codeCoverageIgnoreStart
+          $p->teardownTty();
+          // @codeCoverageIgnoreEnd
+        }
+
+        return NULL;
+      }
+
+      if ($key === 'enter') {
+        $value = $p->printable($value);
+        $display = $focused !== NULL ? $matches[$focused] : ($value !== '' ? $value : $placeholder);
+        $open = $p->settleOpen($display, $open);
+        $p->redraw($line_count, $p->renderCompleted($label, $display, $depth, $open));
+
+        if ($standalone) {
+          // @codeCoverageIgnoreStart
+          $p->teardownTty();
+          // @codeCoverageIgnoreEnd
+        }
+
+        return $display;
+      }
+
+      $typed = $value;
+
+      // Focus steps through the matches and then back to none, so the typed
+      // text can still be submitted as is.
+      if ($key === 'down' && $matches !== []) {
+        $focused = $focused === NULL ? 0 : ($focused + 1 < count($matches) ? $focused + 1 : NULL);
+      }
+      elseif ($key === 'up' && $matches !== []) {
+        $focused = $focused === NULL ? count($matches) - 1 : ($focused > 0 ? $focused - 1 : NULL);
+      }
+      elseif ($key === 'backspace') {
+        // Text that is not valid UTF-8 fails the /u match, so it loses its
+        // last byte instead of its last character.
+        $value = preg_replace('/.\z/su', '', $value) ?? substr($value, 0, -1);
+      }
+      elseif ($key === 'space') {
+        $value .= ' ';
+      }
+      elseif (strlen($key) === 1 && ord($key) >= 32) {
+        $value .= $key;
+      }
+
+      if ($value !== $typed) {
+        $matches = $p->suggestMatches($options, $value);
+        $visible = $p->visibleOptions($label, $scroll, count($matches));
+        $focused = NULL;
+        $first = 0;
+      }
+      elseif ($focused !== NULL) {
+        $first = $p->scrollWindow($first, $focused, $visible);
+      }
+
+      $line_count = $p->redraw($line_count, $render_active($value, $matches, $focused, $first, $visible));
+    }
+  }
+
+  /**
    * Renders a yes/no confirm widget, returning TRUE for yes and FALSE for no.
    *
    * @param string $label
@@ -2134,6 +2373,45 @@ class Prompty {
     }
 
     return $first;
+  }
+
+  /**
+   * Lists the suggestions for the typed text.
+   *
+   * @param array<int|string, string>|\Closure $options
+   *   The suggestions, or a closure returning them for the typed text.
+   * @param string $typed
+   *   The text in the input buffer.
+   *
+   * @return list<string>
+   *   The matching suggestions as printable text, in the order given.
+   */
+  protected function suggestMatches(array|\Closure $options, string $typed): array {
+    $typed = $this->printable($typed);
+
+    if ($options instanceof \Closure) {
+      $found = $options($typed);
+
+      return is_array($found) ? array_values(array_map(fn(string|int|float|bool $entry): string => $this->printable((string) $entry), array_filter($found, is_scalar(...)))) : [];
+    }
+
+    $candidates = array_values(array_map($this->printable(...), $options));
+
+    if ($typed === '') {
+      return $candidates;
+    }
+
+    // A UTF-8 character typed 1 byte at a time leaves the buffer invalid until
+    // its last byte arrives, and a /u pattern cannot be built from it.
+    $pattern = preg_match('//u', $typed) === 1 ? '/' . preg_quote($typed, '/') . '/iu' : NULL;
+
+    // Text that is not valid UTF-8 is compared byte by byte, folding ASCII
+    // case only.
+    return array_values(array_filter($candidates, function (string $candidate) use ($pattern, $typed): bool {
+      $matched = $pattern === NULL ? FALSE : preg_match($pattern, $candidate);
+
+      return $matched === FALSE ? stripos($candidate, $typed) !== FALSE : $matched === 1;
+    }));
   }
 
   /**

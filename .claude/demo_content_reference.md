@@ -156,6 +156,16 @@ Use these exact labels, keys, values, hints and help lines. Keys are lowercase s
 - Default: `['honey', 'pear']`
 - Scroll: `4`
 
+### Dish (suggest)
+
+- Label: `Dish`
+- Key: `dish`
+- Options: every dish label, in vocabulary order: `Pear Tart`, `Apple Crumble`, `Onion Soup`, `Lentil Stew`, `Herb Omelette`, `Barley Salad`, `Plum Compote`, `Walnut Loaf`
+- Placeholder: `Pear Tart`
+- Description: `Pick from the menu, or type a dish that is not on it.`
+- Help: `Up and down to pick, enter to confirm.`
+- Scroll: `4`
+
 ### Send order (confirm)
 
 - Label: `Send order?`
