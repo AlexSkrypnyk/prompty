@@ -650,6 +650,8 @@ A `discovered:` value or a `PROMPTY_*` variable goes through `validate` too. Wit
 Discovered value "pear" for "Dish name" is not valid. Name the whole dish, such as "pear tart".
 ```
 
+In [non-interactive mode](#non-interactive-mode), the `default` that answers a widget goes through `validate` the same way, and the message opens with `Default value`.
+
 The message shows a `multiselect` answer comma-separated and a `confirm` answer as `true` or `false`. The checks against `options` and the `truthy` and `falsy` lists run first, so `validate` receives only answers the widget accepts.
 
 ## Unicode and ASCII

@@ -457,6 +457,61 @@ final class PromptyWidgetValidateTest extends PromptyTestCase {
     yield 'confirm' => [self::confirmWidget(), 'maybe', 'Discovered value "maybe" for "Send order?" is not a valid answer. Accepted values: 1, true, yes, 0, false, no.'];
   }
 
+  #[DataProvider('dataProviderNonInteractiveAnswerRejected')]
+  public function testNonInteractiveAnswerRejected(\Closure $widget, mixed $discovered, string $message): void {
+    $stream = $this->installKeystrokes(self::KEY_ENTER);
+    Prompty::configure(interactive: FALSE);
+
+    $output = $this->captureOutputThrows(\InvalidArgumentException::class, $message, fn(): mixed => $widget(fn(): string => self::MESSAGE, $this->ctx(), $discovered));
+
+    $this->assertSame('', $output);
+    $this->assertSame(0, ftell($stream));
+    fclose($stream);
+  }
+
+  public static function dataProviderNonInteractiveAnswerRejected(): \Iterator {
+    $message = static fn(string $parameter, string $value, string $label): string => sprintf('%s value "%s" for "%s" is not valid. %s', $parameter, $value, $label, self::MESSAGE);
+
+    yield 'text default' => [self::textWidget('pear'), NULL, $message('Default', 'pear', 'Dish name')];
+    yield 'text empty default ignores the placeholder' => [self::textWidget(), NULL, $message('Default', '', 'Dish name')];
+    yield 'text discovered' => [self::textWidget('pear'), 'onion', $message('Discovered', 'onion', 'Dish name')];
+    yield 'select first option' => [self::selectWidget(), NULL, $message('Default', 'starter', 'Course')];
+    yield 'select discovered' => [self::selectWidget(), 'main', $message('Discovered', 'main', 'Course')];
+    yield 'multiselect empty default' => [self::multiselectWidget(), NULL, $message('Default', '', 'Extras')];
+    yield 'multiselect discovered' => [self::multiselectWidget(), 'herbs', $message('Discovered', 'herbs', 'Extras')];
+    yield 'confirm default' => [self::confirmWidget(FALSE), NULL, $message('Default', 'false', 'Send order?')];
+    yield 'confirm discovered' => [self::confirmWidget(FALSE), 'yes', $message('Discovered', 'true', 'Send order?')];
+  }
+
+  #[DataProvider('dataProviderNonInteractiveDefaultAccepted')]
+  public function testNonInteractiveDefaultAccepted(\Closure $widget, mixed $expected): void {
+    $stream = $this->installKeystrokes(self::KEY_ENTER);
+    Prompty::configure(interactive: FALSE);
+    $answers = [];
+    $validate = function (mixed $value) use (&$answers): ?string {
+      $answers[] = $value;
+
+      return NULL;
+    };
+
+    $result = NULL;
+    $this->captureOutput(function () use ($widget, $validate, &$result): void {
+      $result = $widget($validate, $this->ctx());
+    });
+
+    $this->assertSame($expected, $result);
+    $this->assertSame([$expected], $answers);
+    $this->assertSame(0, ftell($stream));
+    fclose($stream);
+  }
+
+  public static function dataProviderNonInteractiveDefaultAccepted(): \Iterator {
+    yield 'text' => [self::textWidget('pear tart'), 'pear tart'];
+    yield 'select' => [self::selectWidget(), 'starter'];
+    yield 'multiselect' => [self::multiselectWidget(), []];
+    yield 'confirm' => [self::confirmWidget(), TRUE];
+  }
+
   public function testFlowEnvValueRejected(): void {
     $this->setEnvVars(['dish' => 'pear']);
     $stream = $this->installKeystrokes(self::KEY_ENTER, FALSE);
