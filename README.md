@@ -35,6 +35,7 @@ Prompty asks questions in the terminal for PHP command-line scripts, from a sing
 - 🌍 [**Environment variable discovery**](#environment-variable-discovery) - fill answers from environment variables
 - 🤖 [**Non-interactive mode**](#non-interactive-mode) - answer every prompt from its default, for CI and scripted runs
 - 💬 [**Descriptions, hints and help**](#descriptions-hints-and-help) - text under each label, each option and each input
+- 📜 [**Long option lists**](#long-option-lists) - show a long `select` or `multiselect` a few options at a time
 - 🔧 [**Transform answers**](#transform-answers) - normalize an answer before the widget returns it
 - ✅ [**Validation**](#validation) - reject an answer, show why and ask again
 - ✨ [**Unicode and ASCII**](#unicode-and-ascii) - detected from the locale, or forced
@@ -548,6 +549,54 @@ The help shows only while the widget waits for an answer. The line drawn after a
 
 Like a description, the help can span several lines.
 
+## Long option lists
+
+`select` and `multiselect` draw every option by default. For a long list, pass `scroll` with the number of options to show at once:
+
+```php
+$dish = Prompty::select('Menu',
+  options: [
+    'tart' => 'Pear Tart',
+    'crumble' => 'Apple Crumble',
+    'soup' => 'Onion Soup',
+    'stew' => 'Lentil Stew',
+    'omelette' => 'Herb Omelette',
+    'salad' => 'Barley Salad',
+    'compote' => 'Plum Compote',
+    'loaf' => 'Walnut Loaf',
+  ],
+  default: 'compote',
+  scroll: 3,
+);
+```
+
+The window opens with the focused option in view. Moving the focus past the top or bottom row shifts the window by 1 option. The rows above and below the window count the options hidden on each side:
+
+```text
+◇  Menu
+│
+│  ↑ 4 more
+│  ○ Herb Omelette
+│  ○ Barley Salad
+│❯ ● Plum Compote
+│  ↓ 1 more
+│
+```
+
+In a scrolled `multiselect`, focus starts on the first pre-checked option, so the window opens with it in view. A list drawn in full keeps focus on the first option. The answer line shows the chosen options, the same as in a list drawn in full.
+
+A `scroll` of `0`, or one at or above the number of options, draws every option. A negative `scroll` throws an `InvalidArgumentException` before the widget draws anything:
+
+```text
+Scroll size -1 for "Menu" is not valid. Use 0 to show every option, or the number of options to show at once.
+```
+
+To set the size for every `select` and `multiselect`, pass `scroll` to [`Prompty::configure()`](#configuration). To set it for 1 flow, pass it to `Prompty::flow()`. A widget's own `scroll` takes precedence over both:
+
+```php
+Prompty::configure(scroll: 10);
+```
+
 ## Default values
 
 Every widget takes a `default` that sets its starting state:
@@ -763,10 +812,11 @@ The following table lists every option and its default:
 | `unicode`         | `bool`                  | Forces Unicode or ASCII symbols. Detected from the locale by default.         |
 | `ansi`            | `bool`                  | Forces ANSI colors on or off. On unless `NO_COLOR` or `TERM=dumb` is set.     |
 | `env_prefix`      | `string`                | Prefix for environment variable discovery. Default `PROMPTY_`.                |
-| `labels`          | `array<string, string>` | UI labels: `yes`, `no`, `cancelled`, `none`, `separator`.                     |
+| `labels`          | `array<string, string>` | UI labels: `yes`, `no`, `cancelled`, `none`, `separator`, `more`.             |
 | `truthy`          | `list<string>`          | Values a confirm reads as yes. Default `1`, `true`, `yes`.                    |
 | `falsy`           | `list<string>`          | Values a confirm reads as no. Default `0`, `false`, `no`.                     |
 | `interactive`     | `bool`                  | If false, every widget answers without reading input. Default `true`.         |
+| `scroll`          | `int`                   | Options a select or multiselect shows at once. Default `0`, which shows all.  |
 | `symbols_unicode` | `array<string, string>` | Unicode symbol overrides.                                                     |
 | `symbols_ascii`   | `array<string, string>` | ASCII symbol overrides.                                                       |
 | `colors`          | `array<string, string>` | ANSI color escape overrides.                                                  |
@@ -775,17 +825,17 @@ The following table lists every option and its default:
 
 The map-valued options take these keys:
 
-- `symbols_unicode`, `symbols_ascii`: `bar`, `completed`, `active`, `intro`, `outro`, `pointer`, `radio_on`, `radio_off`, `check_on`, `check_off`, `hint_arrow`, `error`
+- `symbols_unicode`, `symbols_ascii`: `bar`, `completed`, `active`, `intro`, `outro`, `pointer`, `radio_on`, `radio_off`, `check_on`, `check_off`, `hint_arrow`, `error`, `scroll_up`, `scroll_down`
 - `colors`: `reset`, `dim`, `dim_italic`, `cyan`, `green`, `red`, `gray`, `bold`, `white`
 - `spacing`: `indent`, `hint_indent`, `hint_cont`
-- `labels`: `yes`, `no`, `cancelled`, `none`, `separator`
+- `labels`: `yes`, `no`, `cancelled`, `none`, `separator`, `more`
 
 ### Unknown keys are rejected
 
 The map-valued options accept only the keys in the preceding list, which `Prompty::config()` also returns. An unknown key throws an `InvalidArgumentException` that lists the valid keys, so a misspelling fails at the call:
 
 ```text
-Configuration key "bogus" for "labels" is not valid. Available keys: yes, no, cancelled, none, separator.
+Configuration key "bogus" for "labels" is not valid. Available keys: yes, no, cancelled, none, separator, more.
 ```
 
 `truthy` and `falsy` must each hold at least 1 value, and neither accepts a blank value. Values match after trimming, so a blank entry would accept the empty value that `confirm` otherwise rejects.
