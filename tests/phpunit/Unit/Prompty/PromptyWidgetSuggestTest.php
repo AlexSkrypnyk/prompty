@@ -43,7 +43,18 @@ final class PromptyWidgetSuggestTest extends PromptyTestCase {
    *   The widget return value and captured output.
    */
   protected function runSuggest(string $keystrokes, array|\Closure $options = self::DISHES, array $args = [], array $config = []): array {
-    return $this->promptyRun(fn(): mixed => Prompty::suggest('Dish', ...array_merge(['options' => $options, 'ctx' => $this->defaultCtx()], $args)), $keystrokes, $config);
+    $text = fn(string $name): string => is_string($args[$name] ?? NULL) ? $args[$name] : '';
+    $scroll = is_int($args['scroll'] ?? NULL) ? $args['scroll'] : NULL;
+
+    return $this->promptyRun(fn(): mixed => Prompty::suggest('Dish',
+      options: $options,
+      default: $text('default'),
+      placeholder: $text('placeholder'),
+      description: $text('description'),
+      scroll: $scroll,
+      help: $text('help'),
+      ctx: $this->defaultCtx(),
+    ), $keystrokes, $config);
   }
 
   /**
@@ -218,7 +229,12 @@ final class PromptyWidgetSuggestTest extends PromptyTestCase {
       [],
       ['o  Dish', '|  From the menu.', '|', '|  ou█', '|  Onion Soup', '|', '|  Up and down to pick.', '|'],
     ];
-    yield 'placeholder shows in an empty buffer' => ['', ['options' => ['Pear Tart'], 'placeholder' => 'pear tart'], [], ['o  Dish', '|', '|  pear tart█', '|  Pear Tart', '|']];
+  }
+
+  public function testPlaceholderShowsInAnEmptyBuffer(): void {
+    $r = $this->runSuggest(self::KEY_ENTER, ['Pear Tart'], ['placeholder' => 'pear tart']);
+
+    $this->assertSame(['o  Dish', '|', '|  pear tart█', '|  Pear Tart', '|'], $this->lastActiveFrame($r['output']));
   }
 
   public function testWindowAtDepth(): void {

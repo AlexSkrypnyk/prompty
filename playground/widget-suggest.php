@@ -14,7 +14,16 @@ use AlexSkrypnyk\Prompty\Prompty;
 $opts = getopt('', ['no-unicode', 'no-ansi']);
 Prompty::configure(unicode: !isset($opts['no-unicode']), ansi: !isset($opts['no-ansi']));
 
-$dishes = ['Pear Tart', 'Apple Crumble', 'Onion Soup', 'Lentil Stew', 'Herb Omelette', 'Barley Salad', 'Plum Compote', 'Walnut Loaf'];
+$dishes = [
+  'Pear Tart',
+  'Apple Crumble',
+  'Onion Soup',
+  'Lentil Stew',
+  'Herb Omelette',
+  'Barley Salad',
+  'Plum Compote',
+  'Walnut Loaf',
+];
 
 echo "\n--- Suggest: from a list ---\n";
 $r = Prompty::suggest('Dish',
