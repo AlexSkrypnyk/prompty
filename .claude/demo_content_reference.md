@@ -253,6 +253,17 @@ Use these exact labels, keys, values, hints and help lines. Keys are lowercase s
 - `Cut into wedges?` (key `wedges`) - `Quartered rather than sliced.`
 - `Fire the mains?` (key `fire`) - `The kitchen starts cooking at once.`, with the help line `Make sure the table is ready.`
 
+### Validation messages
+
+Messages a `validate` callback returns in demos and README snippets:
+
+- Dish name rejects a single word: `Name the whole dish, such as "pear tart".`
+- Guest name rejects an empty answer: `Enter a name for the ticket.`
+- Course rejects `starter`: `The kitchen has stopped serving starters.`
+- Seats rejects an empty selection: `Pick at least one seat.`
+- Extras rejects `olives` when the course is `dessert`: `Olives are not served with dessert.`
+- Send order? rejects yes when no seats were picked: `Pick a seat before sending the order.`
+
 ## Nested flow shape
 
 `flow-nested.php` asks Course, Extras and Drinks in turn. Course branches one way per option; Extras and Drinks reveal a child per selected option:
