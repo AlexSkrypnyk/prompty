@@ -617,6 +617,8 @@ class Prompty {
    *   nothing is typed and no default was seeded.
    * @param string $description
    *   Optional description rendered below the label.
+   * @param string $help
+   *   Optional help rendered below the input while the widget is active.
    * @param mixed $discovered
    *   Pre-filled value that bypasses interactive input. It is trimmed, and an
    *   empty result resolves as an empty answer: $default, or $placeholder.
@@ -637,6 +639,7 @@ class Prompty {
     string $default = '',
     string $placeholder = '',
     string $description = '',
+    string $help = '',
     mixed $discovered = NULL,
     ?callable $condition = NULL,
     array $children = [],
@@ -648,6 +651,7 @@ class Prompty {
         default: $default,
         placeholder: $placeholder,
         description: $description,
+        help: $help,
         discovered: $discovered,
         ctx: $ctx,
       );
@@ -703,7 +707,7 @@ class Prompty {
       return $display;
     }
 
-    $render_active = function (string $value) use ($p, $label, $placeholder, $description, $depth, $open): array {
+    $render_active = function (string $value) use ($p, $label, $placeholder, $description, $help, $depth, $open): array {
       // The buffer holds bytes as typed, and a paste can put a control
       // character among them.
       $value = $p->printable($value);
@@ -714,6 +718,7 @@ class Prompty {
         $lines = [$p->color($p->cfgSymbols['active'], 'cyan') . $p->cfgSpacing['indent'] . $label];
         $lines = array_merge($lines, $description !== '' ? $p->renderDescription($description) : [$p->bar()]);
         $lines[] = $p->bar() . $p->cfgSpacing['indent'] . $display;
+        $lines = array_merge($lines, $p->renderHelp($help));
         $lines[] = $p->bar();
 
         return $lines;
@@ -725,6 +730,7 @@ class Prompty {
       $lines = [$label_prefix . $p->color($p->cfgSymbols['active'], 'cyan') . $p->cfgSpacing['indent'] . $label];
       $lines = array_merge($lines, $description !== '' ? $p->renderDescription($description, $depth, $open) : [$p->bar() . $body_prefix]);
       $lines[] = $p->bar() . $body_prefix . $display;
+      $lines = array_merge($lines, $p->renderHelp($help, $depth, $open));
       $lines[] = $p->bar() . $body_prefix;
 
       return $lines;
@@ -796,6 +802,8 @@ class Prompty {
    *   Optional description rendered below the label.
    * @param array<int|string, string> $hints
    *   Map of option key to hint text.
+   * @param string $help
+   *   Optional help rendered below the options while the widget is active.
    * @param mixed $discovered
    *   Pre-filled value that bypasses interactive input. Must be a key of
    *   $options. A blank value is rejected: a single choice has no answer that
@@ -822,6 +830,7 @@ class Prompty {
     string $default = '',
     string $description = '',
     array $hints = [],
+    string $help = '',
     mixed $discovered = NULL,
     ?callable $condition = NULL,
     array $children = [],
@@ -834,6 +843,7 @@ class Prompty {
         default: $default,
         description: $description,
         hints: $hints,
+        help: $help,
         discovered: $discovered,
         ctx: $ctx,
       );
@@ -887,7 +897,7 @@ class Prompty {
       return $resolved_key;
     }
 
-    $render_active = function (int $focused) use ($p, $label, $option_labels, $description, $ordered_hints, $depth, $open): array {
+    $render_active = function (int $focused) use ($p, $label, $option_labels, $description, $ordered_hints, $help, $depth, $open): array {
       if ($depth === 0) {
         $lines = [$p->color($p->cfgSymbols['active'], 'cyan') . $p->cfgSpacing['indent'] . $label];
         $lines = array_merge($lines, $description !== '' ? $p->renderDescription($description) : [$p->bar()]);
@@ -904,6 +914,7 @@ class Prompty {
           }
         }
 
+        $lines = array_merge($lines, $p->renderHelp($help));
         $lines[] = $p->bar();
 
         return $lines;
@@ -927,6 +938,7 @@ class Prompty {
         }
       }
 
+      $lines = array_merge($lines, $p->renderHelp($help, $depth, $open));
       $lines[] = $p->bar() . $body_prefix;
 
       return $lines;
@@ -994,6 +1006,8 @@ class Prompty {
    *   Optional description rendered below the label.
    * @param array<int|string, string> $hints
    *   Map of option key to hint text.
+   * @param string $help
+   *   Optional help rendered below the options while the widget is active.
    * @param mixed $discovered
    *   Pre-filled value that bypasses interactive input. Every entry must be a
    *   key of $options. A blank value selects nothing.
@@ -1019,6 +1033,7 @@ class Prompty {
     array $default = [],
     string $description = '',
     array $hints = [],
+    string $help = '',
     mixed $discovered = NULL,
     ?callable $condition = NULL,
     array $children = [],
@@ -1031,6 +1046,7 @@ class Prompty {
         default: $default,
         description: $description,
         hints: $hints,
+        help: $help,
         discovered: $discovered,
         ctx: $ctx,
       );
@@ -1093,7 +1109,7 @@ class Prompty {
       return $resolved_keys;
     }
 
-    $render_active = function (int $focused, array $checked) use ($p, $label, $option_labels, $description, $ordered_hints, $depth, $open): array {
+    $render_active = function (int $focused, array $checked) use ($p, $label, $option_labels, $description, $ordered_hints, $help, $depth, $open): array {
       if ($depth === 0) {
         $lines = [$p->color($p->cfgSymbols['active'], 'cyan') . $p->cfgSpacing['indent'] . $label];
         $lines = array_merge($lines, $description !== '' ? $p->renderDescription($description) : [$p->bar()]);
@@ -1111,6 +1127,7 @@ class Prompty {
           }
         }
 
+        $lines = array_merge($lines, $p->renderHelp($help));
         $lines[] = $p->bar();
 
         return $lines;
@@ -1135,6 +1152,7 @@ class Prompty {
         }
       }
 
+      $lines = array_merge($lines, $p->renderHelp($help, $depth, $open));
       $lines[] = $p->bar() . $body_prefix;
 
       return $lines;
@@ -1205,6 +1223,8 @@ class Prompty {
    *   The default selection (TRUE for yes, FALSE for no).
    * @param string $description
    *   Optional description rendered below the label.
+   * @param string $help
+   *   Optional help rendered below the answers while the widget is active.
    * @param mixed $discovered
    *   Pre-filled value that bypasses interactive input. A boolean is taken as
    *   is; anything else must appear in the truthy or falsy list. A blank value
@@ -1228,6 +1248,7 @@ class Prompty {
     string $label,
     bool $default = TRUE,
     string $description = '',
+    string $help = '',
     mixed $discovered = NULL,
     ?callable $condition = NULL,
     array $children = [],
@@ -1238,6 +1259,7 @@ class Prompty {
         $label,
         default: $default,
         description: $description,
+        help: $help,
         discovered: $discovered,
         ctx: $ctx,
       );
@@ -1290,7 +1312,7 @@ class Prompty {
       return $resolved_bool;
     }
 
-    $render_active = function (bool $focused_yes) use ($p, $label, $description, $depth, $open): array {
+    $render_active = function (bool $focused_yes) use ($p, $label, $description, $help, $depth, $open): array {
       $options_display = $focused_yes
         ? $p->color($p->cfgSymbols['radio_on'], 'green') . ' ' . $p->label('yes') . ' ' . $p->color($p->label('separator'), 'dim')
           . ' ' . $p->color($p->cfgSymbols['radio_off'], 'dim') . ' ' . $p->color($p->label('no'), 'dim')
@@ -1301,6 +1323,7 @@ class Prompty {
         $lines = [$p->color($p->cfgSymbols['active'], 'cyan') . $p->cfgSpacing['indent'] . $label];
         $lines = array_merge($lines, $description !== '' ? $p->renderDescription($description) : [$p->bar()]);
         $lines[] = $p->bar() . $p->cfgSpacing['indent'] . $options_display;
+        $lines = array_merge($lines, $p->renderHelp($help));
         $lines[] = $p->bar();
 
         return $lines;
@@ -1312,6 +1335,7 @@ class Prompty {
       $lines = [$label_prefix . $p->color($p->cfgSymbols['active'], 'cyan') . $p->cfgSpacing['indent'] . $label];
       $lines = array_merge($lines, $description !== '' ? $p->renderDescription($description, $depth, $open) : [$p->bar() . $body_prefix]);
       $lines[] = $p->bar() . $body_prefix . $options_display;
+      $lines = array_merge($lines, $p->renderHelp($help, $depth, $open));
       $lines[] = $p->bar() . $body_prefix;
 
       return $lines;
@@ -2047,6 +2071,38 @@ class Prompty {
       $hint_lines,
       array_keys($hint_lines),
     );
+  }
+
+  /**
+   * Renders help text lines below a widget's input with depth indentation.
+   *
+   * A blank bar line comes first, so the help stays apart from the input
+   * above it, which can also be dim.
+   *
+   * @param string $help
+   *   The help text to render.
+   * @param int $depth
+   *   The current nesting depth.
+   * @param array<int, bool> $open
+   *   Tracks which depth levels have continuing siblings.
+   *
+   * @return array<int, string>
+   *   The rendered help lines, or no lines when the help is empty.
+   */
+  protected function renderHelp(string $help, int $depth = 0, array $open = []): array {
+    if ($help === '') {
+      return [];
+    }
+
+    $body_prefix = $depth > 0 ? $this->bodyPrefix($depth, $open) : $this->cfgSpacing['indent'];
+
+    $lines = [$this->bar() . ($depth > 0 ? $body_prefix : '')];
+
+    foreach (explode("\n", $help) as $text_line) {
+      $lines[] = $this->bar() . $body_prefix . $this->color($this->printable($text_line), 'dim');
+    }
+
+    return $lines;
   }
 
   /**
