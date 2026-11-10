@@ -193,18 +193,27 @@ final class PromptyInputTest extends PromptyTestCase {
     yield 'confirm, input runs out' => [$confirm, self::KEY_LEFT];
   }
 
-  public function testStandaloneWidgetCancelsAtEndOfInput(): void {
+  #[DataProvider('dataProviderStandaloneWidgetCancelsAtEndOfInput')]
+  public function testStandaloneWidgetCancelsAtEndOfInput(\Closure $widget): void {
     $stream = $this->installKeystrokes('', FALSE);
 
     $result = NULL;
-    $output = $this->captureOutput(function () use (&$result): void {
-      $result = Prompty::text('Dish name', placeholder: 'pear tart');
+    $output = $this->captureOutput(function () use ($widget, &$result): void {
+      $result = $widget();
     });
 
     $this->assertNull($result);
     $this->assertStringContainsString('(cancelled)', $output);
 
     fclose($stream);
+  }
+
+  public static function dataProviderStandaloneWidgetCancelsAtEndOfInput(): \Iterator {
+    yield 'text' => [static fn(): mixed => Prompty::text('Dish name', placeholder: 'pear tart')];
+    yield 'select' => [static fn(): mixed => Prompty::select('Course', options: self::COURSES)];
+    yield 'multiselect' => [static fn(): mixed => Prompty::multiselect('Course', options: self::COURSES)];
+    yield 'suggest' => [static fn(): mixed => Prompty::suggest('Dish', options: ['Pear Tart', 'Onion Soup'])];
+    yield 'confirm' => [static fn(): mixed => Prompty::confirm('Send order?')];
   }
 
   public function testFlowCancelsWhenInputRunsOut(): void {
