@@ -69,7 +69,8 @@ trait PromptyTestTrait {
    *   Raw keystroke bytes to feed (use KEY_* constants). A widget that reads
    *   past the last byte reaches the end of the stream and cancels.
    * @param array<string, mixed> $config
-   *   Prompty configuration overrides. Defaults to ASCII mode.
+   *   Prompty configuration overrides. Defaults to ASCII mode, wrapping at 80
+   *   columns.
    *
    * @return array{result: mixed, output: string}
    *   - result: whatever the callback returns.
@@ -208,7 +209,7 @@ trait PromptyTestTrait {
    *   A new instance.
    */
   protected function promptyCreateInstance(array $config = []): Prompty {
-    $config = array_merge(['unicode' => FALSE, 'ansi' => TRUE], $config);
+    $config = array_merge(['unicode' => FALSE, 'ansi' => TRUE, 'width' => 80], $config);
     $ref = new \ReflectionClass(Prompty::class);
     $instance = $ref->newInstanceWithoutConstructor();
 
@@ -226,6 +227,7 @@ trait PromptyTestTrait {
       'spacing' => 'cfgSpacing',
       'scroll' => 'cfgScroll',
       'placeholder_fallback' => 'cfgPlaceholderFallback',
+      'width' => 'cfgWidth',
     ];
 
     foreach ($config as $key => $value) {

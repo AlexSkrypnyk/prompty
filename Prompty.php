@@ -39,6 +39,7 @@ namespace AlexSkrypnyk\Prompty;
  *   interactive: bool,
  *   scroll: int,
  *   placeholder_fallback: bool,
+ *   width: int,
  * }
  */
 class Prompty {
@@ -59,6 +60,25 @@ class Prompty {
    * command and prints an error instead.
    */
   protected const NULL_DEVICE = PHP_OS_FAMILY === 'Windows' ? 'NUL' : '/dev/null';
+
+  /**
+   * Columns assumed when the terminal width cannot be detected.
+   */
+  protected const DEFAULT_COLUMNS = 80;
+
+  /**
+   * Characters a terminal draws 2 columns wide.
+   *
+   * Covers the East Asian wide and fullwidth ranges, emoji presentation
+   * characters and the emoji variation selector.
+   */
+  protected const WIDE_PATTERN = '/[\x{1100}-\x{115F}\x{231A}\x{231B}\x{2329}\x{232A}\x{23E9}-\x{23EC}\x{23F0}\x{23F3}\x{25FD}\x{25FE}\x{2614}\x{2615}'
+    . '\x{2648}-\x{2653}\x{267F}\x{2693}\x{26A1}\x{26AA}\x{26AB}\x{26BD}\x{26BE}\x{26C4}\x{26C5}\x{26CE}\x{26D4}\x{26EA}\x{26F2}\x{26F3}\x{26F5}'
+    . '\x{26FA}\x{26FD}\x{2705}\x{270A}\x{270B}\x{2728}\x{274C}\x{274E}\x{2753}-\x{2755}\x{2757}\x{2795}-\x{2797}\x{27B0}\x{27BF}\x{2B1B}\x{2B1C}'
+    . '\x{2B50}\x{2B55}\x{2E80}-\x{303E}\x{3041}-\x{33FF}\x{3400}-\x{4DBF}\x{4E00}-\x{9FFF}\x{A000}-\x{A4CF}\x{A960}-\x{A97F}\x{AC00}-\x{D7A3}'
+    . '\x{F900}-\x{FAFF}\x{FE0F}\x{FE10}-\x{FE19}\x{FE30}-\x{FE6F}\x{FF00}-\x{FF60}\x{FFE0}-\x{FFE6}\x{1F004}\x{1F0CF}\x{1F18E}\x{1F191}-\x{1F19A}'
+    . '\x{1F1E6}-\x{1F1FF}\x{1F200}-\x{1F251}\x{1F300}-\x{1F64F}\x{1F680}-\x{1F6FF}\x{1F7E0}-\x{1F7EB}\x{1F90C}-\x{1F9FF}\x{1FA70}-\x{1FAFF}'
+    . '\x{20000}-\x{3FFFD}]/u';
 
   /**
    * The release version, or the placeholder token in an unreleased copy.
@@ -282,6 +302,18 @@ class Prompty {
   protected bool $cfgPlaceholderFallback = TRUE;
 
   /**
+   * Terminal columns that rendered lines wrap to (0 = detect).
+   */
+  protected int $cfgWidth = 0;
+
+  /**
+   * Terminal columns measured for the frame being rendered.
+   *
+   * Cleared by printLines(), so the next frame measures again.
+   */
+  protected ?int $columns = NULL;
+
+  /**
    * Constructs a Prompty instance.
    */
   protected function __construct() {
@@ -342,6 +374,7 @@ class Prompty {
       'interactive' => $this->cfgInteractive,
       'scroll' => $this->cfgScroll,
       'placeholder_fallback' => $this->cfgPlaceholderFallback,
+      'width' => $this->cfgWidth,
     ];
   }
 
@@ -366,6 +399,7 @@ class Prompty {
     $this->cfgInteractive = $snapshot['interactive'];
     $this->cfgScroll = $snapshot['scroll'];
     $this->cfgPlaceholderFallback = $snapshot['placeholder_fallback'];
+    $this->cfgWidth = $snapshot['width'];
     $this->resolveDisplay();
   }
 
@@ -394,6 +428,7 @@ class Prompty {
       'interactive' => $p->cfgInteractive,
       'scroll' => $p->cfgScroll,
       'placeholder_fallback' => $p->cfgPlaceholderFallback,
+      'width' => $p->cfgWidth,
     ];
   }
 
@@ -461,10 +496,14 @@ class Prompty {
    * @param bool|null $placeholder_fallback
    *   Answer an empty text or suggest with its placeholder (TRUE), or with ''
    *   (FALSE). NULL keeps the current setting, which is TRUE until set.
+   * @param int|null $width
+   *   Terminal columns that rendered lines wrap to. 0 detects the width from
+   *   the terminal, falling back to 80.
    *
    * @throws \InvalidArgumentException
    *   When a map holds an unknown key, a list is empty or holds a blank value,
-   *   $output is not a writable stream or a callable, or $scroll is negative.
+   *   $output is not a writable stream or a callable, or $scroll or $width is
+   *   negative.
    */
   public static function configure(
     ?array $symbols_unicode = NULL,
@@ -481,6 +520,7 @@ class Prompty {
     ?bool $interactive = NULL,
     ?int $scroll = NULL,
     ?bool $placeholder_fallback = NULL,
+    ?int $width = NULL,
   ): void {
     $p = static::instance();
 
@@ -518,6 +558,10 @@ class Prompty {
 
     if ($scroll !== NULL) {
       $p->assertScroll($scroll, 'scroll');
+    }
+
+    if ($width !== NULL && $width < 0) {
+      throw new \InvalidArgumentException(sprintf('Width %d for "width" is not valid. Use 0 to detect the terminal width, or the number of columns to wrap to.', $width));
     }
 
     if ($symbols_unicode !== NULL) {
@@ -577,6 +621,10 @@ class Prompty {
       $p->cfgPlaceholderFallback = $placeholder_fallback;
     }
 
+    if ($width !== NULL) {
+      $p->cfgWidth = $width;
+    }
+
     $p->resolveDisplay();
   }
 
@@ -634,6 +682,9 @@ class Prompty {
    * @param bool|null $placeholder_fallback
    *   Answer an empty text or suggest with its placeholder (TRUE), or with ''
    *   (FALSE). NULL keeps the current setting, which is TRUE until set.
+   * @param int|null $width
+   *   Terminal columns that rendered lines wrap to. 0 detects the width from
+   *   the terminal, falling back to 80.
    *
    * @return array<string, string|bool|int|array<string,string>>|null
    *   Collected results or NULL if cancelled.
@@ -658,6 +709,7 @@ class Prompty {
     ?bool $interactive = NULL,
     ?int $scroll = NULL,
     ?bool $placeholder_fallback = NULL,
+    ?int $width = NULL,
   ): ?array {
     $p = static::instance();
     $snapshot = NULL;
@@ -675,9 +727,10 @@ class Prompty {
       || $output !== NULL
       || $interactive !== NULL
       || $scroll !== NULL
-      || $placeholder_fallback !== NULL) {
+      || $placeholder_fallback !== NULL
+      || $width !== NULL) {
       $snapshot = $p->snapshotConfig();
-      static::configure($symbols_unicode, $symbols_ascii, $colors, $spacing, $labels, $unicode, $ansi, $env_prefix, $truthy, $falsy, $output, $interactive, $scroll, $placeholder_fallback);
+      static::configure($symbols_unicode, $symbols_ascii, $colors, $spacing, $labels, $unicode, $ansi, $env_prefix, $truthy, $falsy, $output, $interactive, $scroll, $placeholder_fallback, $width);
     }
 
     $p->results = [];
@@ -967,9 +1020,9 @@ class Prompty {
       $display = $value === '' ? $p->color($placeholder, 'gray') . $cursor : $p->color($value, 'white') . $cursor;
 
       if ($depth === 0) {
-        $lines = [$p->color($p->cfgSymbols['active'], 'cyan') . $p->cfgSpacing['indent'] . $label];
+        $lines = $p->renderLabel($label, 'active', 'cyan');
         $lines = array_merge($lines, $description !== '' ? $p->renderDescription($description) : [$p->bar()]);
-        $lines[] = $p->bar() . $p->cfgSpacing['indent'] . $display;
+        $lines = array_merge($lines, $p->wrap($p->bar() . $p->cfgSpacing['indent'], $display, $p->bar() . $p->cfgSpacing['indent']));
         $lines = array_merge($lines, $p->renderError($error));
         $lines = array_merge($lines, $p->renderHelp($help));
         $lines[] = $p->bar();
@@ -977,12 +1030,11 @@ class Prompty {
         return $lines;
       }
 
-      $label_prefix = $p->bar() . $p->labelPrefix($depth, $open);
       $body_prefix = $p->bodyPrefix($depth, $open);
 
-      $lines = [$label_prefix . $p->color($p->cfgSymbols['active'], 'cyan') . $p->cfgSpacing['indent'] . $label];
+      $lines = $p->renderLabel($label, 'active', 'cyan', $depth, $open);
       $lines = array_merge($lines, $description !== '' ? $p->renderDescription($description, $depth, $open) : [$p->bar() . $body_prefix]);
-      $lines[] = $p->bar() . $body_prefix . $display;
+      $lines = array_merge($lines, $p->wrap($p->bar() . $body_prefix, $display, $p->bar() . $body_prefix));
       $lines = array_merge($lines, $p->renderError($error, $depth, $open));
       $lines = array_merge($lines, $p->renderHelp($help, $depth, $open));
       $lines[] = $p->bar() . $body_prefix;
@@ -1206,7 +1258,7 @@ class Prompty {
       $rows = [];
 
       if ($depth === 0) {
-        $lines = [$p->color($p->cfgSymbols['active'], 'cyan') . $p->cfgSpacing['indent'] . $label];
+        $lines = $p->renderLabel($label, 'active', 'cyan');
         $lines = array_merge($lines, $description !== '' ? $p->renderDescription($description) : [$p->bar()]);
 
         foreach ($window as $index => $option) {
@@ -1214,7 +1266,7 @@ class Prompty {
           $radio = $p->color($p->cfgSymbols[$is_focused ? 'radio_on' : 'radio_off'], $is_focused ? 'green' : 'dim');
           $text = $is_focused ? $option : $p->color($option, 'dim');
 
-          $rows[] = $p->bar() . $p->pointer($is_focused) . $radio . ' ' . $text;
+          $rows = array_merge($rows, $p->wrap($p->bar() . $p->pointer($is_focused) . $radio . ' ', $text, $p->bar() . $p->pad($p->pointer(FALSE) . $radio . ' ')));
 
           if ($is_focused && ($ordered_hints[$index] ?? '') !== '') {
             $rows = array_merge($rows, $p->renderHint($ordered_hints[$index]));
@@ -1229,10 +1281,9 @@ class Prompty {
         return $lines;
       }
 
-      $label_prefix = $p->bar() . $p->labelPrefix($depth, $open);
       $body_prefix = $p->bodyPrefix($depth, $open);
 
-      $lines = [$label_prefix . $p->color($p->cfgSymbols['active'], 'cyan') . $p->cfgSpacing['indent'] . $label];
+      $lines = $p->renderLabel($label, 'active', 'cyan', $depth, $open);
       $lines = array_merge($lines, $description !== '' ? $p->renderDescription($description, $depth, $open) : [$p->bar() . $body_prefix]);
 
       foreach ($window as $index => $option) {
@@ -1240,7 +1291,7 @@ class Prompty {
         $radio = $p->color($p->cfgSymbols[$is_focused ? 'radio_on' : 'radio_off'], $is_focused ? 'green' : 'dim');
         $text = $is_focused ? $option : $p->color($option, 'dim');
 
-        $rows[] = $p->bar() . $body_prefix . $p->pointer($is_focused) . $radio . ' ' . $text;
+        $rows = array_merge($rows, $p->wrap($p->bar() . $body_prefix . $p->pointer($is_focused) . $radio . ' ', $text, $p->bar() . $body_prefix . $p->pad($p->pointer(FALSE) . $radio . ' ')));
 
         if ($is_focused && ($ordered_hints[$index] ?? '') !== '') {
           $rows = array_merge($rows, $p->renderHint($ordered_hints[$index], $depth, $open));
@@ -1478,7 +1529,7 @@ class Prompty {
       $rows = [];
 
       if ($depth === 0) {
-        $lines = [$p->color($p->cfgSymbols['active'], 'cyan') . $p->cfgSpacing['indent'] . $label];
+        $lines = $p->renderLabel($label, 'active', 'cyan');
         $lines = array_merge($lines, $description !== '' ? $p->renderDescription($description) : [$p->bar()]);
 
         foreach ($window as $index => $option) {
@@ -1487,7 +1538,7 @@ class Prompty {
           $check = $p->color($p->cfgSymbols[$is_checked ? 'check_on' : 'check_off'], $is_focused || $is_checked ? 'green' : 'dim');
           $text = $is_focused || $is_checked ? $option : $p->color($option, 'dim');
 
-          $rows[] = $p->bar() . $p->pointer($is_focused) . $check . ' ' . $text;
+          $rows = array_merge($rows, $p->wrap($p->bar() . $p->pointer($is_focused) . $check . ' ', $text, $p->bar() . $p->pad($p->pointer(FALSE) . $check . ' ')));
 
           if ($is_focused && ($ordered_hints[$index] ?? '') !== '') {
             $rows = array_merge($rows, $p->renderHint($ordered_hints[$index]));
@@ -1502,10 +1553,9 @@ class Prompty {
         return $lines;
       }
 
-      $label_prefix = $p->bar() . $p->labelPrefix($depth, $open);
       $body_prefix = $p->bodyPrefix($depth, $open);
 
-      $lines = [$label_prefix . $p->color($p->cfgSymbols['active'], 'cyan') . $p->cfgSpacing['indent'] . $label];
+      $lines = $p->renderLabel($label, 'active', 'cyan', $depth, $open);
       $lines = array_merge($lines, $description !== '' ? $p->renderDescription($description, $depth, $open) : [$p->bar() . $body_prefix]);
 
       foreach ($window as $index => $option) {
@@ -1514,7 +1564,7 @@ class Prompty {
         $check = $p->color($p->cfgSymbols[$is_checked ? 'check_on' : 'check_off'], $is_focused || $is_checked ? 'green' : 'dim');
         $text = $is_focused || $is_checked ? $option : $p->color($option, 'dim');
 
-        $rows[] = $p->bar() . $body_prefix . $p->pointer($is_focused) . $check . ' ' . $text;
+        $rows = array_merge($rows, $p->wrap($p->bar() . $body_prefix . $p->pointer($is_focused) . $check . ' ', $text, $p->bar() . $body_prefix . $p->pad($p->pointer(FALSE) . $check . ' ')));
 
         if ($is_focused && ($ordered_hints[$index] ?? '') !== '') {
           $rows = array_merge($rows, $p->renderHint($ordered_hints[$index], $depth, $open));
@@ -1749,13 +1799,14 @@ class Prompty {
 
       foreach (array_slice($matches, $first, $visible, TRUE) as $index => $match) {
         $is_focused = $index === $focused;
-        $rows[] = $p->bar() . $body_prefix . $p->pointer($is_focused) . ($is_focused ? $match : $p->color($match, 'dim'));
+        $gutter = $p->bar() . $body_prefix . $p->pointer($is_focused);
+        $rows = array_merge($rows, $p->wrap($gutter, $is_focused ? $match : $p->color($match, 'dim'), $p->bar() . $body_prefix . $p->pad($p->pointer(FALSE))));
       }
 
       if ($depth === 0) {
-        $lines = [$p->color($p->cfgSymbols['active'], 'cyan') . $p->cfgSpacing['indent'] . $label];
+        $lines = $p->renderLabel($label, 'active', 'cyan');
         $lines = array_merge($lines, $description !== '' ? $p->renderDescription($description) : [$p->bar()]);
-        $lines[] = $p->bar() . $p->cfgSpacing['indent'] . $display;
+        $lines = array_merge($lines, $p->wrap($p->bar() . $p->cfgSpacing['indent'], $display, $p->bar() . $p->cfgSpacing['indent']));
         $lines = array_merge($lines, $p->renderScrollWindow($rows, $first, $visible, count($matches)));
         $lines = array_merge($lines, $p->renderHelp($help));
         $lines[] = $p->bar();
@@ -1763,11 +1814,9 @@ class Prompty {
         return $lines;
       }
 
-      $label_prefix = $p->bar() . $p->labelPrefix($depth, $open);
-
-      $lines = [$label_prefix . $p->color($p->cfgSymbols['active'], 'cyan') . $p->cfgSpacing['indent'] . $label];
+      $lines = $p->renderLabel($label, 'active', 'cyan', $depth, $open);
       $lines = array_merge($lines, $description !== '' ? $p->renderDescription($description, $depth, $open) : [$p->bar() . $body_prefix]);
-      $lines[] = $p->bar() . $body_prefix . $display;
+      $lines = array_merge($lines, $p->wrap($p->bar() . $body_prefix, $display, $p->bar() . $body_prefix));
       $lines = array_merge($lines, $p->renderScrollWindow($rows, $first, $visible, count($matches), $depth, $open));
       $lines = array_merge($lines, $p->renderHelp($help, $depth, $open));
       $lines[] = $p->bar() . $body_prefix;
@@ -1981,9 +2030,9 @@ class Prompty {
           . ' ' . $p->color($p->cfgSymbols['radio_on'], 'green') . ' ' . $p->label('no');
 
       if ($depth === 0) {
-        $lines = [$p->color($p->cfgSymbols['active'], 'cyan') . $p->cfgSpacing['indent'] . $label];
+        $lines = $p->renderLabel($label, 'active', 'cyan');
         $lines = array_merge($lines, $description !== '' ? $p->renderDescription($description) : [$p->bar()]);
-        $lines[] = $p->bar() . $p->cfgSpacing['indent'] . $options_display;
+        $lines = array_merge($lines, $p->wrap($p->bar() . $p->cfgSpacing['indent'], $options_display, $p->bar() . $p->cfgSpacing['indent']));
         $lines = array_merge($lines, $p->renderError($error));
         $lines = array_merge($lines, $p->renderHelp($help));
         $lines[] = $p->bar();
@@ -1991,12 +2040,11 @@ class Prompty {
         return $lines;
       }
 
-      $label_prefix = $p->bar() . $p->labelPrefix($depth, $open);
       $body_prefix = $p->bodyPrefix($depth, $open);
 
-      $lines = [$label_prefix . $p->color($p->cfgSymbols['active'], 'cyan') . $p->cfgSpacing['indent'] . $label];
+      $lines = $p->renderLabel($label, 'active', 'cyan', $depth, $open);
       $lines = array_merge($lines, $description !== '' ? $p->renderDescription($description, $depth, $open) : [$p->bar() . $body_prefix]);
-      $lines[] = $p->bar() . $body_prefix . $options_display;
+      $lines = array_merge($lines, $p->wrap($p->bar() . $body_prefix, $options_display, $p->bar() . $body_prefix));
       $lines = array_merge($lines, $p->renderError($error, $depth, $open));
       $lines = array_merge($lines, $p->renderHelp($help, $depth, $open));
       $lines[] = $p->bar() . $body_prefix;
@@ -2091,7 +2139,9 @@ class Prompty {
    *   The number of lines printed.
    */
   public static function output(array $lines): int {
-    return static::instance()->printLines($lines);
+    static::instance()->printLines($lines);
+
+    return count($lines);
   }
 
   /**
@@ -2423,30 +2473,40 @@ class Prompty {
   }
 
   /**
-   * Prints an array of lines to the output target and returns the line count.
+   * Prints an array of lines to the output target and returns the row count.
    *
    * @param array<int, string> $lines
    *   Lines to print.
    *
    * @return int
-   *   The number of lines printed.
+   *   The number of terminal rows the lines occupy. A line wider than the
+   *   terminal occupies 1 row per terminal width.
    */
   protected function printLines(array $lines): int {
     $this->write(implode(PHP_EOL, $lines) . PHP_EOL);
 
-    return count($lines);
+    $columns = $this->columns();
+    $rows = 0;
+
+    foreach ($lines as $line) {
+      $rows += max(1, (int) ceil($this->displayWidth($line) / $columns));
+    }
+
+    $this->columns = NULL;
+
+    return $rows;
   }
 
   /**
-   * Clears previously printed lines and redraws with new content.
+   * Clears previously printed rows and redraws with new content.
    *
    * @param int $prev_line_count
-   *   The number of lines previously printed to clear.
+   *   The number of terminal rows previously printed to clear.
    * @param array<int, string> $lines
    *   Lines to redraw.
    *
    * @return int
-   *   The number of lines printed.
+   *   The number of terminal rows printed.
    */
   protected function redraw(int $prev_line_count, array $lines): int {
     if ($prev_line_count > 0) {
@@ -2454,6 +2514,263 @@ class Prompty {
     }
 
     return $this->printLines($lines);
+  }
+
+  /**
+   * Returns the terminal columns that rendered lines wrap to.
+   *
+   * Takes the configured width, then a positive COLUMNS environment
+   * variable, then the width 'stty size' reports, then DEFAULT_COLUMNS.
+   * A detected width is kept until printLines() clears it.
+   */
+  protected function columns(): int {
+    if ($this->cfgWidth > 0) {
+      return $this->cfgWidth;
+    }
+
+    if ($this->columns !== NULL) {
+      return $this->columns;
+    }
+
+    $env = trim((string) getenv('COLUMNS'));
+
+    if (preg_match('/^[1-9]\d*$/', $env) === 1) {
+      return $this->columns = (int) $env;
+    }
+
+    $columns = static::DEFAULT_COLUMNS;
+
+    if (PHP_OS_FAMILY !== 'Windows') {
+      // @codeCoverageIgnoreStart
+      // 'stty size' reads the terminal on stdin and prints "<rows> <columns>".
+      // A pseudo-terminal that was never sized reports 0 columns.
+      $size = trim((string) shell_exec('stty size 2>' . static::NULL_DEVICE));
+
+      if (preg_match('/^\d+ ([1-9]\d*)$/', $size, $matches) === 1) {
+        $columns = (int) $matches[1];
+      }
+      // @codeCoverageIgnoreEnd
+    }
+
+    return $this->columns = $columns;
+  }
+
+  /**
+   * Measures the columns a terminal uses to draw text.
+   *
+   * @param string $text
+   *   Text that may hold escape sequences.
+   *
+   * @return int
+   *   The width in columns. Escape sequences count as 0, a wide character
+   *   as 2. Text that is not valid UTF-8 counts 1 column per byte.
+   */
+  protected function displayWidth(string $text): int {
+    $text = preg_replace('/\033\[\??[0-9;]*[A-Za-z]/', '', $text) ?? $text;
+
+    if (preg_match_all('/\X/u', $text, $matches) === FALSE) {
+      return strlen($text);
+    }
+
+    return array_sum(array_map($this->clusterWidth(...), $matches[0]));
+  }
+
+  /**
+   * Measures the columns a terminal uses to draw 1 grapheme cluster.
+   *
+   * @param string $cluster
+   *   A grapheme cluster, or a single byte of text that is not valid UTF-8.
+   *
+   * @return int
+   *   2 for a cluster holding a wide character, 0 for a cluster of combining
+   *   marks and format characters alone, otherwise 1.
+   */
+  protected function clusterWidth(string $cluster): int {
+    if (preg_match(static::WIDE_PATTERN, $cluster) === 1) {
+      return 2;
+    }
+
+    return preg_match('/^[\p{Mn}\p{Me}\p{Cf}]+$/u', $cluster) === 1 ? 0 : 1;
+  }
+
+  /**
+   * Wraps styled content to the terminal width after a gutter.
+   *
+   * Content breaks at spaces, and the spaces at a break are dropped. A word
+   * wider than a row breaks at the row's width. A style open at a break is
+   * reset at the end of the row and reopened after the continuation gutter,
+   * so the gutter keeps its own style.
+   *
+   * @param string $gutter
+   *   The tree prefix drawn before the first row.
+   * @param string $content
+   *   The text to wrap, with any color sequences.
+   * @param string $continuation
+   *   The tree prefix drawn before every further row.
+   *
+   * @return list<string>
+   *   The rows. Content that fits, or a gutter that leaves no room, gives 1
+   *   row holding the gutter and the content unchanged.
+   */
+  protected function wrap(string $gutter, string $content, string $continuation): array {
+    $columns = $this->columns();
+    $first = $columns - $this->displayWidth($gutter);
+    $rest = $columns - $this->displayWidth($continuation);
+
+    if ($first < 1 || $rest < 1 || $this->displayWidth($content) <= $first) {
+      return [$gutter . $content];
+    }
+
+    $runs = $this->wrapRuns($content);
+    $row_of = $this->wrapRows($runs, $first, $rest);
+
+    $rows = [];
+    $row = $gutter;
+    $current = 0;
+    $active = '';
+    $index = 0;
+
+    foreach ($runs as $run) {
+      foreach ($run['units'] as $unit) {
+        $target = $row_of[$index++];
+
+        if ($target === NULL) {
+          continue;
+        }
+
+        while ($target > $current) {
+          $rows[] = $active !== '' ? $row . $this->cfgColors['reset'] : $row;
+          $row = $continuation . $active;
+          $current++;
+        }
+
+        $row .= $unit['text'];
+
+        if ($unit['kind'] === 'style') {
+          $active = $unit['text'] === $this->cfgColors['reset'] || preg_match('/^\033\[0*m$/', $unit['text']) === 1 ? '' : $active . $unit['text'];
+        }
+      }
+    }
+
+    $rows[] = $row;
+
+    return $rows;
+  }
+
+  /**
+   * Splits styled content into alternating runs of spaces and words.
+   *
+   * A color sequence belongs to the run it sits in and has no width.
+   *
+   * @param string $content
+   *   The text to split, with any color sequences.
+   *
+   * @return list<array{space: bool, width: int, units: list<array{text: string, kind: string, width: int}>}>
+   *   The runs in order. A unit is a color sequence ('style'), a space
+   *   ('space') or a grapheme cluster ('char').
+   */
+  protected function wrapRuns(string $content): array {
+    $pattern = '/\033\[[0-9;]*m| |\X/u';
+
+    // Text that is not valid UTF-8 fails the /u match and splits by byte.
+    if (preg_match_all($pattern, $content, $matches) === FALSE) {
+      preg_match_all('/\033\[[0-9;]*m| |./s', $content, $matches);
+    }
+
+    $runs = [];
+
+    foreach ($matches[0] as $text) {
+      $kind = match (TRUE) {
+        preg_match('/^\033\[[0-9;]*m$/', $text) === 1 => 'style',
+        $text === ' ' => 'space',
+        default => 'char',
+      };
+      $width = $kind === 'char' ? $this->clusterWidth($text) : (int) ($kind === 'space');
+      $last = array_key_last($runs);
+
+      if ($last === NULL || ($kind !== 'style' && $runs[$last]['space'] !== ($kind === 'space'))) {
+        $runs[] = ['space' => $kind === 'space', 'width' => 0, 'units' => []];
+        $last = array_key_last($runs);
+      }
+
+      $runs[$last]['units'][] = ['text' => $text, 'kind' => $kind, 'width' => $width];
+      $runs[$last]['width'] += $width;
+    }
+
+    return $runs;
+  }
+
+  /**
+   * Assigns each unit of the wrapped runs to a row.
+   *
+   * @param list<array{space: bool, width: int, units: list<array{text: string, kind: string, width: int}>}> $runs
+   *   Runs from wrapRuns().
+   * @param int $first
+   *   Columns available on the first row.
+   * @param int $rest
+   *   Columns available on every further row.
+   *
+   * @return list<int|null>
+   *   The row of each unit in order, or NULL for a space dropped at a break.
+   */
+  protected function wrapRows(array $runs, int $first, int $rest): array {
+    $row_of = [];
+    $row = 0;
+    $used = 0;
+    $available = $first;
+    $break = FALSE;
+
+    foreach ($runs as $index => $run) {
+      // Spaces before the first word are content, so they wrap like a word.
+      if ($run['space'] && ($row > 0 || $used > 0)) {
+        $keep = $used + $run['width'] + ($runs[$index + 1]['width'] ?? 0) <= $available;
+
+        foreach ($run['units'] as $unit) {
+          $row_of[] = $keep || $unit['kind'] === 'style' ? $row : NULL;
+        }
+
+        $used += $keep ? $run['width'] : 0;
+        $break = !$keep;
+
+        continue;
+      }
+
+      if ($break || $used + $run['width'] > $available) {
+        if ($used > 0) {
+          $row++;
+          $used = 0;
+          $available = $rest;
+        }
+
+        $break = FALSE;
+      }
+
+      foreach ($run['units'] as $unit) {
+        if ($used > 0 && $used + $unit['width'] > $available) {
+          $row++;
+          $used = 0;
+          $available = $rest;
+        }
+
+        $row_of[] = $row;
+        $used += $unit['width'];
+      }
+    }
+
+    return $row_of;
+  }
+
+  /**
+   * Returns blank padding as wide as the given text.
+   *
+   * @param string $text
+   *   Text that may hold escape sequences.
+   *
+   * @return string
+   *   Spaces filling the columns $text draws.
+   */
+  protected function pad(string $text): string {
+    return str_repeat(' ', $this->displayWidth($text));
   }
 
   /**
@@ -3202,10 +3519,11 @@ class Prompty {
    */
   protected function renderIntro(string $message): array {
     $message = $this->printable($message);
+    $gutter = $this->color($this->cfgSymbols['intro'], 'gray') . $this->cfgSpacing['indent'];
 
     return [
       '',
-      $this->color($this->cfgSymbols['intro'], 'gray') . $this->cfgSpacing['indent'] . $this->color($message, 'bold'),
+      ...$this->wrap($gutter, $this->color($message, 'bold'), $this->bar() . $this->cfgSpacing['indent']),
       $this->bar(),
     ];
   }
@@ -3221,10 +3539,12 @@ class Prompty {
    */
   protected function renderOutro(string $message): array {
     $message = $this->printable($message);
+    $gutter = $this->color($this->cfgSymbols['outro'], 'gray') . $this->cfgSpacing['indent'];
 
+    // The outro ends the tree, so its continuation rows draw no bar.
     return [
       $this->bar(),
-      $this->color($this->cfgSymbols['outro'], 'gray') . $this->cfgSpacing['indent'] . $this->color($message, 'green'),
+      ...$this->wrap($gutter, $this->color($message, 'green'), $this->pad($gutter)),
       '',
     ];
   }
@@ -3248,13 +3568,15 @@ class Prompty {
     $lines = $first ? [''] : [];
     $symbol = $this->color($this->cfgSymbols[$first ? 'intro' : 'section'], 'gray');
 
+    $gutter = $this->bar() . $this->cfgSpacing['indent'];
+
     foreach (explode("\n", $title) as $index => $text_line) {
-      $lines[] = ($index === 0 ? $symbol : $this->bar()) . $this->cfgSpacing['indent'] . $this->color($this->printable($text_line), 'bold');
+      $lines = array_merge($lines, $this->wrap(($index === 0 ? $symbol : $this->bar()) . $this->cfgSpacing['indent'], $this->color($this->printable($text_line), 'bold'), $gutter));
     }
 
     if ($description !== '') {
       foreach (explode("\n", $description) as $text_line) {
-        $lines[] = $this->bar() . $this->cfgSpacing['indent'] . $this->color($this->printable($text_line), 'dim');
+        $lines = array_merge($lines, $this->wrap($gutter, $this->color($this->printable($text_line), 'dim'), $gutter));
       }
     }
 
@@ -3277,12 +3599,12 @@ class Prompty {
    *   The rendered description lines.
    */
   protected function renderDescription(string $description, int $depth = 0, array $open = []): array {
-    $body_prefix = $depth > 0 ? $this->bodyPrefix($depth, $open) : $this->cfgSpacing['indent'];
+    $gutter = $this->bar() . ($depth > 0 ? $this->bodyPrefix($depth, $open) : $this->cfgSpacing['indent']);
+    $lines = [];
 
-    $lines = array_map(
-      fn(string $text_line): string => $this->bar() . $body_prefix . $this->styled($text_line, 'dim_italic'),
-      explode("\n", $description),
-    );
+    foreach (explode("\n", $description) as $text_line) {
+      $lines = array_merge($lines, $this->wrap($gutter, $this->styled($text_line, 'dim_italic'), $gutter));
+    }
 
     $lines[] = $this->bar() . ($depth > 0 ? $this->bodyPrefix($depth, $open) : '');
 
@@ -3303,17 +3625,17 @@ class Prompty {
    *   The rendered hint lines.
    */
   protected function renderHint(string $hint, int $depth = 0, array $open = []): array {
-    $body_prefix = $depth > 0 ? $this->bodyPrefix($depth, $open) : '';
-    $hint_lines = array_map($this->printable(...), explode("\n", $hint));
+    $body_prefix = $this->bar() . ($depth > 0 ? $this->bodyPrefix($depth, $open) : '');
+    $continuation = $body_prefix . $this->cfgSpacing['hint_cont'];
+    $gutter = $body_prefix . $this->cfgSpacing['hint_indent'] . $this->color($this->cfgSymbols['hint_arrow'], 'dim') . ' ';
+    $lines = [];
 
-    return array_map(
-      fn(string $text_line, int $index): string => $this->bar() . $body_prefix . ($index === 0
-          ? $this->cfgSpacing['hint_indent'] . $this->color($this->cfgSymbols['hint_arrow'], 'dim') . ' ' . $this->color($text_line, 'dim_italic')
-          : $this->cfgSpacing['hint_cont'] . $this->color($text_line, 'dim_italic')
-        ),
-      $hint_lines,
-      array_keys($hint_lines),
-    );
+    foreach (explode("\n", $hint) as $text_line) {
+      $lines = array_merge($lines, $this->wrap($gutter, $this->color($this->printable($text_line), 'dim_italic'), $continuation));
+      $gutter = $continuation;
+    }
+
+    return $lines;
   }
 
   /**
@@ -3382,7 +3704,7 @@ class Prompty {
     $lines = [$this->bar() . ($depth > 0 ? $body_prefix : '')];
 
     foreach (explode("\n", $help) as $text_line) {
-      $lines[] = $this->bar() . $body_prefix . $this->color($this->printable($text_line), 'dim');
+      $lines = array_merge($lines, $this->wrap($this->bar() . $body_prefix, $this->color($this->printable($text_line), 'dim'), $this->bar() . $body_prefix));
     }
 
     return $lines;
@@ -3406,9 +3728,10 @@ class Prompty {
       return [];
     }
 
-    $body_prefix = $depth > 0 ? $this->bodyPrefix($depth, $open) : $this->cfgSpacing['indent'];
+    $gutter = $this->bar() . ($depth > 0 ? $this->bodyPrefix($depth, $open) : $this->cfgSpacing['indent']);
+    $marker = $this->cfgSymbols['error'] . ' ';
 
-    return [$this->bar() . $body_prefix . $this->color($this->cfgSymbols['error'] . ' ' . $this->printable($error), 'red')];
+    return $this->wrap($gutter, $this->color($marker . $this->printable($error), 'red'), $gutter . $this->pad($marker));
   }
 
   /**
@@ -3430,21 +3753,12 @@ class Prompty {
     $label = $this->printable($label);
     $value = $this->printable($value);
 
-    if ($depth === 0) {
-      return [
-        $this->color($this->cfgSymbols['completed'], 'cyan') . $this->cfgSpacing['indent'] . $label,
-        $this->bar() . $this->cfgSpacing['indent'] . $this->color($value, 'dim'),
-        $this->bar(),
-      ];
-    }
-
-    $label_prefix = $this->bar() . $this->labelPrefix($depth, $open);
-    $body_prefix = $this->bodyPrefix($depth, $open);
+    $gutter = $this->bar() . ($depth > 0 ? $this->bodyPrefix($depth, $open) : $this->cfgSpacing['indent']);
 
     return [
-      $label_prefix . $this->color($this->cfgSymbols['completed'], 'cyan') . $this->cfgSpacing['indent'] . $label,
-      $this->bar() . $body_prefix . $this->color($value, 'dim'),
-      $this->bar() . $body_prefix,
+      ...$this->renderLabel($label, 'completed', 'cyan', $depth, $open),
+      ...$this->wrap($gutter, $this->color($value, 'dim'), $gutter),
+      $this->bar() . ($depth > 0 ? $this->bodyPrefix($depth, $open) : ''),
     ];
   }
 
@@ -3467,22 +3781,36 @@ class Prompty {
     $label = $this->printable($label);
     $value = $this->printable($value);
 
-    if ($depth === 0) {
-      return [
-        $this->color($this->cfgSymbols['active'], 'red') . $this->cfgSpacing['indent'] . $label,
-        $this->bar() . $this->cfgSpacing['indent'] . $this->color($value, 'dim') . $this->color(' ' . $this->label('cancelled'), 'red'),
-        $this->bar(),
-      ];
-    }
-
-    $label_prefix = $this->bar() . $this->labelPrefix($depth, $open);
-    $body_prefix = $this->bodyPrefix($depth, $open);
+    $gutter = $this->bar() . ($depth > 0 ? $this->bodyPrefix($depth, $open) : $this->cfgSpacing['indent']);
 
     return [
-      $label_prefix . $this->color($this->cfgSymbols['active'], 'red') . $this->cfgSpacing['indent'] . $label,
-      $this->bar() . $body_prefix . $this->color($value, 'dim') . $this->color(' ' . $this->label('cancelled'), 'red'),
-      $this->bar() . $body_prefix,
+      ...$this->renderLabel($label, 'active', 'red', $depth, $open),
+      ...$this->wrap($gutter, $this->color($value, 'dim') . $this->color(' ' . $this->label('cancelled'), 'red'), $gutter),
+      $this->bar() . ($depth > 0 ? $this->bodyPrefix($depth, $open) : ''),
     ];
+  }
+
+  /**
+   * Renders a widget's label after its state symbol.
+   *
+   * @param string $label
+   *   The widget label.
+   * @param string $symbol
+   *   The key of the symbol drawn before the label.
+   * @param string $color
+   *   The color of the symbol.
+   * @param int $depth
+   *   The current nesting depth.
+   * @param array<int, bool> $open
+   *   Tracks which depth levels have continuing siblings.
+   *
+   * @return list<string>
+   *   The label rows. Continuation rows align with the widget's body lines.
+   */
+  protected function renderLabel(string $label, string $symbol, string $color, int $depth = 0, array $open = []): array {
+    $gutter = ($depth > 0 ? $this->bar() . $this->labelPrefix($depth, $open) : '') . $this->color($this->cfgSymbols[$symbol], $color) . $this->cfgSpacing['indent'];
+
+    return $this->wrap($gutter, $label, $this->bar() . ($depth > 0 ? $this->bodyPrefix($depth, $open) : $this->cfgSpacing['indent']));
   }
 
   /**
