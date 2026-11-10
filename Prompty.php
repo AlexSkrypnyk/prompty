@@ -709,6 +709,56 @@ class Prompty {
   }
 
   /**
+   * Declares a flow step whose widget is built when the step is reached.
+   *
+   * The builder receives the answers collected so far and returns a widget
+   * call, so its label, options, default or description can depend on them.
+   * The condition and children are declared here rather than on the widget,
+   * so the flow knows them before the step runs.
+   *
+   * @param callable $builder
+   *   Receives the answers collected so far and returns a widget call, such as
+   *   Prompty::text(...), without a condition or children.
+   * @param callable|null $condition
+   *   Optional condition callback; skips the step when it returns FALSE. The
+   *   builder is not called for a skipped step.
+   * @param array<string, mixed> $children
+   *   Child steps to execute after this step.
+   *
+   * @return array<string, mixed>
+   *   The step array.
+   *
+   * @throws \LogicException
+   *   When called outside the steps callable of a flow.
+   * @throws \UnexpectedValueException
+   *   When the builder returns a step array or anything that is not callable.
+   */
+  public static function step(callable $builder, ?callable $condition = NULL, array $children = []): array {
+    if (!static::$inFlow) {
+      throw new \LogicException('Prompty::step() declares a flow step, so it can only be called inside the callable passed to Prompty::flow().');
+    }
+
+    $call = function (array $ctx) use ($builder): mixed {
+      /** @var array<string, mixed> $results */
+      $results = $ctx['results'] ?? [];
+      $widget = $builder($results);
+      $key = static::instance()->pending['key'] ?? '';
+
+      if (is_array($widget) && array_key_exists('__call', $widget)) {
+        throw new \UnexpectedValueException(sprintf('The builder for step "%s" returned a step array. Pass condition and children to Prompty::step(), so the flow knows them before the step runs.', $key));
+      }
+
+      if (!is_callable($widget)) {
+        throw new \UnexpectedValueException(sprintf('The builder for step "%s" returned %s. A builder returns a widget call, such as Prompty::text(...).', $key, get_debug_type($widget)));
+      }
+
+      return $widget($ctx);
+    };
+
+    return ['__call' => $call, '__children' => $children, '__condition' => $condition];
+  }
+
+  /**
    * Renders a text input widget, returning the user's input string.
    *
    * @param string $label
