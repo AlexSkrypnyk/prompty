@@ -272,6 +272,24 @@ Pass a function as a closure, such as `strcmp(...)`. A string `order` is read as
 
 The same `order` applies to a [discovered](#environment-variable-discovery) value and an environment variable. With `'selection'`, those keep the order they give. An unknown `order` throws an `InvalidArgumentException` before the widget draws anything.
 
+<table>
+  <tr>
+    <td></td>
+    <td align="center"><strong>ANSI</strong></td>
+    <td align="center"><strong>No ANSI</strong></td>
+  </tr>
+  <tr>
+    <td align="right"><strong>Unicode</strong></td>
+    <td><img src=".util/assets/widget-multiselect.svg" alt="Multiselect: Unicode + ANSI"></td>
+    <td><img src=".util/assets/widget-multiselect-no-ansi.svg" alt="Multiselect: Unicode + No ANSI"></td>
+  </tr>
+  <tr>
+    <td align="right"><strong>ASCII</strong></td>
+    <td><img src=".util/assets/widget-multiselect-ascii.svg" alt="Multiselect: ASCII + ANSI"></td>
+    <td><img src=".util/assets/widget-multiselect-ascii-no-ansi.svg" alt="Multiselect: ASCII + No ANSI"></td>
+  </tr>
+</table>
+
 ### Suggest
 
 Free-form text input with suggestions. As you type, the options that contain the typed text show under the input, ignoring case. Press <kbd>↑</kbd> or <kbd>↓</kbd> to focus a suggestion and <kbd>Enter</kbd> to take it. With no suggestion focused, <kbd>Enter</kbd> takes the typed text as is, so the answer can be anything:
@@ -329,24 +347,6 @@ $dish = Prompty::suggest('Dish', options: $starts_with);
 ```
 
 `options` takes a closure, so pass a named function as `find_dishes(...)`. Prompty calls the closure each time the typed text changes, and never for a discovered value. A return value that isn't an array suggests nothing, and entries that aren't strings or numbers are skipped.
-
-<table>
-  <tr>
-    <td></td>
-    <td align="center"><strong>ANSI</strong></td>
-    <td align="center"><strong>No ANSI</strong></td>
-  </tr>
-  <tr>
-    <td align="right"><strong>Unicode</strong></td>
-    <td><img src=".util/assets/widget-multiselect.svg" alt="Multiselect: Unicode + ANSI"></td>
-    <td><img src=".util/assets/widget-multiselect-no-ansi.svg" alt="Multiselect: Unicode + No ANSI"></td>
-  </tr>
-  <tr>
-    <td align="right"><strong>ASCII</strong></td>
-    <td><img src=".util/assets/widget-multiselect-ascii.svg" alt="Multiselect: ASCII + ANSI"></td>
-    <td><img src=".util/assets/widget-multiselect-ascii-no-ansi.svg" alt="Multiselect: ASCII + No ANSI"></td>
-  </tr>
-</table>
 
 ### Confirm
 
