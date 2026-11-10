@@ -2,7 +2,7 @@
 
 /**
  * @file
- * Playground - a validator that rejects an answer and asks again.
+ * Playground - a validator or 'required' that rejects an answer and asks again.
  *
  * A rejected answer keeps the widget open with the message under the input.
  * The message clears when the answer changes, and the widget completes only
@@ -34,16 +34,20 @@ echo "\n--- Text: a single word is rejected ---\n";
 $r = Prompty::text('Dish name', placeholder: 'pear tart', description: 'Type a single word, such as "pear", to see the message.', validate: $whole_dish);
 echo '  Result: ' . (is_string($r) ? $r : 'cancelled') . "\n";
 
-echo "\n--- Text: an empty answer is rejected ---\n";
-$r = Prompty::text('Guest name', validate: fn(string $guest): ?string => $guest === '' ? 'Enter a name for the ticket.' : NULL);
+echo "\n--- Text: required, an empty answer is rejected ---\n";
+$r = Prompty::text('Guest name', required: 'Enter a name for the ticket.');
+echo '  Result: ' . (is_string($r) ? $r : 'cancelled') . "\n";
+
+echo "\n--- Suggest: required, with the default message ---\n";
+$r = Prompty::suggest('Dish', options: ['Pear Tart', 'Apple Crumble', 'Onion Soup', 'Lentil Stew'], required: TRUE);
 echo '  Result: ' . (is_string($r) ? $r : 'cancelled') . "\n";
 
 echo "\n--- Select: 1 option is rejected ---\n";
 $r = Prompty::select('Course', options: $courses, validate: fn(string $course): ?string => $course === 'starter' ? 'The kitchen has stopped serving starters.' : NULL);
 echo '  Result: ' . (is_string($r) ? $r : 'cancelled') . "\n";
 
-echo "\n--- Multiselect: an empty selection is rejected ---\n";
-$r = Prompty::multiselect('Seats', options: $seats, validate: fn(array $picked): ?string => $picked === [] ? 'Pick at least one seat.' : NULL);
+echo "\n--- Multiselect: required, an empty selection is rejected ---\n";
+$r = Prompty::multiselect('Seats', options: $seats, required: 'Pick at least one seat.');
 echo '  Result: ' . (is_array($r) ? implode(', ', array_filter($r, is_string(...))) : 'cancelled') . "\n";
 
 echo "\n--- Flow: a rule that depends on earlier answers ---\n";

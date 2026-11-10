@@ -96,7 +96,7 @@ The [`playground/`](playground) directory holds runnable demos. Run one to see a
 | `widget-suggest.php`       | Suggest widget variants, from a list and from a closure.               |
 | `widget-scroll.php`        | Select and multiselect with long lists shown a few options at a time.  |
 | `widget-values.php`        | Where an answer comes from, and what each source is held to.           |
-| `widget-validate.php`      | A `validate` callback rejecting answers, in widgets and in a flow.     |
+| `widget-validate.php`      | `validate` and `required` rejecting answers, in widgets and a flow.    |
 | `widget-control-chars.php` | What a control character in a value draws as.                          |
 | `widget-transform.php`     | A transform rewriting each widget's answer, and a wrong return type.   |
 | `config.php`               | What `configure()` accepts, how a flow adds to it, what it turns down. |
