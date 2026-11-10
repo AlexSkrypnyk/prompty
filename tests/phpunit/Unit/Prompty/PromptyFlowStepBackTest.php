@@ -482,9 +482,9 @@ final class PromptyFlowStepBackTest extends PromptyTestCase {
   public function testLegendListsTheBackKey(array $config, ?string $expected): void {
     $stream = $this->installKeystrokes('Ann' . self::KEY_ENTER . 'Hot' . self::KEY_ENTER, FALSE);
     $raw = '';
-    Prompty::configure(...$config, legend: TRUE, output: function (string $chunk) use (&$raw): void {
+    Prompty::configure(...$config, output: function (string $chunk) use (&$raw): void {
       $raw .= $chunk;
-    });
+    }, legend: TRUE);
 
     Prompty::flow(fn(): array => [
       'guest' => Prompty::text('Guest name'),
