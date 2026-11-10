@@ -77,6 +77,15 @@ class Prompty {
   protected static bool $inFlow = FALSE;
 
   /**
+   * Handler called for every answer a validator rejects.
+   *
+   * Receives the widget label, the rejected answer and the validator's
+   * message. An exception it throws replaces the re-prompt or the rejection
+   * of a discovered value.
+   */
+  protected static ?\Closure $onInvalid = NULL;
+
+  /**
    * Terminal settings saved by setupTty() for teardownTty() to restore.
    */
   protected ?string $prevTty = NULL;
@@ -2903,6 +2912,12 @@ class Prompty {
       if ($error !== NULL && !is_string($error)) {
         throw new \UnexpectedValueException(sprintf('Validator for "%s" returned %s. A validator returns NULL for a valid answer or an error message string.', $label, get_debug_type($error)));
       }
+
+      $error = $error === NULL || trim($this->printable($error)) === '' ? NULL : trim($error);
+
+      if ($error !== NULL && static::$onInvalid instanceof \Closure) {
+        (static::$onInvalid)($label, $value, $error);
+      }
     }
     catch (\Throwable $throwable) {
       $this->teardownTty();
@@ -2910,11 +2925,7 @@ class Prompty {
       throw $throwable;
     }
 
-    if ($error === NULL || trim($this->printable($error)) === '') {
-      return NULL;
-    }
-
-    return trim($error);
+    return $error;
   }
 
   /**

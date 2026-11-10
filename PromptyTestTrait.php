@@ -92,18 +92,25 @@ trait PromptyTestTrait {
     $this->promptySetStatic('instance', $instance);
     $this->promptySetStatic('inFlow', TRUE);
 
+    // The buffer and the singleton are released when the callback throws, so
+    // a test that expects an exception leaves no state behind.
     ob_start();
-    $result = $callback();
-    $raw_output = ob_get_clean();
 
-    $output = $this->promptyNormalizeOutput($raw_output ?: '');
+    try {
+      $result = $callback();
+    }
+    finally {
+      $raw_output = ob_get_clean();
 
-    if ($stream !== NULL) {
-      fclose($stream);
+      if ($stream !== NULL) {
+        fclose($stream);
+      }
+
+      $this->promptySetStatic('instance', NULL);
+      $this->promptySetStatic('inFlow', FALSE);
     }
 
-    $this->promptySetStatic('instance', NULL);
-    $this->promptySetStatic('inFlow', FALSE);
+    $output = $this->promptyNormalizeOutput($raw_output ?: '');
 
     return ['result' => $result, 'output' => $output];
   }
@@ -141,14 +148,19 @@ trait PromptyTestTrait {
     $this->promptySetStatic('instance', $instance);
 
     ob_start();
-    $callback();
-    $raw_output = ob_get_clean();
+
+    try {
+      $callback();
+    }
+    finally {
+      $raw_output = ob_get_clean();
+
+      if ($stream !== NULL) {
+        fclose($stream);
+      }
+    }
 
     $output = $this->promptyNormalizeOutput($raw_output ?: '');
-
-    if ($stream !== NULL) {
-      fclose($stream);
-    }
 
     return ['output' => $output];
   }
@@ -274,6 +286,25 @@ trait PromptyTestTrait {
   }
 
   /**
+   * Make a rejected answer throw instead of re-prompting.
+   *
+   * The first answer a validator rejects throws PromptyValidationException,
+   * including a discovered or non-interactive answer. The switch stays on
+   * across promptyRun() calls until promptyTearDown() or a call with FALSE.
+   *
+   * @param bool $throw
+   *   TRUE to throw on a rejected answer, FALSE to re-prompt again.
+   */
+  protected function promptyThrowOnInvalid(bool $throw = TRUE): void {
+    $handler = static function (string $label, string|bool|array $value, string $reason): never {
+      /** @var string|bool|list<string> $value */
+      throw new PromptyValidationException($label, $value, $reason);
+    };
+
+    $this->promptySetStatic('onInvalid', $throw ? $handler : NULL);
+  }
+
+  /**
    * Clean up Prompty singleton state.
    *
    * Call from the test case's tearDown() method.
@@ -281,6 +312,43 @@ trait PromptyTestTrait {
   protected function promptyTearDown(): void {
     $this->promptySetStatic('instance', NULL);
     $this->promptySetStatic('inFlow', FALSE);
+    $this->promptySetStatic('onInvalid', NULL);
+  }
+
+}
+
+/**
+ * Thrown for a rejected answer while promptyThrowOnInvalid() is on.
+ *
+ * Extends \InvalidArgumentException, the class a rejected discovered value
+ * throws without the switch, so a catch for that class still matches.
+ */
+// It ships in this file so the test helper stays 1 release asset.
+// phpcs:ignore Squiz.Classes.ClassFileName.NoMatch
+class PromptyValidationException extends \InvalidArgumentException {
+
+  /**
+   * Constructs the exception.
+   *
+   * @param string $label
+   *   The label of the widget that rejected the answer.
+   * @param string|bool|list<string> $value
+   *   The rejected answer, as the widget would return it.
+   * @param string $reason
+   *   The message the validator returned.
+   */
+  public function __construct(
+    public readonly string $label,
+    public readonly string|bool|array $value,
+    public readonly string $reason,
+  ) {
+    $display = match (TRUE) {
+      is_bool($value) => $value ? 'true' : 'false',
+      is_array($value) => implode(',', $value),
+      default => $value,
+    };
+
+    parent::__construct(sprintf('Value "%s" for "%s" is not valid. %s', $display, $label, $reason));
   }
 
 }
