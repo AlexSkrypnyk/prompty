@@ -5,7 +5,7 @@
  * @file
  * Generate SVG assets from asciinema recordings.
  *
- * Records terminal sessions for 7 playground scripts in 4 flag variants
+ * Records terminal sessions for 11 playground scripts in 4 flag variants
  * each, plus the embedded copy of the flow. The widgets, flow, flow-nested
  * and flow-embed recordings render as animated SVGs; the widget-* recordings
  * render as static single-frame SVGs.
@@ -121,6 +121,36 @@ function getJobs(string $project_dir): array {
       'at' => 500,
       'rows' => 7,
       'cols' => 40,
+    ],
+    'widget-suggest' => [
+      'script' => $project_dir . '/playground/02-widgets-suggest.php',
+      'expect_fn' => 'createWidgetSuggestExpectScript',
+      'at' => 500,
+      'rows' => 18,
+      'cols' => 40,
+    ],
+    'widget-pause' => [
+      'script' => $project_dir . '/playground/02-widgets-pause.php',
+      'expect_fn' => 'createWidgetPauseExpectScript',
+      'at' => 500,
+      'rows' => 7,
+      'cols' => 40,
+    ],
+    'widget-note' => [
+      'script' => $project_dir . '/playground/03-output.php',
+      'expect_fn' => 'createWidgetNoteExpectScript',
+      'at' => 500,
+      'rows' => 26,
+      'cols' => 40,
+    ],
+    // The spinner redraws a varying number of times, so the frame is taken
+    // past the end of the recording, where every task has finished.
+    'widget-task' => [
+      'script' => $project_dir . '/playground/04-tasks.php',
+      'expect_fn' => 'createWidgetTaskExpectScript',
+      'at' => 3600000,
+      'rows' => 37,
+      'cols' => 44,
     ],
   ];
 
@@ -287,7 +317,7 @@ function processOne(string $name): void {
   $expect_fn($job['script'], $expect_script);
 
   recordSession($expect_script, $cast_file, $rows, $cols);
-  postProcessCast($cast_file);
+  postProcessCast($cast_file, $at !== NULL ? FRAME_DELAY : 0.0);
   convertToSvg($cast_file, $svg_file, $script_dir, $at);
 }
 
@@ -410,15 +440,17 @@ function recordSession(string $expect_script, string $cast_file, int $rows = TER
  *
  * @param string $cast_file
  *   Path to the cast file.
+ * @param float $lead
+ *   Delay before the first frame, in seconds.
  */
-function postProcessCast(string $cast_file): void {
+function postProcessCast(string $cast_file, float $lead = 0.0): void {
   $content = file_get_contents($cast_file);
 
   if ($content === FALSE) {
     return;
   }
 
-  $filtered = canonicalizeCast(explode("\n", $content));
+  $filtered = canonicalizeCast(explode("\n", $content), $lead);
 
   // In asciicast v3, timestamps are relative (delta from previous event),
   // so the pause is added as a 1-space output event with that duration.
@@ -453,13 +485,18 @@ function postProcessCast(string $cast_file): void {
  * arrived in. However the terminal chunked it, no part of it reaches the
  * render and no real output is removed with it.
  *
+ * The first frame plays after $lead seconds. svg-term adds an empty frame at
+ * 0, so a static frame needs a lead to be the frame nearest its timestamp.
+ *
  * @param array<int, string> $lines
  *   Cast lines, the header first.
+ * @param float $lead
+ *   Delay before the first frame, in seconds.
  *
  * @return array<int, string>
  *   Canonical cast lines, the header first.
  */
-function canonicalizeCast(array $lines): array {
+function canonicalizeCast(array $lines, float $lead = 0.0): array {
   $header = array_shift($lines) ?? '';
   $stream = '';
   $arrivals = [];
@@ -492,7 +529,7 @@ function canonicalizeCast(array $lines): array {
   foreach (splitRedraws($stream) as $index => $frame) {
     $arrival = arrivalAt($arrivals, $offset);
     $delay = $arrival - $previous < MERGE_WINDOW ? FRAME_DELAY : STEP_DELAY;
-    $canonical[] = json_encode([$index === 0 ? 0 : $delay, 'o', $frame]);
+    $canonical[] = json_encode([$index === 0 ? $lead : $delay, 'o', $frame]);
     $previous = $arrival;
     $offset += strlen($frame);
   }
@@ -1276,6 +1313,196 @@ expect "Fire the mains" {
     wait_and_enter
 }
 
+expect eof
+EXPECT;
+
+  file_put_contents($expect_script, $content);
+  chmod($expect_script, 0700);
+}
+
+/**
+ * Create an expect script for the 02-widgets-suggest.php playground.
+ *
+ * @param string $playground_script
+ *   Path to the playground PHP script.
+ * @param string $expect_script
+ *   Path to write the expect script.
+ */
+function createWidgetSuggestExpectScript(string $playground_script, string $expect_script): void {
+  $delay = PROMPT_DELAY;
+  $type_delay = TYPE_DELAY;
+  $content = <<<EXPECT
+#!/usr/bin/env expect
+
+set timeout 60
+log_user 1
+
+proc safe_send {s} {
+    if {[exp_pid] > 0} {
+        send -- \$s
+    }
+}
+
+proc wait_and_enter {} {
+    sleep {$delay}
+    safe_send "\\r"
+}
+
+proc type_text {text} {
+    foreach ch [split \$text ""] {
+        safe_send \$ch
+        sleep {$type_delay}
+    }
+}
+
+spawn php {$playground_script}
+
+# Suggest: Dish from a list - type "a" and press enter.
+expect "Dish" {
+    sleep {$delay}
+    type_text "a"
+    wait_and_enter
+}
+
+# Suggest: Dish from a closure - type "p" and press enter.
+expect "start with" {
+    sleep {$delay}
+    type_text "p"
+    wait_and_enter
+}
+
+expect eof
+EXPECT;
+
+  file_put_contents($expect_script, $content);
+  chmod($expect_script, 0700);
+}
+
+/**
+ * Create an expect script for the 02-widgets-pause.php playground.
+ *
+ * @param string $playground_script
+ *   Path to the playground PHP script.
+ * @param string $expect_script
+ *   Path to write the expect script.
+ */
+function createWidgetPauseExpectScript(string $playground_script, string $expect_script): void {
+  $delay = PROMPT_DELAY;
+  $content = <<<EXPECT
+#!/usr/bin/env expect
+
+set timeout 60
+log_user 1
+
+proc safe_send {s} {
+    if {[exp_pid] > 0} {
+        send -- \$s
+    }
+}
+
+proc wait_and_enter {} {
+    sleep {$delay}
+    safe_send "\\r"
+}
+
+spawn php {$playground_script}
+
+# Pause: any key - press enter.
+expect "Pause: any key" {
+    wait_and_enter
+}
+
+# Pause: with description and help - press enter.
+expect "noon" {
+    wait_and_enter
+}
+
+# Pause: Enter only - press enter.
+expect "Press Enter" {
+    wait_and_enter
+}
+
+# Pause: erased after the key - press enter.
+expect "erased" {
+    wait_and_enter
+}
+
+expect eof
+EXPECT;
+
+  file_put_contents($expect_script, $content);
+  chmod($expect_script, 0700);
+}
+
+/**
+ * Create an expect script for the 03-output.php playground.
+ *
+ * @param string $playground_script
+ *   Path to the playground PHP script.
+ * @param string $expect_script
+ *   Path to write the expect script.
+ */
+function createWidgetNoteExpectScript(string $playground_script, string $expect_script): void {
+  $delay = PROMPT_DELAY;
+  $content = <<<EXPECT
+#!/usr/bin/env expect
+
+set timeout 60
+log_user 1
+
+proc safe_send {s} {
+    if {[exp_pid] > 0} {
+        send -- \$s
+    }
+}
+
+proc wait_and_enter {} {
+    sleep {$delay}
+    safe_send "\\r"
+}
+
+spawn php {$playground_script}
+
+# Select: Course - press enter (Dessert, pre-focused).
+expect "Course" {
+    wait_and_enter
+}
+
+# Confirm: Serve warm - press enter (Yes).
+expect "Serve warm" {
+    wait_and_enter
+}
+
+# Confirm: Send order - press enter (Yes).
+expect "Send order" {
+    wait_and_enter
+}
+
+expect eof
+EXPECT;
+
+  file_put_contents($expect_script, $content);
+  chmod($expect_script, 0700);
+}
+
+/**
+ * Create an expect script for the 04-tasks.php playground.
+ *
+ * @param string $playground_script
+ *   Path to the playground PHP script.
+ * @param string $expect_script
+ *   Path to write the expect script.
+ */
+function createWidgetTaskExpectScript(string $playground_script, string $expect_script): void {
+  $content = <<<EXPECT
+#!/usr/bin/env expect
+
+set timeout 60
+log_user 1
+
+spawn php {$playground_script}
+
+# Tasks ask nothing, so the session runs to the end on its own.
 expect eof
 EXPECT;
 
