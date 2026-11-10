@@ -42,6 +42,15 @@ namespace AlexSkrypnyk\Prompty;
  *
  *   $this->assertSame('main', Prompty::results()['course']);
  * @endcode
+ *
+ * Use promptyInput() when the code under test configures Prompty itself and
+ * that configuration must survive:
+ * @code
+ *   Kitchen::bootstrap();
+ *   $this->promptyInput($this->promptyKeys('pear tart', self::KEY_ENTER));
+ *
+ *   $this->assertSame('pear tart', Kitchen::takeOrder());
+ * @endcode
  */
 trait PromptyTestTrait {
 
@@ -55,6 +64,13 @@ trait PromptyTestTrait {
   public const KEY_DOWN = "\x1b[B";
   public const KEY_RIGHT = "\x1b[C";
   public const KEY_LEFT = "\x1b[D";
+
+  /**
+   * The keystroke stream promptyInput() opened, closed by promptyTearDown().
+   *
+   * @var resource|null
+   */
+  protected $promptyInputStream;
 
   /**
    * Run a callable with simulated keystrokes and capture Prompty output.
@@ -164,6 +180,50 @@ trait PromptyTestTrait {
     $output = $this->promptyNormalizeOutput($raw_output ?: '');
 
     return ['output' => $output];
+  }
+
+  /**
+   * Feed keystrokes to the current Prompty instance.
+   *
+   * Only the input changes: the instance keeps every setting the code under
+   * test configured, including its output target, and its collected answers.
+   * When there is no instance, one is created with the same defaults as
+   * promptyRun(). A later call replaces the keystrokes of an earlier one.
+   *
+   * @param string $keystrokes
+   *   Raw keystroke bytes to feed (use KEY_* constants). A widget that reads
+   *   past the last byte reaches the end of the stream and cancels.
+   */
+  protected function promptyInput(string $keystrokes): void {
+    $instance = $this->promptyGetStatic('instance');
+
+    if (!$instance instanceof Prompty) {
+      $instance = $this->promptyCreateInstance();
+      $this->promptySetStatic('instance', $instance);
+    }
+
+    $this->promptyCloseInput();
+
+    $stream = fopen('php://memory', 'r+') ?: NULL;
+
+    if ($stream !== NULL) {
+      fwrite($stream, $keystrokes);
+      rewind($stream);
+    }
+
+    $this->promptySetProperty($instance, 'input', $stream);
+    $this->promptyInputStream = $stream;
+  }
+
+  /**
+   * Close the keystroke stream promptyInput() opened, if it is still open.
+   */
+  protected function promptyCloseInput(): void {
+    if (is_resource($this->promptyInputStream)) {
+      fclose($this->promptyInputStream);
+    }
+
+    $this->promptyInputStream = NULL;
   }
 
   /**
@@ -313,6 +373,7 @@ trait PromptyTestTrait {
    * Call from the test case's tearDown() method.
    */
   protected function promptyTearDown(): void {
+    $this->promptyCloseInput();
     $this->promptySetStatic('instance', NULL);
     $this->promptySetStatic('inFlow', FALSE);
     $this->promptySetStatic('onInvalid', NULL);
