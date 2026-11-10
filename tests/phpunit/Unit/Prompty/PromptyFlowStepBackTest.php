@@ -272,6 +272,38 @@ final class PromptyFlowStepBackTest extends PromptyTestCase {
       ['guest' => 'Anne', 'ticket' => TRUE, 'note' => 'Hot'],
     ];
 
+    yield 'pause is passed over' => [
+      fn(): array => [
+        'guest' => Prompty::text('Guest name'),
+        'ready' => Prompty::pause('Press any key to continue'),
+        'note' => Prompty::text('Note for the kitchen'),
+      ],
+      'Ann' . $enter . 'xHo' . $u . 'e' . $enter . 'xHot' . $enter,
+      'Anne' . $enter . 'xHot' . $enter,
+      ['guest' => 'Anne', 'ready' => TRUE, 'note' => 'Hot'],
+    ];
+
+    yield 'back key at a pause steps back' => [
+      fn(): array => [
+        'guest' => Prompty::text('Guest name'),
+        'ready' => Prompty::pause('Press any key to continue'),
+        'note' => Prompty::text('Note for the kitchen'),
+      ],
+      'Ann' . $enter . $u . 'e' . $enter . 'xHot' . $enter,
+      'Anne' . $enter . 'xHot' . $enter,
+      ['guest' => 'Anne', 'ready' => TRUE, 'note' => 'Hot'],
+    ];
+
+    yield 'back key at a first-step pause continues' => [
+      fn(): array => [
+        'ready' => Prompty::pause('Press any key to continue'),
+        'guest' => Prompty::text('Guest name'),
+      ],
+      $u . 'Ann' . $enter,
+      'xAnn' . $enter,
+      ['ready' => TRUE, 'guest' => 'Ann'],
+    ];
+
     yield 'cancel after stepping back cancels the flow' => [
       self::textSteps(),
       'Ann' . $enter . $u . self::KEY_ESCAPE,

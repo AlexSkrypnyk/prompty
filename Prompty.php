@@ -2569,7 +2569,12 @@ class Prompty {
 
     try {
       while (TRUE) {
-        $key = $p->readKey();
+        // A pause asks nothing, so stepping back passes over it.
+        $key = $p->readKey(asks: FALSE);
+
+        if ($p->requestBack($key)) {
+          return NULL;
+        }
 
         if ($p->isCancelKey($key)) {
           $p->redraw($line_count, [
@@ -3058,12 +3063,19 @@ class Prompty {
    * widget instead of being retried. Any other control byte from 0x01 to
    * 0x1A reads as 'ctrl-a' to 'ctrl-z'.
    *
-   * Reading a key marks the flow step being rendered as one that asked.
+   * Reading a key marks the flow step being rendered as one that asked,
+   * unless $asks is FALSE.
+   *
+   * @param bool $asks
+   *   Whether the key answers a question the step can be reopened for.
+   *
+   * @return string
+   *   The key name.
    */
-  protected function readKey(): string {
+  protected function readKey(bool $asks = TRUE): string {
     $last = array_key_last($this->journal);
 
-    if ($last !== NULL) {
+    if ($asks && $last !== NULL) {
       $this->journal[$last]['asked'] = TRUE;
     }
 

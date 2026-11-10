@@ -55,15 +55,9 @@ final class TerminalInputTest extends FunctionalTestCase {
 
   #[DataProvider('dataProviderStepBackInTerminal')]
   public function testStepBackInTerminal(string $back_key, string $byte): void {
-    putenv('FIXTURE_BACK_KEY=' . $back_key);
     $keystrokes = self::KEYS['DOWN'] . self::KEYS['ENTER'] . $byte . self::KEYS['DOWN'] . self::KEYS['ENTER'] . self::KEYS['ENTER'];
 
-    try {
-      $r = $this->runInTerminal(self::$root . '/tests/phpunit/Fixtures/flow-back.php', 'Course', $keystrokes);
-    }
-    finally {
-      putenv('FIXTURE_BACK_KEY');
-    }
+    $r = $this->runInTerminal(self::$root . '/tests/phpunit/Fixtures/flow-back.php', 'Course', $keystrokes, ['--back-key=' . $back_key]);
 
     $this->assertSame(0, $r['exit_code'], 'Script failed: ' . $r['stderr']);
     $this->assertSame('', $r['stderr']);
