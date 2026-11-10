@@ -159,8 +159,8 @@ The README shows headings, screenshots and short summaries. It folds code and de
 
 Pick the shape that fits the new content:
 
-- A new widget gets a `###` section under `## Widgets`. Record its 4 display variants as `widget-<name>` SVGs, as described in [Regenerating the README assets](#regenerating-the-readme-assets), and put the screenshot grid directly under its heading. Under the grid, add a toggle named `Details: <heading>` that holds the rest of the section.
-- A smaller topic, such as a configuration option, gets a toggle without a heading. Name the toggle after the topic and give its summary an anchor, as in `<summary><a name="long-lines"></a>Long lines</summary>`, so links to the topic resolve. Add a row for it to the nearest table, such as **Available options** or **Common arguments**.
+- A new widget gets a `###` section under `## Widgets`. Record its 4 display variants as `widget-<name>` SVGs, as described in [Regenerating the README assets](#regenerating-the-readme-assets), and put the screenshot grid directly under its heading. Under the grid, write a short paragraph that says what the widget does, then add a toggle named `Details: <heading>` that holds the code and the rest of the section. Every other section with a heading follows the same shape: a visible paragraph, then the toggle.
+- A smaller topic, such as a configuration option, gets a toggle without a heading. Name the toggle after the topic and add a short description of what it holds. Give the summary an anchor so links to the topic resolve, as in `<summary><a name="long-lines"></a>Long lines: how lines wider than the terminal wrap</summary>`. Add a row for it to the nearest table, such as **Available options** or **Common arguments**.
 
 In every toggle, leave a blank line after `<summary>` and before `</details>`, so GitHub renders the Markdown between them.
 
