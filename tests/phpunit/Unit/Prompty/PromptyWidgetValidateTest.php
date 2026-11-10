@@ -10,7 +10,7 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Group;
 
 /**
- * Tests the 'validate' callback shared by all 4 widgets.
+ * Tests the 'validate' callback shared by all 5 widgets.
  *
  * Covers the interactive path, where a rejected answer keeps the widget
  * active with the message drawn under it, and the discovered path, where a
@@ -23,6 +23,8 @@ final class PromptyWidgetValidateTest extends PromptyTestCase {
   protected const array COURSES = ['starter' => 'Starter', 'main' => 'Main', 'dessert' => 'Dessert'];
 
   protected const array EXTRAS = ['bread' => 'Bread', 'olives' => 'Olives', 'herbs' => 'Herbs'];
+
+  protected const array DISHES = ['Pear Tart', 'Apple Crumble', 'Onion Soup'];
 
   protected const string MESSAGE = 'Check the order before it goes to the kitchen.';
 
@@ -53,6 +55,16 @@ final class PromptyWidgetValidateTest extends PromptyTestCase {
    */
   protected static function multiselectWidget(): \Closure {
     return static fn(?\Closure $validate, array $ctx, mixed $discovered = NULL): mixed => Prompty::multiselect('Extras', options: self::EXTRAS, discovered: $discovered, validate: $validate, ctx: $ctx);
+  }
+
+  /**
+   * Builds a suggest widget call that takes a validator and a context.
+   *
+   * @param array<int|string, string>|\Closure $options
+   *   The suggestions, or a closure that returns them.
+   */
+  protected static function suggestWidget(array|\Closure $options = self::DISHES, string $default = ''): \Closure {
+    return static fn(?\Closure $validate, array $ctx, mixed $discovered = NULL): mixed => Prompty::suggest('Dish', options: $options, default: $default, placeholder: 'pear tart', discovered: $discovered, validate: $validate, ctx: $ctx);
   }
 
   /**
@@ -153,6 +165,38 @@ final class PromptyWidgetValidateTest extends PromptyTestCase {
       [[], ['bread']],
       "+  Extras\n|  Bread\n",
     ];
+    yield 'suggest typed answer' => [
+      self::suggestWidget(),
+      'pear',
+      'pear' . self::KEY_ENTER . ' tart' . self::KEY_ENTER,
+      'pear tart',
+      ['pear', 'pear tart'],
+      "+  Dish\n|  pear tart\n",
+    ];
+    yield 'suggest focused suggestion' => [
+      self::suggestWidget(),
+      'Pear Tart',
+      self::KEY_DOWN . self::KEY_ENTER . self::KEY_DOWN . self::KEY_ENTER,
+      'Apple Crumble',
+      ['Pear Tart', 'Apple Crumble'],
+      "+  Dish\n|  Apple Crumble\n",
+    ];
+    yield 'suggest placeholder taken on an empty submit' => [
+      self::suggestWidget(),
+      'pear tart',
+      self::KEY_ENTER . 'onion soup' . self::KEY_ENTER,
+      'onion soup',
+      ['pear tart', 'onion soup'],
+      "+  Dish\n|  onion soup\n",
+    ];
+    yield 'suggest default' => [
+      self::suggestWidget(default: 'Pear Tart'),
+      'Pear Tart',
+      self::KEY_ENTER . self::KEY_BACKSPACE . self::KEY_BACKSPACE . self::KEY_BACKSPACE . self::KEY_BACKSPACE . 'Soup' . self::KEY_ENTER,
+      'Pear Soup',
+      ['Pear Tart', 'Pear Soup'],
+      "+  Dish\n|  Pear Soup\n",
+    ];
     yield 'confirm' => [
       self::confirmWidget(),
       TRUE,
@@ -182,6 +226,11 @@ final class PromptyWidgetValidateTest extends PromptyTestCase {
     yield 'select ignored key keeps' => [self::selectWidget(), 'x', 2];
     yield 'multiselect toggle clears' => [self::multiselectWidget(), self::KEY_SPACE, 1];
     yield 'multiselect moving focus keeps' => [self::multiselectWidget(), self::KEY_DOWN, 2];
+    yield 'suggest typing clears' => [self::suggestWidget(), 'x', 1];
+    yield 'suggest backspace clears' => [self::suggestWidget(default: 'pear'), self::KEY_BACKSPACE, 1];
+    yield 'suggest moving focus clears' => [self::suggestWidget(), self::KEY_DOWN, 1];
+    yield 'suggest moving focus with no suggestions keeps' => [self::suggestWidget(static fn(): array => []), self::KEY_DOWN, 2];
+    yield 'suggest ignored key keeps' => [self::suggestWidget(), self::KEY_TAB, 2];
     yield 'confirm toggle clears' => [self::confirmWidget(), self::KEY_LEFT, 1];
     yield 'confirm same answer keeps' => [self::confirmWidget(), 'y', 2];
     yield 'confirm ignored key keeps' => [self::confirmWidget(), 'x', 2];
@@ -220,6 +269,9 @@ final class PromptyWidgetValidateTest extends PromptyTestCase {
     yield 'select nested' => [self::selectWidget(), '', self::CTX_AT_DEPTH, [], "|  |    ( ) Dessert\n|  |  ! " . self::MESSAGE . "\n|  |  \n"];
     yield 'multiselect' => [self::multiselectWidget(), '', [], [], "|  [ ] Herbs\n|  ! " . self::MESSAGE . "\n|\n"];
     yield 'multiselect nested' => [self::multiselectWidget(), '', self::CTX_AT_DEPTH, [], "|  |    [ ] Herbs\n|  |  ! " . self::MESSAGE . "\n|  |  \n"];
+    yield 'suggest' => [self::suggestWidget(), 'pear', [], [], "|  pear█\n|  Pear Tart\n|  ! " . self::MESSAGE . "\n|\n"];
+    yield 'suggest nested' => [self::suggestWidget(), 'pear', self::CTX_AT_DEPTH, [], "|  |  pear█\n|  |    Pear Tart\n|  |  ! " . self::MESSAGE . "\n|  |  \n"];
+    yield 'suggest with no suggestions' => [self::suggestWidget(), 'x', [], [], "|  x█\n|  ! " . self::MESSAGE . "\n|\n"];
     yield 'confirm' => [self::confirmWidget(), '', [], [], "|  (*) Yes / ( ) No\n|  ! " . self::MESSAGE . "\n|\n"];
     yield 'confirm nested' => [self::confirmWidget(), '', self::CTX_AT_DEPTH, [], "|  |  (*) Yes / ( ) No\n|  |  ! " . self::MESSAGE . "\n|  |  \n"];
     yield 'text error sits above help' => [
@@ -235,6 +287,13 @@ final class PromptyWidgetValidateTest extends PromptyTestCase {
       self::CTX_AT_DEPTH,
       [],
       "|  |    ( ) Dessert\n|  |  ! " . self::MESSAGE . "\n|  |  \n|  |  Arrows to move, enter to confirm.\n|  |  \n",
+    ];
+    yield 'suggest error sits above help' => [
+      static fn(?\Closure $validate, array $ctx): mixed => Prompty::suggest('Dish', options: self::DISHES, help: 'Arrows to pick a suggestion.', validate: $validate, ctx: $ctx),
+      'pear',
+      [],
+      [],
+      "|  Pear Tart\n|  ! " . self::MESSAGE . "\n|\n|  Arrows to pick a suggestion.\n|\n",
     ];
   }
 
@@ -279,6 +338,37 @@ final class PromptyWidgetValidateTest extends PromptyTestCase {
     $this->assertStringContainsString('! A main needs at least one extra.', $r['output']);
   }
 
+  public function testFlowSuggestValidatorReceivesEarlierAnswers(): void {
+    $received = [];
+    $validate = function (string $dish, array $results) use (&$received): ?string {
+      $received[] = $results;
+
+      return $results['course'] === 'dessert' && $dish === 'Onion Soup' ? 'Onion Soup is not a dessert.' : NULL;
+    };
+
+    $r = $this->promptyRun(fn(): mixed => Prompty::flow(fn(): array => [
+      'course' => Prompty::select('Course', options: self::COURSES),
+      'dish' => Prompty::suggest('Dish', options: self::DISHES, validate: $validate),
+    ]), self::KEY_UP . self::KEY_ENTER . 'soup' . self::KEY_DOWN . self::KEY_ENTER . self::KEY_UP . self::KEY_ENTER);
+
+    $this->assertSame(['course' => 'dessert', 'dish' => 'soup'], $r['result']);
+    $this->assertSame([['course' => 'dessert'], ['course' => 'dessert']], $received);
+    $this->assertStringContainsString('! Onion Soup is not a dessert.', $r['output']);
+  }
+
+  public function testFlowSuggestEnvValueRejected(): void {
+    $this->setEnvVars(['dish' => 'Lentil Stew']);
+    $stream = $this->installKeystrokes(self::KEY_ENTER, FALSE);
+
+    $output = $this->captureOutputThrows(\InvalidArgumentException::class, 'Discovered value "Lentil Stew" for "Dish" is not valid. Pick a dish from the menu.', fn(): mixed => Prompty::flow(fn(): array => [
+      'dish' => Prompty::suggest('Dish', options: self::DISHES, validate: fn(string $dish): ?string => in_array($dish, self::DISHES, TRUE) ? NULL : 'Pick a dish from the menu.'),
+    ], unicode: FALSE));
+
+    $this->assertSame('', $output);
+    $this->assertSame(0, ftell($stream));
+    $this->assertFalse($this->getStaticProperty('inFlow'));
+  }
+
   #[DataProvider('dataProviderValidateThreadsThroughFlowDefinition')]
   public function testValidateThreadsThroughFlowDefinition(\Closure $step): void {
     $r = $this->promptyRun(fn(): mixed => Prompty::flow(fn(): array => ['step' => $step()]), self::KEY_ENTER . self::KEY_ESCAPE);
@@ -293,6 +383,7 @@ final class PromptyWidgetValidateTest extends PromptyTestCase {
     yield 'text' => [static fn(): mixed => Prompty::text('Dish name', validate: $reject)];
     yield 'select' => [static fn(): mixed => Prompty::select('Course', options: self::COURSES, validate: $reject)];
     yield 'multiselect' => [static fn(): mixed => Prompty::multiselect('Extras', options: self::EXTRAS, validate: $reject)];
+    yield 'suggest' => [static fn(): mixed => Prompty::suggest('Dish', options: self::DISHES, validate: $reject)];
     yield 'confirm' => [static fn(): mixed => Prompty::confirm('Send order?', validate: $reject)];
     yield 'step with a condition' => [static fn(): mixed => Prompty::text('Dish name', validate: $reject, condition: static fn(): bool => TRUE)];
   }
@@ -411,6 +502,11 @@ final class PromptyWidgetValidateTest extends PromptyTestCase {
     yield 'multiselect list' => [self::multiselectWidget(), ['olives', 'bread'], NULL, $message('bread,olives', 'Extras')];
     yield 'multiselect env value' => [self::multiselectWidget(), NULL, 'herbs,bread', $message('bread,herbs', 'Extras')];
     yield 'multiselect blank selects nothing' => [self::multiselectWidget(), NULL, '', $message('', 'Extras')];
+    yield 'suggest argument' => [self::suggestWidget(), 'Pear Tart', NULL, $message('Pear Tart', 'Dish')];
+    yield 'suggest argument not among the suggestions' => [self::suggestWidget(), 'lentil stew', NULL, $message('lentil stew', 'Dish')];
+    yield 'suggest env value' => [self::suggestWidget(), NULL, ' Onion Soup ', $message('Onion Soup', 'Dish')];
+    yield 'suggest blank takes the placeholder' => [self::suggestWidget(), '', NULL, $message('pear tart', 'Dish')];
+    yield 'suggest blank takes the default' => [self::suggestWidget(default: 'Apple Crumble'), ' ', NULL, $message('Apple Crumble', 'Dish')];
     yield 'confirm truthy' => [self::confirmWidget(), 'yes', NULL, $message('true', 'Send order?')];
     yield 'confirm falsy env value' => [self::confirmWidget(), NULL, '0', $message('false', 'Send order?')];
     yield 'confirm boolean' => [self::confirmWidget(), FALSE, NULL, $message('false', 'Send order?')];
@@ -435,6 +531,7 @@ final class PromptyWidgetValidateTest extends PromptyTestCase {
     yield 'text' => [self::textWidget(), ' onion soup ', 'onion soup'];
     yield 'select' => [self::selectWidget(), 'dessert', 'dessert'];
     yield 'multiselect' => [self::multiselectWidget(), 'olives,bread', ['bread', 'olives']];
+    yield 'suggest' => [self::suggestWidget(), ' Onion Soup ', 'Onion Soup'];
     yield 'confirm' => [self::confirmWidget(), 'no', FALSE];
   }
 
@@ -479,6 +576,9 @@ final class PromptyWidgetValidateTest extends PromptyTestCase {
     yield 'select discovered' => [self::selectWidget(), 'main', $message('Discovered', 'main', 'Course')];
     yield 'multiselect empty default' => [self::multiselectWidget(), NULL, $message('Default', '', 'Extras')];
     yield 'multiselect discovered' => [self::multiselectWidget(), 'herbs', $message('Discovered', 'herbs', 'Extras')];
+    yield 'suggest default' => [self::suggestWidget(default: 'Pear Tart'), NULL, $message('Default', 'Pear Tart', 'Dish')];
+    yield 'suggest empty default ignores the placeholder' => [self::suggestWidget(), NULL, $message('Default', '', 'Dish')];
+    yield 'suggest discovered' => [self::suggestWidget(default: 'Pear Tart'), 'Onion Soup', $message('Discovered', 'Onion Soup', 'Dish')];
     yield 'confirm default' => [self::confirmWidget(FALSE), NULL, $message('Default', 'false', 'Send order?')];
     yield 'confirm discovered' => [self::confirmWidget(FALSE), 'yes', $message('Discovered', 'true', 'Send order?')];
   }
@@ -509,6 +609,7 @@ final class PromptyWidgetValidateTest extends PromptyTestCase {
     yield 'text' => [self::textWidget('pear tart'), 'pear tart'];
     yield 'select' => [self::selectWidget(), 'starter'];
     yield 'multiselect' => [self::multiselectWidget(), []];
+    yield 'suggest' => [self::suggestWidget(default: 'Pear Tart'), 'Pear Tart'];
     yield 'confirm' => [self::confirmWidget(), TRUE];
   }
 
@@ -531,6 +632,7 @@ final class PromptyWidgetValidateTest extends PromptyTestCase {
     $text = static fn(?\Closure $validate, array $ctx, mixed $discovered): mixed => Prompty::text('Dish name', discovered: $discovered, transform: static fn(string $value): string => ucwords($value), validate: $validate, ctx: $ctx);
     $select = static fn(?\Closure $validate, array $ctx, mixed $discovered): mixed => Prompty::select('Course', options: self::COURSES, discovered: $discovered, transform: static fn(string $key): string => $key . '-course', validate: $validate, ctx: $ctx);
     $multiselect = static fn(?\Closure $validate, array $ctx, mixed $discovered): mixed => Prompty::multiselect('Extras', options: self::EXTRAS, discovered: $discovered, transform: static fn(array $keys): array => array_reverse($keys), validate: $validate, ctx: $ctx);
+    $suggest = static fn(?\Closure $validate, array $ctx, mixed $discovered): mixed => Prompty::suggest('Dish', options: self::DISHES, discovered: $discovered, transform: static fn(string $dish): string => ucwords(trim($dish)), validate: $validate, ctx: $ctx);
     $confirm = static fn(?\Closure $validate, array $ctx, mixed $discovered): mixed => Prompty::confirm('Send order?', discovered: $discovered, transform: static fn(bool $send): bool => !$send, validate: $validate, ctx: $ctx);
 
     yield 'text interactive' => [$text, 'pear tart' . self::KEY_ENTER, NULL, 'Pear Tart'];
@@ -539,6 +641,9 @@ final class PromptyWidgetValidateTest extends PromptyTestCase {
     yield 'select discovered' => [$select, '', 'dessert', 'dessert-course'];
     yield 'multiselect interactive' => [$multiselect, self::KEY_SPACE . self::KEY_DOWN . self::KEY_SPACE . self::KEY_ENTER, NULL, ['olives', 'bread']];
     yield 'multiselect discovered' => [$multiselect, '', 'bread,herbs', ['herbs', 'bread']];
+    yield 'suggest typed' => [$suggest, 'onion soup ' . self::KEY_ENTER, NULL, 'Onion Soup'];
+    yield 'suggest focused suggestion' => [$suggest, 'crumble' . self::KEY_DOWN . self::KEY_ENTER, NULL, 'Apple Crumble'];
+    yield 'suggest discovered' => [$suggest, '', 'lentil stew', 'Lentil Stew'];
     yield 'confirm interactive' => [$confirm, self::KEY_ENTER, NULL, FALSE];
     yield 'confirm discovered' => [$confirm, '', 'no', TRUE];
   }

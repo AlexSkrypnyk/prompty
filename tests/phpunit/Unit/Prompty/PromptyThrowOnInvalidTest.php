@@ -83,6 +83,16 @@ final class PromptyThrowOnInvalidTest extends PromptyTestCase {
       'Value "bread,olives" for "Extras" is not valid. ' . self::MESSAGE,
     ];
 
+    [$suggest_keys, $suggest_read] = $keystrokes('soup' . self::KEY_DOWN);
+    yield 'suggest' => [
+      static fn(array $ctx): mixed => Prompty::suggest('Dish', options: ['Pear Tart', 'Onion Soup'], validate: self::reject(), ctx: $ctx),
+      $suggest_keys,
+      $suggest_read,
+      'Dish',
+      'Onion Soup',
+      'Value "Onion Soup" for "Dish" is not valid. ' . self::MESSAGE,
+    ];
+
     [$confirm_keys, $confirm_read] = $keystrokes(self::KEY_LEFT);
     yield 'confirm' => [
       static fn(array $ctx): mixed => Prompty::confirm('Send order?', validate: self::reject(), ctx: $ctx),

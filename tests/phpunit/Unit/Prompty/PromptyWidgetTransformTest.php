@@ -23,6 +23,8 @@ final class PromptyWidgetTransformTest extends PromptyTestCase {
 
   protected const array EXTRAS = ['bread' => 'Bread', 'olives' => 'Olives', 'herbs' => 'Herbs'];
 
+  protected const array DISHES = ['Pear Tart', 'Apple Crumble', 'Onion Soup'];
+
   /**
    * Tests each widget returns and draws the transformed answer.
    *
@@ -107,6 +109,30 @@ final class PromptyWidgetTransformTest extends PromptyTestCase {
       'None',
     ];
 
+    yield 'suggest typed text normalised' => [
+      fn(mixed $discovered): mixed => Prompty::suggest('Order', options: self::DISHES, discovered: $discovered, transform: fn(string $dish): string => ucwords(trim($dish)), ctx: self::context()),
+      ' lentil stew ' . self::KEY_ENTER,
+      ' lentil stew ',
+      'Lentil Stew',
+      'Lentil Stew',
+    ];
+
+    yield 'suggest focused suggestion transformed' => [
+      fn(mixed $discovered): mixed => Prompty::suggest('Order', options: self::DISHES, discovered: $discovered, transform: strtolower(...), ctx: self::context()),
+      'tart' . self::KEY_DOWN . self::KEY_ENTER,
+      'Pear Tart',
+      'pear tart',
+      'pear tart',
+    ];
+
+    yield 'suggest placeholder transformed' => [
+      fn(mixed $discovered): mixed => Prompty::suggest('Order', options: self::DISHES, placeholder: 'pear tart', discovered: $discovered, transform: strtoupper(...), ctx: self::context()),
+      self::KEY_ENTER,
+      '',
+      'PEAR TART',
+      'PEAR TART',
+    ];
+
     yield 'confirm inverted' => [
       fn(mixed $discovered): mixed => Prompty::confirm('Order', discovered: $discovered, transform: fn(bool $yes): bool => !$yes, ctx: self::context()),
       self::KEY_ENTER,
@@ -116,10 +142,21 @@ final class PromptyWidgetTransformTest extends PromptyTestCase {
     ];
   }
 
-  public function testTextTransformOutputIsMadePrintable(): void {
-    $r = $this->promptyRun(fn(): mixed => Prompty::text('Order', transform: fn(string $value): string => $value . "\033[31m\ttart", ctx: self::context()), 'pear' . self::KEY_ENTER);
+  #[DataProvider('dataProviderTransformOutputIsMadePrintable')]
+  public function testTransformOutputIsMadePrintable(\Closure $widget, mixed $discovered): void {
+    $r = $this->promptyRun(fn(): mixed => $widget(fn(string $value): string => $value . "\033[31m\ttart", $discovered), 'pear' . self::KEY_ENTER);
 
     $this->assertSame('pear tart', $r['result']);
+  }
+
+  public static function dataProviderTransformOutputIsMadePrintable(): \Iterator {
+    $text = fn(\Closure $transform, mixed $discovered): mixed => Prompty::text('Order', discovered: $discovered, transform: $transform, ctx: self::context());
+    $suggest = fn(\Closure $transform, mixed $discovered): mixed => Prompty::suggest('Order', options: self::DISHES, discovered: $discovered, transform: $transform, ctx: self::context());
+
+    yield 'text interactive' => [$text, NULL];
+    yield 'text discovered' => [$text, 'pear'];
+    yield 'suggest interactive' => [$suggest, NULL];
+    yield 'suggest discovered' => [$suggest, 'pear'];
   }
 
   /**
@@ -157,6 +194,8 @@ final class PromptyWidgetTransformTest extends PromptyTestCase {
 
     yield 'multiselect' => [fn(\Closure $transform): mixed => Prompty::multiselect('Order', options: self::EXTRAS, transform: $transform, ctx: self::context()), self::KEY_SPACE . self::KEY_ENTER, ['bread']];
 
+    yield 'suggest' => [fn(\Closure $transform): mixed => Prompty::suggest('Order', options: self::DISHES, transform: $transform, ctx: self::context()), 'soup' . self::KEY_DOWN . self::KEY_ENTER, 'Onion Soup'];
+
     yield 'confirm' => [fn(\Closure $transform): mixed => Prompty::confirm('Order', transform: $transform, ctx: self::context()), self::KEY_ENTER, TRUE];
   }
 
@@ -166,20 +205,25 @@ final class PromptyWidgetTransformTest extends PromptyTestCase {
     $this->assertSame('pear', $r['result']);
   }
 
-  public function testEnvironmentValueIsTransformed(): void {
+  #[DataProvider('dataProviderEnvironmentValueIsTransformed')]
+  public function testEnvironmentValueIsTransformed(\Closure $step): void {
     $this->createAndSetInstance(['unicode' => FALSE]);
     $this->setEnvVars(['dish' => '  ONION SOUP  ']);
 
     $result = NULL;
-    $output = $this->captureOutput(function () use (&$result): void {
-      $result = Prompty::flow(fn(): array => [
-        'dish' => Prompty::text('Dish name', transform: fn(string $value): string => ucwords(strtolower($value))),
-      ]);
+    $output = $this->captureOutput(function () use ($step, &$result): void {
+      $result = Prompty::flow(fn(): array => ['dish' => $step(fn(string $value): string => ucwords(strtolower($value)))]);
     });
 
     $this->assertSame(['dish' => 'Onion Soup'], $result);
     $this->assertStringContainsString('Onion Soup', $output);
     $this->assertStringNotContainsString('ONION SOUP', $output);
+  }
+
+  public static function dataProviderEnvironmentValueIsTransformed(): \Iterator {
+    yield 'text' => [fn(\Closure $transform): mixed => Prompty::text('Dish name', transform: $transform)];
+
+    yield 'suggest' => [fn(\Closure $transform): mixed => Prompty::suggest('Dish', options: self::DISHES, transform: $transform)];
   }
 
   /**
@@ -212,6 +256,8 @@ final class PromptyWidgetTransformTest extends PromptyTestCase {
     yield 'select' => [fn(): mixed => Prompty::select('Order', options: self::COURSES, default: 'starter', transform: fn(string $key): string => $key === 'starter' ? 'main' : $key), 'main', 'Main'];
 
     yield 'multiselect' => [fn(): mixed => Prompty::multiselect('Order', options: self::EXTRAS, default: ['olives'], transform: fn(array $keys): array => ['bread', ...$keys]), ['bread', 'olives'], 'Bread, Olives'];
+
+    yield 'suggest' => [fn(): mixed => Prompty::suggest('Order', options: self::DISHES, default: 'Pear Tart', transform: strtoupper(...)), 'PEAR TART', 'PEAR TART'];
 
     yield 'confirm' => [fn(): mixed => Prompty::confirm('Order', default: TRUE, transform: fn(bool $yes): bool => !$yes), FALSE, 'No'];
   }
@@ -252,6 +298,8 @@ final class PromptyWidgetTransformTest extends PromptyTestCase {
     yield 'select' => [fn(\Closure $transform): mixed => Prompty::select('Order', options: self::COURSES, transform: $transform, ctx: self::context())];
 
     yield 'multiselect' => [fn(\Closure $transform): mixed => Prompty::multiselect('Order', options: self::EXTRAS, transform: $transform, ctx: self::context())];
+
+    yield 'suggest' => [fn(\Closure $transform): mixed => Prompty::suggest('Order', options: self::DISHES, transform: $transform, ctx: self::context())];
 
     yield 'confirm' => [fn(\Closure $transform): mixed => Prompty::confirm('Order', transform: $transform, ctx: self::context())];
   }
@@ -324,6 +372,13 @@ final class PromptyWidgetTransformTest extends PromptyTestCase {
       self::KEY_ENTER,
       'bread',
       sprintf($message, 'a list holding int', 'a list of strings'),
+    ];
+
+    yield 'suggest returning null' => [
+      fn(mixed $discovered): mixed => Prompty::suggest('Order', options: self::DISHES, discovered: $discovered, transform: fn(string $dish): mixed => NULL, ctx: self::context()),
+      self::KEY_DOWN . self::KEY_ENTER,
+      'Pear Tart',
+      sprintf($message, 'null', 'a string'),
     ];
 
     yield 'confirm returning a string' => [
