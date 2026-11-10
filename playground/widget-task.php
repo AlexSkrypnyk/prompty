@@ -16,16 +16,18 @@ Prompty::configure(unicode: !isset($opts['no-unicode']), ansi: !isset($opts['no-
 
 // The oven is a child process, so its output reaches the task through
 // passthru(). Its stderr is joined to stdout to be streamed as well.
-$code = <<<'PHP'
-  $say = function (string $text): void { echo $text; flush(); usleep(250000); };
-  $say("Tray 1 of 2 in the top rack\n");
-  foreach ([20, 45, 70, 100] as $percent) { $say("Rising {$percent}%\r"); }
-  $say("\n");
-  $say("Crust \033[33mgolden\033[0m at the edges\n");
-  $say("Tray 2 of 2 in the top rack\n");
-  fwrite(STDERR, "Fan cycling, temperature held\n");
-  $say("Both trays out, resting on the rack\n");
-  PHP;
+// escapeshellarg() blanks double quotes, '%' and '!' on Windows, so the code
+// uses single quotes and chr(), and stays on 1 line.
+$code = implode(' ', [
+  '$say = function (string $text): void { echo $text; flush(); usleep(250000); };',
+  '$say(\'Tray 1 of 2 in the top rack\' . PHP_EOL);',
+  'foreach ([20, 45, 70, 100] as $done) { $say(\'Rising \' . $done . chr(37) . chr(13)); }',
+  '$say(PHP_EOL);',
+  '$say(\'Crust \' . chr(27) . \'[33mgolden\' . chr(27) . \'[0m at the edges\' . PHP_EOL);',
+  '$say(\'Tray 2 of 2 in the top rack\' . PHP_EOL);',
+  'fwrite(STDERR, \'Fan cycling, temperature held\' . PHP_EOL);',
+  '$say(\'Both trays out, resting on the rack\' . PHP_EOL);',
+]);
 $oven = escapeshellarg(PHP_BINARY) . ' -r ' . escapeshellarg($code) . ' 2>&1';
 
 echo "\n--- Task: hint and result ---\n";

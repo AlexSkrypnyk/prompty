@@ -139,7 +139,9 @@ final class PromptyTaskStreamTest extends PromptyTestCase {
   public function testStreamChildProcess(): void {
     $this->createAndSetInstance(['interactive' => FALSE]);
 
-    $command = escapeshellarg(PHP_BINARY) . ' -r ' . escapeshellarg('echo "Tray 1 in\n"; fwrite(STDERR, "Fan cycling\n"); echo "Tray 2 in\n";') . ' 2>&1';
+    // escapeshellarg() blanks double quotes on Windows, so the code uses
+    // single quotes.
+    $command = escapeshellarg(PHP_BINARY) . ' -r ' . escapeshellarg("echo 'Tray 1 in', PHP_EOL; fwrite(STDERR, 'Fan cycling' . PHP_EOL); echo 'Tray 2 in', PHP_EOL;") . ' 2>&1';
 
     $output = $this->captureOutput(fn(): mixed => Prompty::task('Baking the tart', action: function () use ($command): bool {
       passthru($command);

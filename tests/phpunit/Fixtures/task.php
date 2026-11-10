@@ -21,7 +21,9 @@ $oven = Prompty::task('Preheating the oven', action: function (): string {
   return '180';
 }, success: fn(string $degrees): string => sprintf('Oven at %s', $degrees));
 
-$command = escapeshellarg(PHP_BINARY) . ' -r ' . escapeshellarg('foreach (range(1, 6) as $i) { echo "Tray $i in\n"; usleep(20000); } fwrite(STDERR, "Fan cycling\n");') . ' 2>&1';
+// escapeshellarg() blanks double quotes on Windows, so the code uses single
+// quotes.
+$command = escapeshellarg(PHP_BINARY) . ' -r ' . escapeshellarg("foreach (range(1, 6) as \$i) { echo 'Tray ', \$i, ' in', PHP_EOL; usleep(20000); } fwrite(STDERR, 'Fan cycling' . PHP_EOL);") . ' 2>&1';
 
 $tart = Prompty::task('Baking the tart', action: function () use ($command): bool {
   echo "Oven at 180\n";
