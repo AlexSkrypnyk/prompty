@@ -155,13 +155,14 @@ Take labels, keys and hints from that file. If a demo needs a concept the file d
 
 ## README layout
 
-Add every new heading to the README's **Contents** list, nested under its parent heading.
+The README shows headings, screenshots and short summaries. It folds code and detail into `<details>` toggles. It has 5 main sections: **Installation**, **Usage** (with embedding, the starter script and the test harness), **Widgets**, **Flows** and **Configuration**. Add every new heading to the **Contents** list, nested under its parent heading.
 
-Each widget is a `###` section under `## Widgets` that shows its screenshot grid and folds its usage. Follow 3 rules for a new widget:
+Pick the shape that fits the new content:
 
-- Record its 4 display variants as `widget-<name>` SVGs, as described in [Regenerating the README assets](#regenerating-the-readme-assets).
-- Put its screenshot grid directly under its heading.
-- Under the grid, open `<details>`, add `<summary>Details: <heading></summary>` with the widget's heading text, then the rest of the section, then `</details>`. Leave a blank line after `<summary>` and before `</details>`, so GitHub renders the Markdown between them.
+- A new widget gets a `###` section under `## Widgets`. Record its 4 display variants as `widget-<name>` SVGs, as described in [Regenerating the README assets](#regenerating-the-readme-assets), and put the screenshot grid directly under its heading. Under the grid, add a toggle named `Details: <heading>` that holds the rest of the section.
+- A smaller topic, such as a configuration option, gets a toggle without a heading. Name the toggle after the topic and give its summary an anchor, as in `<summary><a name="long-lines"></a>Long lines</summary>`, so links to the topic resolve. Add a row for it to the nearest table, such as **Available options** or **Common arguments**.
+
+In every toggle, leave a blank line after `<summary>` and before `</details>`, so GitHub renders the Markdown between them.
 
 ## Regenerating the README assets
 
