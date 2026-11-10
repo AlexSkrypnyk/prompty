@@ -14,7 +14,7 @@
  * on its own line. Each value's raw bytes print first, for comparison.
  *
  * A description is split on its own newlines first, so the line breaks a
- * caller writes still render as line breaks.
+ * caller writes still render as line breaks. It also keeps its SGR styling.
  *
  * phpcs:disable Drupal.Arrays.Array.LongLineDeclaration
  */
@@ -60,9 +60,9 @@ Prompty::select('Course', options: ['starter' => "Star\nter", 'main' => 'Main'],
 // A description is drawn while a widget is waiting, so this one asks rather
 // than resolving a value. The 2 lines below the label are the line breaks
 // the caller wrote.
-echo PHP_EOL . '--- A description keeps the line breaks it was written with ---' . PHP_EOL;
+echo PHP_EOL . '--- A description keeps its line breaks and its styling ---' . PHP_EOL;
 echo 'This one waits for input. Press enter to take the placeholder.' . PHP_EOL;
 Prompty::text('Guest name',
   placeholder: 'Jane Doe',
-  description: "Printed on the order ticket.\nLeave blank for takeaway.",
+  description: "Printed on the \e[1morder ticket\e[22m.\nLeave blank for \e[4mtakeaway\e[24m.",
 );
