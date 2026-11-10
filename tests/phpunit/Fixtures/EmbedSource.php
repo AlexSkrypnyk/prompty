@@ -176,6 +176,34 @@ class EmbedSource {
   }
 
   /**
+   * Summarises the tally and defers a recount to a closure.
+   *
+   * @param array<string, int> $counts
+   *   Counts keyed by dish.
+   *
+   * @return array{string, int}
+   *   The summary line and the recount the closure returns.
+   */
+  public function recount(array $counts): array {
+    $lines = [];
+
+    foreach ($counts as $dish => $copies) {
+      $this->tally($counts, $dish);
+      $lines[] = $this->plate($dish, $copies);
+    }
+
+    $line = $this->describe(implode(' + ', $lines));
+    $line = $this->describe($line, 'main', $this->extras);
+    $recount = function () use ($counts): int {
+      $extra = count($this->extras);
+
+      return count($counts) + $extra;
+    };
+
+    return [$line, $recount()];
+  }
+
+  /**
    * Builds a label for a course without one.
    *
    * @param string $course

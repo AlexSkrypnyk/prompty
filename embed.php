@@ -552,6 +552,68 @@ function embed_compact_member_role(array $tokens, int $index): ?string {
 }
 
 /**
+ * Finds the body uses of $this that a short alias may replace.
+ *
+ * A regular closure rebinds $this and cannot see an alias local without a use
+ * clause, so $this inside one is left out. Control-flow blocks and arrow
+ * functions keep the method's $this, and an arrow function captures the alias
+ * by value, so uses in them are included.
+ *
+ * @param array<int, array{int, string, int}|string> $tokens
+ *   Tokens of the class from token_get_all().
+ * @param array{body: int|null, end: int} $method
+ *   The method.
+ *
+ * @return list<int>
+ *   The token indices of the aliasable $this uses, in order.
+ */
+function embed_compact_this_uses(array $tokens, array $method): array {
+  if ($method['body'] === NULL) {
+    return [];
+  }
+
+  $uses = [];
+  $depth = 0;
+  $closure_depths = [];
+  $is_closure_pending = FALSE;
+
+  for ($i = $method['body']; $i <= $method['end']; $i++) {
+    $token = $tokens[$i];
+
+    if (is_array($token) && $token[0] === T_FUNCTION) {
+      $is_closure_pending = TRUE;
+      continue;
+    }
+
+    if ($token === '{' || (is_array($token) && in_array($token[0], [T_CURLY_OPEN, T_DOLLAR_OPEN_CURLY_BRACES], TRUE))) {
+      $depth++;
+
+      if ($is_closure_pending) {
+        $closure_depths[] = $depth;
+        $is_closure_pending = FALSE;
+      }
+
+      continue;
+    }
+
+    if ($token === '}') {
+      if ($closure_depths !== [] && end($closure_depths) === $depth) {
+        array_pop($closure_depths);
+      }
+
+      $depth--;
+      continue;
+    }
+
+    if ($closure_depths === [] && is_array($token) && $token[0] === T_VARIABLE && $token[1] === '$this') {
+      $uses[] = $i;
+    }
+  }
+
+  return $uses;
+}
+
+/**
  * Renames the internals of a class and removes optional whitespace.
  *
  * Protected properties and methods get short names, the shortest for the
@@ -608,12 +670,28 @@ function embed_compact(string $class_code): string {
   $signature_kept = [];
   $aliases = [];
 
+  // $this uses to rewrite, keyed by token index with the method scope. A
+  // method aliases $this when the 1-char alias assignment '$x=$this;', 9
+  // bytes, costs less than the 3 bytes each rewritten '$this' then saves.
+  $this_rewrite = [];
+  $this_aliased = [];
+
   foreach ($methods as $scope => $method) {
     $kept[$scope] = array_fill_keys(EMBED_RESERVED_VARIABLES, TRUE) + ($named[''] ?? []);
     $by_name = $method['is_public'] ? $method['parameters'] : array_intersect($method['parameters'], array_keys($named[strtolower($method['name'])] ?? []));
     $signature_kept[$scope] = array_fill_keys(array_diff($by_name, array_keys($kept[$scope])), TRUE);
     $aliases[$scope] = embed_compact_aliases($tokens, $method, array_diff(array_keys($signature_kept[$scope]), $method['references']));
     $reserved['s' . $scope] = array_change_key_case($kept[$scope] + $signature_kept[$scope]);
+
+    $this_uses = embed_compact_this_uses($tokens, $method);
+
+    if (count($this_uses) * 3 > 9) {
+      $this_aliased[$scope] = TRUE;
+
+      foreach ($this_uses as $this_use) {
+        $this_rewrite[$this_use] = $scope;
+      }
+    }
   }
 
   // Each occurrence to rename, keyed by token index, with the group whose
@@ -643,7 +721,10 @@ function embed_compact(string $class_code): string {
 
       $is_in_signature = $is_in_method && $index < ($methods[$scope]['body'] ?? PHP_INT_MAX);
 
-      if (!$is_in_method || $is_static_property) {
+      if ($name === 'this') {
+        $group = isset($this_rewrite[$index]) ? 's' . $scope : NULL;
+      }
+      elseif (!$is_in_method || $is_static_property) {
         $group = isset($renamed_properties[$name]) ? 'p' : NULL;
       }
       elseif (isset($kept[$scope][$name])) {
@@ -677,6 +758,11 @@ function embed_compact(string $class_code): string {
     }
   }
 
+  // The $this alias assignment is 1 more use of the alias.
+  foreach (array_keys($this_aliased) as $scope) {
+    $counts['s' . $scope]['this']++;
+  }
+
   $maps = [];
 
   foreach ($counts as $group => $group_counts) {
@@ -691,6 +777,11 @@ function embed_compact(string $class_code): string {
       $body = (int) $methods[$scope]['body'];
       $insertions[$body] = ($insertions[$body] ?? '') . sprintf('$%s=$%s;', $maps['s' . $scope][$name], $name);
     }
+  }
+
+  foreach (array_keys($this_aliased) as $scope) {
+    $body = (int) $methods[$scope]['body'];
+    $insertions[$body] = ($insertions[$body] ?? '') . sprintf('$%s=$this;', $maps['s' . $scope]['this']);
   }
 
   $output = '';

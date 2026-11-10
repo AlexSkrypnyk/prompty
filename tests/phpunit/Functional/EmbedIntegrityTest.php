@@ -108,6 +108,48 @@ final class EmbedIntegrityTest extends EmbedTestCase {
     yield 'return by reference' => ['protected array $dishes = [];' . "\n" . 'public function &dishes(): array { return $this->dishes; }', 'The class has a method that returns by reference, which --compact does not support.'];
   }
 
+  public function testCompactAliasesThis(): void {
+    $members = <<<'PHP'
+      protected array $plates = [];
+
+      public function serve(array $dishes): array {
+        $out = [];
+        foreach ($dishes as $dish) {
+          $this->plates[] = $dish;
+          $out[] = $this->label($dish);
+        }
+        $out[] = $this->label('tea');
+        $out[] = $this->label('soup');
+        $out[] = $this->label('stew');
+        $later = function (): int { return count($this->plates); };
+
+        return [$out, $later()];
+      }
+
+      protected function label(string $dish): string {
+        return ucfirst($dish);
+      }
+      PHP;
+
+    $source = self::$tmp . '/Kitchen.php';
+    file_put_contents($source, "<?php\n\ndeclare(strict_types=1);\n\nnamespace Kitchen;\n\n/**\n * Kitchen.\n */\nclass Kitchen {\n\n" . $members . "\n\n}\n");
+
+    $min = self::$tmp . '/Kitchen.min.payload';
+    $compact = self::$tmp . '/Kitchen.compact.payload';
+    $this->runEmbed('--source', $source, '--payload', $min);
+    $this->runEmbed('--compact', '--source', $source, '--payload', $compact);
+
+    $min_code = $this->readFile($min);
+    $compact_code = $this->readFile($compact);
+
+    // serve() uses $this 5 times outside its closure, so the alias pays off.
+    $this->assertStringContainsString('=$this;', $compact_code);
+    $this->assertLessThan(substr_count($min_code, '$this'), substr_count($compact_code, '$this'));
+
+    // The closure rebinds $this, so its reference is left untouched.
+    $this->assertStringContainsString('{return count($this->', $compact_code);
+  }
+
   /**
    * Run the fixture that calls every public method of an EmbedSource file.
    *
