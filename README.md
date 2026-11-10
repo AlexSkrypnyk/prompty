@@ -142,7 +142,7 @@ Prompty::configure(placeholder_fallback: FALSE);
 Prompty::text('Dish name', default: 'pear tart', placeholder: 'e.g. pear tart');
 ```
 
-The option covers `text` and `suggest`, and both still draw the placeholder while the input is empty. To re-prompt on an empty answer, add a [`validate`](#validation) callback that rejects `''`.
+The option covers `text` and `suggest`, and both still draw the placeholder while the input is empty. To make `text` re-prompt on an empty answer, add a [`validate`](#validation) callback that rejects `''`.
 
 <table>
   <tr>
