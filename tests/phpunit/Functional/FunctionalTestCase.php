@@ -164,6 +164,12 @@ abstract class FunctionalTestCase extends TestCase {
     }
 
     $stdout = $this->readPipe($pipes[1], microtime(TRUE) + 15, 'EXITED');
+
+    // A script still running at the deadline holds stderr open.
+    if (!str_contains($stdout, 'EXITED')) {
+      proc_terminate($process, 9);
+    }
+
     $stderr = (string) stream_get_contents($pipes[2]);
     fclose($pipes[0]);
     fclose($pipes[1]);
