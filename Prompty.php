@@ -117,6 +117,11 @@ class Prompty {
   protected ?array $pending = NULL;
 
   /**
+   * Whether the running flow has drawn its intro, a step or a section.
+   */
+  protected bool $drawn = FALSE;
+
+  /**
    * Input stream for reading keystrokes (defaults to STDIN).
    *
    * @var resource|null
@@ -134,6 +139,7 @@ class Prompty {
     'active' => '◇',
     'intro' => '┌',
     'outro' => '└',
+    'section' => '├',
     'pointer' => '❯',
     'radio_on' => '●',
     'radio_off' => '○',
@@ -156,6 +162,7 @@ class Prompty {
     'active' => 'o',
     'intro' => '#',
     'outro' => '#',
+    'section' => '#',
     'pointer' => '>',
     'radio_on' => '(*)',
     'radio_off' => '( )',
@@ -703,6 +710,8 @@ class Prompty {
         is_callable($intro) ? $intro($p->results) : $p->printLines($p->renderIntro($intro));
       }
 
+      $p->drawn = $intro !== NULL;
+
       $outcome = $p->walkFlow($steps, 0, $options, '');
 
       if ($outcome === FALSE) {
@@ -722,6 +731,7 @@ class Prompty {
     finally {
       $p->teardownTty();
       $p->pending = NULL;
+      $p->drawn = FALSE;
       static::$inFlow = FALSE;
 
       if ($snapshot !== NULL) {
@@ -778,6 +788,42 @@ class Prompty {
     };
 
     return ['__call' => $call, '__children' => $children, '__condition' => $condition];
+  }
+
+  /**
+   * Declares a heading over the flow steps that follow it.
+   *
+   * A section takes no key and adds nothing to the results. Its group is the
+   * steps up to the next section, and the heading is drawn only when at least
+   * 1 of them renders.
+   *
+   * @param string $title
+   *   The heading text, drawn bold. A newline starts another heading line.
+   * @param string $description
+   *   Optional description drawn dim below the title. A newline starts
+   *   another description line.
+   * @param callable|null $condition
+   *   Optional condition callback; hides the heading when it returns FALSE.
+   *   The steps in the group keep their own conditions.
+   *
+   * @return array<string, mixed>
+   *   The section step array.
+   *
+   * @throws \LogicException
+   *   When called outside the steps callable of a flow.
+   * @throws \InvalidArgumentException
+   *   When the title is blank.
+   */
+  public static function section(string $title, string $description = '', ?callable $condition = NULL): array {
+    if (!static::$inFlow) {
+      throw new \LogicException('Prompty::section() declares a flow heading, so it can only be called inside the callable passed to Prompty::flow().');
+    }
+
+    if (trim($title) === '') {
+      throw new \InvalidArgumentException('A section must have a title: it is the heading drawn above its steps.');
+    }
+
+    return ['__section' => $title, '__description' => $description, '__condition' => $condition];
   }
 
   /**
@@ -2695,17 +2741,35 @@ class Prompty {
    * The results are flat, so a key reused anywhere in the tree would let a
    * later answer overwrite an earlier one.
    *
+   * A section stores no answer, so it is checked for a key it would ignore
+   * rather than for a reusable one.
+   *
    * @param array<array-key, mixed> $steps
    *   Flow steps, keyed by step name.
    * @param array<string, true> $seen
    *   Keys already validated elsewhere in the tree.
+   * @param bool $nested
+   *   Whether $steps are the children of a step.
    *
    * @throws \InvalidArgumentException
-   *   When a key is reused, or the name a step resolves through is not a
-   *   valid variable name.
+   *   When a key is reused, the name a step resolves through is not a valid
+   *   variable name, or a section has a key or is nested.
    */
-  protected function assertStepKeys(array $steps, array &$seen = []): void {
+  protected function assertStepKeys(array $steps, array &$seen = [], bool $nested = FALSE): void {
     foreach ($steps as $key => $step) {
+      if ($this->isSection($step)) {
+        /** @var array{__section: string} $step */
+        if (is_string($key)) {
+          throw new \InvalidArgumentException(sprintf('Section "%s" has the key "%s". A section adds no answer to the results, so it takes no key.', $step['__section'], $key));
+        }
+
+        if ($nested) {
+          throw new \InvalidArgumentException(sprintf('Section "%s" is among the children of a step. A section heads top-level steps, so it can only appear in the steps array of the flow itself.', $step['__section']));
+        }
+
+        continue;
+      }
+
       if ((string) $key === '') {
         throw new \InvalidArgumentException('A step must have a key: it names the answer in the results and the variable the answer can come from.');
       }
@@ -2727,7 +2791,7 @@ class Prompty {
       $children = is_array($step) ? $step['__children'] ?? NULL : NULL;
 
       if (is_array($children)) {
-        $this->assertStepKeys($children, $seen);
+        $this->assertStepKeys($children, $seen, TRUE);
       }
     }
   }
@@ -3089,6 +3153,40 @@ class Prompty {
   }
 
   /**
+   * Renders the heading lines of a flow section.
+   *
+   * @param string $title
+   *   The section title. A newline starts another title line.
+   * @param string $description
+   *   The section description, or '' for none. A newline starts another
+   *   description line.
+   * @param bool $first
+   *   Whether nothing has been drawn above the heading in the flow. The
+   *   heading then opens the tree as an intro does.
+   *
+   * @return array<int, string>
+   *   The rendered heading lines.
+   */
+  protected function renderSection(string $title, string $description, bool $first): array {
+    $lines = $first ? [''] : [];
+    $symbol = $this->color($this->cfgSymbols[$first ? 'intro' : 'section'], 'gray');
+
+    foreach (explode("\n", $title) as $index => $text_line) {
+      $lines[] = ($index === 0 ? $symbol : $this->bar()) . $this->cfgSpacing['indent'] . $this->color($this->printable($text_line), 'bold');
+    }
+
+    if ($description !== '') {
+      foreach (explode("\n", $description) as $text_line) {
+        $lines[] = $this->bar() . $this->cfgSpacing['indent'] . $this->color($this->printable($text_line), 'dim');
+      }
+    }
+
+    $lines[] = $this->bar();
+
+    return $lines;
+  }
+
+  /**
    * Renders description text lines with appropriate depth indentation.
    *
    * @param string $description
@@ -3330,6 +3428,61 @@ class Prompty {
   }
 
   /**
+   * Checks whether a flow step is a section heading.
+   *
+   * @param mixed $step
+   *   A flow step.
+   *
+   * @return bool
+   *   TRUE when the step was declared with Prompty::section().
+   */
+  protected function isSection(mixed $step): bool {
+    return is_array($step) && array_key_exists('__section', $step);
+  }
+
+  /**
+   * Draws a section heading when its group has a step that will render.
+   *
+   * A group step's condition can only read an answer from the group once an
+   * earlier group step renders, and that step already makes the group
+   * visible. Testing the group against the current results is therefore
+   * exact.
+   *
+   * @param array<string, mixed> $section
+   *   The section step array.
+   * @param array<array-key, mixed> $rest
+   *   The steps after the section.
+   */
+  protected function drawSection(array $section, array $rest): void {
+    $condition = $this->stepCondition($section);
+
+    if ($condition !== NULL && !$condition($this->results)) {
+      return;
+    }
+
+    $group = [];
+
+    foreach ($rest as $key => $step) {
+      if ($this->isSection($step)) {
+        break;
+      }
+
+      $group[$key] = $step;
+    }
+
+    if (!$this->hasVisibleStep($group, $this->results)) {
+      return;
+    }
+
+    /** @var string $title */
+    $title = $section['__section'];
+    /** @var string $description */
+    $description = $section['__description'] ?? '';
+    $this->printLines($this->renderSection($title, $description, !$this->drawn));
+    $this->drawn = TRUE;
+  }
+
+  /**
    * Checks whether any of the given steps would render against the results.
    *
    * @param array<array-key, mixed> $steps
@@ -3429,6 +3582,13 @@ class Prompty {
     foreach ($steps as $key => $step) {
       $index++;
 
+      if ($this->isSection($step)) {
+        /** @var array<string, mixed> $step */
+        $this->drawSection($step, array_slice($steps, $index));
+
+        continue;
+      }
+
       if (is_callable($step)) {
         $call = $step;
         $children = [];
@@ -3480,6 +3640,7 @@ class Prompty {
       }
 
       $this->results[$key] = $value;
+      $this->drawn = TRUE;
 
       // A widget settles the connector before it draws; this settles a step
       // whose widget did not, so its children still see the exact state.
