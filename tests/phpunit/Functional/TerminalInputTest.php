@@ -53,17 +53,32 @@ final class TerminalInputTest extends FunctionalTestCase {
     yield 'enter only, after a letter' => ['x' . self::KEYS['ENTER'], TRUE, 'true'];
   }
 
-  public function testStepBackInTerminal(): void {
-    // Ctrl+U is the terminal's line-kill key, which reaches the flow only
-    // once canonical mode is off.
-    $keystrokes = self::KEYS['DOWN'] . self::KEYS['ENTER'] . "\x15" . self::KEYS['DOWN'] . self::KEYS['ENTER'] . self::KEYS['ENTER'];
+  #[DataProvider('dataProviderStepBackInTerminal')]
+  public function testStepBackInTerminal(string $back_key, string $byte): void {
+    putenv('FIXTURE_BACK_KEY=' . $back_key);
+    $keystrokes = self::KEYS['DOWN'] . self::KEYS['ENTER'] . $byte . self::KEYS['DOWN'] . self::KEYS['ENTER'] . self::KEYS['ENTER'];
 
-    $r = $this->runInTerminal(self::$root . '/tests/phpunit/Fixtures/flow-back.php', 'Course', $keystrokes);
+    try {
+      $r = $this->runInTerminal(self::$root . '/tests/phpunit/Fixtures/flow-back.php', 'Course', $keystrokes);
+    }
+    finally {
+      putenv('FIXTURE_BACK_KEY');
+    }
 
     $this->assertSame(0, $r['exit_code'], 'Script failed: ' . $r['stderr']);
     $this->assertSame('', $r['stderr']);
     $this->assertStringContainsString("'course' => 'dessert'", $this->stripAnsi($r['stdout']));
     $this->assertStringContainsString("'table' => '4'", $this->stripAnsi($r['stdout']));
+  }
+
+  public static function dataProviderStepBackInTerminal(): \Iterator {
+    // The terminal driver claims each of these bytes in its default mode:
+    // Ctrl+U kills the line, Ctrl+S and Ctrl+Q control the flow of output,
+    // and Ctrl+V quotes the next byte.
+    yield 'ctrl-u' => ['ctrl-u', "\x15"];
+    yield 'ctrl-s' => ['ctrl-s', "\x13"];
+    yield 'ctrl-q' => ['ctrl-q', "\x11"];
+    yield 'ctrl-v' => ['ctrl-v', "\x16"];
   }
 
 }

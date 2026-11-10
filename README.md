@@ -685,7 +685,7 @@ A section's group is the steps up to the next section. The flow draws a heading 
 
 ### Step back to an earlier step
 
-In a flow, press <kbd>Ctrl+U</kbd> to go back. The widget you're on disappears, and the previous step opens again with its answer filled in. Its children don't count as previous steps, so from a later sibling the key reopens the parent. From a step's first child, it reopens that parent.
+In a flow, press <kbd>Ctrl+U</kbd> to go back. The widget you're on disappears, and the previous step opens again with your answer filled in, as you gave it before any `transform`. Its children don't count as previous steps, so from a later sibling the key reopens the parent. From a step's first child, it reopens that parent. When the parent asked nothing, the key reopens the last of its children that did.
 
 Answers you gave after the reopened step become those steps' defaults, so you only press <kbd>Enter</kbd> to move forward again. A step starts from its declared `default` instead in 2 cases:
 

@@ -244,6 +244,34 @@ final class PromptyFlowStepBackTest extends PromptyTestCase {
       ['guest' => 'Ann', 'note' => 'Hot'],
     ];
 
+    yield 'children of a parent that asked nothing' => [
+      fn(): array => [
+        'course' => Prompty::select('Course', options: self::COURSES, discovered: 'main', children: [
+          'dish' => Prompty::text('Dish name'),
+        ]),
+        'guest' => Prompty::text('Guest name'),
+      ],
+      'Stew' . $enter . 'An' . $u . 's' . $enter . 'Ann' . $enter,
+      'Stews' . $enter . 'Ann' . $enter,
+      ['course' => 'main', 'dish' => 'Stews', 'guest' => 'Ann'],
+    ];
+
+    yield 'streamed task output is counted once' => [
+      fn(): array => [
+        'guest' => Prompty::text('Guest name'),
+        'ticket' => Prompty::task('Print the ticket', function (): bool {
+          Prompty::output(['Printing']);
+          echo "Done\n";
+
+          return TRUE;
+        }, stream: TRUE),
+        'note' => Prompty::text('Note for the kitchen'),
+      ],
+      'Ann' . $enter . 'Ho' . $u . 'e' . $enter . 'Hot' . $enter,
+      'Anne' . $enter . 'Hot' . $enter,
+      ['guest' => 'Anne', 'ticket' => TRUE, 'note' => 'Hot'],
+    ];
+
     yield 'cancel after stepping back cancels the flow' => [
       self::textSteps(),
       'Ann' . $enter . $u . self::KEY_ESCAPE,
@@ -271,6 +299,14 @@ final class PromptyFlowStepBackTest extends PromptyTestCase {
     yield 'multiselect' => [static fn(): mixed => Prompty::multiselect('Extras', options: self::EXTRAS, default: ['bread']), self::KEY_SPACE . self::KEY_DOWN . self::KEY_DOWN . self::KEY_SPACE, ['herbs']];
     yield 'suggest' => [static fn(): mixed => Prompty::suggest('Dish', options: ['Pear tart', 'Plum compote']), 'Onion soup', 'Onion soup'];
     yield 'confirm' => [static fn(): mixed => Prompty::confirm('Send to the kitchen?'), self::KEY_RIGHT, FALSE];
+
+    // A reopened step starts from the input it was accepted with, so its
+    // transform runs once on the way forward.
+    yield 'text with a transform' => [static fn(): mixed => Prompty::text('Table', transform: fn(string $value): string => 'Table ' . $value), '4', 'Table 4'];
+    yield 'suggest with a transform' => [static fn(): mixed => Prompty::suggest('Dish', options: ['Pear tart'], transform: fn(string $value): string => 'Fresh ' . $value), 'Onion soup', 'Fresh Onion soup'];
+    yield 'select with a transform' => [static fn(): mixed => Prompty::select('Course', options: self::COURSES, transform: strtoupper(...)), self::KEY_DOWN, 'MAIN'];
+    yield 'multiselect with a transform' => [static fn(): mixed => Prompty::multiselect('Extras', options: self::EXTRAS, transform: fn(array $keys): array => array_map(ucfirst(...), $keys)), self::KEY_DOWN . self::KEY_DOWN . self::KEY_SPACE, ['Herbs']];
+    yield 'confirm with a transform' => [static fn(): mixed => Prompty::confirm('Send to the kitchen?', transform: fn(bool $answer): bool => !$answer), self::KEY_RIGHT, TRUE];
   }
 
   #[DataProvider('dataProviderWidgetStepsBack')]
@@ -316,20 +352,27 @@ final class PromptyFlowStepBackTest extends PromptyTestCase {
       'main',
     ];
 
-    yield 'select whose transform answered with another value' => [
-      static fn(int $build): mixed => Prompty::select('Course', options: self::COURSES, default: 'main', transform: fn(string $key): string => strtoupper($key)),
-      'MAIN',
-    ];
-
     yield 'multiselect whose option is gone' => [
       static fn(int $build): mixed => Prompty::multiselect('Extras', options: $build === 0 ? self::EXTRAS : ['olives' => 'Olives'], default: $build === 0 ? ['bread'] : ['olives']),
       ['olives'],
     ];
 
-    yield 'multiselect whose transform answered with labels' => [
-      static fn(int $build): mixed => Prompty::multiselect('Extras', options: self::EXTRAS, default: ['bread'], transform: fn(array $keys): array => array_map(ucfirst(...), $keys)),
-      ['Bread'],
+    yield 'confirm now built as a text' => [
+      static fn(int $build): mixed => $build === 0 ? Prompty::confirm('Send to the kitchen?') : Prompty::text('Note', default: 'Hot'),
+      'Hot',
     ];
+  }
+
+  public function testLaterStepWithTransformKeepsItsInput(): void {
+    $steps = fn(): array => [
+      'guest' => Prompty::text('Guest name'),
+      'table' => Prompty::text('Table', transform: fn(string $value): string => 'Table ' . $value),
+      'note' => Prompty::text('Note for the kitchen'),
+    ];
+
+    $r = $this->runFlow($steps, 'Ann' . self::KEY_ENTER . '4' . self::KEY_ENTER . self::KEY_CTRL_U . self::KEY_CTRL_U . 'e' . self::KEY_ENTER . self::KEY_ENTER . 'Hot' . self::KEY_ENTER);
+
+    $this->assertSame(['guest' => 'Anne', 'table' => 'Table 4', 'note' => 'Hot'], $r['result']);
   }
 
   public function testReplayEndsAtStepWithoutPreviousAnswer(): void {

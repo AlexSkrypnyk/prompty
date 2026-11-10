@@ -177,11 +177,20 @@ class Prompty {
   protected array $journal = [];
 
   /**
-   * Answers from before the user stepped back, offered again as defaults.
+   * Answers from before the user stepped back, which replayed steps take.
    *
    * @var array<string, mixed>
    */
   protected array $previous = [];
+
+  /**
+   * The input each asked step was accepted with, before its transform.
+   *
+   * A reopened step and the steps after it start from these.
+   *
+   * @var array<string, mixed>
+   */
+  protected array $inputs = [];
 
   /**
    * The step key the flow replays up to after stepping back, or NULL.
@@ -1293,6 +1302,7 @@ class Prompty {
         $error = $p->validateAnswer($plain_label, $required, $validate, $display, $results);
 
         if ($error === NULL) {
+          $p->recordInput($value);
           $open = $p->settleOpen($display, $open);
           $p->redraw($line_count, $p->renderCompleted($label, $display, $depth, $open));
 
@@ -1576,6 +1586,7 @@ class Prompty {
         $error = $p->validateAnswer($plain_label, $required, $validate, $selected_key, $results);
 
         if ($error === NULL) {
+          $p->recordInput($option_keys[$focused]);
           $open = $p->settleOpen($selected_key, $open);
           $p->redraw($line_count, $p->renderCompleted($label, $p->optionDisplay($selected_key, $options), $depth, $open));
 
@@ -1876,11 +1887,12 @@ class Prompty {
       }
 
       if ($key === 'enter') {
-        $selected_keys = $p->orderKeys($plain_label, $selection, $order, $options, $default_keys);
-        $selected_keys = $p->transformKeys($plain_label, $transform, $selected_keys);
+        $ordered_keys = $p->orderKeys($plain_label, $selection, $order, $options, $default_keys);
+        $selected_keys = $p->transformKeys($plain_label, $transform, $ordered_keys);
         $error = $p->validateAnswer($plain_label, $required, $validate, $selected_keys, $results);
 
         if ($error === NULL) {
+          $p->recordInput($ordered_keys);
           $open = $p->settleOpen($selected_keys, $open);
           $p->redraw($line_count, $p->renderCompleted($label, $p->optionsDisplay($selected_keys, $options), $depth, $open));
 
@@ -2160,6 +2172,7 @@ class Prompty {
         $error = $p->validateAnswer($plain_label, $required, $validate, $display, $results);
 
         if ($error === NULL) {
+          $p->recordInput($focused !== NULL ? $matches[$focused] : $value);
           $open = $p->settleOpen($display, $open);
           $p->redraw($line_count, $p->renderCompleted($label, $display, $depth, $open));
 
@@ -2410,6 +2423,7 @@ class Prompty {
         $error = $p->validateAnswer($plain_label, $required, $validate, $answer, $results);
 
         if ($error === NULL) {
+          $p->recordInput($yes);
           $open = $p->settleOpen($answer, $open);
           $p->redraw($line_count, $p->renderCompleted($label, $answer ? $p->label('yes') : $p->label('no'), $depth, $open));
 
@@ -3229,6 +3243,7 @@ class Prompty {
    *
    * The step to reopen is the latest earlier step that read a key, at the
    * running step's depth or shallower: a previous sibling, else the parent.
+   * When there is none, it is the latest earlier step that read a key.
    *
    * @return int|null
    *   The index of the entry in the journal, or NULL when there is none.
@@ -3237,14 +3252,23 @@ class Prompty {
     $earlier = $this->journal;
     $current = array_pop($earlier);
     $depth = $current['depth'] ?? 0;
+    $deeper = NULL;
 
     for ($index = count($earlier) - 1; $index >= 0; $index--) {
-      if ($earlier[$index]['asked'] && $earlier[$index]['depth'] <= $depth) {
+      if (!$earlier[$index]['asked']) {
+        continue;
+      }
+
+      if ($earlier[$index]['depth'] <= $depth) {
         return $index;
       }
+
+      $deeper ??= $index;
     }
 
-    return NULL;
+    // A parent that asked nothing, such as one answered from the environment,
+    // leaves only its children to go back to.
+    return $deeper;
   }
 
   /**
@@ -3273,12 +3297,26 @@ class Prompty {
     $this->rows = 0;
     $this->journal = [];
     $this->previous = [];
+    $this->inputs = [];
     $this->replay = NULL;
     $this->stepBack = NULL;
   }
 
   /**
-   * Returns the answer a reopened step had, when it suits the widget.
+   * Records the input an asked flow step was accepted with.
+   *
+   * @param mixed $input
+   *   The input before the widget's transform: the typed text, the focused
+   *   option key, the checked option keys or the focused answer.
+   */
+  protected function recordInput(mixed $input): void {
+    if ($this->pending !== NULL) {
+      $this->inputs[(string) $this->pending['key']] = $input;
+    }
+  }
+
+  /**
+   * Returns the input a reopened step was accepted with, when it suits.
    *
    * @param array<string, mixed> $ctx
    *   The flow context, carrying 'previous' when the step was answered
@@ -3286,11 +3324,11 @@ class Prompty {
    * @param mixed $default
    *   The widget's declared default.
    * @param \Closure $accepts
-   *   Receives the previous answer and returns whether the widget can start
+   *   Receives the previous input and returns whether the widget can start
    *   from it.
    *
    * @return mixed
-   *   The previous answer, or $default when there is none or it does not
+   *   The previous input, or $default when there is none or it does not
    *   suit the widget.
    */
   protected function previousAnswer(array $ctx, mixed $default, \Closure $accepts): mixed {
@@ -3346,8 +3384,10 @@ class Prompty {
   protected function enterRawMode(): void {
     // @codeCoverageIgnoreStart
     // -isig delivers Ctrl+C to readKey() as a byte rather than as SIGINT,
-    // which would end the process before the terminal is restored.
-    shell_exec('stty -echo -icanon -isig min 1 time 0 2>' . static::NULL_DEVICE);
+    // which would end the process before the terminal is restored. -ixon and
+    // -iexten deliver Ctrl+S, Ctrl+Q, Ctrl+V and Ctrl+O, which the terminal
+    // driver otherwise consumes, so each can be the back key.
+    shell_exec('stty -echo -icanon -isig -ixon -iexten min 1 time 0 2>' . static::NULL_DEVICE);
     // @codeCoverageIgnoreEnd
   }
 
@@ -3714,7 +3754,7 @@ class Prompty {
 
     // Echoed output reaches the stream through its buffer, so only writes to
     // a stream or callable target are streamed here.
-    if ($this->streamDraw instanceof \Closure && !$this->streamDrawing && $this->cfgOutput !== NULL) {
+    if ($this->capturedByStream() && $this->cfgOutput !== NULL) {
       $this->feedStream($chunk);
 
       return;
@@ -3761,9 +3801,24 @@ class Prompty {
     }
 
     $this->columns = NULL;
-    $this->rows += $rows;
+
+    if (!$this->capturedByStream()) {
+      $this->rows += $rows;
+    }
 
     return $rows;
+  }
+
+  /**
+   * Checks whether output goes into a streaming task's capture.
+   *
+   * A streaming task draws its action's output, and counts the rows, itself.
+   *
+   * @return bool
+   *   TRUE while a streaming task's action runs, outside its own drawing.
+   */
+  protected function capturedByStream(): bool {
+    return $this->streamDraw instanceof \Closure && !$this->streamDrawing;
   }
 
   /**
@@ -3795,7 +3850,10 @@ class Prompty {
     }
 
     $this->write("\033[{$rows}A\r\033[J");
-    $this->rows -= $rows;
+
+    if (!$this->capturedByStream()) {
+      $this->rows -= $rows;
+    }
   }
 
   /**
@@ -6141,8 +6199,8 @@ class Prompty {
         'falsy' => $this->cfgFalsy,
       ];
 
-      if (array_key_exists($key, $this->previous)) {
-        $ctx['previous'] = $this->previous[$key];
+      if (array_key_exists($key, $this->inputs)) {
+        $ctx['previous'] = $this->inputs[$key];
       }
 
       // A step before the reopened one takes its previous answer without
