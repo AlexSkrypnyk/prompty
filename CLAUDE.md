@@ -62,7 +62,7 @@ composer reset         # rm vendor/, vendor-bin/, composer.lock
 
 1. **PHPCS** - Drupal standard + strict types (`phpcs.xml`)
 2. **PHPStan** - Level 9 (`phpstan.neon`)
-3. **Rector** - PHP 8.2 modernization (`rector.php`)
+3. **Rector** - PHP 8.3 modernization (`rector.php`)
 
 ## Conventions
 
@@ -74,7 +74,7 @@ composer reset         # rm vendor/, vendor-bin/, composer.lock
 
 - Namespace: `AlexSkrypnyk\Prompty\Tests\Unit\Prompty`
 - Base class: `PromptyTestCase` (uses `PromptyTestTrait`)
-- PHPUnit 11: `#[CoversClass()]`, `#[DataProvider()]`
+- PHPUnit 12: `#[CoversClass()]`, `#[DataProvider()]`
 - Unit tests in `tests/phpunit/Unit/Prompty/`
 - Functional tests in `tests/phpunit/Functional/` - these run `embed.php`, `starter.php` and the scripts in `tests/phpunit/Fixtures/` in real subprocesses, the fixtures in a pseudo-terminal
 - Autoload: classmap (no PSR-4)

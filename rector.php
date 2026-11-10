@@ -38,7 +38,7 @@ return RectorConfig::configure()
     __DIR__ . '/tests/phpunit',
     __DIR__ . '/rector.php',
   ], file_exists(...)))
-  ->withPhpSets(php82: TRUE)
+  ->withPhpSets(php83: TRUE)
   ->withPreparedSets(
     deadCode: TRUE,
     codeQuality: TRUE,
