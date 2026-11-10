@@ -67,6 +67,11 @@ class Prompty {
   protected const DEFAULT_COLUMNS = 80;
 
   /**
+   * Microseconds between the frames of a task's spinner.
+   */
+  protected const SPINNER_INTERVAL = 80000;
+
+  /**
    * Characters a terminal draws 2 columns wide.
    *
    * Covers the East Asian wide and fullwidth ranges, emoji presentation
@@ -169,6 +174,8 @@ class Prompty {
     'error' => '▲',
     'scroll_up' => '↑',
     'scroll_down' => '↓',
+    'success' => '✓',
+    'spinner' => '◒◐◓◑',
   ];
 
   /**
@@ -192,6 +199,8 @@ class Prompty {
     'error' => '!',
     'scroll_up' => '^',
     'scroll_down' => 'v',
+    'success' => '+',
+    'spinner' => '|/-\\',
   ];
 
   /**
@@ -253,6 +262,8 @@ class Prompty {
     'separator' => '/',
     'more' => 'more',
     'required' => 'Required.',
+    'done' => 'Done',
+    'failed' => 'Failed',
   ];
 
   /**
@@ -317,6 +328,11 @@ class Prompty {
    * Cleared by printLines(), so the next frame measures again.
    */
   protected ?int $columns = NULL;
+
+  /**
+   * Whether the output target is a terminal (NULL = detect).
+   */
+  protected ?bool $terminal = NULL;
 
   /**
    * Constructs a Prompty instance.
@@ -2180,6 +2196,148 @@ class Prompty {
   }
 
   /**
+   * Runs an action and reports how it went.
+   *
+   * While the action runs, the label is drawn with a spinner. Once it returns,
+   * the label, the hint, any detail lines and a result line replace the
+   * spinner. The spinner animates when a child process can be forked to draw
+   * it, and shows 1 static frame otherwise.
+   *
+   * Without a live terminal - non-interactive, ANSI off, or output that is not
+   * a terminal - the label is printed before the action runs and the rest is
+   * printed after it.
+   *
+   * @param string $label
+   *   The task label shown to the user.
+   * @param callable $action
+   *   The work to run. It returns FALSE on failure, and any other value on
+   *   success. A list of strings is drawn as detail lines under the label.
+   * @param string|callable $hint
+   *   Optional dim line under the label, or a callable that receives the
+   *   action's return value and returns the line.
+   * @param string|callable $success
+   *   The result line on success, or a callable that receives the action's
+   *   return value and returns the line. '' draws the 'done' label.
+   * @param string|callable $failure
+   *   The result line on failure, or a callable that receives the action's
+   *   return value and returns the line. '' draws the 'failed' label.
+   * @param callable|null $condition
+   *   Optional condition callback; skips the step when it returns FALSE.
+   * @param array<string, mixed> $children
+   *   Child steps to execute after this task.
+   * @param array<string, mixed>|null $ctx
+   *   Flow context passed by the flow walker.
+   *
+   * @return mixed
+   *   While a flow is being defined, a closure, or a step array when a
+   *   condition or children are set. That closure answers the step with TRUE
+   *   when the action succeeded and FALSE when it failed. Otherwise the
+   *   action's return value.
+   *
+   * @throws \UnexpectedValueException
+   *   When a $hint, $success or $failure callable returns anything other than
+   *   a string.
+   */
+  public static function task(
+    string $label,
+    callable $action,
+    string|callable $hint = '',
+    string|callable $success = '',
+    string|callable $failure = '',
+    ?callable $condition = NULL,
+    array $children = [],
+    ?array $ctx = NULL,
+  ): mixed {
+    if (static::$inFlow && $ctx === NULL) {
+      // A flow result keeps the outcome rather than the return value, which
+      // can be NULL, the value a cancelled step answers with.
+      $call = fn(array $ctx): bool => static::task(
+        $label,
+        action: $action,
+        hint: $hint,
+        success: $success,
+        failure: $failure,
+        ctx: $ctx,
+      ) !== FALSE;
+
+      if ($condition !== NULL || $children !== []) {
+        return ['__call' => $call, '__children' => $children, '__condition' => $condition];
+      }
+
+      return $call;
+    }
+
+    $p = static::instance();
+    $ctx ??= [
+      'depth' => 0,
+      'is_last' => FALSE,
+      'open' => [],
+    ];
+    $standalone = !static::$inFlow;
+    $plain_label = $label;
+
+    /** @var int $depth */
+    $depth = $ctx['depth'] ?? 0;
+    /** @var array<int, bool> $open */
+    $open = $ctx['open'] ?? [];
+    $label = $p->numberLabel($label, $ctx);
+    $live = $p->isLive();
+
+    $frames = preg_split('//u', $p->cfgSymbols['spinner'], -1, PREG_SPLIT_NO_EMPTY) ?: [$p->cfgSymbols['spinner']];
+    $frame = fn(int $index): array => $p->renderMarkedLabel($label, $p->color($frames[$index % count($frames)], 'cyan'), $depth, $open);
+
+    if ($live && $standalone) {
+      $p->hideCursor();
+    }
+
+    $rows = $p->printLines($live ? $frame(0) : $p->renderLabel($label, 'active', 'cyan', $depth, $open));
+    $spinner = $live ? $p->animate($frame, $rows) : NULL;
+
+    try {
+      $value = $action();
+      $ok = $value !== FALSE;
+      $hint_text = $p->taskText($plain_label, 'hint', $hint, $value);
+      $message = $p->taskText($plain_label, $ok ? 'success' : 'failure', $ok ? $success : $failure, $value);
+    }
+    catch (\Throwable $throwable) {
+      $p->stopAnimation($spinner);
+
+      if ($live) {
+        $p->clearRows($rows);
+
+        if ($standalone) {
+          $p->showCursor();
+        }
+      }
+
+      throw $throwable;
+    }
+
+    $p->stopAnimation($spinner);
+
+    $open = $p->settleOpen($ok, $open);
+    $details = is_array($value) && array_is_list($value) && count(array_filter($value, is_string(...))) === count($value) ? $value : [];
+    $result = $p->renderTaskResult($ok, $hint_text, $details, $message !== '' ? $message : $p->label($ok ? 'done' : 'failed'), $depth, $open);
+
+    if (!$live) {
+      $p->printLines($result);
+
+      return $value;
+    }
+
+    $p->redraw($rows, [
+      ...($ok ? $p->renderLabel($label, 'completed', 'cyan', $depth, $open) : $p->renderLabel($label, 'active', 'red', $depth, $open)),
+      ...$result,
+    ]);
+
+    if ($standalone) {
+      $p->showCursor();
+    }
+
+    return $value;
+  }
+
+  /**
    * Prints an intro banner.
    */
   public static function intro(string $message): void {
@@ -2609,6 +2767,91 @@ class Prompty {
   }
 
   /**
+   * Checks whether output can be redrawn in place while work runs.
+   *
+   * @return bool
+   *   TRUE when the widget is interactive, ANSI is on and the output target is
+   *   a terminal. A callable target is never a terminal.
+   */
+  protected function isLive(): bool {
+    if (!$this->cfgInteractive || !$this->cfgAnsi) {
+      return FALSE;
+    }
+
+    if ($this->terminal !== NULL) {
+      return $this->terminal;
+    }
+
+    if ($this->cfgOutput instanceof \Closure) {
+      return FALSE;
+    }
+
+    return stream_isatty($this->cfgOutput ?? STDOUT);
+  }
+
+  /**
+   * Starts a child process that redraws the spinner frames.
+   *
+   * @param \Closure $frame
+   *   Receives the frame index and returns the rows of that frame.
+   * @param int $rows
+   *   The number of terminal rows each frame occupies.
+   *
+   * @return int|null
+   *   The child's process ID, or NULL when the spinner cannot animate.
+   */
+  protected function animate(\Closure $frame, int $rows): ?int {
+    // A buffered echo reaches the terminal after the child's frames, and a
+    // callable target cannot be written from another process.
+    if (!function_exists('pcntl_fork') || !function_exists('posix_kill') || $this->cfgOutput instanceof \Closure || ($this->cfgOutput === NULL && ob_get_level() > 0)) {
+      return NULL;
+    }
+
+    // @codeCoverageIgnoreStart
+    $parent = getmypid();
+    $pid = pcntl_fork();
+
+    if ($pid !== 0) {
+      return $pid > 0 ? $pid : NULL;
+    }
+
+    $target = $this->cfgOutput ?? STDOUT;
+    $index = 0;
+
+    // The loop ends once the parent exits without stopping the child, such as
+    // on a fatal error.
+    while (posix_getppid() === $parent) {
+      usleep(static::SPINNER_INTERVAL);
+      // 1 write per frame, so stopping the child leaves no partial frame.
+      fwrite($target, "\033[{$rows}A\r" . implode(PHP_EOL, $frame(++$index)) . PHP_EOL);
+    }
+
+    // SIGKILL skips shutdown functions and buffer flushes, which belong to the
+    // parent.
+    posix_kill((int) getmypid(), SIGKILL);
+
+    return NULL;
+    // @codeCoverageIgnoreEnd
+  }
+
+  /**
+   * Stops a spinner started by animate() and waits for it to exit.
+   *
+   * @param int|null $pid
+   *   The child's process ID, or NULL when no spinner runs.
+   */
+  protected function stopAnimation(?int $pid): void {
+    if ($pid === NULL) {
+      return;
+    }
+
+    // @codeCoverageIgnoreStart
+    posix_kill($pid, SIGTERM);
+    pcntl_waitpid($pid, $status);
+    // @codeCoverageIgnoreEnd
+  }
+
+  /**
    * Writes a chunk of rendered output to the configured target.
    *
    * @param string $chunk
@@ -2667,11 +2910,21 @@ class Prompty {
    *   The number of terminal rows printed.
    */
   protected function redraw(int $prev_line_count, array $lines): int {
-    if ($prev_line_count > 0) {
-      $this->write("\033[{$prev_line_count}A\r\033[J");
-    }
+    $this->clearRows($prev_line_count);
 
     return $this->printLines($lines);
+  }
+
+  /**
+   * Erases previously printed rows and leaves the cursor where they began.
+   *
+   * @param int $rows
+   *   The number of terminal rows to erase.
+   */
+  protected function clearRows(int $rows): void {
+    if ($rows > 0) {
+      $this->write("\033[{$rows}A\r\033[J");
+    }
   }
 
   /**
@@ -3679,6 +3932,38 @@ class Prompty {
   }
 
   /**
+   * Resolves a task's hint or result text.
+   *
+   * @param string $label
+   *   The task label, used to identify the task in the error message.
+   * @param string $parameter
+   *   The task() parameter the text came from.
+   * @param string|callable $text
+   *   The text, or a callable that receives the action's return value.
+   * @param mixed $value
+   *   The action's return value.
+   *
+   * @return string
+   *   The text to draw.
+   *
+   * @throws \UnexpectedValueException
+   *   When the callable returns anything other than a string.
+   */
+  protected function taskText(string $label, string $parameter, string|callable $text, mixed $value): string {
+    if (is_string($text)) {
+      return $text;
+    }
+
+    $resolved = $text($value);
+
+    if (!is_string($resolved)) {
+      throw new \UnexpectedValueException(sprintf('The %s callable for task "%s" returned %s. It must return the text to draw.', $parameter, $label, get_debug_type($resolved)));
+    }
+
+    return $resolved;
+  }
+
+  /**
    * Returns the text the completed line shows for a single answer key.
    *
    * @param string $key
@@ -4070,6 +4355,65 @@ class Prompty {
   }
 
   /**
+   * Renders the lines a task draws under its label once the action returns.
+   *
+   * @param bool $ok
+   *   Whether the action succeeded.
+   * @param string $hint
+   *   The hint, or '' for none. A newline starts another hint line.
+   * @param list<string> $details
+   *   Detail lines the action returned.
+   * @param string $message
+   *   The result message.
+   * @param int $depth
+   *   The current nesting depth.
+   * @param array<int, bool> $open
+   *   Tracks which depth levels have continuing siblings.
+   *
+   * @return array<int, string>
+   *   The rendered lines, closed with a bar line.
+   */
+  protected function renderTaskResult(bool $ok, string $hint, array $details, string $message, int $depth = 0, array $open = []): array {
+    $gutter = $this->bar() . ($depth > 0 ? $this->bodyPrefix($depth, $open) : $this->cfgSpacing['indent']);
+    $lines = [];
+
+    if ($hint !== '') {
+      foreach (explode("\n", $hint) as $text_line) {
+        $lines = array_merge($lines, $this->wrap($gutter, $this->styled($text_line, 'dim'), $gutter));
+      }
+    }
+
+    foreach ($details as $detail) {
+      $lines = array_merge($lines, $this->renderTaskLine($detail, $depth, $open));
+    }
+
+    $marker = $this->cfgSymbols[$ok ? 'success' : 'error'] . ' ';
+    $lines = array_merge($lines, $this->wrap($gutter, $this->color($marker . $this->printable($message), $ok ? 'green' : 'red'), $gutter . $this->pad($marker)));
+    $lines[] = $this->bar() . ($depth > 0 ? $this->bodyPrefix($depth, $open) : '');
+
+    return $lines;
+  }
+
+  /**
+   * Renders 1 line of task output, dim and indented below the task's body.
+   *
+   * @param string $line
+   *   The line. SGR sequences in it are kept.
+   * @param int $depth
+   *   The current nesting depth.
+   * @param array<int, bool> $open
+   *   Tracks which depth levels have continuing siblings.
+   *
+   * @return array<int, string>
+   *   The rendered rows. A wrapped row keeps the indent.
+   */
+  protected function renderTaskLine(string $line, int $depth = 0, array $open = []): array {
+    $gutter = $this->bar() . ($depth > 0 ? $this->bodyPrefix($depth, $open) : $this->cfgSpacing['indent']) . $this->cfgSpacing['indent'];
+
+    return $this->wrap($gutter, $this->styled($line, 'dim'), $gutter);
+  }
+
+  /**
    * Renders the cancelled state lines for a widget.
    *
    * @param string $label
@@ -4115,7 +4459,26 @@ class Prompty {
    *   The label rows. Continuation rows align with the widget's body lines.
    */
   protected function renderLabel(string $label, string $symbol, string $color, int $depth = 0, array $open = []): array {
-    $gutter = ($depth > 0 ? $this->bar() . $this->labelPrefix($depth, $open) : '') . $this->color($this->cfgSymbols[$symbol], $color) . $this->cfgSpacing['indent'];
+    return $this->renderMarkedLabel($label, $this->color($this->cfgSymbols[$symbol], $color), $depth, $open);
+  }
+
+  /**
+   * Renders a widget's label after a marker.
+   *
+   * @param string $label
+   *   The widget label.
+   * @param string $marker
+   *   The styled text drawn before the label.
+   * @param int $depth
+   *   The current nesting depth.
+   * @param array<int, bool> $open
+   *   Tracks which depth levels have continuing siblings.
+   *
+   * @return list<string>
+   *   The label rows. Continuation rows align with the widget's body lines.
+   */
+  protected function renderMarkedLabel(string $label, string $marker, int $depth = 0, array $open = []): array {
+    $gutter = ($depth > 0 ? $this->bar() . $this->labelPrefix($depth, $open) : '') . $marker . $this->cfgSpacing['indent'];
 
     return $this->wrap($gutter, $label, $this->bar() . ($depth > 0 ? $this->bodyPrefix($depth, $open) : $this->cfgSpacing['indent']));
   }
