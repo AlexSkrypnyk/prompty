@@ -182,6 +182,17 @@ class Prompty {
     'success' => '✓',
     'spinner' => '◒◐◓◑',
     'ellipsis' => '…',
+    'box_top_left' => '┌',
+    'box_top_right' => '┐',
+    'box_bottom_left' => '└',
+    'box_bottom_right' => '┘',
+    'box_horizontal' => '─',
+    'box_vertical' => '│',
+    'box_cross' => '┼',
+    'box_top_tee' => '┬',
+    'box_bottom_tee' => '┴',
+    'box_left_tee' => '├',
+    'box_right_tee' => '┤',
   ];
 
   /**
@@ -208,6 +219,17 @@ class Prompty {
     'success' => '+',
     'spinner' => '|/-\\',
     'ellipsis' => '...',
+    'box_top_left' => '+',
+    'box_top_right' => '+',
+    'box_bottom_left' => '+',
+    'box_bottom_right' => '+',
+    'box_horizontal' => '-',
+    'box_vertical' => '|',
+    'box_cross' => '+',
+    'box_top_tee' => '+',
+    'box_bottom_tee' => '+',
+    'box_left_tee' => '+',
+    'box_right_tee' => '+',
   ];
 
   /**
@@ -2421,6 +2443,50 @@ class Prompty {
   }
 
   /**
+   * Prints a table.
+   *
+   * Columns take the width of their widest cell. When the table is wider
+   * than the terminal, the widest column shrinks and its cells wrap. A cell
+   * may hold a newline to start another line.
+   *
+   * @param array<mixed> $rows
+   *   The rows. A row is a list of cells, or a string drawn as a section row
+   *   that spans every column. A cell is a string, an integer or a float.
+   * @param array<mixed> $headers
+   *   The header cells, or [] for no header row.
+   *
+   * @throws \InvalidArgumentException
+   *   When a row is neither a list of cells nor a string, or a cell is not a
+   *   string, an integer or a float.
+   */
+  public static function table(array $rows, array $headers = []): void {
+    $p = static::instance();
+    $lines = $p->renderTable($rows, $headers);
+
+    if ($lines === []) {
+      return;
+    }
+
+    $p->printLines($lines);
+  }
+
+  /**
+   * Prints content in a box, under an optional title.
+   *
+   * The box is as wide as its widest line, up to the terminal width. A line
+   * wider than that wraps, and its further rows keep its leading spaces.
+   *
+   * @param string $content
+   *   The text in the box. A newline starts another line.
+   * @param string $title
+   *   The title drawn above the content and underlined, or '' for none.
+   */
+  public static function box(string $content, string $title = ''): void {
+    $p = static::instance();
+    $p->printLines($p->renderBox($content, $title));
+  }
+
+  /**
    * Prints an array of lines and returns the line count.
    *
    * @param array<int, string> $lines
@@ -3416,9 +3482,31 @@ class Prompty {
    */
   protected function wrap(string $gutter, string $content, string $continuation): array {
     $columns = $this->columns();
-    $first = $columns - $this->displayWidth($gutter);
-    $rest = $columns - $this->displayWidth($continuation);
 
+    return $this->wrapWithin($gutter, $content, $continuation, $columns - $this->displayWidth($gutter), $columns - $this->displayWidth($continuation));
+  }
+
+  /**
+   * Wraps styled content to given row widths after a gutter.
+   *
+   * Breaks and styles follow wrap().
+   *
+   * @param string $gutter
+   *   The prefix drawn before the first row.
+   * @param string $content
+   *   The text to wrap, with any color sequences.
+   * @param string $continuation
+   *   The prefix drawn before every further row.
+   * @param int $first
+   *   Columns available for content on the first row.
+   * @param int $rest
+   *   Columns available for content on every further row.
+   *
+   * @return list<string>
+   *   The rows. Content that fits, or a width below 1, gives 1 row holding
+   *   the gutter and the content unchanged.
+   */
+  protected function wrapWithin(string $gutter, string $content, string $continuation, int $first, int $rest): array {
     if ($first < 1 || $rest < 1 || $this->displayWidth($content) <= $first) {
       return [$gutter . $content];
     }
@@ -4515,6 +4603,321 @@ class Prompty {
     $lines[] = $this->bar();
 
     return $lines;
+  }
+
+  /**
+   * Renders the lines of a table.
+   *
+   * @param array<mixed> $rows
+   *   The rows, as passed to table().
+   * @param array<mixed> $headers
+   *   The header cells, as passed to table().
+   *
+   * @return list<string>
+   *   The rendered table lines, or [] when there are no rows and no headers.
+   *
+   * @throws \InvalidArgumentException
+   *   When a row or a cell is not valid.
+   */
+  protected function renderTable(array $rows, array $headers): array {
+    if ($rows === [] && $headers === []) {
+      return [];
+    }
+
+    $items = [];
+
+    if ($headers !== []) {
+      $items[] = ['cells' => $this->tableCells($headers, 'headers'), 'text' => '', 'base' => 'bold'];
+    }
+
+    foreach (array_values($rows) as $index => $row) {
+      $items[] = is_string($row)
+        ? ['cells' => NULL, 'text' => $row, 'base' => 'bold']
+        : ['cells' => $this->tableCells($row, sprintf('row %d', $index)), 'text' => '', 'base' => ''];
+    }
+
+    $widths = $this->tableWidths($items);
+    $span = [array_sum($widths) + 3 * (count($widths) - 1)];
+
+    $lines = [];
+    $previous = NULL;
+
+    foreach ($items as $index => $item) {
+      $is_cells = $item['cells'] !== NULL;
+
+      // Cell rows follow each other without a rule. A header row, a section
+      // row and the table edges are ruled off.
+      if ($previous === NULL) {
+        $lines[] = $this->boxRule($widths, FALSE, $is_cells, 'top');
+      }
+      elseif (!$is_cells || $previous['cells'] === NULL || ($index === 1 && $headers !== [])) {
+        $lines[] = $this->boxRule($widths, $previous['cells'] !== NULL, $is_cells, 'middle');
+      }
+
+      $lines = $is_cells
+        ? array_merge($lines, $this->boxRows($item['cells'], $widths, $item['base']))
+        : array_merge($lines, $this->boxRows([$item['text']], $span, $item['base']));
+
+      $previous = $item;
+    }
+
+    $lines[] = $this->boxRule($widths, $previous !== NULL && $previous['cells'] !== NULL, FALSE, 'bottom');
+    $lines[] = $this->bar();
+
+    return $lines;
+  }
+
+  /**
+   * Validates a table row and returns its cells as strings.
+   *
+   * @param mixed $row
+   *   The row or the headers passed to table().
+   * @param string $name
+   *   The name of the row in an error message.
+   *
+   * @return list<string>
+   *   The cells in order.
+   *
+   * @throws \InvalidArgumentException
+   *   When the row is not an array or a cell is not a string, an integer or
+   *   a float.
+   */
+  protected function tableCells(mixed $row, string $name): array {
+    if (!is_array($row)) {
+      throw new \InvalidArgumentException(sprintf('Table %s of type "%s" is not valid. Provide a list of cells, or a string for a section row.', $name, get_debug_type($row)));
+    }
+
+    $cells = [];
+
+    foreach ($row as $cell) {
+      if (!is_string($cell) && !is_int($cell) && !is_float($cell)) {
+        throw new \InvalidArgumentException(sprintf('Table %s holds a cell of type "%s". A cell must be a string, an integer or a float.', $name, get_debug_type($cell)));
+      }
+
+      $cells[] = (string) $cell;
+    }
+
+    return $cells;
+  }
+
+  /**
+   * Calculates the content width of each table column.
+   *
+   * A section row wider than the columns widens the last column. While the
+   * table is wider than the terminal, the widest column loses 1 column, the
+   * rightmost of equally wide ones first. No column shrinks below 1.
+   *
+   * @param list<array{cells: list<string>|null, text: string, base: string}> $items
+   *   The cell rows and section rows of the table.
+   *
+   * @return list<int>
+   *   The content width of each column.
+   */
+  protected function tableWidths(array $items): array {
+    $count = max(1, ...array_map(fn(array $item): int => count($item['cells'] ?? []), $items));
+    $widths = array_fill(0, $count, 0);
+    $section = 0;
+
+    foreach ($items as $item) {
+      if ($item['cells'] === NULL) {
+        $section = max($section, $this->blockWidth($item['text'], $item['base']));
+
+        continue;
+      }
+
+      foreach ($item['cells'] as $column => $cell) {
+        $widths[$column] = max($widths[$column], $this->blockWidth($cell, $item['base']));
+      }
+    }
+
+    $widths[$count - 1] += max(0, $section - (array_sum($widths) + 3 * ($count - 1)));
+
+    // Each column adds a vertical border and 2 spaces of padding, and the
+    // table adds 1 closing border.
+    $available = $this->columns() - $this->displayWidth($this->boxGutter()) - 3 * $count - 1;
+
+    while (array_sum($widths) > $available && max($widths) > 1) {
+      $widest = array_keys($widths, max($widths), TRUE);
+      $widths[(int) end($widest)]--;
+    }
+
+    return array_values($widths);
+  }
+
+  /**
+   * Renders the lines of a box.
+   *
+   * @param string $content
+   *   The text in the box.
+   * @param string $title
+   *   The title, or '' for none.
+   *
+   * @return list<string>
+   *   The rendered box lines.
+   */
+  protected function renderBox(string $content, string $title): array {
+    $available = $this->columns() - $this->displayWidth($this->boxGutter()) - 4;
+    $width = max(1, min($available, max($this->blockWidth($content, ''), $this->blockWidth($title, 'bold'))));
+
+    $lines = [$this->boxRule([$width], FALSE, FALSE, 'top')];
+
+    if ($title !== '') {
+      $title_lines = $this->blockLines($title, 'bold', $width);
+      $underline = max(0, ...array_map($this->displayWidth(...), $title_lines));
+
+      $lines = array_merge($lines, $this->boxRows([$title], [$width], 'bold'));
+      $lines[] = $this->boxFrame([$this->color(str_repeat($this->cfgSymbols['box_horizontal'], $underline), 'gray')], [$width]);
+    }
+
+    return [
+      ...$lines,
+      ...$this->boxRows([$content], [$width], ''),
+      $this->boxRule([$width], FALSE, FALSE, 'bottom'),
+      $this->bar(),
+    ];
+  }
+
+  /**
+   * Returns the tree gutter drawn before every line of a table or a box.
+   */
+  protected function boxGutter(): string {
+    return $this->bar() . $this->cfgSpacing['indent'];
+  }
+
+  /**
+   * Renders a horizontal rule of a table or a box.
+   *
+   * @param list<int> $widths
+   *   The content width of each column.
+   * @param bool $above
+   *   Whether the row above the rule is divided into columns.
+   * @param bool $below
+   *   Whether the row below the rule is divided into columns.
+   * @param string $edge
+   *   Where the rule sits in the frame: 'top', 'bottom' or 'middle'.
+   *
+   * @return string
+   *   The rule, after the gutter.
+   */
+  protected function boxRule(array $widths, bool $above, bool $below, string $edge): string {
+    $join = match (TRUE) {
+      $above && $below => 'box_cross',
+      $above => 'box_bottom_tee',
+      $below => 'box_top_tee',
+      default => 'box_horizontal',
+    };
+
+    [$left, $right] = match ($edge) {
+      'top' => ['box_top_left', 'box_top_right'],
+      'bottom' => ['box_bottom_left', 'box_bottom_right'],
+      default => ['box_left_tee', 'box_right_tee'],
+    };
+
+    $segments = array_map(fn(int $width): string => str_repeat($this->cfgSymbols['box_horizontal'], $width + 2), $widths);
+
+    return $this->boxGutter() . $this->color($this->cfgSymbols[$left] . implode($this->cfgSymbols[$join], $segments) . $this->cfgSymbols[$right], 'gray');
+  }
+
+  /**
+   * Renders 1 row of cells, wrapped to the column widths.
+   *
+   * @param list<string> $cells
+   *   The cell texts. A missing cell is drawn empty.
+   * @param list<int> $widths
+   *   The content width of each column.
+   * @param string $base
+   *   The color the cell texts are drawn in.
+   *
+   * @return list<string>
+   *   The rendered lines, as many as the tallest cell needs.
+   */
+  protected function boxRows(array $cells, array $widths, string $base): array {
+    $columns = [];
+
+    foreach ($widths as $column => $width) {
+      $columns[] = $this->blockLines($cells[$column] ?? '', $base, $width);
+    }
+
+    $height = max(1, ...array_map(count(...), $columns));
+    $lines = [];
+
+    for ($line = 0; $line < $height; $line++) {
+      $lines[] = $this->boxFrame(array_map(fn(array $column_lines): string => $column_lines[$line] ?? '', $columns), $widths);
+    }
+
+    return $lines;
+  }
+
+  /**
+   * Draws 1 line of a table or a box between vertical borders.
+   *
+   * @param list<string> $contents
+   *   The content of each column on this line.
+   * @param list<int> $widths
+   *   The content width of each column.
+   *
+   * @return string
+   *   The line, after the gutter.
+   */
+  protected function boxFrame(array $contents, array $widths): string {
+    $border = $this->color($this->cfgSymbols['box_vertical'], 'gray');
+    $line = $this->boxGutter() . $border;
+
+    foreach ($widths as $column => $width) {
+      $content = $contents[$column] ?? '';
+      $line .= ' ' . $content . str_repeat(' ', max(0, $width - $this->displayWidth($content))) . ' ' . $border;
+    }
+
+    return $line;
+  }
+
+  /**
+   * Splits styled text into lines and wraps each to a width.
+   *
+   * The rows of a wrapped line keep its leading spaces when they leave room
+   * for content. A style the text leaves open is reset at the end of every
+   * row, so it does not reach the padding or the border.
+   *
+   * @param string $text
+   *   The text. A newline starts another line.
+   * @param string $base
+   *   The color the text is drawn in.
+   * @param int $width
+   *   The columns available on each row.
+   *
+   * @return list<string>
+   *   The rows.
+   */
+  protected function blockLines(string $text, string $base, int $width): array {
+    $rows = [];
+
+    foreach (explode("\n", $text) as $text_line) {
+      $indent = str_repeat(' ', strspn($text_line, ' '));
+      $indent = strlen($indent) < $width ? $indent : '';
+
+      foreach ($this->wrapWithin('', $this->styled($text_line, $base), $indent, $width, $width - strlen($indent)) as $row) {
+        preg_match_all('/\033\[[0-9;:]*m/', $row, $matches);
+        $last = end($matches[0]);
+        $rows[] = $last !== FALSE && preg_match('/^\033\[0*m$/', $last) !== 1 ? $row . $this->cfgColors['reset'] : $row;
+      }
+    }
+
+    return $rows;
+  }
+
+  /**
+   * Measures the widest line of styled text.
+   *
+   * @param string $text
+   *   The text. A newline starts another line.
+   * @param string $base
+   *   The color the text is drawn in.
+   *
+   * @return int
+   *   The width in columns of the widest line.
+   */
+  protected function blockWidth(string $text, string $base): int {
+    return max(array_map(fn(string $text_line): int => $this->displayWidth($this->styled($text_line, $base)), explode("\n", $text)));
   }
 
   /**

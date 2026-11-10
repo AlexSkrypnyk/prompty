@@ -39,6 +39,7 @@ Prompty asks questions in the terminal for PHP command-line scripts, from a sing
 - 🤖 [**Non-interactive mode**](#non-interactive-mode) - answer every prompt from its default, for CI and scripted runs
 - 💬 [**Descriptions, hints and help**](#descriptions-hints-and-help) - text under each label, each option and each input
 - 📜 [**Long option lists**](#long-option-lists) - show a long `select` or `multiselect` a few options at a time
+- 🗂️ [**Tables and boxes**](#tables-and-boxes) - print a summary table or a titled panel in the tree
 - 🔧 [**Transform answers**](#transform-answers) - normalize an answer before the widget returns it
 - ✅ [**Validation**](#validation) - reject an answer, show why and ask again
 - ✨ [**Unicode and ASCII**](#unicode-and-ascii) - detected from the locale, or forced
@@ -945,6 +946,64 @@ Prompty::configure(width: 100);
 
 Lines you print with `Prompty::output()` keep your layout, so Prompty doesn't wrap them. To fit them to the terminal yourself, measure them with [`Prompty::width()` and `Prompty::terminalWidth()`](#style-your-own-lines).
 
+## Tables and boxes
+
+`Prompty::table()` and `Prompty::box()` print a summary or a panel in the same tree, symbols and colors as the widgets. Both print straight away and return nothing.
+
+To print a table, pass its rows and optional header cells. A string in `rows` becomes a section row that spans every column:
+
+```php
+Prompty::table([
+  'The dish',
+  ['Dish name', 'Pear tart'],
+  ['Course', 'Dessert'],
+  'Service',
+  ['Table', 'Table 12'],
+  ['Kitchen note', 'No nuts, and the cream on the side rather than poured over the tart'],
+], headers: ['Field', 'Answer']);
+```
+
+```text
+│  ┌──────────────┬────────────────────────────────────────────────────────────┐
+│  │ Field        │ Answer                                                     │
+│  ├──────────────┴────────────────────────────────────────────────────────────┤
+│  │ The dish                                                                  │
+│  ├──────────────┬────────────────────────────────────────────────────────────┤
+│  │ Dish name    │ Pear tart                                                  │
+│  │ Course       │ Dessert                                                    │
+│  ├──────────────┴────────────────────────────────────────────────────────────┤
+│  │ Service                                                                   │
+│  ├──────────────┬────────────────────────────────────────────────────────────┤
+│  │ Table        │ Table 12                                                   │
+│  │ Kitchen note │ No nuts, and the cream on the side rather than poured over │
+│  │              │ the tart                                                   │
+│  └──────────────┴────────────────────────────────────────────────────────────┘
+│
+```
+
+Each column is as wide as its widest cell. When the table is wider than the terminal, the widest column shrinks 1 column at a time and its cells wrap. A cell is a string, an integer or a float, and a newline in a cell starts another line. A row with fewer cells than the others gets empty cells. Any other row or cell type throws an `InvalidArgumentException`. A table with no rows and no headers prints nothing.
+
+To print a box, pass its content and an optional title. The box is as wide as its widest line, up to the terminal width:
+
+```php
+Prompty::box("Plate the tart, then:\n  ring the bell\n  call the table", title: 'Order ready');
+```
+
+```text
+│  ┌───────────────────────┐
+│  │ Order ready           │
+│  │ ───────────           │
+│  │ Plate the tart, then: │
+│  │   ring the bell       │
+│  │   call the table      │
+│  └───────────────────────┘
+│
+```
+
+A newline in the content starts another line. A line wider than the box wraps, and its continuation rows keep the line's leading spaces.
+
+Borders are gray, and header cells, section rows and the box title are bold. Bold, underline and color sequences in a cell or a line stay as you wrote them. In ASCII mode the borders use `+`, `-` and `|`. To draw other borders, override the `box_*` [symbols](#available-options).
+
 ## Default values
 
 Every widget takes a `default` that sets its starting state:
@@ -1214,7 +1273,7 @@ The following table lists every option and its default:
 
 The map-valued options take these keys:
 
-- `symbols_unicode`, `symbols_ascii`: `bar`, `completed`, `active`, `intro`, `outro`, `section`, `pointer`, `radio_on`, `radio_off`, `check_on`, `check_off`, `hint_arrow`, `error`, `scroll_up`, `scroll_down`, `success`, `spinner`, `ellipsis`. Each character of `spinner` is 1 frame.
+- `symbols_unicode`, `symbols_ascii`: `bar`, `completed`, `active`, `intro`, `outro`, `section`, `pointer`, `radio_on`, `radio_off`, `check_on`, `check_off`, `hint_arrow`, `error`, `scroll_up`, `scroll_down`, `success`, `spinner`, `ellipsis`, `box_top_left`, `box_top_right`, `box_bottom_left`, `box_bottom_right`, `box_horizontal`, `box_vertical`, `box_cross`, `box_top_tee`, `box_bottom_tee`, `box_left_tee`, `box_right_tee`. Each character of `spinner` is 1 frame.
 - `colors`: `reset`, `dim`, `dim_italic`, `cyan`, `green`, `red`, `gray`, `bold`, `white`, `yellow`, `blue`, `italic`, `underline`
 - `spacing`: `indent`, `hint_indent`, `hint_cont`
 - `labels`: `yes`, `no`, `cancelled`, `none`, `separator`, `more`, `required`, `done`, `failed`, `line`, `lines`
@@ -1257,7 +1316,7 @@ Prompty::configure(output: function (string $chunk) use (&$buffer): void {
 });
 ```
 
-The target receives everything Prompty writes: widget frames, redraws, the cursor show and hide sequences, `intro()`, `outro()` and `output()`. A redraw moves the cursor up with escape sequences, so an interactive widget draws correctly only when those bytes reach the terminal.
+The target receives everything Prompty writes: widget frames, redraws, the cursor show and hide sequences, `intro()`, `outro()`, `table()`, `box()` and `output()`. A redraw moves the cursor up with escape sequences, so an interactive widget draws correctly only when those bytes reach the terminal.
 
 A filename, a closed stream and a read-only stream each throw an `InvalidArgumentException`. To write to standard output again, pass `STDOUT`.
 
@@ -1277,6 +1336,8 @@ Besides the 5 widgets, `flow()` and `configure()`, the class has these methods:
 | `Prompty::strip($text)`      | `string` | Removes ANSI escape sequences from the text.                    |
 | `Prompty::width($text)`      | `int`    | Display width of the widest line of the text.                   |
 | `Prompty::terminalWidth()`   | `int`    | The terminal width Prompty wraps its lines to.                  |
+| `Prompty::table($rows)`      | `void`   | Prints a [table](#tables-and-boxes), with optional `headers`.   |
+| `Prompty::box($content)`     | `void`   | Prints a [box](#tables-and-boxes), with an optional `title`.    |
 
 The following example reads the answers 2 ways and prints a banner:
 

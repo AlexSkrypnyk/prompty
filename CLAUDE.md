@@ -52,7 +52,7 @@ Namespace: `AlexSkrypnyk\Prompty`. Key files: `Prompty.php` (library),
 ### Playground
 
 `playground/` holds runnable demos - `widgets*.php` and `widget-*.php` for
-standalone widgets, `flow*.php` for flows. `CONTRIBUTING.md` lists what each
+standalone widgets, `flow*.php` for flows, `table-box.php` for tables and boxes. `CONTRIBUTING.md` lists what each
 one shows and which accept `--no-unicode` / `--no-ansi`.
 
 ## Demo content
