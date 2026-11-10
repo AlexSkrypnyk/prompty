@@ -28,5 +28,6 @@ echo json_encode([
   $source->pause(),
   $source->tickets(['main' => 'stew', 'side_dish' => 'toast'], copies: 3),
   $source->tickets(dishes: ['dessert' => 'tart']),
+  $source->plates(6, 2),
   $counts,
 ], JSON_THROW_ON_ERROR) . PHP_EOL;

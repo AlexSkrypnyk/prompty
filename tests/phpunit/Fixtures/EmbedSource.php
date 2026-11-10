@@ -144,6 +144,21 @@ class EmbedSource {
   }
 
   /**
+   * Describes the plates served and returned at a table.
+   *
+   * @param int $served
+   *   Plates served.
+   * @param int $returned
+   *   Plates sent back.
+   *
+   * @return string
+   *   The summary.
+   */
+  public function plates(int $served, int $returned): string {
+    return 'Table ' . 4 . ': ' . $served - -$returned . ' moved, ' . $served + +$returned . ' handled, ' . 2.5 . ' per guest';
+  }
+
+  /**
    * Describes several portions of a dish.
    *
    * @param string $dish

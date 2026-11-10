@@ -744,7 +744,14 @@ function embed_compact_whitespace(string $code): string {
     $before_last = $before !== '' ? $before[strlen($before) - 1] : '';
     $after_first = $after !== '' ? $after[0] : '';
 
-    if (preg_match('/[a-zA-Z0-9_$]/', $before_last) && preg_match('/[a-zA-Z0-9_$\\\\]/', $after_first)) {
+    $is_word_pair = preg_match('/[a-zA-Z0-9_$]/', $before_last) === 1 && preg_match('/[a-zA-Z0-9_$\\\\]/', $after_first) === 1;
+
+    // '+ +' and '- -' would read as '++' and '--', and a dot beside a digit
+    // as a float.
+    $is_doubled_sign = in_array($before_last, ['+', '-'], TRUE) && $after_first === $before_last;
+    $is_number_dot = ($before_last === '.' && ctype_digit($after_first)) || (ctype_digit($before_last) && $after_first === '.');
+
+    if ($is_word_pair || $is_doubled_sign || $is_number_dot) {
       $output .= ' ';
     }
   }
