@@ -44,6 +44,8 @@ final class PromptyLegendTest extends PromptyTestCase {
     yield 'multiselect ascii' => ['multiselect', FALSE, [], 0, [], ['|', '|  up/down move - space toggle - enter confirm']];
     yield 'suggest ascii' => ['suggest', FALSE, [], 0, [], ['|', '|  type to filter - up/down move - enter confirm']];
     yield 'confirm ascii' => ['confirm', FALSE, [], 0, [], ['|', '|  left/right toggle - y/n choose - enter confirm']];
+    yield 'pause ascii' => ['pause', FALSE, [], 0, [], ['|', '|  any key continue']];
+    yield 'pause enter only ascii' => ['pause_enter', FALSE, [], 0, [], ['|', '|  enter continue']];
     yield 'text unicode' => ['text', TRUE, [], 0, [], ['│', '│  enter confirm']];
     yield 'select unicode' => ['select', TRUE, [], 0, [], ['│', '│  ↑↓ move · enter confirm']];
     yield 'multiselect unicode' => ['multiselect', TRUE, [], 0, [], ['│', '│  ↑↓ move · space toggle · enter confirm']];
@@ -85,6 +87,8 @@ final class PromptyLegendTest extends PromptyTestCase {
     $multiselect = static fn(array $ctx): mixed => Prompty::multiselect('Extras', options: self::EXTRAS, ctx: $ctx);
     $suggest = static fn(array $ctx): mixed => Prompty::suggest('Dish', options: self::DISHES, ctx: $ctx);
     $confirm = static fn(array $ctx): mixed => Prompty::confirm('Send order?', ctx: $ctx);
+    $pause = static fn(array $ctx): mixed => Prompty::pause('Press any key to start the order...', ctx: $ctx);
+    $pause_enter = static fn(array $ctx): mixed => Prompty::pause('Press Enter to send the order to the kitchen', enter_only: TRUE, ctx: $ctx);
 
     yield 'text' => [$text, [], "|  pear tart█\n|\n|  enter confirm\n|\n"];
     yield 'text nested' => [$text, self::CTX_AT_DEPTH, "|  |  pear tart█\n|  |  \n|  |  enter confirm\n|  |  \n"];
@@ -96,6 +100,9 @@ final class PromptyLegendTest extends PromptyTestCase {
     yield 'suggest nested' => [$suggest, self::CTX_AT_DEPTH, "|  |    Onion Soup\n|  |  \n|  |  type to filter - up/down move - enter confirm\n|  |  \n"];
     yield 'confirm' => [$confirm, [], "|  (*) Yes / ( ) No\n|\n|  left/right toggle - y/n choose - enter confirm\n|\n"];
     yield 'confirm nested' => [$confirm, self::CTX_AT_DEPTH, "|  |  (*) Yes / ( ) No\n|  |  \n|  |  left/right toggle - y/n choose - enter confirm\n|  |  \n"];
+    yield 'pause' => [$pause, [], "o  Press any key to start the order...\n|\n|  any key continue\n|\n"];
+    yield 'pause nested' => [$pause, self::CTX_AT_DEPTH, "|  o  Press any key to start the order...\n|  |  \n|  |  any key continue\n|  |  \n"];
+    yield 'pause enter only' => [$pause_enter, [], "o  Press Enter to send the order to the kitchen\n|\n|  enter continue\n|\n"];
   }
 
   #[DataProvider('dataProviderWidgetDrawsNoLegendByDefault')]
@@ -103,6 +110,7 @@ final class PromptyLegendTest extends PromptyTestCase {
     $r = $this->promptyRun(fn(): mixed => $widget($this->ctx()), self::KEY_ESCAPE);
 
     $this->assertStringNotContainsString('enter confirm', $r['output']);
+    $this->assertStringNotContainsString('continue', $r['output']);
   }
 
   public static function dataProviderWidgetDrawsNoLegendByDefault(): \Iterator {
@@ -111,6 +119,7 @@ final class PromptyLegendTest extends PromptyTestCase {
     yield 'multiselect' => [static fn(array $ctx): mixed => Prompty::multiselect('Extras', options: self::EXTRAS, ctx: $ctx)];
     yield 'suggest' => [static fn(array $ctx): mixed => Prompty::suggest('Dish', options: self::DISHES, ctx: $ctx)];
     yield 'confirm' => [static fn(array $ctx): mixed => Prompty::confirm('Send order?', ctx: $ctx)];
+    yield 'pause' => [static fn(array $ctx): mixed => Prompty::pause('Press any key to start the order...', ctx: $ctx)];
   }
 
   public function testLegendSitsAfterHelp(): void {

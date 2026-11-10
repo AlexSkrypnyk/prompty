@@ -48,6 +48,9 @@ show(Prompty::suggest('Dish', options: $dishes));
 echo "\n--- Confirm: the legend follows the help ---\n";
 show(Prompty::confirm('Fire the mains?', description: 'The kitchen starts cooking at once.', help: 'Make sure the table is ready.'));
 
+echo "\n--- Pause ---\n";
+show(Prompty::pause('Press any key to start the order...'));
+
 echo "\n--- Flow: the legend reworded, with 1 key removed ---\n";
 $results = Prompty::flow(fn(): array => [
   'dish' => Prompty::suggest('Dish', options: $dishes),

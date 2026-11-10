@@ -309,6 +309,8 @@ class Prompty {
     'legend_space' => 'space toggle',
     'legend_type' => 'type to filter',
     'legend_yes_no' => 'y/n choose',
+    'legend_any_key' => 'any key continue',
+    'legend_continue' => 'enter continue',
   ];
 
   /**
@@ -2441,6 +2443,7 @@ class Prompty {
     // does not draw.
     $lines = array_merge($lines, $description !== '' ? array_slice($p->renderDescription($description, $depth, $open), 0, -1) : []);
     $lines = array_merge($lines, $p->renderHelp($help, $depth, $open));
+    $lines = array_merge($lines, $p->renderLegend($enter_only ? 'pause_enter' : 'pause', $depth, $open));
     $lines[] = $p->bar() . $body_prefix;
     $line_count = $p->printLines($lines);
 
@@ -5290,7 +5293,8 @@ class Prompty {
    * that key from the legend.
    *
    * @param string $widget
-   *   The widget type: text, select, multiselect, suggest or confirm.
+   *   The widget type: text, select, multiselect, suggest, confirm, pause, or
+   *   pause_enter for a pause that continues only on Enter.
    * @param int $depth
    *   The current nesting depth.
    * @param array<int, bool> $open
@@ -5313,6 +5317,8 @@ class Prompty {
       'multiselect' => [$move, $this->label('legend_space'), $enter],
       'suggest' => [$this->label('legend_type'), $move, $enter],
       'confirm' => [$toggle, $this->label('legend_yes_no'), $enter],
+      'pause' => [$this->label('legend_any_key')],
+      'pause_enter' => [$this->label('legend_continue')],
       default => [$enter],
     };
 
