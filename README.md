@@ -47,7 +47,7 @@ Prompty asks questions in the terminal for PHP command-line scripts, from a sing
 
 ## Installation
 
-Prompty is a single PHP file with no dependencies. It requires PHP 8.2 or later.
+Prompty is a single PHP file with no dependencies. It requires PHP 8.3 or later.
 
 ### Download from releases
 
