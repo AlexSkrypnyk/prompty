@@ -27,11 +27,11 @@ use PHPUnit\Framework\Attributes\Group;
 #[Group('unit')]
 final class PromptyWidgetResolvedTest extends PromptyTestCase {
 
-  protected const COURSES = ['starter' => 'Starter', 'main' => 'Main'];
+  protected const array COURSES = ['starter' => 'Starter', 'main' => 'Main'];
 
-  protected const EXTRAS_PAIR = ['bread' => 'Bread', 'olives' => 'Olives'];
+  protected const array EXTRAS_PAIR = ['bread' => 'Bread', 'olives' => 'Olives'];
 
-  protected const EXTRAS_TRIO = ['bread' => 'Bread', 'olives' => 'Olives', 'herbs' => 'Herbs'];
+  protected const array EXTRAS_TRIO = ['bread' => 'Bread', 'olives' => 'Olives', 'herbs' => 'Herbs'];
 
   protected function setUp(): void {
     parent::setUp();

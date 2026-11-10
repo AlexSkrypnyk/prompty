@@ -15,7 +15,7 @@ use PHPUnit\Framework\Attributes\Group;
 #[Group('functional')]
 final class EmbedIntegrityTest extends EmbedTestCase {
 
-  protected const FIXTURE = 'tests/phpunit/Fixtures/EmbedSource';
+  protected const string FIXTURE = 'tests/phpunit/Fixtures/EmbedSource';
 
   #[DataProvider('dataProviderFixturePayload')]
   public function testFixturePayload(bool $compact): void {

@@ -20,16 +20,16 @@ use PHPUnit\Framework\Attributes\Group;
 #[Group('unit')]
 final class PromptyWidgetValidateTest extends PromptyTestCase {
 
-  protected const COURSES = ['starter' => 'Starter', 'main' => 'Main', 'dessert' => 'Dessert'];
+  protected const array COURSES = ['starter' => 'Starter', 'main' => 'Main', 'dessert' => 'Dessert'];
 
-  protected const EXTRAS = ['bread' => 'Bread', 'olives' => 'Olives', 'herbs' => 'Herbs'];
+  protected const array EXTRAS = ['bread' => 'Bread', 'olives' => 'Olives', 'herbs' => 'Herbs'];
 
-  protected const MESSAGE = 'Check the order before it goes to the kitchen.';
+  protected const string MESSAGE = 'Check the order before it goes to the kitchen.';
 
   /**
    * Context of a nested widget with a following sibling.
    */
-  protected const CTX_AT_DEPTH = ['depth' => 1, 'is_last' => FALSE, 'open' => [1 => TRUE]];
+  protected const array CTX_AT_DEPTH = ['depth' => 1, 'is_last' => FALSE, 'open' => [1 => TRUE]];
 
   /**
    * Builds a text widget call that takes a validator and a context.

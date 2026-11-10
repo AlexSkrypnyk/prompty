@@ -14,7 +14,7 @@ use PHPUnit\Framework\Attributes\Group;
 #[Group('functional')]
 final class NonInteractiveTest extends FunctionalTestCase {
 
-  protected const ANSWERS = 'Answers: [{"dish":"","course":"main","extras":["bread"],"send":true},"no nuts"]';
+  protected const string ANSWERS = 'Answers: [{"dish":"","course":"main","extras":["bread"],"send":true},"no nuts"]';
 
   public function testAnswersWithoutInput(): void {
     $output = $this->runScriptWithoutInput(self::$root . '/tests/phpunit/Fixtures/non-interactive.php');

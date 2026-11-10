@@ -19,16 +19,16 @@ use PHPUnit\Framework\Attributes\Group;
 #[Group('unit')]
 final class PromptyNonInteractiveTest extends PromptyTestCase {
 
-  protected const COURSES = ['starter' => 'Starter', 'main' => 'Main', 'dessert' => 'Dessert'];
+  protected const array COURSES = ['starter' => 'Starter', 'main' => 'Main', 'dessert' => 'Dessert'];
 
-  protected const EXTRAS = ['bread' => 'Bread', 'olives' => 'Olives', 'herbs' => 'Herbs'];
+  protected const array EXTRAS = ['bread' => 'Bread', 'olives' => 'Olives', 'herbs' => 'Herbs'];
 
-  protected const DISHES = ['pear tart', 'onion soup', 'plum compote'];
+  protected const array DISHES = ['pear tart', 'onion soup', 'plum compote'];
 
   /**
    * Keystrokes that would change every widget's answer if they were read.
    */
-  protected const KEYSTROKES = "\x1b[B x\n";
+  protected const string KEYSTROKES = "\x1b[B x\n";
 
   /**
    * Run a call with input switched off and keystrokes available.
