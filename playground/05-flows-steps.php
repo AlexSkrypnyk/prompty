@@ -19,7 +19,7 @@ $interactive = !isset($opts['no-interaction']);
 /**
  * Prints the answers a flow collected.
  *
- * @param array<string, mixed> $results
+ * @param array<string, string|bool|array<string>> $results
  *   The flow results.
  */
 function summarize(array $results): void {
