@@ -1706,7 +1706,7 @@ php embed.php my-script.php dist/my-script.php
 
 To silence coding-standard warnings on the minified code, wrap the markers in `// phpcs:disable` and `// phpcs:enable`.
 
-[`starter.php`](starter.php) has the markers in place. [`playground/flow-embed.php`](playground/flow-embed.php) is the demo the embedder is tested against, and [`CONTRIBUTING.md`](CONTRIBUTING.md#the-embedded-demo) shows how to build and compare its embedded copy.
+[`starter.php`](starter.php) has the markers in place. [`playground/05-flows-embed.php`](playground/05-flows-embed.php) is the demo the embedder is tested against, and [`CONTRIBUTING.md`](CONTRIBUTING.md#the-embedded-demo) shows how to build and compare its embedded copy.
 
 ### Options
 

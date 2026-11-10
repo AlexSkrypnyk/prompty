@@ -16,10 +16,10 @@
  * either can be empty when the command that produced it returned nothing:
  *
  * @code
- * php playground/widget-values.php --extras=bread,olives
- * php playground/widget-values.php --dish='onion soup'
- * php playground/widget-values.php --dish=
- * PROMPTY_EXTRAS=bread,olives PROMPTY_DISH= php playground/widget-values.php
+ * php playground/06-answers-values.php --extras=bread,olives
+ * php playground/06-answers-values.php --dish='onion soup'
+ * php playground/06-answers-values.php --dish=
+ * PROMPTY_EXTRAS=bread,olives PROMPTY_DISH= php playground/06-answers-values.php
  * @endcode
  *
  * Without either source, those widgets ask, so the same script works at a

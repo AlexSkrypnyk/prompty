@@ -9,8 +9,8 @@
  * goes through the same transform.
  *
  * @code
- * php playground/widget-transform.php
- * php playground/widget-transform.php --dish='  PEAR tart '
+ * php playground/06-answers-transform.php
+ * php playground/06-answers-transform.php --dish='  PEAR tart '
  * @endcode
  */
 
