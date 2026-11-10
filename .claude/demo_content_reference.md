@@ -281,6 +281,15 @@ Use these exact labels, keys, values, hints and help lines. Keys are lowercase s
 - `Cut into wedges?` (key `wedges`) - `Quartered rather than sliced.`
 - `Fire the mains?` (key `fire`) - `The kitchen starts cooking at once.`, with the help line `Make sure the table is ready.`
 
+### Section headings
+
+Headings that group a flow's steps with `Prompty::section()`:
+
+- `The dish` - `Name the dish and place it in the meal.` Groups Dish name and Course.
+- `Finishing` - `Applied just before serving.` and `Only asked for desserts.` on 2 lines. Groups Finishes, which shows only for dessert.
+- `Service` - with `Table and extras` as a second title line, and the description `Where the order is going and what is served alongside.` Groups Table and Extras.
+- `Ticket` - no description. Groups Send order?.
+
 ### Validation messages
 
 Messages a `validate` callback returns in demos and README snippets:
