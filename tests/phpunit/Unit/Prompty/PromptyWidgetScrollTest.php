@@ -341,7 +341,7 @@ final class PromptyWidgetScrollTest extends PromptyTestCase {
       ['tart', 'omelette'],
       ['+  Pantry', '|  Pear Tart, Herb Omelette', '|'],
     ];
-    yield 'multiselect cancelled' => [static fn(self $test): array => $test->runMultiselect($down_4 . self::KEY_ESCAPE), NULL, ['o  Pantry', '|   (cancelled)', '|']];
+    yield 'multiselect cancelled' => [static fn(self $test): array => $test->runMultiselect($down_4 . self::KEY_ESCAPE), NULL, ['o  Pantry', '|  (cancelled)', '|']];
   }
 
   #[DataProvider('dataProviderWindowAtDepth')]

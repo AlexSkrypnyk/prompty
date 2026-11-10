@@ -501,7 +501,7 @@ EXPECTED,
       [],
       <<<'EXPECTED'
 o  Project name
-|   (cancelled)
+|  (cancelled)
 |
 EXPECTED,
     ];
@@ -533,7 +533,7 @@ EXPECTED,
       1,
       [],
       // labelPrefix(1, ...) = '  ', bodyPrefix(1, []) = '     '.
-      "|  o  Framework\n|      (cancelled)\n|     ",
+      "|  o  Framework\n|     (cancelled)\n|     ",
     ];
   }
 

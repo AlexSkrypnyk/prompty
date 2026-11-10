@@ -5518,10 +5518,11 @@ class Prompty {
     $value = $this->printable($value);
 
     $gutter = $this->bar() . ($depth > 0 ? $this->bodyPrefix($depth, $open) : $this->cfgSpacing['indent']);
+    $cancelled = $this->color($this->label('cancelled'), 'red');
 
     return [
       ...$this->renderLabel($label, 'active', 'red', $depth, $open),
-      ...$this->wrap($gutter, $this->color($value, 'dim') . $this->color(' ' . $this->label('cancelled'), 'red'), $gutter),
+      ...$this->wrap($gutter, $value === '' ? $cancelled : $this->color($value, 'dim') . ' ' . $cancelled, $gutter),
       $this->bar() . ($depth > 0 ? $this->bodyPrefix($depth, $open) : ''),
     ];
   }
