@@ -158,6 +158,10 @@ final class PromptyConfigTest extends PromptyTestCase {
     yield 'scroll' => [['scroll' => 10], 'cfgScroll', 10];
 
     yield 'scroll 0' => [['scroll' => 0], 'cfgScroll', 0];
+
+    yield 'placeholder_fallback false' => [['placeholder_fallback' => FALSE], 'cfgPlaceholderFallback', FALSE];
+
+    yield 'placeholder_fallback true' => [['placeholder_fallback' => TRUE], 'cfgPlaceholderFallback', TRUE];
   }
 
   #[DataProvider('dataProviderConfigurePartialArrayMerge')]
@@ -249,6 +253,14 @@ final class PromptyConfigTest extends PromptyTestCase {
     $this->createAndSetInstance(['interactive' => FALSE]);
 
     $this->assertFalse(Prompty::config()['interactive']);
+  }
+
+  public function testPlaceholderFallbackInConfig(): void {
+    $this->createAndSetInstance();
+    $this->assertTrue(Prompty::config()['placeholder_fallback']);
+
+    $this->createAndSetInstance(['placeholder_fallback' => FALSE]);
+    $this->assertFalse(Prompty::config()['placeholder_fallback']);
   }
 
   public function testConfigureUnicodeResolvesSymbols(): void {

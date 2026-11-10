@@ -38,6 +38,7 @@ namespace AlexSkrypnyk\Prompty;
  *   output: resource|\Closure|null,
  *   interactive: bool,
  *   scroll: int,
+ *   placeholder_fallback: bool,
  * }
  */
 class Prompty {
@@ -269,6 +270,11 @@ class Prompty {
   protected int $cfgScroll = 0;
 
   /**
+   * Whether an empty text or suggest answer takes the placeholder.
+   */
+  protected bool $cfgPlaceholderFallback = TRUE;
+
+  /**
    * Constructs a Prompty instance.
    */
   protected function __construct() {
@@ -328,6 +334,7 @@ class Prompty {
       'output' => $this->cfgOutput,
       'interactive' => $this->cfgInteractive,
       'scroll' => $this->cfgScroll,
+      'placeholder_fallback' => $this->cfgPlaceholderFallback,
     ];
   }
 
@@ -351,6 +358,7 @@ class Prompty {
     $this->cfgOutput = $snapshot['output'];
     $this->cfgInteractive = $snapshot['interactive'];
     $this->cfgScroll = $snapshot['scroll'];
+    $this->cfgPlaceholderFallback = $snapshot['placeholder_fallback'];
     $this->resolveDisplay();
   }
 
@@ -378,6 +386,7 @@ class Prompty {
       'output' => $p->cfgOutput,
       'interactive' => $p->cfgInteractive,
       'scroll' => $p->cfgScroll,
+      'placeholder_fallback' => $p->cfgPlaceholderFallback,
     ];
   }
 
@@ -442,6 +451,9 @@ class Prompty {
    *   NULL keeps the current setting, which is TRUE until set.
    * @param int|null $scroll
    *   Options a select or multiselect draws at once. 0 draws every option.
+   * @param bool|null $placeholder_fallback
+   *   Answer an empty text or suggest with its placeholder (TRUE), or with ''
+   *   (FALSE). NULL keeps the current setting, which is TRUE until set.
    *
    * @throws \InvalidArgumentException
    *   When a map holds an unknown key, a list is empty or holds a blank value,
@@ -461,6 +473,7 @@ class Prompty {
     mixed $output = NULL,
     ?bool $interactive = NULL,
     ?int $scroll = NULL,
+    ?bool $placeholder_fallback = NULL,
   ): void {
     $p = static::instance();
 
@@ -553,6 +566,10 @@ class Prompty {
       $p->cfgScroll = $scroll;
     }
 
+    if ($placeholder_fallback !== NULL) {
+      $p->cfgPlaceholderFallback = $placeholder_fallback;
+    }
+
     $p->resolveDisplay();
   }
 
@@ -607,6 +624,9 @@ class Prompty {
    *   NULL keeps the current setting, which is TRUE until set.
    * @param int|null $scroll
    *   Options a select or multiselect draws at once. 0 draws every option.
+   * @param bool|null $placeholder_fallback
+   *   Answer an empty text or suggest with its placeholder (TRUE), or with ''
+   *   (FALSE). NULL keeps the current setting, which is TRUE until set.
    *
    * @return array<string, string|bool|int|array<string,string>>|null
    *   Collected results or NULL if cancelled.
@@ -630,6 +650,7 @@ class Prompty {
     mixed $output = NULL,
     ?bool $interactive = NULL,
     ?int $scroll = NULL,
+    ?bool $placeholder_fallback = NULL,
   ): ?array {
     $p = static::instance();
     $snapshot = NULL;
@@ -646,9 +667,10 @@ class Prompty {
       || $falsy !== NULL
       || $output !== NULL
       || $interactive !== NULL
-      || $scroll !== NULL) {
+      || $scroll !== NULL
+      || $placeholder_fallback !== NULL) {
       $snapshot = $p->snapshotConfig();
-      static::configure($symbols_unicode, $symbols_ascii, $colors, $spacing, $labels, $unicode, $ansi, $env_prefix, $truthy, $falsy, $output, $interactive, $scroll);
+      static::configure($symbols_unicode, $symbols_ascii, $colors, $spacing, $labels, $unicode, $ansi, $env_prefix, $truthy, $falsy, $output, $interactive, $scroll, $placeholder_fallback);
     }
 
     $p->results = [];
@@ -718,8 +740,8 @@ class Prompty {
    *   also the answer when nothing is typed.
    * @param string $placeholder
    *   Placeholder text shown when the input is empty. It is the answer when
-   *   nothing is typed and no default was seeded. A non-interactive widget
-   *   never answers with it.
+   *   the input is submitted empty, unless the placeholder fallback is
+   *   configured off. A non-interactive widget never answers with it.
    * @param string $description
    *   Optional description rendered below the label.
    * @param string $help
@@ -807,10 +829,9 @@ class Prompty {
       $resolved_display = trim($p->printable((string) $resolved));
 
       // An empty answer resolves as it does interactively: the seeded default,
-      // or the placeholder when nothing was seeded. Without input the
-      // placeholder is never shown, so it is not an answer either.
+      // or the placeholder fallback when nothing was seeded.
       if ($resolved_display === '') {
-        $resolved_display = $default !== '' || !$p->cfgInteractive ? $default : $placeholder;
+        $resolved_display = $default !== '' ? $default : $p->placeholderAnswer($placeholder);
       }
 
       // Transform and validate before raw mode is entered, so a rejected value
@@ -894,7 +915,7 @@ class Prompty {
 
       if ($key === 'enter') {
         $value = $p->printable($value);
-        $display = $value !== '' ? $value : $placeholder;
+        $display = $value !== '' ? $value : $p->placeholderAnswer($placeholder);
         $display = $p->printable($p->transformString($plain_label, $transform, $display));
         $error = $p->validateAnswer($plain_label, $validate, $display, $results);
 
@@ -1507,7 +1528,8 @@ class Prompty {
    *   also the answer when nothing is typed.
    * @param string $placeholder
    *   Placeholder text shown when the input is empty. It is the answer when
-   *   nothing is typed and no default was seeded.
+   *   the input is submitted empty, unless the placeholder fallback is
+   *   configured off. A non-interactive widget never answers with it.
    * @param string $description
    *   Optional description rendered below the label.
    * @param int|null $scroll
@@ -1603,10 +1625,9 @@ class Prompty {
       $display = trim($p->printable((string) $resolved));
 
       // An empty answer resolves as it does interactively: the seeded default,
-      // or the placeholder when nothing was seeded. Without input the
-      // placeholder is never shown, so it is not an answer either.
+      // or the placeholder fallback when nothing was seeded.
       if ($display === '') {
-        $display = $default !== '' || !$p->cfgInteractive ? $default : $placeholder;
+        $display = $default !== '' ? $default : $p->placeholderAnswer($placeholder);
       }
 
       $open = $p->settleOpen($display, $open);
@@ -1682,7 +1703,7 @@ class Prompty {
 
       if ($key === 'enter') {
         $value = $p->printable($value);
-        $display = $focused !== NULL ? $matches[$focused] : ($value !== '' ? $value : $placeholder);
+        $display = $focused !== NULL ? $matches[$focused] : ($value !== '' ? $value : $p->placeholderAnswer($placeholder));
         $open = $p->settleOpen($display, $open);
         $p->redraw($line_count, $p->renderCompleted($label, $display, $depth, $open));
 
@@ -2699,6 +2720,22 @@ class Prompty {
     $accepted = implode(', ', array_merge($truthy, $falsy));
 
     throw new \InvalidArgumentException(sprintf('Discovered value "%s" for "%s" is not a valid answer. Accepted values: %s.', $display, $label, $accepted));
+  }
+
+  /**
+   * Returns the answer a text or suggest gives when nothing was entered.
+   *
+   * A widget that reads no input never shows its placeholder, so the
+   * placeholder answers only when input is read and the fallback is on.
+   *
+   * @param string $placeholder
+   *   The widget's placeholder.
+   *
+   * @return string
+   *   $placeholder, or '' when it does not answer.
+   */
+  protected function placeholderAnswer(string $placeholder): string {
+    return $this->cfgInteractive && $this->cfgPlaceholderFallback ? $placeholder : '';
   }
 
   /**

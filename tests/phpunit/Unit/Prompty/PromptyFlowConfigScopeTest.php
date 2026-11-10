@@ -127,6 +127,13 @@ final class PromptyFlowConfigScopeTest extends PromptyTestCase {
       },
       'scroll',
     ];
+
+    yield 'placeholder fallback' => [
+      static function () use ($steps): void {
+        Prompty::flow($steps, placeholder_fallback: FALSE);
+      },
+      'placeholder_fallback',
+    ];
   }
 
   public function testSecondFlowSeesTheGlobalConfiguration(): void {

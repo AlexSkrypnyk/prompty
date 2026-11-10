@@ -9,8 +9,8 @@
  * widget records it instead of asking.
  *
  * An empty or whitespace answer falls back to the default, then the
- * placeholder. Each source is held to the widget's options: a default or a
- * discovered key outside them is rejected.
+ * placeholder unless placeholder_fallback is off. Each source is held to the
+ * widget's options: a default or a discovered key outside them is rejected.
  *
  * The discovered sections take their answers from a flag or a variable, and
  * either can be empty when the command that produced it returned nothing:
@@ -134,6 +134,12 @@ show_text(Prompty::text('Dish name', placeholder: 'pear tart', discovered: '   '
 
 echo "\n--- Text: an empty answer prefers a seeded default ---\n";
 show_text(Prompty::text('Dish name', default: 'plum compote', placeholder: 'pear tart', discovered: ''));
+
+echo "\n--- Text: a placeholder that is only an example stays out of the answer ---\n";
+$results = Prompty::flow(fn(): array => [
+  'dish' => Prompty::text('Dish name', placeholder: 'e.g. pear tart', discovered: ''),
+], placeholder_fallback: FALSE);
+show_text(is_array($results) && is_string($results['dish'] ?? NULL) ? $results['dish'] : NULL);
 
 echo "\n--- Text: an answer is trimmed ---\n";
 show_text(Prompty::text('Dish name', placeholder: 'pear tart', discovered: '  onion soup  '));

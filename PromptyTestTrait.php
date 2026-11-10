@@ -225,6 +225,7 @@ trait PromptyTestTrait {
       'colors' => 'cfgColors',
       'spacing' => 'cfgSpacing',
       'scroll' => 'cfgScroll',
+      'placeholder_fallback' => 'cfgPlaceholderFallback',
     ];
 
     foreach ($config as $key => $value) {
