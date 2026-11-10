@@ -395,7 +395,7 @@ final class PromptyOutputTest extends PromptyTestCase {
 
     $this->assertSame('', $output);
     $this->assertNull(Prompty::config()['output']);
-    $this->assertFalse($this->getStaticProperty('inFlow'));
+    $this->assertFalse($this->getStaticProperty('isInFlow'));
   }
 
   /**

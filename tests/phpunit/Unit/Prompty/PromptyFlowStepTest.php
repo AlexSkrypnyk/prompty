@@ -361,7 +361,7 @@ final class PromptyFlowStepTest extends PromptyTestCase {
       ], unicode: FALSE);
     });
 
-    $this->assertFalse($this->getStaticProperty('inFlow'));
+    $this->assertFalse($this->getStaticProperty('isInFlow'));
   }
 
   public static function dataProviderStepRejectsBuilderResult(): \Iterator {

@@ -30,9 +30,9 @@ final class PromptyConfigTest extends PromptyTestCase {
     $this->assertSame('PROMPTY_', $this->getProperty($p, 'cfgEnvPrefix'));
     $this->assertSame(['1', 'true', 'yes'], $this->getProperty($p, 'cfgTruthy'));
     $this->assertSame(['0', 'false', 'no'], $this->getProperty($p, 'cfgFalsy'));
-    $this->assertTrue($this->getProperty($p, 'cfgInteractive'));
+    $this->assertTrue($this->getProperty($p, 'cfgIsInteractive'));
     $this->assertSame(0, $this->getProperty($p, 'cfgScroll'));
-    $this->assertFalse($this->getProperty($p, 'cfgLegend'));
+    $this->assertFalse($this->getProperty($p, 'cfgIsLegend'));
   }
 
   public function testDefaultConfigSymbolKeys(): void {
@@ -88,22 +88,22 @@ final class PromptyConfigTest extends PromptyTestCase {
   }
 
   public static function dataProviderEnvironmentDetection(): \Iterator {
-    yield 'LANG with UTF-8' => [['LANG' => 'en_US.UTF-8', 'LC_ALL' => NULL, 'LC_CTYPE' => NULL], 'unicode', 'cfgUnicode', TRUE];
-    yield 'LANG with utf8' => [['LANG' => 'en_AU.utf8', 'LC_ALL' => NULL, 'LC_CTYPE' => NULL], 'unicode', 'cfgUnicode', TRUE];
-    yield 'LANG without UTF' => [['LANG' => 'C', 'LC_ALL' => NULL, 'LC_CTYPE' => NULL], 'unicode', 'cfgUnicode', FALSE];
-    yield 'LC_ALL with UTF-8' => [['LANG' => NULL, 'LC_ALL' => 'en_US.UTF-8', 'LC_CTYPE' => NULL], 'unicode', 'cfgUnicode', TRUE];
-    yield 'LC_CTYPE with UTF-8' => [['LANG' => NULL, 'LC_ALL' => NULL, 'LC_CTYPE' => 'en_US.UTF-8'], 'unicode', 'cfgUnicode', TRUE];
-    yield 'NO_COLOR set' => [['NO_COLOR' => '1', 'TERM' => NULL], 'ansi', 'cfgAnsi', FALSE];
-    yield 'NO_COLOR and TERM unset' => [['NO_COLOR' => NULL, 'TERM' => NULL], 'ansi', 'cfgAnsi', TRUE];
-    yield 'TERM dumb' => [['NO_COLOR' => NULL, 'TERM' => 'dumb'], 'ansi', 'cfgAnsi', FALSE];
-    yield 'TERM xterm' => [['NO_COLOR' => NULL, 'TERM' => 'xterm-256color'], 'ansi', 'cfgAnsi', TRUE];
+    yield 'LANG with UTF-8' => [['LANG' => 'en_US.UTF-8', 'LC_ALL' => NULL, 'LC_CTYPE' => NULL], 'unicode', 'cfgIsUnicode', TRUE];
+    yield 'LANG with utf8' => [['LANG' => 'en_AU.utf8', 'LC_ALL' => NULL, 'LC_CTYPE' => NULL], 'unicode', 'cfgIsUnicode', TRUE];
+    yield 'LANG without UTF' => [['LANG' => 'C', 'LC_ALL' => NULL, 'LC_CTYPE' => NULL], 'unicode', 'cfgIsUnicode', FALSE];
+    yield 'LC_ALL with UTF-8' => [['LANG' => NULL, 'LC_ALL' => 'en_US.UTF-8', 'LC_CTYPE' => NULL], 'unicode', 'cfgIsUnicode', TRUE];
+    yield 'LC_CTYPE with UTF-8' => [['LANG' => NULL, 'LC_ALL' => NULL, 'LC_CTYPE' => 'en_US.UTF-8'], 'unicode', 'cfgIsUnicode', TRUE];
+    yield 'NO_COLOR set' => [['NO_COLOR' => '1', 'TERM' => NULL], 'ansi', 'cfgIsAnsi', FALSE];
+    yield 'NO_COLOR and TERM unset' => [['NO_COLOR' => NULL, 'TERM' => NULL], 'ansi', 'cfgIsAnsi', TRUE];
+    yield 'TERM dumb' => [['NO_COLOR' => NULL, 'TERM' => 'dumb'], 'ansi', 'cfgIsAnsi', FALSE];
+    yield 'TERM xterm' => [['NO_COLOR' => NULL, 'TERM' => 'xterm-256color'], 'ansi', 'cfgIsAnsi', TRUE];
   }
 
   #[DataProvider('dataProviderUnicodeForced')]
   public function testUnicodeForced(bool $unicode, string $bar, string $completed, string $active): void {
     $p = $this->createInstance(['unicode' => $unicode]);
 
-    $this->assertSame($unicode, $this->getProperty($p, 'cfgUnicode'));
+    $this->assertSame($unicode, $this->getProperty($p, 'cfgIsUnicode'));
     /** @var array<string, string> $symbols */
     $symbols = $this->getProperty($p, 'cfgSymbols');
     $this->assertSame($bar, $symbols['bar']);
@@ -120,7 +120,7 @@ final class PromptyConfigTest extends PromptyTestCase {
   public function testAnsiForced(bool $ansi, string $cyan, string $reset): void {
     $p = $this->createInstance(['ansi' => $ansi]);
 
-    $this->assertSame($ansi, $this->getProperty($p, 'cfgAnsi'));
+    $this->assertSame($ansi, $this->getProperty($p, 'cfgIsAnsi'));
     /** @var array<string, string> $colors */
     $colors = $this->getProperty($p, 'cfgColors');
     $this->assertSame($cyan, $colors['cyan']);
@@ -148,29 +148,29 @@ final class PromptyConfigTest extends PromptyTestCase {
 
     yield 'falsy' => [['falsy' => ['n', 'off']], 'cfgFalsy', ['n', 'off']];
 
-    yield 'unicode true' => [['unicode' => TRUE], 'cfgUnicode', TRUE];
+    yield 'unicode true' => [['unicode' => TRUE], 'cfgIsUnicode', TRUE];
 
-    yield 'unicode false' => [['unicode' => FALSE], 'cfgUnicode', FALSE];
+    yield 'unicode false' => [['unicode' => FALSE], 'cfgIsUnicode', FALSE];
 
-    yield 'interactive false' => [['interactive' => FALSE], 'cfgInteractive', FALSE];
+    yield 'interactive false' => [['interactive' => FALSE], 'cfgIsInteractive', FALSE];
 
-    yield 'interactive true' => [['interactive' => TRUE], 'cfgInteractive', TRUE];
+    yield 'interactive true' => [['interactive' => TRUE], 'cfgIsInteractive', TRUE];
 
     yield 'scroll' => [['scroll' => 10], 'cfgScroll', 10];
 
     yield 'scroll 0' => [['scroll' => 0], 'cfgScroll', 0];
 
-    yield 'placeholder_fallback false' => [['placeholder_fallback' => FALSE], 'cfgPlaceholderFallback', FALSE];
+    yield 'placeholder_fallback false' => [['placeholder_fallback' => FALSE], 'cfgIsPlaceholderFallback', FALSE];
 
-    yield 'placeholder_fallback true' => [['placeholder_fallback' => TRUE], 'cfgPlaceholderFallback', TRUE];
+    yield 'placeholder_fallback true' => [['placeholder_fallback' => TRUE], 'cfgIsPlaceholderFallback', TRUE];
 
     yield 'width' => [['width' => 120], 'cfgWidth', 120];
 
     yield 'width 0' => [['width' => 0], 'cfgWidth', 0];
 
-    yield 'legend true' => [['legend' => TRUE], 'cfgLegend', TRUE];
+    yield 'legend true' => [['legend' => TRUE], 'cfgIsLegend', TRUE];
 
-    yield 'legend false' => [['legend' => FALSE], 'cfgLegend', FALSE];
+    yield 'legend false' => [['legend' => FALSE], 'cfgIsLegend', FALSE];
   }
 
   #[DataProvider('dataProviderConfigurePartialArrayMerge')]
@@ -302,7 +302,7 @@ final class PromptyConfigTest extends PromptyTestCase {
     Prompty::configure();
 
     $this->assertSame($original_prefix, $this->getProperty($p, 'cfgEnvPrefix'));
-    $this->assertTrue($this->getProperty($p, 'cfgInteractive'));
+    $this->assertTrue($this->getProperty($p, 'cfgIsInteractive'));
   }
 
   /**

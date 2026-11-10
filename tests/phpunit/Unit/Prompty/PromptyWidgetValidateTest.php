@@ -368,7 +368,7 @@ final class PromptyWidgetValidateTest extends PromptyTestCase {
 
     $this->assertSame('', $output);
     $this->assertSame(0, ftell($stream));
-    $this->assertFalse($this->getStaticProperty('inFlow'));
+    $this->assertFalse($this->getStaticProperty('isInFlow'));
   }
 
   #[DataProvider('dataProviderValidateThreadsThroughFlowDefinition')]
@@ -475,7 +475,7 @@ final class PromptyWidgetValidateTest extends PromptyTestCase {
       'dish' => Prompty::text('Dish name', validate: fn(): bool => FALSE),
     ], unicode: FALSE));
 
-    $this->assertFalse($this->getStaticProperty('inFlow'));
+    $this->assertFalse($this->getStaticProperty('isInFlow'));
   }
 
   #[DataProvider('dataProviderDiscoveredRejected')]
@@ -680,7 +680,7 @@ final class PromptyWidgetValidateTest extends PromptyTestCase {
 
     $this->assertSame('', $output);
     $this->assertSame(0, ftell($stream));
-    $this->assertFalse($this->getStaticProperty('inFlow'));
+    $this->assertFalse($this->getStaticProperty('isInFlow'));
   }
 
 }

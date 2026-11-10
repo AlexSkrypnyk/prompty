@@ -129,7 +129,7 @@ final class PromptyWidgetValidationTest extends PromptyTestCase {
     $output = $this->captureOutputThrows(\InvalidArgumentException::class, $message, fn(): mixed => Prompty::flow($steps, unicode: FALSE));
 
     $this->assertSame('', $output);
-    $this->assertFalse($this->getStaticProperty('inFlow'));
+    $this->assertFalse($this->getStaticProperty('isInFlow'));
   }
 
   public static function dataProviderFlowRejectsEmptyOptions(): \Iterator {
@@ -251,7 +251,7 @@ final class PromptyWidgetValidationTest extends PromptyTestCase {
     ], unicode: FALSE));
 
     $this->assertSame('', $output);
-    $this->assertFalse($this->getStaticProperty('inFlow'));
+    $this->assertFalse($this->getStaticProperty('isInFlow'));
   }
 
   public function testFlowStepSkippedByConditionSkipsDefaultValidation(): void {

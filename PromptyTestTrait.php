@@ -108,7 +108,7 @@ trait PromptyTestTrait {
     }
 
     $this->promptySetStatic('instance', $instance);
-    $this->promptySetStatic('inFlow', TRUE);
+    $this->promptySetStatic('isInFlow', TRUE);
 
     // The buffer and the singleton are released when the callback throws, so
     // a test that expects an exception leaves no state behind.
@@ -125,7 +125,7 @@ trait PromptyTestTrait {
       }
 
       $this->promptySetStatic('instance', NULL);
-      $this->promptySetStatic('inFlow', FALSE);
+      $this->promptySetStatic('isInFlow', FALSE);
     }
 
     $output = $this->promptyNormalizeOutput($raw_output ?: '');
@@ -137,7 +137,7 @@ trait PromptyTestTrait {
    * Run a consumer script with simulated keystrokes.
    *
    * Installs a singleton carrying the keystroke stream, which the script's
-   * own Prompty::flow() call then reuses. Unlike promptyRun(), $inFlow is
+   * own Prompty::flow() call then reuses. Unlike promptyRun(), $isInFlow is
    * left FALSE and the singleton survives the call, so Prompty::results()
    * still reads the collected answers afterwards.
    *
@@ -275,21 +275,21 @@ trait PromptyTestTrait {
     $instance = $ref->newInstanceWithoutConstructor();
 
     $property_map = [
-      'unicode' => 'cfgUnicode',
-      'ansi' => 'cfgAnsi',
+      'unicode' => 'cfgIsUnicode',
+      'ansi' => 'cfgIsAnsi',
       'env_prefix' => 'cfgEnvPrefix',
       'truthy' => 'cfgTruthy',
       'falsy' => 'cfgFalsy',
-      'interactive' => 'cfgInteractive',
+      'interactive' => 'cfgIsInteractive',
       'labels' => 'cfgLabels',
       'symbols_unicode' => 'cfgSymbolsUnicode',
       'symbols_ascii' => 'cfgSymbolsAscii',
       'colors' => 'cfgColors',
       'spacing' => 'cfgSpacing',
       'scroll' => 'cfgScroll',
-      'placeholder_fallback' => 'cfgPlaceholderFallback',
+      'placeholder_fallback' => 'cfgIsPlaceholderFallback',
       'width' => 'cfgWidth',
-      'legend' => 'cfgLegend',
+      'legend' => 'cfgIsLegend',
     ];
 
     foreach ($config as $key => $value) {
@@ -377,8 +377,8 @@ trait PromptyTestTrait {
   protected function promptyTearDown(): void {
     $this->promptyCloseInput();
     $this->promptySetStatic('instance', NULL);
-    $this->promptySetStatic('inFlow', FALSE);
-    $this->promptySetStatic('defining', FALSE);
+    $this->promptySetStatic('isInFlow', FALSE);
+    $this->promptySetStatic('isDefining', FALSE);
     $this->promptySetStatic('onInvalid', NULL);
   }
 

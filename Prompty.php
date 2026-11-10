@@ -122,7 +122,7 @@ class Prompty {
   /**
    * Whether a flow is currently being defined/executed.
    */
-  protected static bool $inFlow = FALSE;
+  protected static bool $isInFlow = FALSE;
 
   /**
    * Whether the steps callable of a flow is running.
@@ -130,7 +130,7 @@ class Prompty {
    * A note declares a step only then; once the flow walks its steps, a note
    * prints.
    */
-  protected static bool $defining = FALSE;
+  protected static bool $isDefining = FALSE;
 
   /**
    * Handler called for every answer a validator rejects.
@@ -174,7 +174,7 @@ class Prompty {
   /**
    * Whether the running flow has drawn its intro, a step or a section.
    */
-  protected bool $drawn = FALSE;
+  protected bool $isDrawn = FALSE;
 
   /**
    * Terminal rows the running flow has printed.
@@ -396,12 +396,12 @@ class Prompty {
   /**
    * Whether to use unicode symbols (NULL = auto-detect).
    */
-  protected ?bool $cfgUnicode = NULL;
+  protected ?bool $cfgIsUnicode = NULL;
 
   /**
    * Whether to emit ANSI color codes (NULL = auto-detect).
    */
-  protected ?bool $cfgAnsi = NULL;
+  protected ?bool $cfgIsAnsi = NULL;
 
   /**
    * Environment variable prefix for auto-discovery.
@@ -432,7 +432,7 @@ class Prompty {
   /**
    * Whether widgets read input, or answer from their default.
    */
-  protected bool $cfgInteractive = TRUE;
+  protected bool $cfgIsInteractive = TRUE;
 
   /**
    * Options a select or multiselect draws at once (0 = all).
@@ -442,7 +442,7 @@ class Prompty {
   /**
    * Whether an empty text or suggest answer takes the placeholder.
    */
-  protected bool $cfgPlaceholderFallback = TRUE;
+  protected bool $cfgIsPlaceholderFallback = TRUE;
 
   /**
    * Terminal columns that rendered lines wrap to (0 = detect).
@@ -452,7 +452,7 @@ class Prompty {
   /**
    * Whether an active widget draws the keys it accepts under it.
    */
-  protected bool $cfgLegend = FALSE;
+  protected bool $cfgIsLegend = FALSE;
 
   /**
    * The key that steps back to the previous step in a flow ('' = none).
@@ -469,7 +469,7 @@ class Prompty {
   /**
    * Whether the output target is a terminal (NULL = detect).
    */
-  protected ?bool $terminal = NULL;
+  protected ?bool $isTerminal = NULL;
 
   /**
    * Lines the streaming task's action has written, or NULL when none streams.
@@ -486,7 +486,7 @@ class Prompty {
   /**
    * Whether the streaming task draws a live window.
    */
-  protected bool $streamLive = FALSE;
+  protected bool $isStreamLive = FALSE;
 
   /**
    * Draws the streaming task after new output, or NULL when none streams.
@@ -499,7 +499,7 @@ class Prompty {
   /**
    * Whether the streaming task is drawing, so write() does not stream it.
    */
-  protected bool $streamDrawing = FALSE;
+  protected bool $isStreamDrawing = FALSE;
 
   /**
    * Output drawn while the stream's buffer handler runs, or NULL outside it.
@@ -510,16 +510,16 @@ class Prompty {
    * Constructs a Prompty instance.
    */
   protected function __construct() {
-    if ($this->cfgUnicode === NULL) {
+    if ($this->cfgIsUnicode === NULL) {
       $lang = getenv('LANG') ?: getenv('LC_ALL') ?: getenv('LC_CTYPE') ?: setlocale(LC_CTYPE, '0') ?: '';
-      $this->cfgUnicode = stripos($lang, 'utf') !== FALSE;
+      $this->cfgIsUnicode = stripos($lang, 'utf') !== FALSE;
     }
 
     $this->cfgColorsDefault = $this->cfgColors;
 
-    if ($this->cfgAnsi === NULL) {
+    if ($this->cfgIsAnsi === NULL) {
       $no_color = getenv('NO_COLOR');
-      $this->cfgAnsi = ($no_color !== FALSE && $no_color !== '') || getenv('TERM') === 'dumb' ? FALSE : TRUE;
+      $this->cfgIsAnsi = ($no_color !== FALSE && $no_color !== '') || getenv('TERM') === 'dumb' ? FALSE : TRUE;
     }
 
     $this->resolveDisplay();
@@ -541,8 +541,8 @@ class Prompty {
    * Resolves the symbol and color sets from the unicode and ANSI settings.
    */
   protected function resolveDisplay(): void {
-    $this->cfgSymbols = $this->cfgUnicode ? $this->cfgSymbolsUnicode : $this->cfgSymbolsAscii;
-    $this->cfgColors = $this->cfgAnsi ? $this->cfgColorsDefault : array_fill_keys(array_keys($this->cfgColorsDefault), '');
+    $this->cfgSymbols = $this->cfgIsUnicode ? $this->cfgSymbolsUnicode : $this->cfgSymbolsAscii;
+    $this->cfgColors = $this->cfgIsAnsi ? $this->cfgColorsDefault : array_fill_keys(array_keys($this->cfgColorsDefault), '');
   }
 
   /**
@@ -558,17 +558,17 @@ class Prompty {
       'colors' => $this->cfgColorsDefault,
       'spacing' => $this->cfgSpacing,
       'labels' => $this->cfgLabels,
-      'unicode' => $this->cfgUnicode,
-      'ansi' => $this->cfgAnsi,
+      'unicode' => $this->cfgIsUnicode,
+      'ansi' => $this->cfgIsAnsi,
       'env_prefix' => $this->cfgEnvPrefix,
       'truthy' => $this->cfgTruthy,
       'falsy' => $this->cfgFalsy,
       'output' => $this->cfgOutput,
-      'interactive' => $this->cfgInteractive,
+      'interactive' => $this->cfgIsInteractive,
       'scroll' => $this->cfgScroll,
-      'placeholder_fallback' => $this->cfgPlaceholderFallback,
+      'placeholder_fallback' => $this->cfgIsPlaceholderFallback,
       'width' => $this->cfgWidth,
-      'legend' => $this->cfgLegend,
+      'legend' => $this->cfgIsLegend,
       'back_key' => $this->cfgBackKey,
     ];
   }
@@ -585,17 +585,17 @@ class Prompty {
     $this->cfgColorsDefault = $snapshot['colors'];
     $this->cfgSpacing = $snapshot['spacing'];
     $this->cfgLabels = $snapshot['labels'];
-    $this->cfgUnicode = $snapshot['unicode'];
-    $this->cfgAnsi = $snapshot['ansi'];
+    $this->cfgIsUnicode = $snapshot['unicode'];
+    $this->cfgIsAnsi = $snapshot['ansi'];
     $this->cfgEnvPrefix = $snapshot['env_prefix'];
     $this->cfgTruthy = $snapshot['truthy'];
     $this->cfgFalsy = $snapshot['falsy'];
     $this->cfgOutput = $snapshot['output'];
-    $this->cfgInteractive = $snapshot['interactive'];
+    $this->cfgIsInteractive = $snapshot['interactive'];
     $this->cfgScroll = $snapshot['scroll'];
-    $this->cfgPlaceholderFallback = $snapshot['placeholder_fallback'];
+    $this->cfgIsPlaceholderFallback = $snapshot['placeholder_fallback'];
     $this->cfgWidth = $snapshot['width'];
-    $this->cfgLegend = $snapshot['legend'];
+    $this->cfgIsLegend = $snapshot['legend'];
     $this->cfgBackKey = $snapshot['back_key'];
     $this->resolveDisplay();
   }
@@ -748,11 +748,11 @@ class Prompty {
     }
 
     if ($unicode !== NULL) {
-      $p->cfgUnicode = $unicode;
+      $p->cfgIsUnicode = $unicode;
     }
 
     if ($ansi !== NULL) {
-      $p->cfgAnsi = $ansi;
+      $p->cfgIsAnsi = $ansi;
     }
 
     if ($env_prefix !== NULL) {
@@ -772,7 +772,7 @@ class Prompty {
     }
 
     if ($interactive !== NULL) {
-      $p->cfgInteractive = $interactive;
+      $p->cfgIsInteractive = $interactive;
     }
 
     if ($scroll !== NULL) {
@@ -780,7 +780,7 @@ class Prompty {
     }
 
     if ($placeholder_fallback !== NULL) {
-      $p->cfgPlaceholderFallback = $placeholder_fallback;
+      $p->cfgIsPlaceholderFallback = $placeholder_fallback;
     }
 
     if ($width !== NULL) {
@@ -788,7 +788,7 @@ class Prompty {
     }
 
     if ($legend !== NULL) {
-      $p->cfgLegend = $legend;
+      $p->cfgIsLegend = $legend;
     }
 
     if ($back_key !== NULL) {
@@ -814,17 +814,17 @@ class Prompty {
       'colors' => $p->cfgColors,
       'spacing' => $p->cfgSpacing,
       'labels' => $p->cfgLabels,
-      'unicode' => $p->cfgUnicode,
-      'ansi' => $p->cfgAnsi,
+      'unicode' => $p->cfgIsUnicode,
+      'ansi' => $p->cfgIsAnsi,
       'env_prefix' => $p->cfgEnvPrefix,
       'truthy' => $p->cfgTruthy,
       'falsy' => $p->cfgFalsy,
       'output' => $p->cfgOutput,
-      'interactive' => $p->cfgInteractive,
+      'interactive' => $p->cfgIsInteractive,
       'scroll' => $p->cfgScroll,
-      'placeholder_fallback' => $p->cfgPlaceholderFallback,
+      'placeholder_fallback' => $p->cfgIsPlaceholderFallback,
       'width' => $p->cfgWidth,
-      'legend' => $p->cfgLegend,
+      'legend' => $p->cfgIsLegend,
       'back_key' => $p->cfgBackKey,
     ];
   }
@@ -857,7 +857,7 @@ class Prompty {
    * Run a flow.
    *
    * Accepts a callable that returns the steps array. The callable is invoked
-   * after $inFlow is set, so widgets inside it return closures for deferred
+   * after $isInFlow is set, so widgets inside it return closures for deferred
    * execution instead of running immediately.
    *
    * Flow state and terminal state are restored on every exit path, including
@@ -977,16 +977,16 @@ class Prompty {
 
     $p->results = [];
     $p->resetStepBack();
-    static::$inFlow = TRUE;
+    static::$isInFlow = TRUE;
 
     try {
-      static::$defining = TRUE;
+      static::$isDefining = TRUE;
 
       try {
         $steps = $steps();
       }
       finally {
-        static::$defining = FALSE;
+        static::$isDefining = FALSE;
       }
 
       $p->assertStepKeys($steps);
@@ -995,7 +995,7 @@ class Prompty {
         'numbering' => $numbering,
       ];
 
-      if ($p->cfgInteractive) {
+      if ($p->cfgIsInteractive) {
         $p->setupTty();
       }
 
@@ -1019,7 +1019,7 @@ class Prompty {
       do {
         $p->results = [];
         $p->open = [];
-        $p->drawn = $intro !== NULL;
+        $p->isDrawn = $intro !== NULL;
         $outcome = $p->walkFlow($steps, 0, $options, '');
       } while ($outcome === 'back');
 
@@ -1040,9 +1040,9 @@ class Prompty {
     finally {
       $p->teardownTty();
       $p->pending = NULL;
-      $p->drawn = FALSE;
+      $p->isDrawn = FALSE;
       $p->resetStepBack();
-      static::$inFlow = FALSE;
+      static::$isInFlow = FALSE;
 
       if ($snapshot !== NULL) {
         $p->restoreConfig($snapshot);
@@ -1076,7 +1076,7 @@ class Prompty {
    *   When the builder returns a step array or anything that is not callable.
    */
   public static function step(callable $builder, ?callable $condition = NULL, array $children = []): array {
-    if (!static::$inFlow) {
+    if (!static::$isInFlow) {
       throw new \LogicException('Prompty::step() declares a flow step, so it can only be called inside the callable passed to Prompty::flow().');
     }
 
@@ -1125,7 +1125,7 @@ class Prompty {
    *   When the title is blank.
    */
   public static function section(string $title, string $description = '', ?callable $condition = NULL): array {
-    if (!static::$inFlow) {
+    if (!static::$isInFlow) {
       throw new \LogicException('Prompty::section() declares a flow heading, so it can only be called inside the callable passed to Prompty::flow().');
     }
 
@@ -1198,7 +1198,7 @@ class Prompty {
     array $children = [],
     ?array $ctx = NULL,
   ): \Closure|array|string|null {
-    if (static::$inFlow && $ctx === NULL) {
+    if (static::$isInFlow && $ctx === NULL) {
       $call = fn(array $ctx): \Closure|array|string|null => static::text(
         $label,
         default: $default,
@@ -1225,7 +1225,7 @@ class Prompty {
       'is_last' => FALSE,
       'open' => [],
     ];
-    $standalone = !static::$inFlow;
+    $is_standalone = !static::$isInFlow;
     /** @var array<string, mixed> $results */
     $results = $ctx['results'] ?? [];
     $plain_label = $label;
@@ -1237,7 +1237,7 @@ class Prompty {
     $resolved = $discovered ?? $ctx['discovered'] ?? NULL;
     $resolved_display = NULL;
 
-    if ($resolved !== NULL || !$p->cfgInteractive) {
+    if ($resolved !== NULL || !$p->cfgIsInteractive) {
       /** @var int|float|string|bool|null $resolved */
       $resolved_display = trim($p->printable((string) $resolved));
 
@@ -1253,7 +1253,7 @@ class Prompty {
       $p->assertResolvedValid($resolved !== NULL ? 'Discovered' : 'Default', $plain_label, $required, $validate, $resolved_display, $results);
     }
 
-    if ($standalone && $p->cfgInteractive) {
+    if ($is_standalone && $p->cfgIsInteractive) {
       $p->setupTty();
     }
 
@@ -1267,7 +1267,7 @@ class Prompty {
       $open = $p->settleOpen($resolved_display, $open);
       $p->printLines($p->renderCompleted($label, $resolved_display, $depth, $open));
 
-      if ($standalone) {
+      if ($is_standalone) {
         // @codeCoverageIgnoreStart
         $p->teardownTty();
         // @codeCoverageIgnoreEnd
@@ -1322,7 +1322,7 @@ class Prompty {
       if ($p->isCancelKey($key)) {
         $p->redraw($line_count, $p->renderCancelled($label, $value, $depth, $open));
 
-        if ($standalone) {
+        if ($is_standalone) {
           // @codeCoverageIgnoreStart
           $p->teardownTty();
           // @codeCoverageIgnoreEnd
@@ -1342,7 +1342,7 @@ class Prompty {
           $open = $p->settleOpen($display, $open);
           $p->redraw($line_count, $p->renderCompleted($label, $display, $depth, $open));
 
-          if ($standalone) {
+          if ($is_standalone) {
             // @codeCoverageIgnoreStart
             $p->teardownTty();
             // @codeCoverageIgnoreEnd
@@ -1452,7 +1452,7 @@ class Prompty {
     array $children = [],
     ?array $ctx = NULL,
   ): \Closure|array|string|null {
-    if (static::$inFlow && $ctx === NULL) {
+    if (static::$isInFlow && $ctx === NULL) {
       $call = fn(array $ctx): \Closure|array|string|null => static::select(
         $label,
         options: $options,
@@ -1481,7 +1481,7 @@ class Prompty {
       'is_last' => FALSE,
       'open' => [],
     ];
-    $standalone = !static::$inFlow;
+    $is_standalone = !static::$isInFlow;
     $plain_label = $label;
 
     // Validate before raw mode is entered, so a rejected call cannot leave
@@ -1496,7 +1496,7 @@ class Prompty {
     /** @var array<string, mixed> $results */
     $results = $ctx['results'] ?? [];
 
-    if ($resolved_key === NULL && !$p->cfgInteractive) {
+    if ($resolved_key === NULL && !$p->cfgIsInteractive) {
       $resolved_key = $default_key ?? $p->optionKeys($options)[0];
     }
 
@@ -1505,7 +1505,7 @@ class Prompty {
       $p->assertResolvedValid($resolved !== NULL ? 'Discovered' : 'Default', $plain_label, $required, $validate, $resolved_key, $results);
     }
 
-    if ($standalone && $p->cfgInteractive) {
+    if ($is_standalone && $p->cfgIsInteractive) {
       $p->setupTty();
     }
 
@@ -1523,7 +1523,7 @@ class Prompty {
       $open = $p->settleOpen($resolved_key, $open);
       $p->printLines($p->renderCompleted($label, $p->optionDisplay($resolved_key, $options), $depth, $open));
 
-      if ($standalone) {
+      if ($is_standalone) {
         // @codeCoverageIgnoreStart
         $p->teardownTty();
         // @codeCoverageIgnoreEnd
@@ -1608,7 +1608,7 @@ class Prompty {
       if ($p->isCancelKey($key)) {
         $p->redraw($line_count, $p->renderCancelled($label, $option_labels[$focused], $depth, $open));
 
-        if ($standalone) {
+        if ($is_standalone) {
           // @codeCoverageIgnoreStart
           $p->teardownTty();
           // @codeCoverageIgnoreEnd
@@ -1626,7 +1626,7 @@ class Prompty {
           $open = $p->settleOpen($selected_key, $open);
           $p->redraw($line_count, $p->renderCompleted($label, $p->optionDisplay($selected_key, $options), $depth, $open));
 
-          if ($standalone) {
+          if ($is_standalone) {
             // @codeCoverageIgnoreStart
             $p->teardownTty();
             // @codeCoverageIgnoreEnd
@@ -1740,7 +1740,7 @@ class Prompty {
     array $children = [],
     ?array $ctx = NULL,
   ): \Closure|array|null {
-    if (static::$inFlow && $ctx === NULL) {
+    if (static::$isInFlow && $ctx === NULL) {
       $call = fn(array $ctx): \Closure|array|null => static::multiselect(
         $label,
         options: $options,
@@ -1770,7 +1770,7 @@ class Prompty {
       'is_last' => FALSE,
       'open' => [],
     ];
-    $standalone = !static::$inFlow;
+    $is_standalone = !static::$isInFlow;
     $plain_label = $label;
 
     $resolved = $discovered ?? $ctx['discovered'] ?? NULL;
@@ -1794,7 +1794,7 @@ class Prompty {
     /** @var array<string, mixed> $results */
     $results = $ctx['results'] ?? [];
 
-    if ($resolved_keys === NULL && !$p->cfgInteractive) {
+    if ($resolved_keys === NULL && !$p->cfgIsInteractive) {
       $resolved_keys = $default_keys;
     }
 
@@ -1804,7 +1804,7 @@ class Prompty {
       $p->assertResolvedValid($resolved !== NULL ? 'Discovered' : 'Default', $plain_label, $required, $validate, $resolved_keys, $results);
     }
 
-    if ($standalone && $p->cfgInteractive) {
+    if ($is_standalone && $p->cfgIsInteractive) {
       $p->setupTty();
     }
 
@@ -1822,7 +1822,7 @@ class Prompty {
       $open = $p->settleOpen($resolved_keys, $open);
       $p->printLines($p->renderCompleted($label, $p->optionsDisplay($resolved_keys, $options), $depth, $open));
 
-      if ($standalone) {
+      if ($is_standalone) {
         // @codeCoverageIgnoreStart
         $p->teardownTty();
         // @codeCoverageIgnoreEnd
@@ -1913,7 +1913,7 @@ class Prompty {
       if ($p->isCancelKey($key)) {
         $p->redraw($line_count, $p->renderCancelled($label, '', $depth, $open));
 
-        if ($standalone) {
+        if ($is_standalone) {
           // @codeCoverageIgnoreStart
           $p->teardownTty();
           // @codeCoverageIgnoreEnd
@@ -1932,7 +1932,7 @@ class Prompty {
           $open = $p->settleOpen($selected_keys, $open);
           $p->redraw($line_count, $p->renderCompleted($label, $p->optionsDisplay($selected_keys, $options), $depth, $open));
 
-          if ($standalone) {
+          if ($is_standalone) {
             // @codeCoverageIgnoreStart
             $p->teardownTty();
             // @codeCoverageIgnoreEnd
@@ -2048,7 +2048,7 @@ class Prompty {
     array $children = [],
     ?array $ctx = NULL,
   ): \Closure|array|string|null {
-    if (static::$inFlow && $ctx === NULL) {
+    if (static::$isInFlow && $ctx === NULL) {
       $call = fn(array $ctx): \Closure|array|string|null => static::suggest(
         $label,
         options: $options,
@@ -2077,7 +2077,7 @@ class Prompty {
       'is_last' => FALSE,
       'open' => [],
     ];
-    $standalone = !static::$inFlow;
+    $is_standalone = !static::$isInFlow;
     /** @var array<string, mixed> $results */
     $results = $ctx['results'] ?? [];
     $plain_label = $label;
@@ -2097,7 +2097,7 @@ class Prompty {
     $resolved = $discovered ?? $ctx['discovered'] ?? NULL;
     $resolved_display = NULL;
 
-    if ($resolved !== NULL || !$p->cfgInteractive) {
+    if ($resolved !== NULL || !$p->cfgIsInteractive) {
       /** @var int|float|string|bool|null $resolved */
       $resolved_display = trim($p->printable((string) $resolved));
 
@@ -2111,7 +2111,7 @@ class Prompty {
       $p->assertResolvedValid($resolved !== NULL ? 'Discovered' : 'Default', $plain_label, $required, $validate, $resolved_display, $results);
     }
 
-    if ($standalone && $p->cfgInteractive) {
+    if ($is_standalone && $p->cfgIsInteractive) {
       $p->setupTty();
     }
 
@@ -2125,7 +2125,7 @@ class Prompty {
       $open = $p->settleOpen($resolved_display, $open);
       $p->printLines($p->renderCompleted($label, $resolved_display, $depth, $open));
 
-      if ($standalone) {
+      if ($is_standalone) {
         // @codeCoverageIgnoreStart
         $p->teardownTty();
         // @codeCoverageIgnoreEnd
@@ -2192,7 +2192,7 @@ class Prompty {
       if ($p->isCancelKey($key)) {
         $p->redraw($line_count, $p->renderCancelled($label, $focused !== NULL ? $matches[$focused] : $value, $depth, $open));
 
-        if ($standalone) {
+        if ($is_standalone) {
           // @codeCoverageIgnoreStart
           $p->teardownTty();
           // @codeCoverageIgnoreEnd
@@ -2212,7 +2212,7 @@ class Prompty {
           $open = $p->settleOpen($display, $open);
           $p->redraw($line_count, $p->renderCompleted($label, $display, $depth, $open));
 
-          if ($standalone) {
+          if ($is_standalone) {
             // @codeCoverageIgnoreStart
             $p->teardownTty();
             // @codeCoverageIgnoreEnd
@@ -2324,7 +2324,7 @@ class Prompty {
     array $children = [],
     ?array $ctx = NULL,
   ): \Closure|array|bool|null {
-    if (static::$inFlow && $ctx === NULL) {
+    if (static::$isInFlow && $ctx === NULL) {
       $call = fn(array $ctx): \Closure|array|bool|null => static::confirm(
         $label,
         default: $default,
@@ -2350,7 +2350,7 @@ class Prompty {
       'is_last' => FALSE,
       'open' => [],
     ];
-    $standalone = !static::$inFlow;
+    $is_standalone = !static::$isInFlow;
     $plain_label = $label;
 
     /** @var list<string> $truthy */
@@ -2363,20 +2363,20 @@ class Prompty {
     // Validate before raw mode is entered, so a rejected value cannot leave
     // the terminal unrestored.
     $resolved = $discovered ?? $ctx['discovered'] ?? NULL;
-    $resolved_bool = $resolved === NULL ? NULL : $p->assertDiscoveredBool($label, $resolved, $truthy, $falsy);
+    $is_resolved_yes = $resolved === NULL ? NULL : $p->assertDiscoveredBool($label, $resolved, $truthy, $falsy);
     /** @var array<string, mixed> $results */
     $results = $ctx['results'] ?? [];
 
-    if ($resolved_bool === NULL && !$p->cfgInteractive) {
-      $resolved_bool = $default;
+    if ($is_resolved_yes === NULL && !$p->cfgIsInteractive) {
+      $is_resolved_yes = $default;
     }
 
-    if ($resolved_bool !== NULL) {
-      $resolved_bool = $p->transformBool($plain_label, $transform, $resolved_bool);
-      $p->assertResolvedValid($resolved !== NULL ? 'Discovered' : 'Default', $plain_label, $required, $validate, $resolved_bool, $results);
+    if ($is_resolved_yes !== NULL) {
+      $is_resolved_yes = $p->transformBool($plain_label, $transform, $is_resolved_yes);
+      $p->assertResolvedValid($resolved !== NULL ? 'Discovered' : 'Default', $plain_label, $required, $validate, $is_resolved_yes, $results);
     }
 
-    if ($standalone && $p->cfgInteractive) {
+    if ($is_standalone && $p->cfgIsInteractive) {
       $p->setupTty();
     }
 
@@ -2386,21 +2386,21 @@ class Prompty {
     $open = $ctx['open'] ?? [];
     $label = $p->numberLabel($label, $ctx);
 
-    if ($resolved_bool !== NULL) {
-      $open = $p->settleOpen($resolved_bool, $open);
-      $p->printLines($p->renderCompleted($label, $resolved_bool ? $p->label('yes') : $p->label('no'), $depth, $open));
+    if ($is_resolved_yes !== NULL) {
+      $open = $p->settleOpen($is_resolved_yes, $open);
+      $p->printLines($p->renderCompleted($label, $is_resolved_yes ? $p->label('yes') : $p->label('no'), $depth, $open));
 
-      if ($standalone) {
+      if ($is_standalone) {
         // @codeCoverageIgnoreStart
         $p->teardownTty();
         // @codeCoverageIgnoreEnd
       }
 
-      return $resolved_bool;
+      return $is_resolved_yes;
     }
 
-    $render_active = function (bool $focused_yes, ?string $error) use ($p, $label, $description, $help, $depth, $open): array {
-      $options_display = $focused_yes
+    $render_active = function (bool $is_yes_focused, ?string $error) use ($p, $label, $description, $help, $depth, $open): array {
+      $options_display = $is_yes_focused
         ? $p->color($p->cfgSymbols['radio_on'], 'green') . ' ' . $p->label('yes') . ' ' . $p->color($p->label('separator'), 'dim')
           . ' ' . $p->color($p->cfgSymbols['radio_off'], 'dim') . ' ' . $p->color($p->label('no'), 'dim')
         : $p->color($p->cfgSymbols['radio_off'], 'dim') . ' ' . $p->color($p->label('yes'), 'dim') . ' ' . $p->color($p->label('separator'), 'dim')
@@ -2431,9 +2431,9 @@ class Prompty {
       return $lines;
     };
 
-    $yes = $default;
+    $is_yes = $default;
     $error = NULL;
-    $line_count = $p->printLines($render_active($yes, $error));
+    $line_count = $p->printLines($render_active($is_yes, $error));
 
     while (TRUE) {
       $key = $p->readKey();
@@ -2443,9 +2443,9 @@ class Prompty {
       }
 
       if ($p->isCancelKey($key)) {
-        $p->redraw($line_count, $p->renderCancelled($label, $yes ? $p->label('yes') : $p->label('no'), $depth, $open));
+        $p->redraw($line_count, $p->renderCancelled($label, $is_yes ? $p->label('yes') : $p->label('no'), $depth, $open));
 
-        if ($standalone) {
+        if ($is_standalone) {
           // @codeCoverageIgnoreStart
           $p->teardownTty();
           // @codeCoverageIgnoreEnd
@@ -2455,15 +2455,15 @@ class Prompty {
       }
 
       if ($key === 'enter') {
-        $answer = $p->transformBool($plain_label, $transform, $yes);
+        $answer = $p->transformBool($plain_label, $transform, $is_yes);
         $error = $p->validateAnswer($plain_label, $required, $validate, $answer, $results);
 
         if ($error === NULL) {
-          $p->recordInput($yes);
+          $p->recordInput($is_yes);
           $open = $p->settleOpen($answer, $open);
           $p->redraw($line_count, $p->renderCompleted($label, $answer ? $p->label('yes') : $p->label('no'), $depth, $open));
 
-          if ($standalone) {
+          if ($is_standalone) {
             // @codeCoverageIgnoreStart
             $p->teardownTty();
             // @codeCoverageIgnoreEnd
@@ -2472,28 +2472,28 @@ class Prompty {
           return $answer;
         }
 
-        $line_count = $p->redraw($line_count, $render_active($yes, $error));
+        $line_count = $p->redraw($line_count, $render_active($is_yes, $error));
 
         continue;
       }
 
-      $previous = $yes;
+      $is_previous_yes = $is_yes;
 
       if (in_array($key, ['left', 'right', 'up', 'down', 'tab'], TRUE)) {
-        $yes = !$yes;
+        $is_yes = !$is_yes;
       }
       elseif ($key === 'y' || $key === 'Y') {
-        $yes = TRUE;
+        $is_yes = TRUE;
       }
       elseif ($key === 'n' || $key === 'N') {
-        $yes = FALSE;
+        $is_yes = FALSE;
       }
 
-      if ($yes !== $previous) {
+      if ($is_yes !== $is_previous_yes) {
         $error = NULL;
       }
 
-      $line_count = $p->redraw($line_count, $render_active($yes, $error));
+      $line_count = $p->redraw($line_count, $render_active($is_yes, $error));
     }
   }
 
@@ -2536,7 +2536,7 @@ class Prompty {
     array $children = [],
     ?array $ctx = NULL,
   ): \Closure|array|bool|null {
-    if (static::$inFlow && $ctx === NULL) {
+    if (static::$isInFlow && $ctx === NULL) {
       $call = fn(array $ctx): \Closure|array|bool|null => static::pause(
         $label,
         description: $description,
@@ -2559,7 +2559,7 @@ class Prompty {
       'is_last' => FALSE,
       'open' => [],
     ];
-    $standalone = !static::$inFlow;
+    $is_standalone = !static::$isInFlow;
 
     /** @var int $depth */
     $depth = $ctx['depth'] ?? 0;
@@ -2583,11 +2583,11 @@ class Prompty {
       return TRUE;
     };
 
-    if (!$p->cfgInteractive) {
+    if (!$p->cfgIsInteractive) {
       return $finish(0);
     }
 
-    if ($standalone) {
+    if ($is_standalone) {
       $p->setupTty();
     }
 
@@ -2606,7 +2606,7 @@ class Prompty {
     try {
       while (TRUE) {
         // A pause asks nothing, so stepping back passes over it.
-        $key = $p->readKey(asks: FALSE);
+        $key = $p->readKey(is_asking: FALSE);
 
         if ($p->requestBack($key)) {
           return NULL;
@@ -2630,7 +2630,7 @@ class Prompty {
       }
     }
     finally {
-      if ($standalone) {
+      if ($is_standalone) {
         $p->teardownTty();
       }
     }
@@ -2700,7 +2700,7 @@ class Prompty {
     array $children = [],
     ?array $ctx = NULL,
   ): mixed {
-    if (static::$inFlow && $ctx === NULL) {
+    if (static::$isInFlow && $ctx === NULL) {
       // A flow result keeps the outcome rather than the return value, which
       // can be NULL, the value a cancelled step answers with.
       $call = fn(array $ctx): bool => static::task(
@@ -2726,7 +2726,7 @@ class Prompty {
       'is_last' => FALSE,
       'open' => [],
     ];
-    $standalone = !static::$inFlow;
+    $is_standalone = !static::$isInFlow;
     $plain_label = $label;
 
     /** @var int $depth */
@@ -2734,22 +2734,22 @@ class Prompty {
     /** @var array<int, bool> $open */
     $open = $ctx['open'] ?? [];
     $label = $p->numberLabel($label, $ctx);
-    $live = $p->isLive();
+    $is_live = $p->isLive();
 
     $outcome = function (mixed $value) use ($p, $plain_label, $hint, $success, $failure, $open): array {
-      $ok = $value !== FALSE;
-      $message = $p->taskText($plain_label, $ok ? 'success' : 'failure', $ok ? $success : $failure, $value);
+      $is_ok = $value !== FALSE;
+      $message = $p->taskText($plain_label, $is_ok ? 'success' : 'failure', $is_ok ? $success : $failure, $value);
 
       return [
-        'ok' => $ok,
+        'ok' => $is_ok,
         'hint' => $p->taskText($plain_label, 'hint', $hint, $value),
         'details' => is_array($value) && array_is_list($value) && count(array_filter($value, is_string(...))) === count($value) ? $value : [],
-        'message' => $message !== '' ? $message : $p->label($ok ? 'done' : 'failed'),
-        'open' => $p->settleOpen($ok, $open),
+        'message' => $message !== '' ? $message : $p->label($is_ok ? 'done' : 'failed'),
+        'open' => $p->settleOpen($is_ok, $open),
       ];
     };
 
-    if ($live && $standalone) {
+    if ($is_live && $is_standalone) {
       $p->hideCursor();
     }
 
@@ -2765,7 +2765,7 @@ class Prompty {
     }
 
     try {
-      return $stream ? $p->runStreamed($label, $action, $outcome, $depth, $open, $live) : $p->runSpinner($label, $action, $outcome, $depth, $open, $live);
+      return $stream ? $p->runStreamed($label, $action, $outcome, $depth, $open, $is_live) : $p->runSpinner($label, $action, $outcome, $depth, $open, $is_live);
     }
     finally {
       if ($tty !== NULL) {
@@ -2774,7 +2774,7 @@ class Prompty {
         // @codeCoverageIgnoreEnd
       }
 
-      if ($live && $standalone) {
+      if ($is_live && $is_standalone) {
         $p->showCursor();
       }
     }
@@ -2809,7 +2809,7 @@ class Prompty {
       throw new \InvalidArgumentException(sprintf('Note type "%s" is not valid. Use 1 of: %s.', $type, implode(', ', static::NOTE_TYPES)));
     }
 
-    if (static::$defining) {
+    if (static::$isDefining) {
       return ['__note' => $message, '__type' => $type, '__condition' => $condition];
     }
 
@@ -3468,7 +3468,7 @@ class Prompty {
    *   $placeholder, or '' when it does not answer.
    */
   protected function placeholderAnswer(string $placeholder): string {
-    return $this->cfgInteractive && $this->cfgPlaceholderFallback ? $placeholder : '';
+    return $this->cfgIsInteractive && $this->cfgIsPlaceholderFallback ? $placeholder : '';
   }
 
   /**
@@ -3726,18 +3726,18 @@ class Prompty {
    * 0x1A reads as 'ctrl-a' to 'ctrl-z'.
    *
    * Reading a key marks the flow step being rendered as one that asked,
-   * unless $asks is FALSE.
+   * unless $is_asking is FALSE.
    *
-   * @param bool $asks
+   * @param bool $is_asking
    *   Whether the key answers a question the step can be reopened for.
    *
    * @return string
    *   The key name.
    */
-  protected function readKey(bool $asks = TRUE): string {
+  protected function readKey(bool $is_asking = TRUE): string {
     $last = array_key_last($this->journal);
 
-    if ($asks && $last !== NULL) {
+    if ($is_asking && $last !== NULL) {
       $this->journal[$last]['asked'] = TRUE;
     }
 
@@ -4066,12 +4066,12 @@ class Prompty {
    *   a terminal. A callable target is never a terminal.
    */
   protected function isLive(): bool {
-    if (!$this->cfgInteractive || !$this->cfgAnsi) {
+    if (!$this->cfgIsInteractive || !$this->cfgIsAnsi) {
       return FALSE;
     }
 
-    if ($this->terminal !== NULL) {
-      return $this->terminal;
+    if ($this->isTerminal !== NULL) {
+      return $this->isTerminal;
     }
 
     if ($this->cfgOutput instanceof \Closure) {
@@ -4126,18 +4126,18 @@ class Prompty {
    *   The current nesting depth.
    * @param array<int, bool> $open
    *   Tracks which depth levels have continuing siblings.
-   * @param bool $live
+   * @param bool $is_live
    *   Whether the output can be redrawn in place.
    *
    * @return mixed
    *   The action's return value.
    */
-  protected function runSpinner(string $label, callable $action, \Closure $outcome, int $depth, array $open, bool $live): mixed {
+  protected function runSpinner(string $label, callable $action, \Closure $outcome, int $depth, array $open, bool $is_live): mixed {
     $frames = preg_split('//u', $this->cfgSymbols['spinner'], -1, PREG_SPLIT_NO_EMPTY) ?: [$this->cfgSymbols['spinner']];
     $frame = fn(int $index): array => $this->renderMarkedLabel($label, $this->color($frames[$index % count($frames)], 'cyan'), $depth, $open);
 
-    $rows = $this->printLines($live ? $frame(0) : $this->renderLabel($label, 'active', 'cyan', $depth, $open));
-    $spinner = $live ? $this->animate($frame, $rows) : NULL;
+    $rows = $this->printLines($is_live ? $frame(0) : $this->renderLabel($label, 'active', 'cyan', $depth, $open));
+    $spinner = $is_live ? $this->animate($frame, $rows) : NULL;
 
     try {
       $value = $action();
@@ -4147,7 +4147,7 @@ class Prompty {
     catch (\Throwable $throwable) {
       $this->stopAnimation($spinner);
 
-      if ($live) {
+      if ($is_live) {
         $this->clearRows($rows);
       }
 
@@ -4158,7 +4158,7 @@ class Prompty {
 
     $result = $this->renderTaskResult($resolved['ok'], $resolved['hint'], $resolved['details'], $resolved['message'], '', $depth, $resolved['open']);
 
-    if (!$live) {
+    if (!$is_live) {
       $this->printLines($result);
 
       return $value;
@@ -4182,21 +4182,21 @@ class Prompty {
    *   The current nesting depth.
    * @param array<int, bool> $open
    *   Tracks which depth levels have continuing siblings.
-   * @param bool $live
+   * @param bool $is_live
    *   Whether the output can be redrawn in place. A live task shows the last
    *   lines in a window; otherwise every line is printed as it arrives.
    *
    * @return mixed
    *   The action's return value.
    */
-  protected function runStreamed(string $label, callable $action, \Closure $outcome, int $depth, array $open, bool $live): mixed {
+  protected function runStreamed(string $label, callable $action, \Closure $outcome, int $depth, array $open, bool $is_live): mixed {
     $this->streamed = [];
     $this->streamPartial = '';
-    $this->streamLive = $live;
+    $this->isStreamLive = $is_live;
     $rows = $this->printLines($this->renderLabel($label, 'active', 'cyan', $depth, $open));
 
     // A live stream redraws the window; otherwise each line is printed once.
-    if ($live) {
+    if ($is_live) {
       $this->streamDraw = function () use ($label, $depth, $open, &$rows): void {
         $rows = $this->redraw($rows, array_merge($this->renderLabel($label, 'active', 'cyan', $depth, $open), $this->renderTaskWindow($depth, $open)));
       };
@@ -4223,7 +4223,7 @@ class Prompty {
       $resolved = $outcome($value);
     }
     catch (\Throwable $throwable) {
-      if ($live) {
+      if ($is_live) {
         $this->redraw($rows, array_merge($this->renderLabel($label, 'active', 'red', $depth, $open), $this->renderTaskLines($this->streamedLines(), $depth, $open)));
       }
 
@@ -4234,24 +4234,24 @@ class Prompty {
       $this->streamed = NULL;
     }
 
-    $ok = $resolved['ok'];
+    $is_ok = $resolved['ok'];
     $settled = $resolved['open'];
     $gap = $lines !== [] ? [$this->bar() . ($depth > 0 ? $this->bodyPrefix($depth, $settled) : '')] : [];
     $count = count($lines);
 
     // A collapsed window says how much output it hid.
-    $note = $live && $ok && $count > 0 ? sprintf(' (%d %s)', $count, $this->label($count === 1 ? 'line' : 'lines')) : '';
-    $result = $this->renderTaskResult($ok, $resolved['hint'], $resolved['details'], $resolved['message'], $note, $depth, $settled);
+    $note = $is_live && $is_ok && $count > 0 ? sprintf(' (%d %s)', $count, $this->label($count === 1 ? 'line' : 'lines')) : '';
+    $result = $this->renderTaskResult($is_ok, $resolved['hint'], $resolved['details'], $resolved['message'], $note, $depth, $settled);
 
-    if (!$live) {
+    if (!$is_live) {
       $this->printLines(array_merge($gap, $result));
 
       return $value;
     }
 
     // A failure keeps every line, since the cause is among them.
-    $body = $ok ? $result : array_merge($this->renderTaskLines($lines, $depth, $settled), $gap, $result);
-    $this->redraw($rows, array_merge($this->renderTaskLabel($label, $ok, $depth, $settled), $body));
+    $body = $is_ok ? $result : array_merge($this->renderTaskLines($lines, $depth, $settled), $gap, $result);
+    $this->redraw($rows, array_merge($this->renderTaskLabel($label, $is_ok, $depth, $settled), $body));
 
     return $value;
   }
@@ -4298,7 +4298,7 @@ class Prompty {
       return;
     }
 
-    $this->streamDrawing = TRUE;
+    $this->isStreamDrawing = TRUE;
 
     $lines = explode("\n", $this->streamPartial . $chunk);
     $this->streamPartial = array_pop($lines);
@@ -4307,18 +4307,18 @@ class Prompty {
       $line = $this->lastFrame($line);
       $this->streamed[] = $line;
 
-      if (!$this->streamLive) {
+      if (!$this->isStreamLive) {
         ($this->streamDraw)($line);
       }
     }
 
     // A live window also shows the line being written, such as a progress
     // meter that has not printed its newline yet.
-    if ($this->streamLive) {
+    if ($this->isStreamLive) {
       ($this->streamDraw)();
     }
 
-    $this->streamDrawing = FALSE;
+    $this->isStreamDrawing = FALSE;
   }
 
   /**
@@ -4504,7 +4504,7 @@ class Prompty {
    *   TRUE while a streaming task's action runs, outside its own drawing.
    */
   protected function isCapturedByStream(): bool {
-    return $this->streamDraw instanceof \Closure && !$this->streamDrawing;
+    return $this->streamDraw instanceof \Closure && !$this->isStreamDrawing;
   }
 
   /**
@@ -4576,7 +4576,7 @@ class Prompty {
         continue;
       }
 
-      if (!$this->cfgAnsi) {
+      if (!$this->cfgIsAnsi) {
         continue;
       }
 
@@ -4936,31 +4936,31 @@ class Prompty {
     $row = 0;
     $used = 0;
     $available = $first;
-    $break = FALSE;
+    $is_break_due = FALSE;
 
     foreach ($runs as $index => $run) {
       // Spaces before the first word are content, so they wrap like a word.
       if ($run['space'] && ($row > 0 || $used > 0)) {
-        $keep = $used + $run['width'] + ($runs[$index + 1]['width'] ?? 0) <= $available;
+        $is_kept = $used + $run['width'] + ($runs[$index + 1]['width'] ?? 0) <= $available;
 
         foreach ($run['units'] as $unit) {
-          $row_of[] = $keep || $unit['kind'] === 'style' ? $row : NULL;
+          $row_of[] = $is_kept || $unit['kind'] === 'style' ? $row : NULL;
         }
 
-        $used += $keep ? $run['width'] : 0;
-        $break = !$keep;
+        $used += $is_kept ? $run['width'] : 0;
+        $is_break_due = !$is_kept;
 
         continue;
       }
 
-      if ($break || $used + $run['width'] > $available) {
+      if ($is_break_due || $used + $run['width'] > $available) {
         if ($used > 0) {
           $row++;
           $used = 0;
           $available = $rest;
         }
 
-        $break = FALSE;
+        $is_break_due = FALSE;
       }
 
       foreach ($run['units'] as $unit) {
@@ -5047,15 +5047,15 @@ class Prompty {
    * Marks the focused row independently of the selection state, so it stays
    * distinguishable even when it is already checked.
    *
-   * @param bool $focused
+   * @param bool $is_focused
    *   Whether this option is the focused one.
    *
    * @return string
    *   The styled pointer when focused, or equal-width padding when not,
    *   followed by a separating space.
    */
-  protected function pointer(bool $focused): string {
-    return ($focused ? $this->color($this->cfgSymbols['pointer'], 'cyan') : ' ') . ' ';
+  protected function pointer(bool $is_focused): string {
+    return ($is_focused ? $this->color($this->cfgSymbols['pointer'], 'cyan') : ' ') . ' ';
   }
 
   /**
@@ -5174,16 +5174,16 @@ class Prompty {
    * @param string $description
    *   The section description, or '' for none. A newline starts another
    *   description line.
-   * @param bool $first
+   * @param bool $is_first
    *   Whether nothing has been drawn above the heading in the flow. The
    *   heading then opens the tree as an intro does.
    *
    * @return array<int, string>
    *   The rendered heading lines.
    */
-  protected function renderSection(string $title, string $description, bool $first): array {
-    $lines = $first ? [''] : [];
-    $symbol = $this->color($this->cfgSymbols[$first ? 'intro' : 'section'], 'gray');
+  protected function renderSection(string $title, string $description, bool $is_first): array {
+    $lines = $is_first ? [''] : [];
+    $symbol = $this->color($this->cfgSymbols[$is_first ? 'intro' : 'section'], 'gray');
 
     $gutter = $this->bar() . $this->cfgSpacing['indent'];
 
@@ -5379,7 +5379,7 @@ class Prompty {
    *   The rendered legend lines, or no lines when the legend is off.
    */
   protected function renderLegend(string $widget, int $depth = 0, array $open = []): array {
-    if (!$this->cfgLegend) {
+    if (!$this->cfgIsLegend) {
       return [];
     }
 
@@ -5531,7 +5531,7 @@ class Prompty {
    *
    * @param string $label
    *   The task label.
-   * @param bool $ok
+   * @param bool $is_ok
    *   Whether the action succeeded.
    * @param int $depth
    *   The current nesting depth.
@@ -5541,14 +5541,14 @@ class Prompty {
    * @return list<string>
    *   The label rows.
    */
-  protected function renderTaskLabel(string $label, bool $ok, int $depth = 0, array $open = []): array {
-    return $ok ? $this->renderLabel($label, 'completed', 'cyan', $depth, $open) : $this->renderLabel($label, 'active', 'red', $depth, $open);
+  protected function renderTaskLabel(string $label, bool $is_ok, int $depth = 0, array $open = []): array {
+    return $is_ok ? $this->renderLabel($label, 'completed', 'cyan', $depth, $open) : $this->renderLabel($label, 'active', 'red', $depth, $open);
   }
 
   /**
    * Renders the lines a task draws under its label once the action returns.
    *
-   * @param bool $ok
+   * @param bool $is_ok
    *   Whether the action succeeded.
    * @param string $hint
    *   The hint, or '' for none. A newline starts another hint line.
@@ -5566,7 +5566,7 @@ class Prompty {
    * @return array<int, string>
    *   The rendered lines, closed with a bar line.
    */
-  protected function renderTaskResult(bool $ok, string $hint, array $details, string $message, string $note = '', int $depth = 0, array $open = []): array {
+  protected function renderTaskResult(bool $is_ok, string $hint, array $details, string $message, string $note = '', int $depth = 0, array $open = []): array {
     $gutter = $this->bar() . ($depth > 0 ? $this->bodyPrefix($depth, $open) : $this->cfgSpacing['indent']);
     $lines = [];
 
@@ -5580,8 +5580,8 @@ class Prompty {
       $lines = array_merge($lines, $this->renderTaskLine($detail, $depth, $open));
     }
 
-    $marker = $this->cfgSymbols[$ok ? 'success' : 'error'] . ' ';
-    $result = $this->color($marker . $this->printable($message), $ok ? 'green' : 'red') . ($note !== '' ? $this->color($note, 'dim') : '');
+    $marker = $this->cfgSymbols[$is_ok ? 'success' : 'error'] . ' ';
+    $result = $this->color($marker . $this->printable($message), $is_ok ? 'green' : 'red') . ($note !== '' ? $this->color($note, 'dim') : '');
     $lines = array_merge($lines, $this->wrap($gutter, $result, $gutter . $this->pad($marker)));
     $lines[] = $this->bar() . ($depth > 0 ? $this->bodyPrefix($depth, $open) : '');
 
@@ -5846,9 +5846,9 @@ class Prompty {
    *
    * @param list<int> $widths
    *   The content width of each column.
-   * @param bool $above
+   * @param bool $is_above_divided
    *   Whether the row above the rule is divided into columns.
-   * @param bool $below
+   * @param bool $is_below_divided
    *   Whether the row below the rule is divided into columns.
    * @param string $edge
    *   Where the rule sits in the frame: 'top', 'bottom' or 'middle'.
@@ -5856,11 +5856,11 @@ class Prompty {
    * @return string
    *   The rule, after the gutter.
    */
-  protected function boxRule(array $widths, bool $above, bool $below, string $edge): string {
+  protected function boxRule(array $widths, bool $is_above_divided, bool $is_below_divided, string $edge): string {
     $join = match (TRUE) {
-      $above && $below => 'box_cross',
-      $above => 'box_bottom_tee',
-      $below => 'box_top_tee',
+      $is_above_divided && $is_below_divided => 'box_cross',
+      $is_above_divided => 'box_bottom_tee',
+      $is_below_divided => 'box_top_tee',
       default => 'box_horizontal',
     };
 
@@ -5996,14 +5996,14 @@ class Prompty {
    *   Flow steps, keyed by step name.
    * @param array<string, true> $seen
    *   Keys already validated elsewhere in the tree.
-   * @param bool $nested
+   * @param bool $is_nested
    *   Whether $steps are the children of a step.
    *
    * @throws \InvalidArgumentException
    *   When a key is reused, the name a step resolves through is not a valid
    *   variable name, or a section has a key or is nested.
    */
-  protected function assertStepKeys(array $steps, array &$seen = [], bool $nested = FALSE): void {
+  protected function assertStepKeys(array $steps, array &$seen = [], bool $is_nested = FALSE): void {
     foreach ($steps as $key => $step) {
       if ($this->isSection($step)) {
         /** @var array{__section: string} $step */
@@ -6011,7 +6011,7 @@ class Prompty {
           throw new \InvalidArgumentException(sprintf('Section "%s" has the key "%s". A section adds no answer to the results, so it takes no key.', $step['__section'], $key));
         }
 
-        if ($nested) {
+        if ($is_nested) {
           throw new \InvalidArgumentException(sprintf('Section "%s" is among the children of a step. A section heads top-level steps, so it can only appear in the steps array of the flow itself.', $step['__section']));
         }
 
@@ -6271,8 +6271,8 @@ class Prompty {
     $title = $section['__section'];
     /** @var string $description */
     $description = $section['__description'] ?? '';
-    $this->printLines($this->renderSection($title, $description, !$this->drawn));
-    $this->drawn = TRUE;
+    $this->printLines($this->renderSection($title, $description, !$this->isDrawn));
+    $this->isDrawn = TRUE;
   }
 
   /**
@@ -6300,7 +6300,7 @@ class Prompty {
     /** @var string $type */
     $type = $note['__type'];
     $this->printLines($this->renderNote($message, $type, $depth, $this->open));
-    $this->drawn = TRUE;
+    $this->isDrawn = TRUE;
   }
 
   /**
@@ -6390,15 +6390,15 @@ class Prompty {
       // A step before the reopened one takes its previous answer without
       // being drawn or built again. A step with no previous answer, which a
       // condition that changes on its own can produce, ends the replay.
-      $replayed = $this->replay !== NULL && $this->replay !== (string) $key && array_key_exists($key, $this->previous);
+      $is_replayed = $this->replay !== NULL && $this->replay !== (string) $key && array_key_exists($key, $this->previous);
 
-      if (!$replayed) {
+      if (!$is_replayed) {
         $this->replay = NULL;
         $this->journal[] = ['key' => (string) $key, 'depth' => $depth, 'rows' => $this->rows, 'asked' => FALSE];
       }
 
       /** @var callable $call */
-      $value = $replayed ? $this->previous[$key] : $call($ctx);
+      $value = $is_replayed ? $this->previous[$key] : $call($ctx);
 
       if ($value === NULL) {
         $this->pending = NULL;
@@ -6413,7 +6413,7 @@ class Prompty {
       }
 
       $this->results[$key] = $value;
-      $this->drawn = TRUE;
+      $this->isDrawn = TRUE;
 
       // A widget settles the connector before it draws; this settles a step
       // whose widget did not, so its children still see the exact state.

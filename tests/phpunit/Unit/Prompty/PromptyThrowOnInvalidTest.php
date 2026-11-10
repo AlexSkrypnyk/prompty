@@ -201,7 +201,7 @@ final class PromptyThrowOnInvalidTest extends PromptyTestCase {
 
     $this->assertSame($level, ob_get_level());
     $this->assertNull($this->getStaticProperty('instance'));
-    $this->assertFalse($this->getStaticProperty('inFlow'));
+    $this->assertFalse($this->getStaticProperty('isInFlow'));
   }
 
   public function testRunScriptReleasesBufferWhenCallbackThrows(): void {
@@ -221,7 +221,7 @@ final class PromptyThrowOnInvalidTest extends PromptyTestCase {
     }
 
     $this->assertSame($level, ob_get_level());
-    $this->assertFalse($this->getStaticProperty('inFlow'));
+    $this->assertFalse($this->getStaticProperty('isInFlow'));
   }
 
   #[DataProvider('dataProviderExceptionMessage')]

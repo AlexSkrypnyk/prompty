@@ -169,7 +169,7 @@ final class PromptyTaskTest extends PromptyTestCase {
   #[DataProvider('dataProviderTaskLive')]
   public function testTaskLive(\Closure $run, bool $in_flow, string $expected): void {
     $p = $this->createAndSetInstance([], $in_flow);
-    $this->setProperty($p, 'terminal', TRUE);
+    $this->setProperty($p, 'isTerminal', TRUE);
 
     ob_start();
     $run();
@@ -200,7 +200,7 @@ final class PromptyTaskTest extends PromptyTestCase {
 
   public function testTaskLiveColors(): void {
     $p = $this->createAndSetInstance();
-    $this->setProperty($p, 'terminal', TRUE);
+    $this->setProperty($p, 'isTerminal', TRUE);
 
     ob_start();
     Prompty::task('Preheating the oven', action: fn(): bool => FALSE);
@@ -217,7 +217,7 @@ final class PromptyTaskTest extends PromptyTestCase {
     $this->assertIsArray($symbols);
     $symbols['spinner'] = $spinner;
     $this->setProperty($p, 'cfgSymbols', $symbols);
-    $this->setProperty($p, 'terminal', TRUE);
+    $this->setProperty($p, 'isTerminal', TRUE);
 
     $output = $this->captureOutput(fn(): mixed => Prompty::task('Preheating the oven', action: fn(): bool => TRUE));
 
@@ -232,7 +232,7 @@ final class PromptyTaskTest extends PromptyTestCase {
 
   public function testTaskLiveExceptionClearsLabel(): void {
     $p = $this->createAndSetInstance();
-    $this->setProperty($p, 'terminal', TRUE);
+    $this->setProperty($p, 'isTerminal', TRUE);
 
     ob_start();
 
@@ -253,7 +253,7 @@ final class PromptyTaskTest extends PromptyTestCase {
 
   public function testTaskLiveExceptionInFlowKeepsCursorHidden(): void {
     $p = $this->createAndSetInstance([], TRUE);
-    $this->setProperty($p, 'terminal', TRUE);
+    $this->setProperty($p, 'isTerminal', TRUE);
 
     ob_start();
 
@@ -388,7 +388,7 @@ final class PromptyTaskTest extends PromptyTestCase {
   #[DataProvider('dataProviderIsLive')]
   public function testIsLive(array $config, ?bool $terminal, \Closure|string|null $output, bool $expected): void {
     $p = $this->createInstance($config);
-    $this->setProperty($p, 'terminal', $terminal);
+    $this->setProperty($p, 'isTerminal', $terminal);
 
     if ($output !== NULL) {
       $this->setProperty($p, 'cfgOutput', $output instanceof \Closure ? $output : fopen($output, 'w'));

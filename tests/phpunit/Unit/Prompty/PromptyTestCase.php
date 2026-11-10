@@ -56,7 +56,7 @@ abstract class PromptyTestCase extends TestCase {
     $this->promptySetStatic('instance', $p);
 
     if ($in_flow) {
-      $this->promptySetStatic('inFlow', TRUE);
+      $this->promptySetStatic('isInFlow', TRUE);
     }
 
     return $p;

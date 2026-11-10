@@ -380,7 +380,7 @@ final class PromptyFlowTest extends PromptyTestCase {
 
     $this->captureOutputThrows(\InvalidArgumentException::class, $message, $run);
 
-    $this->assertFalse($this->getStaticProperty('inFlow'));
+    $this->assertFalse($this->getStaticProperty('isInFlow'));
   }
 
   public static function dataProviderFlowRejectsOutOfDomainEnv(): \Iterator {
@@ -462,7 +462,7 @@ final class PromptyFlowTest extends PromptyTestCase {
 
     $this->captureOutputThrows(\RuntimeException::class, 'boom', $run);
 
-    $this->assertFalse($this->getStaticProperty('inFlow'));
+    $this->assertFalse($this->getStaticProperty('isInFlow'));
   }
 
   public static function dataProviderFlowResetsStateWhenCallbackThrows(): \Iterator {
