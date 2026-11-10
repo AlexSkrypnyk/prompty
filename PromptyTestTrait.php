@@ -60,6 +60,7 @@ trait PromptyTestTrait {
   public const KEY_TAB = "\t";
   public const KEY_ESCAPE = "\x1b";
   public const KEY_CTRL_C = "\x03";
+  public const KEY_CTRL_U = "\x15";
   public const KEY_UP = "\x1b[A";
   public const KEY_DOWN = "\x1b[B";
   public const KEY_RIGHT = "\x1b[C";
