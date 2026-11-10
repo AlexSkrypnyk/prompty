@@ -144,7 +144,7 @@ Prompty::configure(placeholder_fallback: FALSE);
 Prompty::text('Dish name', default: 'pear tart', placeholder: 'e.g. pear tart');
 ```
 
-The option covers `text` and `suggest`, and both still draw the placeholder while the input is empty. To make `text` re-prompt on an empty answer, add a [`validate`](#validation) callback that rejects `''`.
+The option covers `text` and `suggest`, and both still draw the placeholder while the input is empty. To make `text` or `suggest` re-prompt on an empty answer, pass [`required`](#required-answers).
 
 <table>
   <tr>
@@ -889,15 +889,6 @@ $results = Prompty::flow(fn(): array => [
 ]);
 ```
 
-To require an answer, reject the empty string:
-
-```php
-$guest = Prompty::text('Guest name',
-  validate: fn(string $guest): ?string => $guest === ''
-    ? 'Enter a name for the ticket.' : NULL,
-);
-```
-
 An empty message counts as valid, like `null`. Any other return type throws an `UnexpectedValueException`, so a callback written to return a boolean fails at the first answer:
 
 ```text
@@ -913,6 +904,25 @@ Discovered value "pear" for "Dish name" is not valid. Name the whole dish, such 
 In [non-interactive mode](#non-interactive-mode), the `default` that answers a widget goes through `validate` the same way, and the message opens with `Default value`.
 
 The message shows a `multiselect` answer comma-separated and a `confirm` answer as `true` or `false`. The checks against `options` and the `truthy` and `falsy` lists run first, so `validate` receives only answers the widget accepts.
+
+### Required answers
+
+To reject an empty answer, pass `required` to any widget. `TRUE` shows the `required` label, which reads `Required.` by default. A string shows that message instead:
+
+```php
+$guest = Prompty::text('Guest name',
+  required: 'Enter a name for the ticket.',
+);
+$extras = Prompty::multiselect('Extras', options: $extras, required: TRUE);
+```
+
+An empty answer is a blank string, including one of only spaces, or a `multiselect` with nothing selected. A `text` or `suggest` answer that takes its `default` or `placeholder` isn't empty. `select` and `confirm` always have an answer, so `required` rejects only a `select` whose `transform` returns `''`.
+
+The check runs after `transform` and before `validate`, so `validate` receives only answers that aren't empty. `required` also checks `discovered:` values, `PROMPTY_*` variables and the `default` in non-interactive mode. It throws for an empty one, as `validate` does for a rejected one:
+
+```text
+Discovered value "" for "Guest name" is not valid. Enter a name for the ticket.
+```
 
 ## Unicode and ASCII
 
@@ -1023,7 +1033,7 @@ The following table lists every option and its default:
 | `unicode`         | `bool`                  | Forces Unicode or ASCII symbols. Detected from the locale by default.         |
 | `ansi`            | `bool`                  | Forces ANSI colors on or off. On unless `NO_COLOR` or `TERM=dumb` is set.     |
 | `env_prefix`      | `string`                | Prefix for environment variable discovery. Default `PROMPTY_`.                |
-| `labels`          | `array<string, string>` | UI labels: `yes`, `no`, `cancelled`, `none`, `separator`, `more`.             |
+| `labels`          | `array<string, string>` | UI labels: `yes`, `no`, `cancelled`, `none`, `separator`, `more`, `required`. |
 | `truthy`          | `list<string>`          | Values a confirm reads as yes. Default `1`, `true`, `yes`.                    |
 | `falsy`           | `list<string>`          | Values a confirm reads as no. Default `0`, `false`, `no`.                     |
 | `interactive`     | `bool`                  | If false, every widget answers without reading input. Default `true`.         |
@@ -1041,7 +1051,7 @@ The map-valued options take these keys:
 - `symbols_unicode`, `symbols_ascii`: `bar`, `completed`, `active`, `intro`, `outro`, `section`, `pointer`, `radio_on`, `radio_off`, `check_on`, `check_off`, `hint_arrow`, `error`, `scroll_up`, `scroll_down`
 - `colors`: `reset`, `dim`, `dim_italic`, `cyan`, `green`, `red`, `gray`, `bold`, `white`
 - `spacing`: `indent`, `hint_indent`, `hint_cont`
-- `labels`: `yes`, `no`, `cancelled`, `none`, `separator`, `more`
+- `labels`: `yes`, `no`, `cancelled`, `none`, `separator`, `more`, `required`
 
 ### Unknown keys are rejected
 
