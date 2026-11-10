@@ -103,6 +103,7 @@ The [`playground/`](playground) directory holds runnable demos. Run one to see a
 | `flow.php`                 | A linear flow with descriptions, hints and help.                       |
 | `flow-nested.php`          | A nested flow with conditionals, 3 levels deep.                        |
 | `flow-steps.php`           | Steps whose options, defaults and descriptions follow earlier answers. |
+| `flow-sections.php`        | Steps grouped under section headings, one hidden by its empty group.   |
 | `flow-scope.php`           | Several flows, and how long a flow's own configuration lasts.          |
 | `flow-step-keys.php`       | What a step key becomes, and which are turned down.                    |
 | `flow-embed.php`           | The flow the embedder is tested against.                               |
@@ -119,7 +120,7 @@ All of them except `flow-step-keys.php` accept `--no-unicode` and `--no-ansi` to
 php playground/flow.php --no-unicode --no-ansi
 ```
 
-`flow.php`, `flow-nested.php` and `flow-steps.php` also accept `--no-interaction`, which switches on [non-interactive mode](README.md#non-interactive-mode).
+`flow.php`, `flow-nested.php`, `flow-steps.php` and `flow-sections.php` also accept `--no-interaction`, which switches on [non-interactive mode](README.md#non-interactive-mode).
 
 ### The embedded demo
 
