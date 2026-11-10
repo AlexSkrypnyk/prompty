@@ -300,6 +300,15 @@ Work a demo runs with `Prompty::task()`, between its questions:
 - `Baking the tart` - streamed. Writes `Oven at 180°C`, `Tray 1 of 2 in the top rack`, a `Rising 20%` to `Rising 100%` progress meter, `Crust golden at the edges`, `Tray 2 of 2 in the top rack`, `Fan cycling, temperature held` and `Both trays out, resting on the rack`. Success `Tart baked`.
 - `Poaching the pears` - streamed. Writes `Syrup at a low simmer`, `Pears in, lid half on` and `Checked at 20 minutes: still firm`, then fails with `Pears are not soft yet`.
 
+### Tables and boxes
+
+Content printed with `Prompty::table()` and `Prompty::box()`:
+
+- Summary table: intro `Order summary`, headers `Field` and `Answer`. Section rows reuse the section headings `The dish` and `Service`. Rows: `Dish name` - `Pear tart`, `Course` - `Dessert`, `Table` - `Table 12`, `Extras` - `Bread, olives`, and `Kitchen note` - `No nuts, and the cream on the side rather than poured over the tart` to show a wrapped cell.
+- Short table: `Dish` - `Pear tart`, `Course` - `Dessert`, `Extras` - `Bread, olives`, with no headers.
+- Box with a title: title `Order ready`, content `Plate the tart, then:` followed by the indented lines `ring the bell` and `call the table`.
+- Box without a title: `Passes the order to the kitchen.`
+
 ### Validation messages
 
 Messages a `validate` callback returns in demos and README snippets:
