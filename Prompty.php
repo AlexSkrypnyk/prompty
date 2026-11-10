@@ -2713,7 +2713,7 @@ class Prompty {
       preg_match_all('/\033\[[0-9;]*m| |./s', $content, $matches);
     }
 
-    $runs = [];
+    $units = [];
 
     foreach ($matches[0] as $text) {
       $kind = match (TRUE) {
@@ -2721,25 +2721,29 @@ class Prompty {
         $text === ' ' => 'space',
         default => 'char',
       };
-      $width = $kind === 'char' ? $this->clusterWidth($text) : (int) ($kind === 'space');
-      $last = array_key_last($runs);
-      $previous = $last === NULL ? NULL : array_key_last($runs[$last]['units']);
+      $previous = end($units);
 
-      if ($kind === 'char' && $previous !== NULL && $runs[$last]['units'][$previous]['kind'] === 'char' && $this->joinsCluster($runs[$last]['units'][$previous]['text'], $text)) {
-        $cluster = $runs[$last]['units'][$previous]['text'] . $text;
-        $runs[$last]['width'] += $this->clusterWidth($cluster) - $runs[$last]['units'][$previous]['width'];
-        $runs[$last]['units'][$previous] = ['text' => $cluster, 'kind' => 'char', 'width' => $this->clusterWidth($cluster)];
-
-        continue;
+      if ($kind === 'char' && $previous !== FALSE && $previous['kind'] === 'char' && $this->joinsCluster($previous['text'], $text)) {
+        $text = $previous['text'] . $text;
+        array_pop($units);
       }
 
-      if ($last === NULL || ($kind !== 'style' && $runs[$last]['space'] !== ($kind === 'space'))) {
-        $runs[] = ['space' => $kind === 'space', 'width' => 0, 'units' => []];
+      $width = $kind === 'char' ? $this->clusterWidth($text) : (int) ($kind === 'space');
+      $units[] = ['text' => $text, 'kind' => $kind, 'width' => $width];
+    }
+
+    $runs = [];
+
+    foreach ($units as $unit) {
+      $last = array_key_last($runs);
+
+      if ($last === NULL || ($unit['kind'] !== 'style' && $runs[$last]['space'] !== ($unit['kind'] === 'space'))) {
+        $runs[] = ['space' => $unit['kind'] === 'space', 'width' => 0, 'units' => []];
         $last = array_key_last($runs);
       }
 
-      $runs[$last]['units'][] = ['text' => $text, 'kind' => $kind, 'width' => $width];
-      $runs[$last]['width'] += $width;
+      $runs[$last]['units'][] = $unit;
+      $runs[$last]['width'] += $unit['width'];
     }
 
     return $runs;
