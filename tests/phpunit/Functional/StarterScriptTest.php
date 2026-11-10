@@ -81,7 +81,7 @@ final class StarterScriptTest extends FunctionalTestCase {
    *
    * @param array<int, string> $inputs
    *   Lines fed to the script. An empty list cancels at the first prompt.
-   * @param bool $should_proceed
+   * @param bool $is_proceeding
    *   Whether SHOULD_PROCEED is set to '1' or removed from the environment.
    * @param array<int, string> $expected
    *   Strings the ANSI-stripped output must contain.
@@ -89,8 +89,8 @@ final class StarterScriptTest extends FunctionalTestCase {
    *   Strings the ANSI-stripped output must not contain.
    */
   #[DataProvider('dataProviderStarterKillSwitch')]
-  public function testStarterKillSwitch(array $inputs, bool $should_proceed, array $expected, array $unexpected): void {
-    $this->processRun('php', [$this->starterScript], $inputs, ['SHOULD_PROCEED' => $should_proceed ? '1' : FALSE], 15, 15);
+  public function testStarterKillSwitch(array $inputs, bool $is_proceeding, array $expected, array $unexpected): void {
+    $this->processRun('php', [$this->starterScript], $inputs, ['SHOULD_PROCEED' => $is_proceeding ? '1' : FALSE], 15, 15);
     $this->assertProcessSuccessful();
 
     $output = $this->stripAnsi($this->processGet()->getOutput());

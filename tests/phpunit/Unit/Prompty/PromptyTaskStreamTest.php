@@ -181,12 +181,12 @@ final class PromptyTaskStreamTest extends PromptyTestCase {
   }
 
   #[DataProvider('dataProviderStreamToTarget')]
-  public function testStreamToTarget(bool $callable): void {
+  public function testStreamToTarget(bool $is_callable): void {
     $p = $this->createAndSetInstance(['interactive' => FALSE]);
     $stream = fopen('php://memory', 'w+');
     $this->assertIsResource($stream);
     $written = '';
-    $this->setProperty($p, 'cfgOutput', $callable ? function (string $chunk) use (&$written): void {
+    $this->setProperty($p, 'cfgOutput', $is_callable ? function (string $chunk) use (&$written): void {
       $written .= $chunk;
     } : $stream);
 
@@ -197,7 +197,7 @@ final class PromptyTaskStreamTest extends PromptyTestCase {
       return TRUE;
     }, stream: TRUE));
 
-    if (!$callable) {
+    if (!$is_callable) {
       rewind($stream);
       $written = (string) stream_get_contents($stream);
     }

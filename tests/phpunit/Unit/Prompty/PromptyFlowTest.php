@@ -254,27 +254,27 @@ final class PromptyFlowTest extends PromptyTestCase {
   public function testFlowIntroOutroCallable(): void {
     $this->setEnvVars(['name' => 'test']);
 
-    $intro_called = FALSE;
-    $outro_called = FALSE;
+    $is_intro_called = FALSE;
+    $is_outro_called = FALSE;
 
-    $output = $this->captureOutput(function () use (&$intro_called, &$outro_called): void {
+    $output = $this->captureOutput(function () use (&$is_intro_called, &$is_outro_called): void {
       Prompty::flow(fn(): array => [
         'name' => Prompty::text('Name'),
       ],
-        intro: function () use (&$intro_called): void {
-          $intro_called = TRUE;
+        intro: function () use (&$is_intro_called): void {
+          $is_intro_called = TRUE;
           echo "Custom intro\n";
         },
-        outro: function (array $results) use (&$outro_called): void {
-          $outro_called = TRUE;
+        outro: function (array $results) use (&$is_outro_called): void {
+          $is_outro_called = TRUE;
           echo 'Custom outro: ' . $results['name'] . "\n";
         },
         unicode: FALSE,
       );
     });
 
-    $this->assertTrue($intro_called);
-    $this->assertTrue($outro_called);
+    $this->assertTrue($is_intro_called);
+    $this->assertTrue($is_outro_called);
     $expected = <<<'EXPECTED'
     Custom intro
     +  Name
@@ -440,19 +440,19 @@ final class PromptyFlowTest extends PromptyTestCase {
   }
 
   public function testFlowCancelledWithCallable(): void {
-    $called = FALSE;
+    $is_called = FALSE;
 
-    $r = $this->promptyRun(function () use (&$called): mixed {
+    $r = $this->promptyRun(function () use (&$is_called): mixed {
       return Prompty::flow(fn(): array => [
         'name' => Prompty::text('Name'),
-      ], cancelled: function () use (&$called): void {
-        $called = TRUE;
+      ], cancelled: function () use (&$is_called): void {
+        $is_called = TRUE;
         echo "Custom cancel\n";
       }, unicode: FALSE);
     }, self::KEY_ESCAPE);
 
     $this->assertNull($r['result']);
-    $this->assertTrue($called);
+    $this->assertTrue($is_called);
     $this->assertStringContainsString('Custom cancel', $r['output']);
   }
 

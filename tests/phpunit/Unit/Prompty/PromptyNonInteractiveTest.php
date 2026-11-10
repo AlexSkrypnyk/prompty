@@ -35,14 +35,14 @@ final class PromptyNonInteractiveTest extends PromptyTestCase {
    *
    * @param callable $call
    *   The widget or flow call under test.
-   * @param bool $in_flow
+   * @param bool $is_in_flow
    *   Whether to mark a flow as already running.
    *
    * @return array{result: mixed, output: string}
    *   The call's return value and its ANSI-stripped output.
    */
-  protected function runNonInteractive(callable $call, bool $in_flow = FALSE): array {
-    $stream = $this->installKeystrokes(self::KEYSTROKES, $in_flow);
+  protected function runNonInteractive(callable $call, bool $is_in_flow = FALSE): array {
+    $stream = $this->installKeystrokes(self::KEYSTROKES, $is_in_flow);
     Prompty::configure(interactive: FALSE);
 
     $result = NULL;
@@ -177,19 +177,19 @@ final class PromptyNonInteractiveTest extends PromptyTestCase {
   }
 
   #[DataProvider('dataProviderFlowArgument')]
-  public function testFlowArgument(bool $global, ?bool $flow, string $keystrokes, ?array $expected, bool $global_after): void {
+  public function testFlowArgument(bool $is_global, ?bool $is_flow, string $keystrokes, ?array $expected, bool $is_global_after): void {
     $stream = $this->installKeystrokes($keystrokes, FALSE);
-    Prompty::configure(interactive: $global);
+    Prompty::configure(interactive: $is_global);
 
     $result = NULL;
-    $this->captureOutput(function () use ($flow, &$result): void {
+    $this->captureOutput(function () use ($is_flow, &$result): void {
       $result = Prompty::flow(fn(): array => [
         'course' => Prompty::select('Course', options: self::COURSES),
-      ], interactive: $flow);
+      ], interactive: $is_flow);
     });
 
     $this->assertSame($expected, $result);
-    $this->assertSame($global_after, Prompty::config()['interactive']);
+    $this->assertSame($is_global_after, Prompty::config()['interactive']);
     fclose($stream);
   }
 

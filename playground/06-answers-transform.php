@@ -61,7 +61,7 @@ show(Prompty::multiselect('Extras', options: $extras, transform: $with_bread));
 echo "\n--- Confirm: a transform that returns the wrong type ---\n";
 
 try {
-  Prompty::confirm('Send order?', discovered: TRUE, transform: fn(bool $yes): string => $yes ? 'yes' : 'no');
+  Prompty::confirm('Send order?', discovered: TRUE, transform: fn(bool $is_yes): string => $is_yes ? 'yes' : 'no');
 }
 catch (\UnexpectedValueException $exception) {
   echo '  Rejected: ' . $exception->getMessage() . "\n";

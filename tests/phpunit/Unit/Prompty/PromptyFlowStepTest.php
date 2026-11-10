@@ -22,17 +22,17 @@ final class PromptyFlowStepTest extends PromptyTestCase {
   public function testStepReturnsStepArrayWithoutBuilding(): void {
     $this->createAndSetInstance([], TRUE);
 
-    $built = FALSE;
+    $is_built = FALSE;
     $condition = fn(array $r): bool => TRUE;
     $children = ['note' => Prompty::text('Kitchen note')];
 
-    $step = Prompty::step(function () use (&$built): mixed {
-      $built = TRUE;
+    $step = Prompty::step(function () use (&$is_built): mixed {
+      $is_built = TRUE;
 
       return Prompty::text('Dish name');
     }, condition: $condition, children: $children);
 
-    $this->assertFalse($built);
+    $this->assertFalse($is_built);
     $this->assertInstanceOf(\Closure::class, $step['__call']);
     $this->assertSame($condition, $step['__condition']);
     $this->assertSame($children, $step['__children']);
@@ -196,14 +196,14 @@ final class PromptyFlowStepTest extends PromptyTestCase {
   public function testStepConditionSkipsWithoutBuilding(): void {
     $this->setEnvVars(['course' => 'main', 'send' => 'yes']);
 
-    $built = FALSE;
+    $is_built = FALSE;
     $result = NULL;
-    $output = $this->captureOutput(function () use (&$built, &$result): void {
-      $result = Prompty::flow(function () use (&$built): array {
+    $output = $this->captureOutput(function () use (&$is_built, &$result): void {
+      $result = Prompty::flow(function () use (&$is_built): array {
         return [
           'course' => Prompty::select('Course', options: ['main' => 'Main', 'dessert' => 'Dessert']),
-          'finishes' => Prompty::step(function () use (&$built): mixed {
-            $built = TRUE;
+          'finishes' => Prompty::step(function () use (&$is_built): mixed {
+            $is_built = TRUE;
 
             return Prompty::multiselect('Finishes', options: ['glazed' => 'Glazed']);
           }, condition: fn(array $r): bool => $r['course'] === 'dessert'),
@@ -212,7 +212,7 @@ final class PromptyFlowStepTest extends PromptyTestCase {
       }, numbering: TRUE, unicode: FALSE);
     });
 
-    $this->assertFalse($built);
+    $this->assertFalse($is_built);
     $this->assertSame(['course' => 'main', 'send' => TRUE], $result);
     $this->assertStringContainsString('Send order? (2)', $output);
     $this->assertStringNotContainsString('Finishes', $output);

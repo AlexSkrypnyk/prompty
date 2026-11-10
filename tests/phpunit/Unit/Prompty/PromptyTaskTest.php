@@ -167,8 +167,8 @@ final class PromptyTaskTest extends PromptyTestCase {
   }
 
   #[DataProvider('dataProviderTaskLive')]
-  public function testTaskLive(\Closure $run, bool $in_flow, string $expected): void {
-    $p = $this->createAndSetInstance([], $in_flow);
+  public function testTaskLive(\Closure $run, bool $is_in_flow, string $expected): void {
+    $p = $this->createAndSetInstance([], $is_in_flow);
     $this->setProperty($p, 'isTerminal', TRUE);
 
     ob_start();
@@ -318,15 +318,15 @@ final class PromptyTaskTest extends PromptyTestCase {
   public function testTaskInFlowReturnsClosure(): void {
     $this->createAndSetInstance([], TRUE);
 
-    $ran = FALSE;
-    $step = Prompty::task('Preheating the oven', action: function () use (&$ran): bool {
-      $ran = TRUE;
+    $is_run = FALSE;
+    $step = Prompty::task('Preheating the oven', action: function () use (&$is_run): bool {
+      $is_run = TRUE;
 
       return TRUE;
     });
 
     $this->assertInstanceOf(\Closure::class, $step);
-    $this->assertFalse($ran);
+    $this->assertFalse($is_run);
   }
 
   public function testTaskInFlowWithConditionReturnsStepArray(): void {
@@ -386,9 +386,9 @@ final class PromptyTaskTest extends PromptyTestCase {
   }
 
   #[DataProvider('dataProviderIsLive')]
-  public function testIsLive(array $config, ?bool $terminal, \Closure|string|null $output, bool $expected): void {
+  public function testIsLive(array $config, ?bool $is_terminal, \Closure|string|null $output, bool $expected): void {
     $p = $this->createInstance($config);
-    $this->setProperty($p, 'isTerminal', $terminal);
+    $this->setProperty($p, 'isTerminal', $is_terminal);
 
     if ($output !== NULL) {
       $this->setProperty($p, 'cfgOutput', $output instanceof \Closure ? $output : fopen($output, 'w'));

@@ -18,12 +18,12 @@ final class EmbedIntegrityTest extends EmbedTestCase {
   protected const string FIXTURE = 'tests/phpunit/Fixtures/EmbedSource';
 
   #[DataProvider('dataProviderFixturePayload')]
-  public function testFixturePayload(bool $compact): void {
+  public function testFixturePayload(bool $is_compact): void {
     $path = self::$tmp . '/fixture.payload';
 
-    $this->runEmbed(...$this->withMode($compact, ['--source', self::$root . '/' . self::FIXTURE . '.php', '--payload', $path]));
+    $this->runEmbed(...$this->withMode($is_compact, ['--source', self::$root . '/' . self::FIXTURE . '.php', '--payload', $path]));
 
-    $expected = $this->readFile(self::$root . '/' . self::FIXTURE . ($compact ? '.compact' : '.min') . '.payload');
+    $expected = $this->readFile(self::$root . '/' . self::FIXTURE . ($is_compact ? '.compact' : '.min') . '.payload');
     $this->assertSame($expected, $this->readFile($path), 'The payload is byte-identical to the committed one on this PHP version.');
   }
 
@@ -32,12 +32,12 @@ final class EmbedIntegrityTest extends EmbedTestCase {
   }
 
   #[DataProvider('dataProviderEmbedIsDeterministic')]
-  public function testEmbedIsDeterministic(bool $compact): void {
+  public function testEmbedIsDeterministic(bool $is_compact): void {
     $first = $this->prepareTarget('first.php');
     $second = $this->prepareTarget('second.php');
 
-    $this->runEmbed(...$this->withMode($compact, ['--no-verify', $first]));
-    $this->runEmbed(...$this->withMode($compact, ['--no-verify', $second]));
+    $this->runEmbed(...$this->withMode($is_compact, ['--no-verify', $first]));
+    $this->runEmbed(...$this->withMode($is_compact, ['--no-verify', $second]));
 
     $this->assertSame($this->readFile($first), $this->readFile($second));
   }
@@ -47,16 +47,16 @@ final class EmbedIntegrityTest extends EmbedTestCase {
   }
 
   #[DataProvider('dataProviderRegionMatchesPayload')]
-  public function testRegionMatchesPayload(bool $compact): void {
+  public function testRegionMatchesPayload(bool $is_compact): void {
     $target = $this->prepareTarget();
     $payload = self::$tmp . '/Prompty.payload';
 
-    $this->runEmbed(...$this->withMode($compact, ['--no-verify', $target]));
-    $this->runEmbed(...$this->withMode($compact, ['--payload', $payload]));
+    $this->runEmbed(...$this->withMode($is_compact, ['--no-verify', $target]));
+    $this->runEmbed(...$this->withMode($is_compact, ['--payload', $payload]));
 
     $this->assertSame($this->readFile($payload), $this->readRegion($target));
     $this->assertSame(hash('sha256', $this->readFile($payload)), $this->readMarker($target)['sha256']);
-    $this->assertSame($compact ? 'compact' : 'min', $this->readMarker($target)['mode']);
+    $this->assertSame($is_compact ? 'compact' : 'min', $this->readMarker($target)['mode']);
   }
 
   public static function dataProviderRegionMatchesPayload(): \Iterator {
@@ -134,7 +134,7 @@ final class EmbedIntegrityTest extends EmbedTestCase {
    *
    * @param string $mutation
    *   The change made to the script or SHA256SUMS before the check.
-   * @param bool $with_sums
+   * @param bool $is_with_sums
    *   Whether to pass --sums.
    * @param int $expected_exit
    *   The expected exit code.
@@ -142,7 +142,7 @@ final class EmbedIntegrityTest extends EmbedTestCase {
    *   Strings the combined output must contain.
    */
   #[DataProvider('dataProviderCheck')]
-  public function testCheck(string $mutation, bool $with_sums, int $expected_exit, array $expected_output): void {
+  public function testCheck(string $mutation, bool $is_with_sums, int $expected_exit, array $expected_output): void {
     $source = $this->copyReleasedSource();
     $target = $this->prepareTarget('install.php');
     $payload = self::$tmp . '/Prompty.min.payload';
@@ -197,7 +197,7 @@ final class EmbedIntegrityTest extends EmbedTestCase {
     }
 
     $script_arg = $mutation === 'missing script' ? self::$tmp . '/missing.php' : $target;
-    $this->processRun('php', array_merge([self::$root . '/embed.php', '--check', $script_arg], $with_sums ? ['--sums', $sums] : []));
+    $this->processRun('php', array_merge([self::$root . '/embed.php', '--check', $script_arg], $is_with_sums ? ['--sums', $sums] : []));
 
     $output = $this->processGet()->getOutput() . $this->processGet()->getErrorOutput();
     $this->assertSame($expected_exit, $this->processGet()->getExitCode(), $output);
@@ -382,7 +382,7 @@ final class EmbedIntegrityTest extends EmbedTestCase {
   /**
    * Prefix embed.php arguments with --compact when compacting.
    *
-   * @param bool $compact
+   * @param bool $is_compact
    *   Whether to compact.
    * @param array<int, string> $args
    *   The other arguments.
@@ -390,8 +390,8 @@ final class EmbedIntegrityTest extends EmbedTestCase {
    * @return array<int, string>
    *   The arguments.
    */
-  protected function withMode(bool $compact, array $args): array {
-    return $compact ? array_merge(['--compact'], $args) : $args;
+  protected function withMode(bool $is_compact, array $args): array {
+    return $is_compact ? array_merge(['--compact'], $args) : $args;
   }
 
   protected function copySourceWithoutVersion(): string {

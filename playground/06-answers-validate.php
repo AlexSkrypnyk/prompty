@@ -60,7 +60,7 @@ $results = Prompty::flow(fn(): array => [
   'course' => Prompty::select('Course', options: $courses, default: 'dessert'),
   'extras' => Prompty::multiselect('Extras', options: $extras, default: ['olives'], validate: fn(array $picked, array $r): ?string => $r['course'] === 'dessert' && in_array('olives', $picked, TRUE) ? 'Olives are not served with dessert.' : NULL),
   'seats' => Prompty::multiselect('Seats', options: $seats),
-  'send' => Prompty::confirm('Send order?', validate: fn(bool $send, array $r): ?string => $send && $r['seats'] === [] ? 'Pick a seat before sending the order.' : NULL),
+  'send' => Prompty::confirm('Send order?', validate: fn(bool $is_sent, array $r): ?string => $is_sent && $r['seats'] === [] ? 'Pick a seat before sending the order.' : NULL),
 ], cancelled: 'Order cancelled.');
 
 if (is_array($results)) {
