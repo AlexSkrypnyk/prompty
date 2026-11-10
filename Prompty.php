@@ -2112,14 +2112,48 @@ class Prompty {
 
       $styled .= $part;
 
-      // Parameter 0 (or none), 21-29, 39 and 49 switch an attribute off, so
-      // they can cancel part of the base style.
-      if (preg_match('/[\[;](?:0*|2[0-9]|39|49)[;m]/', $part) === 1) {
+      if ($this->switchesOff($part)) {
         $styled .= $this->cfgColors[$base] ?? '';
       }
     }
 
     return $this->color($styled, $base);
+  }
+
+  /**
+   * Checks whether an SGR sequence switches an attribute off.
+   *
+   * Parameter 0 (or none), 21-29, 39 and 49 switch an attribute off. The
+   * arguments of an extended colour (38, 48 or 58 followed by ';5;n' or
+   * ';2;r;g;b') are colour values, so they are skipped.
+   *
+   * @param string $sequence
+   *   An SGR sequence, from the escape byte to the final 'm'.
+   *
+   * @return bool
+   *   TRUE when any parameter of the sequence switches an attribute off.
+   */
+  protected function switchesOff(string $sequence): bool {
+    $params = explode(';', substr($sequence, 2, -1));
+    $count = count($params);
+
+    for ($i = 0; $i < $count; $i++) {
+      if (in_array($params[$i], ['38', '48', '58'], TRUE)) {
+        $i += match ($params[$i + 1] ?? '') {
+          '5' => 2,
+          '2' => 4,
+          default => 0,
+        };
+
+        continue;
+      }
+
+      if (preg_match('/^(?:0*|2[0-9]|39|49)$/', $params[$i]) === 1) {
+        return TRUE;
+      }
+    }
+
+    return FALSE;
   }
 
   /**

@@ -223,6 +223,30 @@ EXPECTED,
       [$bar . '  ' . $base . "\033[38:5:22mgreen herbs" . $reset, $bar],
     ];
 
+    yield '256-colour argument is not an off parameter' => [
+      "\033[38;5;22mgreen herbs",
+      TRUE,
+      [$bar . '  ' . $base . "\033[38;5;22mgreen herbs" . $reset, $bar],
+    ];
+
+    yield 'truecolour arguments are not an off parameter' => [
+      "\033[48;2;10;22;0mgreen herbs",
+      TRUE,
+      [$bar . '  ' . $base . "\033[48;2;10;22;0mgreen herbs" . $reset, $bar],
+    ];
+
+    yield 'off parameter after colour arguments' => [
+      "\033[58;5;22;24mgreen herbs",
+      TRUE,
+      [$bar . '  ' . $base . "\033[58;5;22;24m" . $base . 'green herbs' . $reset, $bar],
+    ];
+
+    yield 'extended colour without arguments' => [
+      "\033[38;0mgreen herbs",
+      TRUE,
+      [$bar . '  ' . $base . "\033[38;0m" . $base . 'green herbs' . $reset, $bar],
+    ];
+
     yield 'cursor and erase sequences removed beside styling' => [
       "pear\033[2K \033[1mtart\033[22m\033[2A",
       TRUE,
@@ -261,6 +285,25 @@ EXPECTED,
       "Served \033[1mwarm\033[22m \033[38:5:22mtoday\033[0m.",
       FALSE,
       ['|  Served warm today.', '|'],
+    ];
+  }
+
+  #[DataProvider('dataProviderStyledColouredBase')]
+  public function testStyledColouredBase(string $text, string $expected): void {
+    $p = $this->createInstance();
+
+    $this->assertSame($expected, $this->callProtected($p, 'styled', $text, 'gray'));
+  }
+
+  public static function dataProviderStyledColouredBase(): \Iterator {
+    yield 'extended colour kept over the base colour' => [
+      "\033[38;5;22mgreen herbs",
+      "\033[90m\033[38;5;22mgreen herbs\033[0m",
+    ];
+
+    yield 'base colour back after default foreground' => [
+      "\033[31mhot\033[39m plate",
+      "\033[90m\033[31mhot\033[39m\033[90m plate\033[0m",
     ];
   }
 
