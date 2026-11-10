@@ -138,6 +138,20 @@ jobs:
         run: composer test-coverage
         continue-on-error: ${{ vars.CI_TEST_IGNORE_FAILURE == '1' }}
 
+      # Each Enter accepts a widget's default, and the end of the input cancels
+      # any widget still waiting, so no script blocks.
+      - name: Run playground scripts
+        run: |
+          for script in playground/*.php; do
+            echo "::group::${script}"
+            printf '\n%.0s' {1..10} | php -d error_reporting=-1 -d display_errors=stderr "${script}" 2> "${RUNNER_TEMP}/stderr.txt"
+            echo "::endgroup::"
+            if [[ -s "${RUNNER_TEMP}/stderr.txt" ]]; then
+              cat "${RUNNER_TEMP}/stderr.txt"
+              exit 1
+            fi
+          done
+
       - name: Check code coverage threshold
         if: matrix.php-versions == '8.4' && matrix.deps == 'normal'
         run: |
