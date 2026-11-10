@@ -62,6 +62,8 @@ final class PromptyWidgetValidateTest extends PromptyTestCase {
    *
    * @param array<int|string, string>|\Closure $options
    *   The suggestions, or a closure that returns them.
+   * @param string $default
+   *   Text seeded into the input buffer.
    */
   protected static function suggestWidget(array|\Closure $options = self::DISHES, string $default = ''): \Closure {
     return static fn(?\Closure $validate, array $ctx, mixed $discovered = NULL): mixed => Prompty::suggest('Dish', options: $options, default: $default, placeholder: 'pear tart', discovered: $discovered, validate: $validate, ctx: $ctx);

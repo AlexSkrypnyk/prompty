@@ -28,7 +28,7 @@ Prompty::configure(unicode: !isset($opts['no-unicode']), ansi: !isset($opts['no-
 $courses = ['starter' => 'Starter', 'main' => 'Main', 'dessert' => 'Dessert'];
 $extras = ['bread' => 'Bread', 'olives' => 'Olives', 'herbs' => 'Herbs'];
 $seats = ['1' => 'Seat 1', '2' => 'Seat 2', '3' => 'Seat 3', '4' => 'Seat 4'];
-$dishes = ['Pear Tart', 'Apple Crumble', 'Onion Soup', 'Lentil Stew', 'Herb Omelette', 'Barley Salad', 'Plum Compote', 'Walnut Loaf'];
+$dishes = ['Pear Tart', 'Apple Crumble', 'Onion Soup', 'Lentil Stew', 'Herb Omelette', 'Barley Salad'];
 $whole_dish = fn(string $dish): ?string => str_contains($dish, ' ') ? NULL : 'Name the whole dish, such as "pear tart".';
 
 echo "\n--- Text: a single word is rejected ---\n";
