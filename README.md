@@ -1262,6 +1262,30 @@ Under both helpers, widgets draw ASCII symbols and wrap lines at 80 columns, so 
 
 A widget that reads past the last keystroke cancels, so a test with too few keystrokes gets `null` instead of hanging.
 
+### Test a script that configures Prompty
+
+`promptyRun()` and `promptyRunScript()` each install a new instance, so they drop any settings passed to `Prompty::configure()` before the helper runs. To keep those settings, let the script configure Prompty first, then pass the keystrokes to `promptyInput()`:
+
+```php
+public function testTakeOrder(): void {
+  // Calls Prompty::configure() with the script's own settings.
+  Kitchen::bootstrap();
+
+  $this->promptyInput($this->promptyKeys(
+    'pear tart', self::KEY_ENTER,
+    self::KEY_DOWN, self::KEY_ENTER,
+  ));
+
+  $order = Kitchen::takeOrder();
+
+  $this->assertSame('pear tart', $order['dish']);
+}
+```
+
+`promptyInput()` sets the keystrokes as the input of the current instance and changes no other setting. With no instance yet, it creates one that draws ASCII symbols and wraps lines at 80 columns. A later `Prompty::configure()` call changes that same instance. Calling `promptyInput()` again replaces the keystrokes.
+
+`promptyInput()` captures no output. Widgets write to the script's `output` target, or with `echo` when the script sets none. `promptyTearDown()` closes the keystroke stream and resets the instance.
+
 ### Test a rejected answer
 
 A widget whose [`validate`](#validation) callback rejects an answer asks again. In a test, it then reads past the last keystroke and cancels, so the test gets `null`. To assert on the message instead, call `promptyThrowOnInvalid()` first:
