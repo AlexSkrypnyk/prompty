@@ -150,17 +150,19 @@ final class PromptyThrowOnInvalidTest extends PromptyTestCase {
   }
 
   public static function dataProviderSwitchOffRePrompts(): \Iterator {
-    yield 'never switched on' => [static function (): void {}];
-    yield 'switched off' => [static function (self $test): void {
+    $switched_off = static function (self $test): void {
       $test->promptyThrowOnInvalid();
       $test->promptyThrowOnInvalid(FALSE);
-    },
-    ];
-    yield 'reset by tear down' => [static function (self $test): void {
+    };
+
+    $torn_down = static function (self $test): void {
       $test->promptyThrowOnInvalid();
       $test->promptyTearDown();
-    },
-    ];
+    };
+
+    yield 'never switched on' => [static function (): void {}];
+    yield 'switched off' => [$switched_off];
+    yield 'reset by tear down' => [$torn_down];
   }
 
   public function testSwitchLastsAcrossRuns(): void {

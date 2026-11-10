@@ -323,6 +323,8 @@ trait PromptyTestTrait {
  * Extends \InvalidArgumentException, the class a rejected discovered value
  * throws without the switch, so a catch for that class still matches.
  */
+// It ships in this file so the test helper stays 1 release asset.
+// phpcs:ignore Squiz.Classes.ClassFileName.NoMatch
 class PromptyValidationException extends \InvalidArgumentException {
 
   /**
