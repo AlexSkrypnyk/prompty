@@ -23,10 +23,10 @@ final class PromptyMultiselectOrderTest extends PromptyTestCase {
   protected const array EXTRAS = ['bread' => 'Bread', 'olives' => 'Olives', 'herbs' => 'Herbs', 'butter' => 'Butter'];
 
   #[DataProvider('dataProviderOrderKeys')]
-  public function testOrderKeys(array $keys, string $order, array $options, array $default_keys, array $expected): void {
+  public function testOrderKeys(array $keys, string|\Closure $order, array $options, array $default_keys, array $expected): void {
     $p = $this->createInstance();
 
-    $this->assertSame($expected, $this->callProtected($p, 'orderKeys', $keys, $order, $options, $default_keys));
+    $this->assertSame($expected, $this->callProtected($p, 'orderKeys', 'Extras', $keys, $order, $options, $default_keys));
   }
 
   public static function dataProviderOrderKeys(): \Iterator {
@@ -42,6 +42,65 @@ final class PromptyMultiselectOrderTest extends PromptyTestCase {
     yield 'nothing selected' => [[], 'default', self::EXTRAS, $default, []];
     yield 'numeric keys' => [['12', '4'], 'options', [4 => 'Table 4', 7 => 'Table 7', 12 => 'Table 12'], [], ['4', '12']];
     yield 'numeric default keys' => [['4', '12'], 'default', [4 => 'Table 4', 7 => 'Table 7', 12 => 'Table 12'], ['12', '7', '4'], ['12', '4']];
+
+    yield 'comparator by label' => [$keys, static fn(string $a, string $b): int => strcmp(self::EXTRAS[$a], self::EXTRAS[$b]), self::EXTRAS, $default, ['bread', 'butter', 'herbs']];
+    yield 'comparator reversed' => [$keys, static fn(string $a, string $b): int => strcmp($b, $a), self::EXTRAS, $default, ['herbs', 'butter', 'bread']];
+    yield 'comparator ties keep the selection order' => [$keys, static fn(string $a, string $b): int => 0, self::EXTRAS, $default, ['butter', 'herbs', 'bread']];
+    yield 'comparator with partial ranking' => [$keys, static fn(string $a, string $b): int => ($a === 'bread' ? -1 : 0) - ($b === 'bread' ? -1 : 0), self::EXTRAS, $default, ['bread', 'butter', 'herbs']];
+    yield 'first-class callable' => [$keys, strcmp(...), self::EXTRAS, $default, ['bread', 'butter', 'herbs']];
+    yield 'comparator over nothing' => [[], static fn(string $a, string $b): int => 1, self::EXTRAS, $default, []];
+  }
+
+  #[DataProvider('dataProviderComparator')]
+  public function testComparator(string $keystrokes, mixed $discovered, array $expected): void {
+    $r = $this->promptyRun(fn(): mixed => Prompty::multiselect('Extras',
+      options: self::EXTRAS,
+      default: ['herbs', 'bread'],
+      order: static fn(string $a, string $b): int => strcmp(self::EXTRAS[$b], self::EXTRAS[$a]),
+      discovered: $discovered,
+      ctx: $this->defaultCtx(),
+    ), $keystrokes);
+
+    $this->assertSame($expected, $r['result']);
+  }
+
+  public static function dataProviderComparator(): \Iterator {
+    yield 'interactive, default accepted' => [self::KEY_ENTER, NULL, ['herbs', 'bread']];
+    yield 'interactive, new key checked' => [self::KEY_DOWN . self::KEY_SPACE . self::KEY_ENTER, NULL, ['olives', 'herbs', 'bread']];
+    yield 'discovered list' => ['', ['bread', 'butter', 'olives'], ['olives', 'butter', 'bread']];
+    yield 'discovered comma string' => ['', 'bread,herbs,butter', ['herbs', 'butter', 'bread']];
+  }
+
+  #[DataProvider('dataProviderComparatorReturnsNonInt')]
+  public function testComparatorReturnsNonInt(string $keystrokes, mixed $discovered, mixed $returned, string $type): void {
+    $this->expectException(\UnexpectedValueException::class);
+    $this->expectExceptionMessage(sprintf('Order for "Extras" returned %s. An order closure compares 2 option keys and returns an int, as for usort().', $type));
+
+    $this->promptyRun(fn(): mixed => Prompty::multiselect('Extras',
+      options: self::EXTRAS,
+      default: ['herbs', 'bread'],
+      order: static fn(string $a, string $b): mixed => $returned,
+      discovered: $discovered,
+      ctx: $this->defaultCtx(),
+    ), $keystrokes);
+  }
+
+  public static function dataProviderComparatorReturnsNonInt(): \Iterator {
+    yield 'interactive, bool' => [self::KEY_ENTER, NULL, TRUE, 'bool'];
+    yield 'discovered, float' => ['', ['bread', 'olives'], 0.5, 'float'];
+    yield 'discovered, numeric string' => ['', ['bread', 'olives'], '1', 'string'];
+    yield 'discovered, null' => ['', ['bread', 'olives'], NULL, 'null'];
+  }
+
+  public function testComparatorSkipsSingleKey(): void {
+    $r = $this->promptyRun(fn(): mixed => Prompty::multiselect('Extras',
+      options: self::EXTRAS,
+      order: static fn(string $a, string $b): mixed => 'never called',
+      discovered: ['olives'],
+      ctx: $this->defaultCtx(),
+    ));
+
+    $this->assertSame(['olives'], $r['result']);
   }
 
   #[DataProvider('dataProviderInteractive')]

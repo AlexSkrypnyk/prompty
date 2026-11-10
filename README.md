@@ -247,6 +247,24 @@ Accepting that default gives `['herbs', 'bread']`. Pick the `order` that matches
 - `'options'`, the default, lists the keys in option order.
 - `'default'` lists the `default` keys that are still checked, in `default` order. Newly checked keys follow in option order.
 - `'selection'` lists the keys in the order they were checked. The `default` keys count as checked first, in `default` order. A key checked again moves to the end.
+- A closure sorts the keys. It's a comparator, as for `usort()`: it receives 2 option keys and returns an `int`.
+
+A comparator starts from the `'selection'` order, so keys it ranks equal stay in the order they were checked. To answer the checked keys sorted by their labels:
+
+```php
+$options = [
+  'bread' => 'Bread',
+  'olives' => 'Olives',
+  'herbs' => 'Herbs',
+];
+
+$extras = Prompty::multiselect('Extras',
+  options: $options,
+  order: fn(string $a, string $b): int => strcmp($options[$a], $options[$b]),
+);
+```
+
+Pass a function as a closure, such as `strcmp(...)`. A string `order` is read as 1 of the 3 names. A comparator that returns anything other than an `int` throws an `UnexpectedValueException`.
 
 The same `order` applies to a [discovered](#environment-variable-discovery) value and an environment variable. With `'selection'`, those keep the order they give. An unknown `order` throws an `InvalidArgumentException` before the widget draws anything.
 

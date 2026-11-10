@@ -1402,11 +1402,13 @@ class Prompty {
    *   Options drawn at once; the window shifts to keep the focused option in
    *   view, and opens on the first pre-checked option. 0 draws every option,
    *   and NULL uses the configured value.
-   * @param string $order
+   * @param string|\Closure $order
    *   The order of the answered keys. 'options' follows $options. 'default'
    *   puts the keys of $default first, in $default order, then the rest in
    *   option order. 'selection' follows the order the keys were checked, with
    *   $default checked first; a discovered value keeps the order it gives.
+   *   A closure is a comparator, as for usort(): it receives 2 option keys
+   *   and returns an int. Keys it ranks equal keep the 'selection' order.
    * @param string $help
    *   Optional help rendered below the options while the widget is active.
    * @param mixed $discovered
@@ -1443,8 +1445,9 @@ class Prompty {
    *   answer resolved without input is empty while $required is set, or fails
    *   $validate.
    * @throws \UnexpectedValueException
-   *   When $transform returns anything other than a list of strings, or
-   *   $validate returns neither NULL nor a string.
+   *   When $transform returns anything other than a list of strings, an
+   *   $order closure returns anything other than an int, or $validate returns
+   *   neither NULL nor a string.
    */
   public static function multiselect(
     string $label,
@@ -1453,7 +1456,7 @@ class Prompty {
     string $description = '',
     array $hints = [],
     ?int $scroll = NULL,
-    string $order = 'options',
+    string|\Closure $order = 'options',
     string $help = '',
     mixed $discovered = NULL,
     ?callable $transform = NULL,
@@ -1520,7 +1523,7 @@ class Prompty {
     }
 
     if ($resolved_keys !== NULL) {
-      $resolved_keys = $p->orderKeys($resolved_keys, $order, $options, $default_keys);
+      $resolved_keys = $p->orderKeys($plain_label, $resolved_keys, $order, $options, $default_keys);
       $resolved_keys = $p->transformKeys($plain_label, $transform, $resolved_keys);
       $p->assertResolvedValid($resolved !== NULL ? 'Discovered' : 'Default', $plain_label, $required, $validate, $resolved_keys, $results);
     }
@@ -1612,7 +1615,7 @@ class Prompty {
     // A window that opened at the top could hide every pre-checked option, so
     // it opens on the first one. A list drawn in full keeps focus at the top.
     if ($visible < count($option_keys) && $default_keys !== []) {
-      $focused = (int) array_search($p->orderKeys($default_keys, 'options', $options, [])[0], $option_keys, TRUE);
+      $focused = (int) array_search($p->orderKeys($plain_label, $default_keys, 'options', $options, [])[0], $option_keys, TRUE);
     }
 
     $checked = array_map(fn(string $key): bool => in_array($key, $default_keys, TRUE), $option_keys);
@@ -1638,7 +1641,7 @@ class Prompty {
       }
 
       if ($key === 'enter') {
-        $selected_keys = $p->orderKeys($selection, $order, $options, $default_keys);
+        $selected_keys = $p->orderKeys($plain_label, $selection, $order, $options, $default_keys);
         $selected_keys = $p->transformKeys($plain_label, $transform, $selected_keys);
         $error = $p->validateAnswer($plain_label, $required, $validate, $selected_keys, $results);
 
@@ -3234,16 +3237,16 @@ class Prompty {
   /**
    * Rejects a multiselect answer order that is not known.
    *
-   * @param string $order
-   *   The order to check.
+   * @param string|\Closure $order
+   *   The order to check. A closure is always accepted.
    * @param string $label
    *   The widget label, used to identify the widget in the error message.
    *
    * @throws \InvalidArgumentException
-   *   When $order is not 'options', 'default' or 'selection'.
+   *   When $order is a string other than 'options', 'default' or 'selection'.
    */
-  protected function assertOrder(string $order, string $label): void {
-    if (!in_array($order, ['options', 'default', 'selection'], TRUE)) {
+  protected function assertOrder(string|\Closure $order, string $label): void {
+    if (is_string($order) && !in_array($order, ['options', 'default', 'selection'], TRUE)) {
       throw new \InvalidArgumentException(sprintf('Order "%s" for "%s" is not valid. Use "options", "default" or "selection".', $order, $label));
     }
   }
@@ -3251,10 +3254,12 @@ class Prompty {
   /**
    * Arranges selected multiselect keys in an answer order.
    *
+   * @param string $label
+   *   The widget label, used to identify the widget in the error message.
    * @param list<string> $keys
    *   The selected option keys, in the order they were selected.
-   * @param string $order
-   *   One of 'options', 'default' or 'selection'.
+   * @param string|\Closure $order
+   *   One of 'options', 'default' or 'selection', or a comparator closure.
    * @param array<int|string, string> $options
    *   Map of option key to display label.
    * @param list<string> $default_keys
@@ -3262,8 +3267,29 @@ class Prompty {
    *
    * @return list<string>
    *   The selected keys in $order.
+   *
+   * @throws \UnexpectedValueException
+   *   When a comparator returns anything other than an int.
    */
-  protected function orderKeys(array $keys, string $order, array $options, array $default_keys): array {
+  protected function orderKeys(string $label, array $keys, string|\Closure $order, array $options, array $default_keys): array {
+    if ($order instanceof \Closure) {
+      // usort() is stable, so keys the comparator ranks equal keep the order
+      // they were selected in.
+      usort($keys, function (string $a, string $b) use ($label, $order): int {
+        $result = $order($a, $b);
+
+        if (!is_int($result)) {
+          $this->teardownTty();
+
+          throw new \UnexpectedValueException(sprintf('Order for "%s" returned %s. An order closure compares 2 option keys and returns an int, as for usort().', $label, get_debug_type($result)));
+        }
+
+        return $result;
+      });
+
+      return $keys;
+    }
+
     $in_options = array_values(array_filter($this->optionKeys($options), fn(string $key): bool => in_array($key, $keys, TRUE)));
 
     return match ($order) {
