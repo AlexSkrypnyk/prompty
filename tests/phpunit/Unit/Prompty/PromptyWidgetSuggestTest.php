@@ -20,12 +20,12 @@ use PHPUnit\Framework\Attributes\Group;
 #[Group('unit')]
 final class PromptyWidgetSuggestTest extends PromptyTestCase {
 
-  protected const DISHES = ['Pear Tart', 'Apple Crumble', 'Onion Soup', 'Lentil Stew', 'Herb Omelette', 'Barley Salad', 'Plum Compote', 'Walnut Loaf'];
+  protected const array DISHES = ['Pear Tart', 'Apple Crumble', 'Onion Soup', 'Lentil Stew', 'Herb Omelette', 'Barley Salad', 'Plum Compote', 'Walnut Loaf'];
 
   /**
    * Context of a nested widget with a following sibling.
    */
-  protected const CTX_AT_DEPTH = ['depth' => 1, 'is_last' => FALSE, 'open' => [1 => TRUE]];
+  protected const array CTX_AT_DEPTH = ['depth' => 1, 'is_last' => FALSE, 'open' => [1 => TRUE]];
 
   /**
    * Run the suggest widget with injected keystrokes.

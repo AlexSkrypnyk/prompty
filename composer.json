@@ -17,18 +17,18 @@
         "source": "https://github.com/alexskrypnyk/prompty"
     },
     "require": {
-        "php": ">=8.2"
+        "php": ">=8.3"
     },
     "require-dev": {
-        "alexskrypnyk/phpunit-helpers": "^0.16.0",
+        "alexskrypnyk/phpunit-helpers": "^1.2.0",
         "bamarni/composer-bin-plugin": "^1.9.1",
         "dealerdirect/phpcodesniffer-composer-installer": "^1.2.1",
-        "drevops/phpcs-standard": "^0.7",
+        "drevops/phpcs-standard": "^1.1.0",
         "drupal/coder": "^9.0.1",
         "ergebnis/composer-normalize": "^2.52.0",
         "opis/closure": "^4.5.0",
         "phpstan/phpstan": "^2.2.8",
-        "phpunit/phpunit": "^11.5.56",
+        "phpunit/phpunit": "^12.5.43",
         "rector/rector": "^2.6.2"
     },
     "minimum-stability": "stable",

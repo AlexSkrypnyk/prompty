@@ -20,24 +20,24 @@ use PHPUnit\Framework\Attributes\Group;
 #[Group('unit')]
 final class PromptyWidgetInteractiveTest extends PromptyTestCase {
 
-  protected const FRAMEWORKS = ['react' => 'React', 'vue' => 'Vue', 'svelte' => 'Svelte'];
+  protected const array FRAMEWORKS = ['react' => 'React', 'vue' => 'Vue', 'svelte' => 'Svelte'];
 
-  protected const FEATURES = ['ts' => 'TypeScript', 'eslint' => 'ESLint', 'prettier' => 'Prettier'];
+  protected const array FEATURES = ['ts' => 'TypeScript', 'eslint' => 'ESLint', 'prettier' => 'Prettier'];
 
   /**
    * Context of a nested widget with a following sibling.
    */
-  protected const CTX_AT_DEPTH = ['depth' => 1, 'is_last' => FALSE, 'open' => [1 => TRUE]];
+  protected const array CTX_AT_DEPTH = ['depth' => 1, 'is_last' => FALSE, 'open' => [1 => TRUE]];
 
   /**
    * Context of a nested widget that is the last child.
    */
-  protected const CTX_AT_DEPTH_LAST = ['depth' => 1, 'is_last' => TRUE, 'open' => []];
+  protected const array CTX_AT_DEPTH_LAST = ['depth' => 1, 'is_last' => TRUE, 'open' => []];
 
   /**
    * Help line for each widget, keyed by widget.
    */
-  protected const HELP = [
+  protected const array HELP = [
     'text' => 'Use the name on the menu card.',
     'select' => 'Up and down to move, enter to choose.',
     'multiselect' => 'Space to toggle, enter to confirm.',

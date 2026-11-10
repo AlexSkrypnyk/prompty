@@ -22,9 +22,9 @@ use PHPUnit\Framework\Attributes\Group;
 #[Group('unit')]
 final class PromptyInputTest extends PromptyTestCase {
 
-  protected const COURSES = ['starter' => 'Starter', 'main' => 'Main'];
+  protected const array COURSES = ['starter' => 'Starter', 'main' => 'Main'];
 
-  protected const EXTRAS = ['bread' => 'Bread', 'olives' => 'Olives'];
+  protected const array EXTRAS = ['bread' => 'Bread', 'olives' => 'Olives'];
 
   protected function setUp(): void {
     parent::setUp();

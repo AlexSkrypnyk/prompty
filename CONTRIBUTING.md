@@ -4,7 +4,7 @@ Thanks for helping with Prompty. This guide covers local setup, the checks and t
 
 ## Requirements
 
-You need PHP 8.2 or later and Composer. CI runs the suite on Ubuntu with PHP 8.2, 8.3, 8.4 and 8.5, with both the latest and the lowest dependency versions. It also runs it with PHP 8.2 and 8.5 on macOS 26, macOS 15, Windows Server 2025 and Windows Server 2022. A change that needs PHP newer than 8.2 fails CI.
+You need PHP 8.3 or later and Composer. CI runs the suite on Ubuntu with PHP 8.3, 8.4 and 8.5, with both the latest and the lowest dependency versions. It also runs it with PHP 8.3 and 8.5 on macOS 26, macOS 15, Windows Server 2025 and Windows Server 2022. A change that needs PHP newer than 8.3 fails CI.
 
 `composer.lock` isn't committed, so a fresh clone resolves dependencies from scratch.
 
@@ -38,7 +38,7 @@ The project's commands run through Composer:
 
 - **PHPCS** - the Drupal standard plus DrevOps rules, with `strict_types` required in every file. Config in [`phpcs.xml`](phpcs.xml).
 - **PHPStan** - level 9, the strictest level. Config in [`phpstan.neon`](phpstan.neon).
-- **Rector** - PHP 8.2 modernization plus the dead-code, code-quality, coding-style, type-declaration, naming, instanceof, early-return and PHPUnit code-quality sets. Linting runs it in dry-run mode. Config in [`rector.php`](rector.php).
+- **Rector** - PHP 8.3 modernization plus the dead-code, code-quality, coding-style, type-declaration, naming, instanceof, early-return and PHPUnit code-quality sets. Linting runs it in dry-run mode. Config in [`rector.php`](rector.php).
 - **Embedded demo check** - embeds `playground/flow-embed.php` and fails if the copy prints anything different from the original. See [The embedded demo](#the-embedded-demo).
 
 CI fails when coverage drops below a threshold: 80% by default, or the value of the `CI_CODE_COVERAGE_THRESHOLD` repository variable. New code needs tests.

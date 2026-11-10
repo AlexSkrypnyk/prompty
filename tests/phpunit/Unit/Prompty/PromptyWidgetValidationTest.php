@@ -20,18 +20,18 @@ use PHPUnit\Framework\Attributes\Group;
 #[Group('unit')]
 final class PromptyWidgetValidationTest extends PromptyTestCase {
 
-  protected const MESSAGE_SELECT = 'No options declared for "Course". Provide at least one option.';
+  protected const string MESSAGE_SELECT = 'No options declared for "Course". Provide at least one option.';
 
-  protected const MESSAGE_MULTISELECT = 'No options declared for "Extras". Provide at least one option.';
+  protected const string MESSAGE_MULTISELECT = 'No options declared for "Extras". Provide at least one option.';
 
-  protected const COURSES = ['starter' => 'Starter', 'main' => 'Main', 'dessert' => 'Dessert'];
+  protected const array COURSES = ['starter' => 'Starter', 'main' => 'Main', 'dessert' => 'Dessert'];
 
-  protected const EXTRAS = ['bread' => 'Bread', 'olives' => 'Olives', 'herbs' => 'Herbs'];
+  protected const array EXTRAS = ['bread' => 'Bread', 'olives' => 'Olives', 'herbs' => 'Herbs'];
 
   /**
    * Option set whose keys PHP stores as ints.
    */
-  protected const TABLES = ['4' => 'Table 4', '7' => 'Table 7', '12' => 'Table 12'];
+  protected const array TABLES = ['4' => 'Table 4', '7' => 'Table 7', '12' => 'Table 12'];
 
   /**
    * Keystrokes that would reach a widget's interactive loop.

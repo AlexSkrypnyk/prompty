@@ -20,7 +20,7 @@ use PHPUnit\Framework\Attributes\Group;
 #[Group('unit')]
 final class PromptyWidgetScrollTest extends PromptyTestCase {
 
-  protected const MENU = [
+  protected const array MENU = [
     'tart' => 'Pear Tart',
     'crumble' => 'Apple Crumble',
     'soup' => 'Onion Soup',
@@ -34,7 +34,7 @@ final class PromptyWidgetScrollTest extends PromptyTestCase {
   /**
    * Context of a nested widget with a following sibling.
    */
-  protected const CTX_AT_DEPTH = ['depth' => 1, 'is_last' => FALSE, 'open' => [1 => TRUE]];
+  protected const array CTX_AT_DEPTH = ['depth' => 1, 'is_last' => FALSE, 'open' => [1 => TRUE]];
 
   /**
    * Run the select widget over the menu with injected keystrokes.
