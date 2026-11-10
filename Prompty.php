@@ -2126,6 +2126,83 @@ class Prompty {
   }
 
   /**
+   * Draws text in a base style and keeps the SGR sequences it carries.
+   *
+   * The text between SGR sequences is made printable. A kept sequence that
+   * switches an attribute off is followed by the base style, so the base
+   * resumes where the caller closed a run. With ANSI off, the SGR sequences
+   * are removed as well.
+   *
+   * @param string $text
+   *   Text supplied by the caller.
+   * @param string $base
+   *   The color the text is drawn in.
+   *
+   * @return string
+   *   The text in the base style, closed with a reset.
+   */
+  protected function styled(string $text, string $base): string {
+    $parts = preg_split('/(\033\[[0-9;:]*m)/', $text, -1, PREG_SPLIT_DELIM_CAPTURE) ?: [$text];
+    $styled = '';
+
+    foreach ($parts as $index => $part) {
+      if ($index % 2 === 0) {
+        $styled .= $this->printable($part);
+
+        continue;
+      }
+
+      if (!$this->cfgAnsi) {
+        continue;
+      }
+
+      $styled .= $part;
+
+      if ($this->switchesOff($part)) {
+        $styled .= $this->cfgColors[$base] ?? '';
+      }
+    }
+
+    return $this->color($styled, $base);
+  }
+
+  /**
+   * Checks whether an SGR sequence switches an attribute off.
+   *
+   * Parameter 0 (or none), 21-29, 39 and 49 switch an attribute off. The
+   * arguments of an extended colour (38, 48 or 58 followed by ';5;n' or
+   * ';2;r;g;b') are colour values, so they are skipped.
+   *
+   * @param string $sequence
+   *   An SGR sequence, from the escape byte to the final 'm'.
+   *
+   * @return bool
+   *   TRUE when any parameter of the sequence switches an attribute off.
+   */
+  protected function switchesOff(string $sequence): bool {
+    $params = explode(';', substr($sequence, 2, -1));
+    $count = count($params);
+
+    for ($i = 0; $i < $count; $i++) {
+      if (in_array($params[$i], ['38', '48', '58'], TRUE)) {
+        $i += match ($params[$i + 1] ?? '') {
+          '5' => 2,
+          '2' => 4,
+          default => 0,
+        };
+
+        continue;
+      }
+
+      if (preg_match('/^(?:0*|2[0-9]|39|49)$/', $params[$i]) === 1) {
+        return TRUE;
+      }
+    }
+
+    return FALSE;
+  }
+
+  /**
    * Returns a configured label as printable text.
    *
    * @param string $name
@@ -3203,7 +3280,7 @@ class Prompty {
     $body_prefix = $depth > 0 ? $this->bodyPrefix($depth, $open) : $this->cfgSpacing['indent'];
 
     $lines = array_map(
-      fn(string $text_line): string => $this->bar() . $body_prefix . $this->color($this->printable($text_line), 'dim_italic'),
+      fn(string $text_line): string => $this->bar() . $body_prefix . $this->styled($text_line, 'dim_italic'),
       explode("\n", $description),
     );
 

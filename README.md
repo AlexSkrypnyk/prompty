@@ -99,7 +99,7 @@ To ship a single file instead, [embed](#embedding) the minified class in your sc
 
 Prompty has 5 widgets. Each returns the answer, or `null` when the user presses <kbd>Escape</kbd> or <kbd>Ctrl+C</kbd>.
 
-Widgets draw only printable text. A newline or tab in a value, label or option label becomes a space. Escape sequences and other control characters are removed, so a value can't break the tree or control the terminal. `text` and `suggest` return the same printable text they drew.
+Widgets draw only printable text. A newline or tab in a value, label or option label becomes a space. Escape sequences and other control characters are removed, so a value can't break the tree or control the terminal. `text` and `suggest` return the same printable text they drew. A [description](#descriptions-hints-and-help) also keeps its text styling.
 
 <p align="center">
   <img src=".util/assets/widgets.svg" width="100%" alt="Text, select, multiselect and confirm widgets in sequence">
@@ -665,6 +665,22 @@ Prompty::text('Dish name',
     . '"Specials" on the board.',
 );
 ```
+
+A description draws dim and italic. It keeps the SGR sequences it carries, so bold, italic, underline and colors written as `\e[...m` still show. Prompty removes every other escape sequence and control character. After a sequence that switches an attribute off, such as `\e[0m` or `\e[22m`, the text returns to dim italic. Each line ends with a full reset, so styling stops at the end of its line:
+
+```php
+Prompty::select('Course',
+  options: [
+    'starter' => 'Starter',
+    'main' => 'Main',
+    'dessert' => 'Dessert',
+  ],
+  description: "Where the dish sits in the meal.\n"
+    . "\e[1mDessert\e[22m goes out \e[4mafter the mains\e[24m.",
+);
+```
+
+With ANSI output off or `NO_COLOR` set, Prompty removes the styling and draws the description as plain text.
 
 `select` and `multiselect` also take `hints`, keyed by option. The focused option's hint shows under the list and can span several lines:
 
