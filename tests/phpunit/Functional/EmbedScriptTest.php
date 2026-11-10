@@ -28,15 +28,15 @@ final class EmbedScriptTest extends EmbedTestCase {
     $this->assertProcessSuccessful('Rector would make further changes');
   }
 
-  protected function embedAndReturnTarget(bool $compact): string {
+  protected function embedAndReturnTarget(bool $is_compact): string {
     $target = $this->prepareTarget();
-    $this->runEmbed(...$this->withMode($compact, ['--no-verify', $target]));
+    $this->runEmbed(...$this->withMode($is_compact, ['--no-verify', $target]));
 
     return $target;
   }
 
-  protected function writeAndRead(bool $compact, string $flag, string $path): string {
-    $this->runEmbed(...$this->withMode($compact, [$flag, $path]));
+  protected function writeAndRead(bool $is_compact, string $flag, string $path): string {
+    $this->runEmbed(...$this->withMode($is_compact, [$flag, $path]));
 
     return $this->readFile($path);
   }
@@ -198,11 +198,11 @@ final class EmbedScriptTest extends EmbedTestCase {
   }
 
   #[DataProvider('dataProviderPayloadFile')]
-  public function testPayloadFile(bool $compact): void {
+  public function testPayloadFile(bool $is_compact): void {
     $target = $this->prepareTarget();
-    $payload_file = self::$tmp . '/Prompty.' . ($compact ? 'compact' : 'min') . '.payload';
+    $payload_file = self::$tmp . '/Prompty.' . ($is_compact ? 'compact' : 'min') . '.payload';
 
-    $output = $this->runEmbedWithOutput(...$this->withMode($compact, ['--no-verify', $target]));
+    $output = $this->runEmbedWithOutput(...$this->withMode($is_compact, ['--no-verify', $target]));
 
     $this->assertStringContainsString('Wrote the embeddable Prompty to ' . $payload_file, $output);
     $this->assertFileExists($payload_file);
@@ -236,13 +236,13 @@ final class EmbedScriptTest extends EmbedTestCase {
   }
 
   #[DataProvider('dataProviderStats')]
-  public function testStats(bool $compact): void {
+  public function testStats(bool $is_compact): void {
     $target = $this->prepareTarget();
     $before = $this->readFile($target);
     $source = $this->readFile(self::$root . '/Prompty.php');
-    $payload_file = self::$tmp . '/Prompty.' . ($compact ? 'compact' : 'min') . '.payload';
+    $payload_file = self::$tmp . '/Prompty.' . ($is_compact ? 'compact' : 'min') . '.payload';
 
-    $output = $this->runEmbedWithOutput(...$this->withMode($compact, ['--no-verify', $target]));
+    $output = $this->runEmbedWithOutput(...$this->withMode($is_compact, ['--no-verify', $target]));
 
     $after = $this->readFile($target);
     $payload = $this->readFile($payload_file);
@@ -290,12 +290,12 @@ final class EmbedScriptTest extends EmbedTestCase {
   }
 
   #[DataProvider('dataProviderNoToolTags')]
-  public function testNoToolTags(bool $compact, string $kind): void {
+  public function testNoToolTags(bool $is_compact, string $kind): void {
     $path = self::$tmp . '/Prompty.out';
 
     $content = match ($kind) {
-      'embed' => $this->readRegion($this->embedAndReturnTarget($compact)),
-      default => $this->writeAndRead($compact, $kind, $path),
+      'embed' => $this->readRegion($this->embedAndReturnTarget($is_compact)),
+      default => $this->writeAndRead($is_compact, $kind, $path),
     };
 
     $this->assertStringContainsString('Copyright (c)', $content);
@@ -306,9 +306,9 @@ final class EmbedScriptTest extends EmbedTestCase {
   }
 
   public static function dataProviderNoToolTags(): \Iterator {
-    foreach (['minified' => FALSE, 'compacted' => TRUE] as $mode => $compact) {
+    foreach (['minified' => FALSE, 'compacted' => TRUE] as $mode => $is_compact) {
       foreach (['embed', '--stdout', '--payload'] as $kind) {
-        yield $mode . ', ' . $kind => [$compact, $kind];
+        yield $mode . ', ' . $kind => [$is_compact, $kind];
       }
     }
   }

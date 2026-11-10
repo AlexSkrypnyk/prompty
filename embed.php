@@ -132,16 +132,16 @@ function embed_is_ampersand(array|string $token): bool {
  */
 function embed_docblock_strip_tool_tags(string $docblock): string {
   $lines = [];
-  $in_tag = FALSE;
+  $is_in_tag = FALSE;
 
   foreach (explode("\n", $docblock) as $line) {
-    if ($in_tag && preg_match('/^\s*\*(?:\s*$|\s*@|\/)/', $line) !== 1) {
+    if ($is_in_tag && preg_match('/^\s*\*(?:\s*$|\s*@|\/)/', $line) !== 1) {
       continue;
     }
 
-    $in_tag = preg_match(EMBED_TOOL_TAG_PATTERN, $line) === 1;
+    $is_in_tag = preg_match(EMBED_TOOL_TAG_PATTERN, $line) === 1;
 
-    if ($in_tag) {
+    if ($is_in_tag) {
       continue;
     }
 
@@ -186,14 +186,14 @@ function embed_short_name(int $index): string {
  *   Uses keyed by name, in order of first use.
  * @param array<string, bool> $reserved
  *   Lowercase names that no short name may take.
- * @param bool $case_insensitive
+ * @param bool $is_case_insensitive
  *   Whether 2 short names that differ only in case would collide, as method
  *   names do.
  *
  * @return array<string, string>
  *   Short names keyed by name.
  */
-function embed_short_names(array $counts, array $reserved, bool $case_insensitive = FALSE): array {
+function embed_short_names(array $counts, array $reserved, bool $is_case_insensitive = FALSE): array {
   // The sort is stable, so names used equally often keep their order.
   arsort($counts);
 
@@ -206,7 +206,7 @@ function embed_short_names(array $counts, array $reserved, bool $case_insensitiv
       $index++;
     } while (isset($reserved[strtolower($short)]));
 
-    if ($case_insensitive) {
+    if ($is_case_insensitive) {
       $reserved[strtolower($short)] = TRUE;
     }
 
@@ -258,10 +258,10 @@ function embed_compact_assert_supported(array $tokens): void {
  *   Tokens of the class from token_get_all().
  * @param int $index
  *   The index of the method's 'function' token.
- * @param bool $public
+ * @param bool $is_public
  *   Whether the method is public.
  *
- * @return array{name: string, public: bool, start: int, body: int|null, end: int, parameters: list<string>, references: list<string>}
+ * @return array{name: string, is_public: bool, start: int, body: int|null, end: int, parameters: list<string>, references: list<string>}
  *   The method, with the index of its 'function' token, of the '{' that opens
  *   its body or NULL when it has none, and of its last token. The
  *   parameters, and those of them passed by reference.
@@ -270,7 +270,7 @@ function embed_compact_assert_supported(array $tokens): void {
  *   When the method has no name, returns by reference, promotes a
  *   constructor parameter, or has no end.
  */
-function embed_compact_method(array $tokens, int $index, bool $public): array {
+function embed_compact_method(array $tokens, int $index, bool $is_public): array {
   $count = count($tokens);
   $name_index = find_significant_token($tokens, $index + 1, 1);
 
@@ -285,7 +285,7 @@ function embed_compact_method(array $tokens, int $index, bool $public): array {
   $name = $tokens[$name_index][1];
   $parameters = [];
   $references = [];
-  $by_reference = FALSE;
+  $is_by_reference = FALSE;
   $depth = 0;
   $i = $name_index + 1;
 
@@ -306,22 +306,22 @@ function embed_compact_method(array $tokens, int $index, bool $public): array {
       throw new \RuntimeException(sprintf('Method %s() promotes a constructor parameter, which --compact does not support.', $name));
     }
     elseif (embed_is_ampersand($token)) {
-      $by_reference = TRUE;
+      $is_by_reference = TRUE;
     }
     elseif (is_array($token) && $token[0] === T_VARIABLE) {
       $parameters[] = substr($token[1], 1);
 
-      if ($by_reference) {
+      if ($is_by_reference) {
         $references[] = substr($token[1], 1);
       }
 
-      $by_reference = FALSE;
+      $is_by_reference = FALSE;
     }
   }
 
   $method = [
     'name' => $name,
-    'public' => $public,
+    'is_public' => $is_public,
     'start' => $index,
     'body' => NULL,
     'end' => $i,
@@ -360,7 +360,7 @@ function embed_compact_method(array $tokens, int $index, bool $public): array {
  * @param array<int, array{int, string, int}|string> $tokens
  *   Tokens of the class from token_get_all().
  *
- * @return array{properties: array<string, bool>, methods: list<array{name: string, public: bool, start: int, body: int|null, end: int, parameters: list<string>, references: list<string>}>}
+ * @return array{properties: array<string, bool>, methods: list<array{name: string, is_public: bool, start: int, body: int|null, end: int, parameters: list<string>, references: list<string>}>}
  *   Whether each property is public, keyed by name, and the methods in
  *   source order.
  *
@@ -490,7 +490,7 @@ function embed_compact_callee(array $tokens, int $index): string {
  *
  * @param array<int, array{int, string, int}|string> $tokens
  *   Tokens of the class from token_get_all().
- * @param array{name: string, public: bool, start: int, body: int|null, end: int, parameters: list<string>, references: list<string>} $method
+ * @param array{name: string, is_public: bool, start: int, body: int|null, end: int, parameters: list<string>, references: list<string>} $method
  *   The method.
  * @param array<int, string> $candidates
  *   Parameters that keep their names in the signature.
@@ -581,7 +581,7 @@ function embed_compact(string $class_code): string {
   $reserved = ['m' => array_fill_keys(EMBED_RESERVED_WORDS, TRUE), 'p' => []];
 
   foreach ($methods as $method) {
-    if ($method['public'] || str_starts_with($method['name'], '__')) {
+    if ($method['is_public'] || str_starts_with($method['name'], '__')) {
       $reserved['m'][strtolower($method['name'])] = TRUE;
     }
     else {
@@ -591,8 +591,8 @@ function embed_compact(string $class_code): string {
 
   $renamed_properties = [];
 
-  foreach ($members['properties'] as $property => $public) {
-    if ($public) {
+  foreach ($members['properties'] as $property => $is_public) {
+    if ($is_public) {
       $reserved['p'][strtolower($property)] = TRUE;
     }
     else {
@@ -610,7 +610,7 @@ function embed_compact(string $class_code): string {
 
   foreach ($methods as $scope => $method) {
     $kept[$scope] = array_fill_keys(EMBED_RESERVED_VARIABLES, TRUE) + ($named[''] ?? []);
-    $by_name = $method['public'] ? $method['parameters'] : array_intersect($method['parameters'], array_keys($named[strtolower($method['name'])] ?? []));
+    $by_name = $method['is_public'] ? $method['parameters'] : array_intersect($method['parameters'], array_keys($named[strtolower($method['name'])] ?? []));
     $signature_kept[$scope] = array_fill_keys(array_diff($by_name, array_keys($kept[$scope])), TRUE);
     $aliases[$scope] = embed_compact_aliases($tokens, $method, array_diff(array_keys($signature_kept[$scope]), $method['references']));
     $reserved['s' . $scope] = array_change_key_case($kept[$scope] + $signature_kept[$scope]);
@@ -632,7 +632,7 @@ function embed_compact(string $class_code): string {
       $scope++;
     }
 
-    $in_method = $scope < $method_count && $index >= $methods[$scope]['start'];
+    $is_in_method = $scope < $method_count && $index >= $methods[$scope]['start'];
     $group = NULL;
     $name = $token[1];
 
@@ -641,15 +641,15 @@ function embed_compact(string $class_code): string {
       $previous = find_significant_token($tokens, $index - 1, -1);
       $is_static_property = $previous !== NULL && is_array($tokens[$previous]) && $tokens[$previous][0] === T_DOUBLE_COLON;
 
-      $in_signature = $in_method && $index < ($methods[$scope]['body'] ?? PHP_INT_MAX);
+      $is_in_signature = $is_in_method && $index < ($methods[$scope]['body'] ?? PHP_INT_MAX);
 
-      if (!$in_method || $is_static_property) {
+      if (!$is_in_method || $is_static_property) {
         $group = isset($renamed_properties[$name]) ? 'p' : NULL;
       }
       elseif (isset($kept[$scope][$name])) {
         $group = NULL;
       }
-      elseif (!isset($signature_kept[$scope][$name]) || (!$in_signature && in_array($name, $aliases[$scope], TRUE))) {
+      elseif (!isset($signature_kept[$scope][$name]) || (!$is_in_signature && in_array($name, $aliases[$scope], TRUE))) {
         $group = 's' . $scope;
       }
     }
@@ -1275,7 +1275,7 @@ $is_payload_only = FALSE;
 $is_check_mode = FALSE;
 $is_killswitch_skipped = FALSE;
 $is_verification_skipped = FALSE;
-$no_payload_file = FALSE;
+$is_payload_file_skipped = FALSE;
 $source_override = NULL;
 $sums_path = NULL;
 $positional = [];
@@ -1300,7 +1300,7 @@ for ($arg_i = 1; $arg_i < $argc; $arg_i++) {
     $is_verification_skipped = TRUE;
   }
   elseif ($argv[$arg_i] === '--no-payload-file') {
-    $no_payload_file = TRUE;
+    $is_payload_file_skipped = TRUE;
   }
   elseif ($argv[$arg_i] === '--source' || $argv[$arg_i] === '--sums') {
     $option = $argv[$arg_i];
@@ -1391,7 +1391,7 @@ if ($sums_path !== NULL && !$is_check_mode) {
   exit(1);
 }
 
-if ($no_payload_file && ($to_stdout || $is_payload_only || $is_check_mode)) {
+if ($is_payload_file_skipped && ($to_stdout || $is_payload_only || $is_check_mode)) {
   fwrite(STDERR, sprintf('Error: --no-payload-file is only used when embedding into a script.%s', PHP_EOL));
   exit(1);
 }
@@ -1656,7 +1656,7 @@ $attributes = [
 // be compared with the release's SHA256SUMS.
 $payload_file = NULL;
 
-if (!$no_payload_file) {
+if (!$is_payload_file_skipped) {
   $payload_dir = dirname($target_path);
   $payload_file = ($payload_dir === '.' ? '' : $payload_dir . '/') . $identity['class'] . '.' . $mode . '.payload';
 

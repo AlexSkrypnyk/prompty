@@ -191,7 +191,7 @@ abstract class EmbedTestCase extends FunctionalTestCase {
   /**
    * Prefix embed.php arguments with --compact when compacting.
    *
-   * @param bool $compact
+   * @param bool $is_compact
    *   Whether to compact.
    * @param array<int, string> $args
    *   The other arguments.
@@ -199,8 +199,8 @@ abstract class EmbedTestCase extends FunctionalTestCase {
    * @return array<int, string>
    *   The arguments.
    */
-  protected function withMode(bool $compact, array $args): array {
-    return $compact ? array_merge(['--compact'], $args) : $args;
+  protected function withMode(bool $is_compact, array $args): array {
+    return $is_compact ? array_merge(['--compact'], $args) : $args;
   }
 
 }
