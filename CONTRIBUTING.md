@@ -159,7 +159,7 @@ A first read of the README shows only headings and images. Follow 3 rules for ev
 
 - Add the heading to the **Contents** list, nested under its parent for a `###` heading.
 - Put the section's images directly under its heading.
-- Put the rest of the section between `<details>` and `<summary>Details</summary>` under the images, and close it with `</details>`. Leave a blank line after `<summary>` and before `</details>`, so GitHub renders the Markdown between them.
+- Under the images, open `<details>`, add `<summary>Details: <heading></summary>` with the section's heading text, then the rest of the section, then `</details>`. Leave a blank line after `<summary>` and before `</details>`, so GitHub renders the Markdown between them.
 
 ## Regenerating the README assets
 
