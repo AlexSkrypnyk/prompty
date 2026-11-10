@@ -290,6 +290,15 @@ Headings that group a flow's steps with `Prompty::section()`:
 - `Service` - with `Table and extras` as a second title line, and the description `Where the order is going and what is served alongside.` Groups Table and Extras.
 - `Ticket` - no description. Groups Send order?.
 
+### Notes
+
+Messages a demo prints with `Prompty::note()`, 1 per type:
+
+- `info`: `The kitchen opens at 5pm.`
+- `success`: `Order sent to the kitchen.`
+- `warning`: `The pear tart is running low.`
+- `error`: `The oven did not reach temperature.`, with `Check the fan and try again.` as a second line.
+
 ### Pauses
 
 Messages a demo waits on with `Prompty::pause()`:

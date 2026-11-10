@@ -378,6 +378,7 @@ trait PromptyTestTrait {
     $this->promptyCloseInput();
     $this->promptySetStatic('instance', NULL);
     $this->promptySetStatic('inFlow', FALSE);
+    $this->promptySetStatic('defining', FALSE);
     $this->promptySetStatic('onInvalid', NULL);
   }
 

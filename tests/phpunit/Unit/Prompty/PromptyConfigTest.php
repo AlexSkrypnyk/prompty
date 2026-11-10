@@ -38,7 +38,7 @@ final class PromptyConfigTest extends PromptyTestCase {
   public function testDefaultConfigSymbolKeys(): void {
     $p = $this->createInstance();
 
-    $expected_symbol_keys = ['bar', 'completed', 'active', 'intro', 'outro', 'section', 'pointer', 'radio_on', 'radio_off', 'check_on', 'check_off', 'hint_arrow', 'error', 'scroll_up', 'scroll_down', 'success', 'spinner', 'ellipsis', 'box_top_left', 'box_top_right', 'box_bottom_left', 'box_bottom_right', 'box_horizontal', 'box_vertical', 'box_cross', 'box_top_tee', 'box_bottom_tee', 'box_left_tee', 'box_right_tee', 'legend_vertical', 'legend_horizontal', 'legend_separator'];
+    $expected_symbol_keys = ['bar', 'completed', 'active', 'intro', 'outro', 'section', 'pointer', 'radio_on', 'radio_off', 'check_on', 'check_off', 'hint_arrow', 'error', 'scroll_up', 'scroll_down', 'success', 'spinner', 'ellipsis', 'box_top_left', 'box_top_right', 'box_bottom_left', 'box_bottom_right', 'box_horizontal', 'box_vertical', 'box_cross', 'box_top_tee', 'box_bottom_tee', 'box_left_tee', 'box_right_tee', 'legend_vertical', 'legend_horizontal', 'legend_separator', 'note_info', 'note_success', 'note_warning', 'note_error'];
     /** @var array<string, string> $symbols_unicode */
     $symbols_unicode = $this->getProperty($p, 'cfgSymbolsUnicode');
     /** @var array<string, string> $symbols_ascii */
