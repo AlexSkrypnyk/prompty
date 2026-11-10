@@ -4,7 +4,7 @@ Thanks for helping with Prompty. This guide covers local setup, the checks and t
 
 ## Requirements
 
-You need PHP 8.2 or later and Composer. CI runs the suite on PHP 8.2, 8.3, 8.4 and 8.5, with both the latest and the lowest dependency versions. A change that needs PHP newer than 8.2 fails CI.
+You need PHP 8.2 or later and Composer. CI runs the suite on Ubuntu with PHP 8.2, 8.3, 8.4 and 8.5, with both the latest and the lowest dependency versions. It also runs it with PHP 8.2 and 8.5 on macOS 26, macOS 15, Windows Server 2025 and Windows Server 2022. A change that needs PHP newer than 8.2 fails CI.
 
 `composer.lock` isn't committed, so a fresh clone resolves dependencies from scratch.
 
@@ -183,7 +183,7 @@ Publishing a GitHub release triggers [`release.yml`](.github/workflows/release.y
 
 The job runs in the `release` environment. Store `GPG_PRIVATE_KEY` as a secret of that environment and give the environment a required reviewer, so each release waits for approval before the job can read the key.
 
-The `Check embed release` job in [`test-php.yml`](.github/workflows/test-php.yml) builds the same payloads and an unsigned `SHA256SUMS` on every pull request, and runs the same script against them.
+The `Check embed release, ubuntu-latest` job in [`test-php.yml`](.github/workflows/test-php.yml) builds the same payloads and an unsigned `SHA256SUMS` on every pull request, and runs the same script against them.
 
 [`draft-release-notes.yml`](.github/workflows/draft-release-notes.yml) drafts the release notes, using the categories in [`.github/release-drafter.yml`](.github/release-drafter.yml).
 

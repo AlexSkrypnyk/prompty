@@ -1,3 +1,6 @@
+# Check out LF on every platform, so hashed sources and fixtures match.
+* text=auto eol=lf
+
 # Keep payloads byte-exact on every checkout, so their hashes hold.
 *.payload -text
 

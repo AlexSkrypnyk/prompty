@@ -21,7 +21,7 @@ permissions:
 
 jobs:
   lint:
-    name: Lint
+    name: Lint, ubuntu-latest
     runs-on: ubuntu-latest
 
     permissions:
@@ -57,7 +57,7 @@ jobs:
         continue-on-error: ${{ vars.CI_LINT_IGNORE_FAILURE == '1' }}
 
   check-embed-release:
-    name: Check embed release
+    name: Check embed release, ubuntu-latest
     runs-on: ubuntu-latest
 
     permissions:
@@ -89,7 +89,7 @@ jobs:
         run: php .util/check-embed-release.php .artifacts/release
 
   test-php:
-    name: PHP ${{ matrix.php-versions }}, Deps ${{ matrix.deps }}
+    name: PHP ${{ matrix.php-versions }}, Deps ${{ matrix.deps }}, ubuntu-latest
     runs-on: ubuntu-latest
 
     permissions:
@@ -194,4 +194,36 @@ jobs:
         if: ${{ !cancelled() && github.event.inputs.enable_terminal }}
         uses: mxschmitt/action-tmate@35b54afac29c97fb54faba5b513f8fbd1882f113 # v3
         timeout-minutes: 30
+
+  test-php-os:
+    name: PHP ${{ matrix.php-versions }}, Deps normal, ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+
+    permissions:
+      contents: read
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ['macos-26', 'macos-15', 'windows-2025', 'windows-2022']
+        php-versions: ['8.2', '8.5']
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # v2
+        with:
+          php-version: ${{ matrix.php-versions }}
+          coverage: none
+
+      - name: Install dependencies
+        run: composer install --audit ${{ matrix.php-versions == '8.5' && '--ignore-platform-reqs' || '' }}
+
+      - name: Run tests
+        run: composer test
+        continue-on-error: ${{ vars.CI_TEST_IGNORE_FAILURE == '1' }}
 

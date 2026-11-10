@@ -52,6 +52,14 @@ class Prompty {
   protected const ESCAPE_TIMEOUT = 50000;
 
   /**
+   * Where shell commands send their errors.
+   *
+   * Windows' cmd.exe cannot open /dev/null, and a failed redirect skips the
+   * command and prints an error instead.
+   */
+  protected const NULL_DEVICE = PHP_OS_FAMILY === 'Windows' ? 'NUL' : '/dev/null';
+
+  /**
    * The release version, or the placeholder token in an unreleased copy.
    */
   public const VERSION = '__PROMPTY_VERSION__';
@@ -2153,7 +2161,7 @@ class Prompty {
    * Restores TTY settings to the previously saved state.
    */
   protected function restoreTty(string $prev): void {
-    shell_exec('stty ' . $prev . ' 2>/dev/null');
+    shell_exec('stty ' . $prev . ' 2>' . static::NULL_DEVICE);
   }
 
   /**
@@ -2163,14 +2171,14 @@ class Prompty {
    * TTY.
    */
   protected function setupTty(): void {
-    $this->prevTty = $this->input === NULL ? (shell_exec('stty -g 2>/dev/null') ?: NULL) : NULL;
+    $this->prevTty = $this->input === NULL ? (shell_exec('stty -g 2>' . static::NULL_DEVICE) ?: NULL) : NULL;
 
     if ($this->prevTty !== NULL) {
       // @codeCoverageIgnoreStart
       $this->prevTty = trim($this->prevTty);
       // -isig delivers Ctrl+C to readKey() as a byte rather than as SIGINT,
       // which would end the process before the terminal is restored.
-      shell_exec('stty -echo -icanon -isig min 1 time 0 2>/dev/null');
+      shell_exec('stty -echo -icanon -isig min 1 time 0 2>' . static::NULL_DEVICE);
       $this->hideCursor();
       // @codeCoverageIgnoreEnd
     }

@@ -41,11 +41,11 @@ final class PromptyWidgetTransformTest extends PromptyTestCase {
   public function testTransformedAnswer(\Closure $widget, string $keystrokes, mixed $discovered, mixed $expected, string $completed): void {
     $interactive = $this->promptyRun(fn(): mixed => $widget(NULL), $keystrokes);
     $this->assertSame($expected, $interactive['result']);
-    $this->assertStringContainsString('+  Order' . PHP_EOL . '|  ' . $completed . PHP_EOL, $interactive['output']);
+    $this->assertStringContainsString("+  Order\n|  " . $completed . "\n", $interactive['output']);
 
     $resolved = $this->promptyRun(fn(): mixed => $widget($discovered));
     $this->assertSame($expected, $resolved['result']);
-    $this->assertSame('+  Order' . PHP_EOL . '|  ' . $completed . PHP_EOL . '|' . PHP_EOL, $resolved['output']);
+    $this->assertSame("+  Order\n|  " . $completed . "\n|\n", $resolved['output']);
   }
 
   public static function dataProviderTransformedAnswer(): \Iterator {
@@ -203,7 +203,7 @@ final class PromptyWidgetTransformTest extends PromptyTestCase {
     });
 
     $this->assertSame($expected, $result);
-    $this->assertStringContainsString('|  ' . $completed . PHP_EOL, $output);
+    $this->assertStringContainsString('|  ' . $completed . "\n", $output);
   }
 
   public static function dataProviderNonInteractiveDefaultIsTransformed(): \Iterator {

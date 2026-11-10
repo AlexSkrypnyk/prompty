@@ -41,6 +41,10 @@ define('EMBED_RELEASE_REPO', 'AlexSkrypnyk/prompty');
 define('EMBED_RELEASE_FINGERPRINT', '755E824E80F849135F5F4043E71EDB25C4F6D89D');
 define('EMBED_SUMS_EMBEDDER', 'embed.php');
 
+// Windows' cmd.exe cannot open /dev/null, and a failed redirect skips the
+// command.
+define('EMBED_NULL_DEVICE', PHP_OS_FAMILY === 'Windows' ? 'NUL' : '/dev/null');
+
 /**
  * Finds the nearest token that is not whitespace.
  *
@@ -379,7 +383,7 @@ function embed_check(string $script_path, ?string $sums_path): int {
 function embed_git(string $dir, string $arguments): ?string {
   $output = [];
   $exit_code = 0;
-  exec('git -C ' . escapeshellarg($dir) . ' ' . $arguments . ' 2>/dev/null', $output, $exit_code);
+  exec('git -C ' . escapeshellarg($dir) . ' ' . $arguments . ' 2>' . EMBED_NULL_DEVICE, $output, $exit_code);
 
   return $exit_code === 0 && isset($output[0]) && $output[0] !== '' ? $output[0] : NULL;
 }
@@ -407,12 +411,12 @@ function embed_guidance(string $target_path, array $attributes): string {
     $repo = $match[1];
   }
 
-  $root = embed_git($dir, 'rev-parse --show-toplevel');
-  $real_target = (string) realpath($target_path);
-  $real_root = $root === NULL ? FALSE : realpath($root);
+  // Git prints the prefix with '/' on every platform, which is what the
+  // snippets need: they run in GitHub Actions and in a POSIX shell.
+  $prefix = embed_git($dir, 'rev-parse --show-prefix');
 
-  if ($real_root !== FALSE && str_starts_with($real_target, $real_root . DIRECTORY_SEPARATOR)) {
-    $script = substr($real_target, strlen($real_root) + 1);
+  if ($prefix !== NULL) {
+    $script = $prefix . $name;
   }
 
   $values = [

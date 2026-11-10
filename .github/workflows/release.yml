@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   release:
-    name: Build and upload release assets
+    name: Build and upload release assets, ubuntu-latest
     runs-on: ubuntu-latest
 
     # The signing key is an environment secret, so a reviewer approves each
