@@ -38,6 +38,7 @@ Prompty asks questions in the terminal for PHP command-line scripts, from a sing
 - 🌍 [**Environment variable discovery**](#environment-variable-discovery) - fill answers from environment variables
 - 🤖 [**Non-interactive mode**](#non-interactive-mode) - answer every prompt from its default, for CI and scripted runs
 - 💬 [**Descriptions, hints and help**](#descriptions-hints-and-help) - text under each label, each option and each input
+- ⌨️ [**Key legend**](#key-legend) - list the keys each widget accepts under it
 - 📜 [**Long option lists**](#long-option-lists) - show a long `select` or `multiselect` a few options at a time
 - 🗂️ [**Tables and boxes**](#tables-and-boxes) - print a summary table or a titled panel in the tree
 - 🔧 [**Transform answers**](#transform-answers) - normalize an answer before the widget returns it
@@ -920,6 +921,42 @@ The help shows only while the widget waits for an answer. The line drawn after a
 
 Like a description, the help can span several lines.
 
+### Key legend
+
+To show the keys each widget accepts, pass `legend: TRUE` to [`Prompty::configure()`](#configuration). To show them for 1 flow, pass it to `Prompty::flow()`. Each widget then draws a dim legend after its `help`, so `help` can hold tips about the answer itself:
+
+```text
+◇  Extras
+│
+│❯ ◻ Bread
+│  ◻ Olives
+│  ◻ Herbs
+│
+│  ↑↓ move · space toggle · enter confirm
+│
+```
+
+Each widget type lists its own keys:
+
+| Widget        | Legend                                     |
+|---------------|--------------------------------------------|
+| `text`        | `enter confirm`                            |
+| `select`      | `↑↓ move · enter confirm`                  |
+| `multiselect` | `↑↓ move · space toggle · enter confirm`   |
+| `suggest`     | `type to filter · ↑↓ move · enter confirm` |
+| `confirm`     | `←→ toggle · y/n choose · enter confirm`   |
+
+In ASCII mode, the arrows read `up/down` and `left/right`, and a `-` separates the keys. Like the help, the legend shows only while the widget waits for an answer.
+
+To reword the legend, override its `legend_*` [labels](#available-options). The arrows come from the `legend_vertical` and `legend_horizontal` symbols, and the separator from `legend_separator`. A label set to `''` removes its key from the legend:
+
+```php
+Prompty::configure(legend: TRUE, labels: [
+  'legend_enter' => 'enter to send',
+  'legend_type' => '',
+]);
+```
+
 ## Long option lists
 
 `select`, `multiselect` and `suggest` draw every option by default. For a long list, pass `scroll` with the number of options to show at once:
@@ -1310,6 +1347,7 @@ The following table lists every option and its default:
 | `scroll`          | `int`                   | Options select, multiselect and suggest show at once. Default `0` shows all.   |
 | `placeholder_fallback` | `bool`             | If false, text and suggest answer an empty submit with `''`. Default `true`.  |
 | `width`           | `int`                   | Columns that lines wrap to. Default `0` detects the terminal width.            |
+| `legend`          | `bool`                  | If true, each widget draws the keys it accepts. Default `false`.              |
 | `symbols_unicode` | `array<string, string>` | Unicode symbol overrides.                                                     |
 | `symbols_ascii`   | `array<string, string>` | ASCII symbol overrides.                                                       |
 | `colors`          | `array<string, string>` | ANSI color escape overrides.                                                  |
@@ -1318,10 +1356,10 @@ The following table lists every option and its default:
 
 The map-valued options take these keys:
 
-- `symbols_unicode`, `symbols_ascii`: `bar`, `completed`, `active`, `intro`, `outro`, `section`, `pointer`, `radio_on`, `radio_off`, `check_on`, `check_off`, `hint_arrow`, `error`, `scroll_up`, `scroll_down`, `success`, `spinner`, `ellipsis`, `box_top_left`, `box_top_right`, `box_bottom_left`, `box_bottom_right`, `box_horizontal`, `box_vertical`, `box_cross`, `box_top_tee`, `box_bottom_tee`, `box_left_tee`, `box_right_tee`. Each character of `spinner` is 1 frame.
+- `symbols_unicode`, `symbols_ascii`: `bar`, `completed`, `active`, `intro`, `outro`, `section`, `pointer`, `radio_on`, `radio_off`, `check_on`, `check_off`, `hint_arrow`, `error`, `scroll_up`, `scroll_down`, `success`, `spinner`, `ellipsis`, `box_top_left`, `box_top_right`, `box_bottom_left`, `box_bottom_right`, `box_horizontal`, `box_vertical`, `box_cross`, `box_top_tee`, `box_bottom_tee`, `box_left_tee`, `box_right_tee`, `legend_vertical`, `legend_horizontal`, `legend_separator`. Each character of `spinner` is 1 frame.
 - `colors`: `reset`, `dim`, `dim_italic`, `cyan`, `green`, `red`, `gray`, `bold`, `white`, `yellow`, `blue`, `italic`, `underline`
 - `spacing`: `indent`, `hint_indent`, `hint_cont`
-- `labels`: `yes`, `no`, `cancelled`, `none`, `separator`, `more`, `required`, `done`, `failed`, `line`, `lines`, `step_total`
+- `labels`: `yes`, `no`, `cancelled`, `none`, `separator`, `more`, `required`, `done`, `failed`, `line`, `lines`, `step_total`, `legend_move`, `legend_toggle`, `legend_enter`, `legend_space`, `legend_type`, `legend_yes_no`
 
 ### Unknown keys are rejected
 
