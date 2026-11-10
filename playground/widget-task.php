@@ -25,7 +25,7 @@ $code = implode(' ', [
   '$say(PHP_EOL);',
   '$say(\'Crust \' . chr(27) . \'[33mgolden\' . chr(27) . \'[0m at the edges\' . PHP_EOL);',
   '$say(\'Tray 2 of 2 in the top rack\' . PHP_EOL);',
-  'fwrite(STDERR, \'Fan cycling, temperature held\' . PHP_EOL);',
+  "fwrite(STDERR, 'Fan cycling, temperature held' . PHP_EOL);",
   '$say(\'Both trays out, resting on the rack\' . PHP_EOL);',
 ]);
 $oven = escapeshellarg(PHP_BINARY) . ' -r ' . escapeshellarg($code) . ' 2>&1';
