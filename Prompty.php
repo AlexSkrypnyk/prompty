@@ -248,6 +248,7 @@ class Prompty {
     'none' => 'None',
     'separator' => '/',
     'more' => 'more',
+    'required' => 'Required.',
   ];
 
   /**
@@ -901,6 +902,9 @@ class Prompty {
    * @param callable|null $transform
    *   Optional transform. Receives the answer string and returns the string
    *   the widget answers with.
+   * @param bool|string $required
+   *   TRUE to reject a blank answer with the 'required' label, or the message
+   *   to reject it with. Checked after $transform and before $validate.
    * @param callable|null $validate
    *   Optional validator. Receives the answer string and the flow results
    *   collected so far, and returns NULL when the answer is valid or an error
@@ -918,8 +922,8 @@ class Prompty {
    *   when the widget is cancelled.
    *
    * @throws \InvalidArgumentException
-   *   When a discovered value, or the default answered without input, fails
-   *   $validate.
+   *   When a discovered value, or the default answered without input, is
+   *   blank while $required is set, or fails $validate.
    * @throws \UnexpectedValueException
    *   When $transform returns anything other than a string, or $validate
    *   returns neither NULL nor a string.
@@ -932,6 +936,7 @@ class Prompty {
     string $help = '',
     mixed $discovered = NULL,
     ?callable $transform = NULL,
+    bool|string $required = FALSE,
     ?callable $validate = NULL,
     ?callable $condition = NULL,
     array $children = [],
@@ -946,6 +951,7 @@ class Prompty {
         help: $help,
         discovered: $discovered,
         transform: $transform,
+        required: $required,
         validate: $validate,
         ctx: $ctx,
       );
@@ -986,7 +992,7 @@ class Prompty {
       // Transform and validate before raw mode is entered, so a rejected value
       // cannot leave the terminal unrestored.
       $resolved_display = $p->printable($p->transformString($plain_label, $transform, $resolved_display));
-      $p->assertResolvedValid($resolved !== NULL ? 'Discovered' : 'Default', $plain_label, $validate, $resolved_display, $results);
+      $p->assertResolvedValid($resolved !== NULL ? 'Discovered' : 'Default', $plain_label, $required, $validate, $resolved_display, $results);
     }
 
     if ($standalone && $p->cfgInteractive) {
@@ -1065,7 +1071,7 @@ class Prompty {
         $value = $p->printable($value);
         $display = $value !== '' ? $value : $p->placeholderAnswer($placeholder);
         $display = $p->printable($p->transformString($plain_label, $transform, $display));
-        $error = $p->validateAnswer($plain_label, $validate, $display, $results);
+        $error = $p->validateAnswer($plain_label, $required, $validate, $display, $results);
 
         if ($error === NULL) {
           $open = $p->settleOpen($display, $open);
@@ -1137,6 +1143,10 @@ class Prompty {
    *   Optional transform. Receives the selected option key and returns the
    *   string the widget answers with. The completed line shows the option
    *   label for a key of $options, and the string itself for any other value.
+   * @param bool|string $required
+   *   TRUE to reject a blank answer with the 'required' label, or the message
+   *   to reject it with. Checked after $transform and before $validate. A
+   *   selected key is never blank, so only a transformed answer can fail.
    * @param callable|null $validate
    *   Optional validator. Receives the selected option key and the flow
    *   results collected so far, and returns NULL when the answer is valid or
@@ -1155,8 +1165,8 @@ class Prompty {
    *
    * @throws \InvalidArgumentException
    *   When $options is empty, a default or discovered value is not a key of
-   *   $options, $scroll is negative, or the answer resolved without input
-   *   fails $validate.
+   *   $options, $scroll is negative, or the answer resolved without input is
+   *   blank while $required is set, or fails $validate.
    * @throws \UnexpectedValueException
    *   When $transform returns anything other than a string, or $validate
    *   returns neither NULL nor a string.
@@ -1171,6 +1181,7 @@ class Prompty {
     string $help = '',
     mixed $discovered = NULL,
     ?callable $transform = NULL,
+    bool|string $required = FALSE,
     ?callable $validate = NULL,
     ?callable $condition = NULL,
     array $children = [],
@@ -1187,6 +1198,7 @@ class Prompty {
         help: $help,
         discovered: $discovered,
         transform: $transform,
+        required: $required,
         validate: $validate,
         ctx: $ctx,
       );
@@ -1223,7 +1235,7 @@ class Prompty {
 
     if ($resolved_key !== NULL) {
       $resolved_key = $p->transformString($plain_label, $transform, $resolved_key);
-      $p->assertResolvedValid($resolved !== NULL ? 'Discovered' : 'Default', $plain_label, $validate, $resolved_key, $results);
+      $p->assertResolvedValid($resolved !== NULL ? 'Discovered' : 'Default', $plain_label, $required, $validate, $resolved_key, $results);
     }
 
     if ($standalone && $p->cfgInteractive) {
@@ -1334,7 +1346,7 @@ class Prompty {
 
       if ($key === 'enter') {
         $selected_key = $p->transformString($plain_label, $transform, $option_keys[$focused]);
-        $error = $p->validateAnswer($plain_label, $validate, $selected_key, $results);
+        $error = $p->validateAnswer($plain_label, $required, $validate, $selected_key, $results);
 
         if ($error === NULL) {
           $open = $p->settleOpen($selected_key, $open);
@@ -1400,6 +1412,10 @@ class Prompty {
    *   returns the list of strings the widget answers with. The completed line
    *   shows the option label for each key of $options, and the string itself
    *   for any other entry.
+   * @param bool|string $required
+   *   TRUE to reject an empty selection with the 'required' label, or the
+   *   message to reject it with. Checked after $transform and before
+   *   $validate.
    * @param callable|null $validate
    *   Optional validator. Receives the list of selected option keys and the
    *   flow results collected so far, and returns NULL when the answer is valid
@@ -1418,8 +1434,8 @@ class Prompty {
    *
    * @throws \InvalidArgumentException
    *   When $options is empty, a default or discovered entry is not a key of
-   *   $options, $scroll is negative, or the answer resolved without input
-   *   fails $validate.
+   *   $options, $scroll is negative, or the answer resolved without input is
+   *   empty while $required is set, or fails $validate.
    * @throws \UnexpectedValueException
    *   When $transform returns anything other than a list of strings, or
    *   $validate returns neither NULL nor a string.
@@ -1434,6 +1450,7 @@ class Prompty {
     string $help = '',
     mixed $discovered = NULL,
     ?callable $transform = NULL,
+    bool|string $required = FALSE,
     ?callable $validate = NULL,
     ?callable $condition = NULL,
     array $children = [],
@@ -1450,6 +1467,7 @@ class Prompty {
         help: $help,
         discovered: $discovered,
         transform: $transform,
+        required: $required,
         validate: $validate,
         ctx: $ctx,
       );
@@ -1494,7 +1512,7 @@ class Prompty {
 
     if ($resolved_keys !== NULL) {
       $resolved_keys = $p->transformKeys($plain_label, $transform, $resolved_keys);
-      $p->assertResolvedValid($resolved !== NULL ? 'Discovered' : 'Default', $plain_label, $validate, $resolved_keys, $results);
+      $p->assertResolvedValid($resolved !== NULL ? 'Discovered' : 'Default', $plain_label, $required, $validate, $resolved_keys, $results);
     }
 
     if ($standalone && $p->cfgInteractive) {
@@ -1617,7 +1635,7 @@ class Prompty {
         }
 
         $selected_keys = $p->transformKeys($plain_label, $transform, $selected_keys);
-        $error = $p->validateAnswer($plain_label, $validate, $selected_keys, $results);
+        $error = $p->validateAnswer($plain_label, $required, $validate, $selected_keys, $results);
 
         if ($error === NULL) {
           $open = $p->settleOpen($selected_keys, $open);
@@ -1687,6 +1705,9 @@ class Prompty {
    *   Pre-filled value that bypasses interactive input. It is trimmed, and an
    *   empty result resolves as an empty answer: $default, or $placeholder. It
    *   need not be one of the suggestions.
+   * @param bool|string $required
+   *   TRUE to reject a blank answer with the 'required' label, or the message
+   *   to reject it with.
    * @param callable|null $condition
    *   Optional condition callback; skips the step when it returns FALSE.
    * @param array<string, mixed> $children
@@ -1701,7 +1722,8 @@ class Prompty {
    *   cancelled.
    *
    * @throws \InvalidArgumentException
-   *   When $options is an empty list, or $scroll is negative.
+   *   When $options is an empty list, $scroll is negative, or the answer
+   *   resolved without input is blank while $required is set.
    */
   public static function suggest(
     string $label,
@@ -1712,6 +1734,7 @@ class Prompty {
     ?int $scroll = NULL,
     string $help = '',
     mixed $discovered = NULL,
+    bool|string $required = FALSE,
     ?callable $condition = NULL,
     array $children = [],
     ?array $ctx = NULL,
@@ -1726,6 +1749,7 @@ class Prompty {
         scroll: $scroll,
         help: $help,
         discovered: $discovered,
+        required: $required,
         ctx: $ctx,
       );
 
@@ -1743,6 +1767,9 @@ class Prompty {
       'open' => [],
     ];
     $standalone = !static::$inFlow;
+    /** @var array<string, mixed> $results */
+    $results = $ctx['results'] ?? [];
+    $plain_label = $label;
 
     // Validate before raw mode is entered, so a rejected call cannot leave
     // the terminal unrestored.
@@ -1751,6 +1778,24 @@ class Prompty {
     }
 
     $p->assertScroll($scroll ?? $p->cfgScroll, $label);
+
+    $default = $p->printable($default);
+    $placeholder = $p->printable($placeholder);
+    $resolved = $discovered ?? $ctx['discovered'] ?? NULL;
+    $resolved_display = NULL;
+
+    if ($resolved !== NULL || !$p->cfgInteractive) {
+      /** @var int|float|string|bool|null $resolved */
+      $resolved_display = trim($p->printable((string) $resolved));
+
+      // An empty answer resolves as it does interactively: the seeded default,
+      // or the placeholder fallback when nothing was seeded.
+      if ($resolved_display === '') {
+        $resolved_display = $default !== '' ? $default : $p->placeholderAnswer($placeholder);
+      }
+
+      $p->assertResolvedValid($resolved !== NULL ? 'Discovered' : 'Default', $plain_label, $required, NULL, $resolved_display, $results);
+    }
 
     if ($standalone && $p->cfgInteractive) {
       $p->setupTty();
@@ -1762,22 +1807,9 @@ class Prompty {
     $open = $ctx['open'] ?? [];
     $label = $p->numberLabel($label, $ctx);
 
-    $default = $p->printable($default);
-    $placeholder = $p->printable($placeholder);
-    $resolved = $discovered ?? $ctx['discovered'] ?? NULL;
-
-    if ($resolved !== NULL || !$p->cfgInteractive) {
-      /** @var int|float|string|bool|null $resolved */
-      $display = trim($p->printable((string) $resolved));
-
-      // An empty answer resolves as it does interactively: the seeded default,
-      // or the placeholder fallback when nothing was seeded.
-      if ($display === '') {
-        $display = $default !== '' ? $default : $p->placeholderAnswer($placeholder);
-      }
-
-      $open = $p->settleOpen($display, $open);
-      $p->printLines($p->renderCompleted($label, $display, $depth, $open));
+    if ($resolved_display !== NULL) {
+      $open = $p->settleOpen($resolved_display, $open);
+      $p->printLines($p->renderCompleted($label, $resolved_display, $depth, $open));
 
       if ($standalone) {
         // @codeCoverageIgnoreStart
@@ -1785,10 +1817,10 @@ class Prompty {
         // @codeCoverageIgnoreEnd
       }
 
-      return $display;
+      return $resolved_display;
     }
 
-    $render_active = function (string $value, array $matches, ?int $focused, int $first, int $visible) use ($p, $label, $placeholder, $description, $help, $depth, $open): array {
+    $render_active = function (string $value, array $matches, ?int $focused, int $first, int $visible, ?string $error) use ($p, $label, $placeholder, $description, $help, $depth, $open): array {
       // The buffer holds bytes as typed, and a paste can put a control
       // character among them.
       $value = $p->printable($value);
@@ -1808,6 +1840,7 @@ class Prompty {
         $lines = array_merge($lines, $description !== '' ? $p->renderDescription($description) : [$p->bar()]);
         $lines = array_merge($lines, $p->wrap($p->bar() . $p->cfgSpacing['indent'], $display, $p->bar() . $p->cfgSpacing['indent']));
         $lines = array_merge($lines, $p->renderScrollWindow($rows, $first, $visible, count($matches)));
+        $lines = array_merge($lines, $p->renderError($error));
         $lines = array_merge($lines, $p->renderHelp($help));
         $lines[] = $p->bar();
 
@@ -1818,6 +1851,7 @@ class Prompty {
       $lines = array_merge($lines, $description !== '' ? $p->renderDescription($description, $depth, $open) : [$p->bar() . $body_prefix]);
       $lines = array_merge($lines, $p->wrap($p->bar() . $body_prefix, $display, $p->bar() . $body_prefix));
       $lines = array_merge($lines, $p->renderScrollWindow($rows, $first, $visible, count($matches), $depth, $open));
+      $lines = array_merge($lines, $p->renderError($error, $depth, $open));
       $lines = array_merge($lines, $p->renderHelp($help, $depth, $open));
       $lines[] = $p->bar() . $body_prefix;
 
@@ -1829,7 +1863,8 @@ class Prompty {
     $visible = $p->visibleOptions($label, $scroll, count($matches));
     $focused = NULL;
     $first = 0;
-    $line_count = $p->printLines($render_active($value, $matches, $focused, $first, $visible));
+    $error = NULL;
+    $line_count = $p->printLines($render_active($value, $matches, $focused, $first, $visible, $error));
 
     while (TRUE) {
       $key = $p->readKey();
@@ -1849,16 +1884,24 @@ class Prompty {
       if ($key === 'enter') {
         $value = $p->printable($value);
         $display = $focused !== NULL ? $matches[$focused] : ($value !== '' ? $value : $p->placeholderAnswer($placeholder));
-        $open = $p->settleOpen($display, $open);
-        $p->redraw($line_count, $p->renderCompleted($label, $display, $depth, $open));
+        $error = $p->validateAnswer($plain_label, $required, NULL, $display, $results);
 
-        if ($standalone) {
-          // @codeCoverageIgnoreStart
-          $p->teardownTty();
-          // @codeCoverageIgnoreEnd
+        if ($error === NULL) {
+          $open = $p->settleOpen($display, $open);
+          $p->redraw($line_count, $p->renderCompleted($label, $display, $depth, $open));
+
+          if ($standalone) {
+            // @codeCoverageIgnoreStart
+            $p->teardownTty();
+            // @codeCoverageIgnoreEnd
+          }
+
+          return $display;
         }
 
-        return $display;
+        $line_count = $p->redraw($line_count, $render_active($value, $matches, $focused, $first, $visible, $error));
+
+        continue;
       }
 
       $typed = $value;
@@ -1888,12 +1931,13 @@ class Prompty {
         $visible = $p->visibleOptions($label, $scroll, count($matches));
         $focused = NULL;
         $first = 0;
+        $error = NULL;
       }
       elseif ($focused !== NULL) {
         $first = $p->scrollWindow($first, $focused, $visible);
       }
 
-      $line_count = $p->redraw($line_count, $render_active($value, $matches, $focused, $first, $visible));
+      $line_count = $p->redraw($line_count, $render_active($value, $matches, $focused, $first, $visible, $error));
     }
   }
 
@@ -1915,6 +1959,9 @@ class Prompty {
    * @param callable|null $transform
    *   Optional transform. Receives the boolean answer and returns the boolean
    *   the widget answers with.
+   * @param bool|string $required
+   *   Accepted so every widget shares 1 signature. A boolean answer is never
+   *   empty, so it has no effect.
    * @param callable|null $validate
    *   Optional validator. Receives the boolean answer and the flow results
    *   collected so far, and returns NULL when the answer is valid or an error
@@ -1945,6 +1992,7 @@ class Prompty {
     string $help = '',
     mixed $discovered = NULL,
     ?callable $transform = NULL,
+    bool|string $required = FALSE,
     ?callable $validate = NULL,
     ?callable $condition = NULL,
     array $children = [],
@@ -1958,6 +2006,7 @@ class Prompty {
         help: $help,
         discovered: $discovered,
         transform: $transform,
+        required: $required,
         validate: $validate,
         ctx: $ctx,
       );
@@ -1996,7 +2045,7 @@ class Prompty {
 
     if ($resolved_bool !== NULL) {
       $resolved_bool = $p->transformBool($plain_label, $transform, $resolved_bool);
-      $p->assertResolvedValid($resolved !== NULL ? 'Discovered' : 'Default', $plain_label, $validate, $resolved_bool, $results);
+      $p->assertResolvedValid($resolved !== NULL ? 'Discovered' : 'Default', $plain_label, $required, $validate, $resolved_bool, $results);
     }
 
     if ($standalone && $p->cfgInteractive) {
@@ -2073,7 +2122,7 @@ class Prompty {
 
       if ($key === 'enter') {
         $answer = $p->transformBool($plain_label, $transform, $yes);
-        $error = $p->validateAnswer($plain_label, $validate, $answer, $results);
+        $error = $p->validateAnswer($plain_label, $required, $validate, $answer, $results);
 
         if ($error === NULL) {
           $open = $p->settleOpen($answer, $open);
@@ -3479,8 +3528,14 @@ class Prompty {
    * The validator is caller code that can run while the terminal is in raw
    * mode, so the terminal is restored before any exception leaves the widget.
    *
+   * An empty answer to a required widget is rejected before the validator
+   * runs, so the validator only receives answers that are not empty.
+   *
    * @param string $label
    *   The widget label, used to identify the widget in the error message.
+   * @param bool|string $required
+   *   FALSE, TRUE to reject an empty answer with the 'required' label, or the
+   *   message to reject it with.
    * @param callable|null $validate
    *   The validator, or NULL when the widget has none.
    * @param string|bool|list<string> $value
@@ -3495,19 +3550,28 @@ class Prompty {
    * @throws \UnexpectedValueException
    *   When the validator returns neither NULL nor a string.
    */
-  protected function validateAnswer(string $label, ?callable $validate, string|bool|array $value, array $results): ?string {
-    if ($validate === NULL) {
+  protected function validateAnswer(string $label, bool|string $required, ?callable $validate, string|bool|array $value, array $results): ?string {
+    $is_empty = is_array($value) ? $value === [] : is_string($value) && trim($value) === '';
+
+    if (($required === FALSE || !$is_empty) && $validate === NULL) {
       return NULL;
     }
 
     try {
-      $error = $validate($value, $results);
-
-      if ($error !== NULL && !is_string($error)) {
-        throw new \UnexpectedValueException(sprintf('Validator for "%s" returned %s. A validator returns NULL for a valid answer or an error message string.', $label, get_debug_type($error)));
+      if ($required !== FALSE && $is_empty) {
+        // A blank message would read as no error, so it takes the label.
+        $error = is_string($required) && trim($this->printable($required)) !== '' ? trim($required) : $this->label('required');
       }
+      else {
+        /** @var callable $validate */
+        $error = $validate($value, $results);
 
-      $error = $error === NULL || trim($this->printable($error)) === '' ? NULL : trim($error);
+        if ($error !== NULL && !is_string($error)) {
+          throw new \UnexpectedValueException(sprintf('Validator for "%s" returned %s. A validator returns NULL for a valid answer or an error message string.', $label, get_debug_type($error)));
+        }
+
+        $error = $error === NULL || trim($this->printable($error)) === '' ? NULL : trim($error);
+      }
 
       if ($error !== NULL && static::$onInvalid instanceof \Closure) {
         (static::$onInvalid)($label, $value, $error);
@@ -3523,13 +3587,16 @@ class Prompty {
   }
 
   /**
-   * Rejects an answer resolved without input that fails the validator.
+   * Rejects an empty or invalid answer that was resolved without input.
    *
    * @param string $parameter
    *   The source of the answer, capitalized, opening the error message:
    *   'Discovered' or 'Default'.
    * @param string $label
    *   The widget label, used to identify the widget in the error message.
+   * @param bool|string $required
+   *   FALSE, TRUE to reject an empty answer with the 'required' label, or the
+   *   message to reject it with.
    * @param callable|null $validate
    *   The validator, or NULL when the widget has none.
    * @param string|bool|list<string> $value
@@ -3538,10 +3605,11 @@ class Prompty {
    *   The flow results collected so far.
    *
    * @throws \InvalidArgumentException
-   *   When the validator returns an error message.
+   *   When the answer is required and empty, or the validator returns an
+   *   error message.
    */
-  protected function assertResolvedValid(string $parameter, string $label, ?callable $validate, string|bool|array $value, array $results): void {
-    $error = $this->validateAnswer($label, $validate, $value, $results);
+  protected function assertResolvedValid(string $parameter, string $label, bool|string $required, ?callable $validate, string|bool|array $value, array $results): void {
+    $error = $this->validateAnswer($label, $required, $validate, $value, $results);
 
     if ($error === NULL) {
       return;
