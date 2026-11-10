@@ -2283,6 +2283,139 @@ class Prompty {
   }
 
   /**
+   * Draws a message and waits for a key before continuing.
+   *
+   * Any key continues, unless $enter_only is set. Escape and Ctrl+C cancel.
+   * In non-interactive mode the widget continues without reading input.
+   *
+   * @param string $label
+   *   The message shown to the user, such as "Press any key to continue".
+   * @param string $description
+   *   Optional description rendered below the message.
+   * @param string $help
+   *   Optional help rendered below the description while the widget waits.
+   * @param bool $enter_only
+   *   Continue only on Enter and ignore every other key.
+   * @param bool $erase
+   *   Erase the message once a key continues, instead of replacing it with a
+   *   completed line.
+   * @param callable|null $condition
+   *   Optional condition callback; skips the step when it returns FALSE.
+   * @param array<string, mixed> $children
+   *   Child steps to execute after this widget.
+   * @param array<string, mixed>|null $ctx
+   *   Flow context passed by the flow walker.
+   *
+   * @return \Closure|array<string, mixed>|bool|null
+   *   While a flow is being defined, a closure, or a step array when a
+   *   condition or children are set. Otherwise TRUE once a key continues, or
+   *   NULL when the widget is cancelled.
+   */
+  public static function pause(
+    string $label,
+    string $description = '',
+    string $help = '',
+    bool $enter_only = FALSE,
+    bool $erase = FALSE,
+    ?callable $condition = NULL,
+    array $children = [],
+    ?array $ctx = NULL,
+  ): \Closure|array|bool|null {
+    if (static::$inFlow && $ctx === NULL) {
+      $call = fn(array $ctx): \Closure|array|bool|null => static::pause(
+        $label,
+        description: $description,
+        help: $help,
+        enter_only: $enter_only,
+        erase: $erase,
+        ctx: $ctx,
+      );
+
+      if ($condition !== NULL || $children !== []) {
+        return ['__call' => $call, '__children' => $children, '__condition' => $condition];
+      }
+
+      return $call;
+    }
+
+    $p = static::instance();
+    $ctx ??= [
+      'depth' => 0,
+      'is_last' => FALSE,
+      'open' => [],
+    ];
+    $standalone = !static::$inFlow;
+
+    /** @var int $depth */
+    $depth = $ctx['depth'] ?? 0;
+    /** @var array<int, bool> $open */
+    $open = $ctx['open'] ?? [];
+    $label = $p->numberLabel($label, $ctx);
+
+    $finish = function (int $line_count) use ($p, $label, $erase, $depth, $open): bool {
+      $open = $p->settleOpen(TRUE, $open);
+
+      if ($erase) {
+        $p->clearRows($line_count);
+
+        return TRUE;
+      }
+
+      $completed = $p->renderLabel($label, 'completed', 'cyan', $depth, $open);
+      $completed[] = $p->bar() . ($depth > 0 ? $p->bodyPrefix($depth, $open) : '');
+      $p->redraw($line_count, $completed);
+
+      return TRUE;
+    };
+
+    if (!$p->cfgInteractive) {
+      return $finish(0);
+    }
+
+    if ($standalone) {
+      $p->setupTty();
+    }
+
+    $body_prefix = $depth > 0 ? $p->bodyPrefix($depth, $open) : '';
+    $gutter = $p->bar() . ($depth > 0 ? $body_prefix : $p->cfgSpacing['indent']);
+    $lines = $p->renderLabel($label, 'active', 'cyan', $depth, $open);
+
+    // The description ends with a separator for an input line, which a pause
+    // does not draw.
+    $lines = array_merge($lines, $description !== '' ? array_slice($p->renderDescription($description, $depth, $open), 0, -1) : []);
+    $lines = array_merge($lines, $p->renderHelp($help, $depth, $open));
+    $lines[] = $p->bar() . $body_prefix;
+    $line_count = $p->printLines($lines);
+
+    try {
+      while (TRUE) {
+        $key = $p->readKey();
+
+        if ($p->isCancelKey($key)) {
+          $p->redraw($line_count, [
+            ...$p->renderLabel($label, 'active', 'red', $depth, $open),
+            $gutter . $p->color($p->label('cancelled'), 'red'),
+            $p->bar() . $body_prefix,
+          ]);
+
+          return NULL;
+        }
+
+        if ($key === 'enter' || !$enter_only) {
+          $p->readCharacterRest($key);
+
+          return $finish($line_count);
+        }
+      }
+    }
+    finally {
+      if ($standalone) {
+        $p->teardownTty();
+      }
+    }
+  }
+
+  /**
    * Runs an action and reports how it went.
    *
    * While the action runs, the label is drawn with a spinner. Once it returns,
@@ -2843,6 +2976,34 @@ class Prompty {
    */
   protected function isCancelKey(string $key): bool {
     return in_array($key, ['ctrl-c', 'escape', 'eof'], TRUE);
+  }
+
+  /**
+   * Reads the remaining bytes of a UTF-8 character whose first byte is a key.
+   *
+   * A key is read 1 byte at a time by readKey(), so a multibyte character left
+   * unread would reach the next widget as stray bytes.
+   *
+   * @param string $key
+   *   A key returned by readKey().
+   */
+  protected function readCharacterRest(string $key): void {
+    if (strlen($key) !== 1) {
+      return;
+    }
+
+    $byte = ord($key);
+    $rest = match (TRUE) {
+      $byte >= 0xF8 => 0,
+      $byte >= 0xF0 => 3,
+      $byte >= 0xE0 => 2,
+      $byte >= 0xC0 => 1,
+      default => 0,
+    };
+
+    if ($rest > 0) {
+      fread($this->input ?? STDIN, $rest);
+    }
   }
 
   /**

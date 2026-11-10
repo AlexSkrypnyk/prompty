@@ -99,6 +99,7 @@ The [`playground/`](playground) directory holds runnable demos. Run one to see a
 | `widget-validate.php`      | `validate` and `required` rejecting answers, in widgets and a flow.    |
 | `widget-control-chars.php` | What a control character in a value draws as.                          |
 | `widget-transform.php`     | A transform rewriting each widget's answer, and a wrong return type.   |
+| `widget-pause.php`         | Pauses that wait for any key or for Enter only, or erase the message.  |
 | `widget-task.php`          | Tasks behind a spinner, and tasks streaming a child process's output.  |
 | `table-box.php`            | Summary tables with headers and section rows, and titled boxes.        |
 | `config.php`               | What `configure()` accepts, how a flow adds to it, what it turns down. |
@@ -116,7 +117,7 @@ To run a demo:
 php playground/flow-nested.php
 ```
 
-All of them except `flow-step-keys.php` accept `--no-unicode` and `--no-ansi` to force a display mode. `widget-task.php` also accepts `--no-interaction`, which prints each task without redrawing it:
+All of them except `flow-step-keys.php` accept `--no-unicode` and `--no-ansi` to force a display mode. `widget-task.php` also accepts `--no-interaction`, which prints each task without redrawing it. `widget-pause.php` accepts it too, and continues past each pause without a key:
 
 ```bash
 php playground/flow.php --no-unicode --no-ansi

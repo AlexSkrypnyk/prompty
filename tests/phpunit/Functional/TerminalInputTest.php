@@ -36,4 +36,21 @@ final class TerminalInputTest extends FunctionalTestCase {
     yield 'unrecognised key' => [self::KEYS['DELETE'] . self::KEYS['ENTER'], "'starter'"];
   }
 
+  #[DataProvider('dataProviderPauseInTerminal')]
+  public function testPauseInTerminal(string $keystrokes, bool $enter_only, string $expected): void {
+    $r = $this->runInTerminal(self::$root . '/tests/phpunit/Fixtures/pause.php', 'Press any key', $keystrokes, $enter_only ? ['--enter-only'] : []);
+
+    $this->assertSame(0, $r['exit_code'], 'Script failed: ' . $r['stderr']);
+    $this->assertSame('', $r['stderr']);
+    $this->assertStringContainsString('Answer: ' . $expected, $this->stripAnsi($r['stdout']));
+  }
+
+  public static function dataProviderPauseInTerminal(): \Iterator {
+    yield 'letter without enter' => ['x', FALSE, 'true'];
+    yield 'cursor key' => [self::KEYS['DOWN'], FALSE, 'true'];
+    yield 'escape' => [self::KEYS['ESCAPE'], FALSE, 'NULL'];
+    yield 'interrupt' => [self::KEYS['CTRL_C'], FALSE, 'NULL'];
+    yield 'enter only, after a letter' => ['x' . self::KEYS['ENTER'], TRUE, 'true'];
+  }
+
 }
