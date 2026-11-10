@@ -28,6 +28,19 @@ final class EmbedScriptTest extends EmbedTestCase {
     $this->assertProcessSuccessful('Rector would make further changes');
   }
 
+  protected function embedAndReturnTarget(bool $is_compact): string {
+    $target = $this->prepareTarget();
+    $this->runEmbed(...$this->withMode($is_compact, ['--no-verify', $target]));
+
+    return $target;
+  }
+
+  protected function writeAndRead(bool $is_compact, string $flag, string $path): string {
+    $this->runEmbed(...$this->withMode($is_compact, [$flag, $path]));
+
+    return $this->readFile($path);
+  }
+
   public function testEmbed(): void {
     $target = $this->prepareTarget();
 
@@ -182,6 +195,122 @@ final class EmbedScriptTest extends EmbedTestCase {
 
     $this->assertStringNotContainsString('cfgSymbolsUnicode', $content);
     $this->assertStringNotContainsString('renderCompleted', $content);
+  }
+
+  #[DataProvider('dataProviderPayloadFile')]
+  public function testPayloadFile(bool $is_compact): void {
+    $target = $this->prepareTarget();
+    $payload_file = self::$tmp . '/Prompty.' . ($is_compact ? 'compact' : 'min') . '.payload';
+
+    $output = $this->runEmbedWithOutput(...$this->withMode($is_compact, ['--no-verify', $target]));
+
+    $this->assertStringContainsString('Wrote the embeddable Prompty to ' . $payload_file, $output);
+    $this->assertFileExists($payload_file);
+    $this->assertSame($this->readRegion($target), $this->readFile($payload_file));
+    $this->assertSame(hash_file('sha256', $payload_file), $this->readMarker($target)['sha256']);
+  }
+
+  public static function dataProviderPayloadFile(): \Iterator {
+    yield from self::modes();
+  }
+
+  public function testPayloadFileBesideOutputScript(): void {
+    $input = $this->prepareTarget('in/starter.php');
+    $output_path = self::$tmp . '/out/starter.php';
+    mkdir(dirname($output_path));
+
+    $this->runEmbed('--no-verify', $input, $output_path);
+
+    $this->assertFileExists(self::$tmp . '/out/Prompty.min.payload');
+    $this->assertFileDoesNotExist(self::$tmp . '/in/Prompty.min.payload');
+  }
+
+  public function testNoPayloadFile(): void {
+    $target = $this->prepareTarget();
+
+    $output = $this->runEmbedWithOutput('--no-verify', '--no-payload-file', $target);
+
+    $this->assertFileDoesNotExist(self::$tmp . '/Prompty.min.payload');
+    $this->assertStringNotContainsString('Wrote the embeddable', $output);
+    $this->assertStatsRow($output, 'Prompty embeddable', $this->readRegion($target), $this->payloadNote($this->readRegion($target), $this->readFile(self::$root . '/Prompty.php')) . ' (not written to a file)');
+  }
+
+  #[DataProvider('dataProviderStats')]
+  public function testStats(bool $is_compact): void {
+    $target = $this->prepareTarget();
+    $before = $this->readFile($target);
+    $source = $this->readFile(self::$root . '/Prompty.php');
+    $payload_file = self::$tmp . '/Prompty.' . ($is_compact ? 'compact' : 'min') . '.payload';
+
+    $output = $this->runEmbedWithOutput(...$this->withMode($is_compact, ['--no-verify', $target]));
+
+    $after = $this->readFile($target);
+    $payload = $this->readFile($payload_file);
+
+    $this->assertStringContainsString(PHP_EOL . 'Sizes:' . PHP_EOL, $output);
+    $this->assertStatsRow($output, 'Target script before', $before, $target);
+    $this->assertStatsRow($output, 'Prompty source', $source, self::$root . '/Prompty.php');
+    $this->assertStatsRow($output, 'Prompty embeddable', $payload, $payload_file . ' ' . $this->payloadNote($payload, $source));
+    $this->assertStatsRow($output, 'Target script after', $after, $target . ' (+' . number_format(strlen($after) - strlen($before)) . ' bytes)');
+  }
+
+  public static function dataProviderStats(): \Iterator {
+    yield from self::modes();
+  }
+
+  public function testStatsAfterReEmbedShrinks(): void {
+    $target = $this->prepareTarget();
+    $this->runEmbed('--no-verify', $target);
+    $before = $this->readFile($target);
+
+    $output = $this->runEmbedWithOutput('--no-verify', '--compact', $target);
+
+    $after = $this->readFile($target);
+    $this->assertLessThan(strlen($before), strlen($after));
+    $this->assertStatsRow($output, 'Target script after', $after, $target . ' (-' . number_format(strlen($before) - strlen($after)) . ' bytes)');
+  }
+
+  #[DataProvider('dataProviderStatsWithoutTarget')]
+  public function testStatsWithoutTarget(string $flag, string $label): void {
+    $path = self::$tmp . '/Prompty.out';
+    $source = $this->readFile(self::$root . '/Prompty.php');
+
+    $output = $this->runEmbedWithOutput($flag, $path);
+
+    $written = $this->readFile($path);
+    $this->assertStatsRow($output, 'Prompty source', $source, self::$root . '/Prompty.php');
+    $this->assertStatsRow($output, $label, $written, $path . ($flag === '--payload' ? ' ' . $this->payloadNote($written, $source) : ''));
+    $this->assertStringNotContainsString('Target script', $output);
+  }
+
+  public static function dataProviderStatsWithoutTarget(): \Iterator {
+    yield '--payload' => ['--payload', 'Prompty embeddable'];
+
+    yield '--stdout' => ['--stdout', 'Prompty standalone'];
+  }
+
+  #[DataProvider('dataProviderNoToolTags')]
+  public function testNoToolTags(bool $is_compact, string $kind): void {
+    $path = self::$tmp . '/Prompty.out';
+
+    $content = match ($kind) {
+      'embed' => $this->readRegion($this->embedAndReturnTarget($is_compact)),
+      default => $this->writeAndRead($is_compact, $kind, $path),
+    };
+
+    $this->assertStringContainsString('Copyright (c)', $content);
+    $this->assertStringContainsString('@license MIT', $content);
+    $this->assertStringContainsString(" * used as a part of other files.\n */\n// @phpstan-ignore-next-line\nclass Prompty", $content);
+    $this->assertStringNotContainsString('PromptyConfig', $content);
+    $this->assertDoesNotMatchRegularExpression('/@(?:phpstan|psalm|phan)-/', str_replace('// @phpstan-ignore-next-line', '', $content));
+  }
+
+  public static function dataProviderNoToolTags(): \Iterator {
+    foreach (['minified' => FALSE, 'compacted' => TRUE] as $mode => $is_compact) {
+      foreach (['embed', '--stdout', '--payload'] as $kind) {
+        yield $mode . ', ' . $kind => [$is_compact, $kind];
+      }
+    }
   }
 
   public function testEmbedIsRectorClean(): void {
@@ -357,6 +486,7 @@ final class EmbedScriptTest extends EmbedTestCase {
         '<target>' => $this->prepareTarget(),
         '<target-no-markers>' => $this->prepareTargetWithoutMarkers(),
         '<target-two-regions>' => $this->prepareTargetWithTwoRegions(),
+        '<target-payload-name>' => $this->prepareTarget('Prompty.min.payload'),
         default => str_replace('<tmp>', self::$tmp, $arg),
       };
     }
@@ -367,7 +497,7 @@ final class EmbedScriptTest extends EmbedTestCase {
   }
 
   public static function dataProviderEmbedErrors(): \Iterator {
-    yield 'no arguments' => [[], ['Usage:', '--source', '--compact', '--stdout', '--payload', '--check', '--sums', '--no-killswitch', '--no-verify', 'Re-embedding', 'Verifying:', 'Arguments:', 'Options:']];
+    yield 'no arguments' => [[], ['Usage:', '--source', '--compact', '--stdout', '--payload', '--check', '--sums', '--no-killswitch', '--no-verify', '--no-payload-file', 'Embedding:', 'Re-embedding', 'Verifying:', 'Arguments:', 'Options:']];
 
     yield 'target without markers' => [['<target-no-markers>'], ['marker']];
 
@@ -388,6 +518,12 @@ final class EmbedScriptTest extends EmbedTestCase {
     yield '--payload and --check' => [['--payload', '--check', '<target>'], ['Use only 1 of --stdout, --payload and --check.']];
 
     yield '--source with missing class' => [['--source', '/nonexistent/Prompty.php', '<target>'], ['Source class not found']];
+
+    yield '--no-payload-file and --stdout' => [['--no-payload-file', '--stdout', '<tmp>/out.php'], ['--no-payload-file is only used when embedding into a script.']];
+
+    yield '--no-payload-file and --check' => [['--no-payload-file', '--check', '<target>'], ['--no-payload-file is only used when embedding into a script.']];
+
+    yield 'target named like the payload file' => [['<target-payload-name>'], ['The payload file would overwrite the target script', 'Pass --no-payload-file.']];
   }
 
   public function testVersionAfterImprinting(): void {

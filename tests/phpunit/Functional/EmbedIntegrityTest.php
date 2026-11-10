@@ -63,13 +63,62 @@ final class EmbedIntegrityTest extends EmbedTestCase {
     yield from self::modes();
   }
 
-  /**
-   * The embed modes, as data provider rows.
-   */
-  protected static function modes(): \Iterator {
-    yield 'minified' => [FALSE];
+  #[DataProvider('dataProviderFixtureBehaviour')]
+  public function testFixtureBehaviour(bool $is_compact): void {
+    $fixture = self::$root . '/' . self::FIXTURE . '.php';
+    $minified = self::$tmp . '/EmbedSource.' . ($is_compact ? 'compact' : 'min') . '.php';
 
-    yield 'compacted' => [TRUE];
+    $this->runEmbed(...$this->withMode($is_compact, ['--source', $fixture, '--stdout', $minified]));
+
+    $expected = $this->runFixtureCalls($fixture);
+    $this->assertStringStartsWith('["Starter: soup with bread"', $expected);
+    $this->assertSame($expected, $this->runFixtureCalls($minified));
+  }
+
+  public static function dataProviderFixtureBehaviour(): \Iterator {
+    yield from self::modes();
+  }
+
+  #[DataProvider('dataProviderCompactRejects')]
+  public function testCompactRejects(string $members, string $expected_error): void {
+    $source = self::$tmp . '/Kitchen.php';
+    file_put_contents($source, "<?php\n\ndeclare(strict_types=1);\n\nnamespace Kitchen;\n\n/**\n * Kitchen.\n */\nclass Kitchen {\n\n" . $members . "\n\n}\n");
+
+    $this->runEmbed('--source', $source, '--payload', self::$tmp . '/Kitchen.min.payload');
+
+    $this->processRun('php', [self::$root . '/embed.php', '--compact', '--source', $source, '--payload', self::$tmp . '/Kitchen.compact.payload']);
+    $this->assertProcessFailed();
+    $this->assertProcessErrorOutputContains($expected_error);
+    $this->assertFileDoesNotExist(self::$tmp . '/Kitchen.compact.payload');
+  }
+
+  public static function dataProviderCompactRejects(): \Iterator {
+    yield 'promoted constructor parameter' => ['public function __construct(protected string $dish) {}', 'Method __construct() promotes a constructor parameter, which --compact does not support.'];
+
+    yield 'variable variable' => ['public function dish(): string { $name = "dish"; $dish = "stew"; return $$name; }', 'The class uses a variable variable, which refers to variables by name'];
+
+    yield 'global' => ['public function dish(): string { global $dish; return (string) $dish; }', 'The class uses "global", which refers to variables by name'];
+
+    yield 'compact()' => ['public function dish(string $dish): array { return compact("dish"); }', 'The class uses compact(), which refers to variables by name'];
+
+    yield 'extract()' => ['public function dish(array $order): string { extract($order); return "stew"; }', 'The class uses extract(), which refers to variables by name'];
+
+    yield 'get_defined_vars()' => ['public function dish(string $dish): array { return \get_defined_vars(); }', 'The class uses get_defined_vars(), which refers to variables by name'];
+
+    yield 'return by reference' => ['protected array $dishes = [];' . "\n" . 'public function &dishes(): array { return $this->dishes; }', 'The class has a method that returns by reference, which --compact does not support.'];
+  }
+
+  /**
+   * Run the fixture that calls every public method of an EmbedSource file.
+   *
+   * @return string
+   *   The JSON-encoded results.
+   */
+  protected function runFixtureCalls(string $class_path): string {
+    $this->processRun('php', [self::$root . '/tests/phpunit/Fixtures/embed-source-calls.php', $class_path]);
+    $this->assertProcessSuccessful();
+
+    return $this->processGet()->getOutput();
   }
 
   #[DataProvider('dataProviderMarkerAttributes')]
@@ -377,21 +426,6 @@ final class EmbedIntegrityTest extends EmbedTestCase {
     $this->assertProcessSuccessful();
 
     return $this->processGet()->getOutput() . $this->processGet()->getErrorOutput();
-  }
-
-  /**
-   * Prefix embed.php arguments with --compact when compacting.
-   *
-   * @param bool $is_compact
-   *   Whether to compact.
-   * @param array<int, string> $args
-   *   The other arguments.
-   *
-   * @return array<int, string>
-   *   The arguments.
-   */
-  protected function withMode(bool $is_compact, array $args): array {
-    return $is_compact ? array_merge(['--compact'], $args) : $args;
   }
 
   protected function copySourceWithoutVersion(): string {

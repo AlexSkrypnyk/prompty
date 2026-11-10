@@ -14,6 +14,11 @@ abstract class EmbedTestCase extends FunctionalTestCase {
 
   protected function prepareTarget(string $name = 'starter.php'): string {
     $target = self::$tmp . '/' . $name;
+
+    if (!is_dir(dirname($target))) {
+      mkdir(dirname($target), 0755, TRUE);
+    }
+
     copy(self::$root . '/starter.php', $target);
 
     return $target;
@@ -145,6 +150,57 @@ abstract class EmbedTestCase extends FunctionalTestCase {
     }
 
     return $match[1];
+  }
+
+  /**
+   * Assert that embed.php printed the size row of a file.
+   *
+   * @param string $output
+   *   The embed.php output.
+   * @param string $label
+   *   The row label.
+   * @param string $content
+   *   The file content the row measures.
+   * @param string $rest
+   *   The path and note that end the row.
+   */
+  protected function assertStatsRow(string $output, string $label, string $content, string $rest): void {
+    $lines = substr_count($content, "\n") + ($content === '' || str_ends_with($content, "\n") ? 0 : 1);
+    // embed.php ends each row with PHP_EOL, which is "\r\n" on Windows.
+    $pattern = sprintf('/^  %s +%s bytes +%s lines  %s\r?$/m', preg_quote($label, '/'), preg_quote(number_format(strlen($content)), '/'), preg_quote(number_format($lines), '/'), preg_quote($rest, '/'));
+
+    $this->assertMatchesRegularExpression($pattern, $output);
+  }
+
+  /**
+   * The share of the source that a payload takes, as embed.php prints it.
+   */
+  protected function payloadNote(string $payload, string $source): string {
+    return sprintf('(%s%% of the source)', number_format(strlen($payload) / strlen($source) * 100, 1));
+  }
+
+  /**
+   * The embed modes, as data provider rows.
+   */
+  protected static function modes(): \Iterator {
+    yield 'minified' => [FALSE];
+
+    yield 'compacted' => [TRUE];
+  }
+
+  /**
+   * Prefix embed.php arguments with --compact when compacting.
+   *
+   * @param bool $is_compact
+   *   Whether to compact.
+   * @param array<int, string> $args
+   *   The other arguments.
+   *
+   * @return array<int, string>
+   *   The arguments.
+   */
+  protected function withMode(bool $is_compact, array $args): array {
+    return $is_compact ? array_merge(['--compact'], $args) : $args;
   }
 
 }

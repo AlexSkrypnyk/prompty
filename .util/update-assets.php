@@ -305,7 +305,7 @@ function processOne(string $name): void {
  */
 function buildEmbeddedPlayground(string $project_dir): void {
   $cmd = sprintf(
-    'php %s --no-verify %s %s 2>&1',
+    'php %s --no-verify --no-payload-file %s %s 2>&1',
     escapeshellarg($project_dir . '/embed.php'),
     escapeshellarg($project_dir . '/playground/05-flows-embed.php'),
     escapeshellarg($project_dir . '/playground/05-flows-embed.dist.php'),

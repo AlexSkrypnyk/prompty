@@ -73,6 +73,8 @@ php embed.php --source tests/phpunit/Fixtures/EmbedSource.php --payload tests/ph
 php embed.php --compact --source tests/phpunit/Fixtures/EmbedSource.php --payload tests/phpunit/Fixtures/EmbedSource.compact.payload
 ```
 
+`EmbedIntegrityTest` also runs `tests/phpunit/Fixtures/embed-source-calls.php` against the fixture and both minified copies, and fails if their results differ. When you add a construct to `EmbedSource.php`, call it from that script.
+
 Use data providers where you can. Name the provider `dataProvider<Something>` and put it *after* the test method it feeds.
 
 Arguments after `--` go to PHPUnit. To run 1 file or filter by test name:
@@ -142,7 +144,7 @@ Both versions render the same flow, so any difference between them is an embedde
 
 2 things catch a difference between the pair:
 
-- `composer lint` runs [`.util/check-embed.php`](.util/check-embed.php). It embeds the demo into a temporary path, runs both versions with every answer set through the environment and fails if their output differs. The failure prints both outputs.
+- `composer lint` runs [`.util/check-embed.php`](.util/check-embed.php). It embeds the demo into a temporary path in both modes, `min` and `compact`. It runs each copy and the original with every answer set through the environment and fails if their output differs. The failure prints both outputs.
 - The asset recorder captures the embedded copy answering its prompts in `.util/assets/flow-embed.svg`. The README doesn't show that SVG. A change in what the embedded script draws shows up as a diff in its frames, and a text comparison can't catch that kind of change.
 
 ## Demo content

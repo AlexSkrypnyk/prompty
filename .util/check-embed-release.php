@@ -48,7 +48,7 @@ function main(array $argv): void {
     $changed = $dir . '/changed-' . $mode . '.php';
 
     copy($dir . '/starter.php', $embedded);
-    run($dir, array_merge($flags, ['--no-verify', $embedded]), TRUE);
+    run($dir, array_merge($flags, ['--no-verify', '--no-payload-file', $embedded]), TRUE);
     run($dir, ['--check', $embedded, '--sums', $dir . '/SHA256SUMS'], TRUE);
 
     $content = (string) file_get_contents($embedded);

@@ -10,8 +10,9 @@
  * Both run the same flow, so anything that differs between what they print
  * is a fault in the embedder.
  *
- * This builds that copy into a temporary path, runs both with the same
- * answers supplied through the environment, and compares the output.
+ * This builds that copy into a temporary path in each embed mode, runs it and
+ * the source with the same answers supplied through the environment, and
+ * compares the output.
  *
  * Environment variables:
  * - SCRIPT_QUIET: Set to '1' to suppress informational messages.
@@ -49,12 +50,7 @@ function main(): void {
     throw new \RuntimeException(sprintf('Could not create %s.', $tmp_dir));
   }
 
-  $embedded_path = $tmp_dir . '/flow-embed.check.php';
-  build($project_dir, $embedded_path);
-
   $source = run($project_dir . '/' . SOURCE_SCRIPT);
-  $embedded = run($embedded_path);
-  unlink($embedded_path);
 
   // 2 runs that print nothing would otherwise match, so the runs have to
   // reach the end of the flow to count.
@@ -62,11 +58,19 @@ function main(): void {
     throw new \RuntimeException(sprintf("%s did not complete its flow. It printed:%s%s", SOURCE_SCRIPT, PHP_EOL, $source));
   }
 
-  if ($source !== $embedded) {
-    throw new \RuntimeException(sprintf("Embedding changed what the script prints.%s%s--- %s%s%s%s--- embedded copy%s%s", PHP_EOL, PHP_EOL, SOURCE_SCRIPT, PHP_EOL, $source, PHP_EOL, PHP_EOL, $embedded));
-  }
+  foreach (['min' => [], 'compact' => ['--compact']] as $mode => $flags) {
+    $embedded_path = $tmp_dir . '/flow-embed.check.php';
+    build($project_dir, $embedded_path, $flags);
 
-  info(sprintf('An embedded %s prints what it printed before embedding.', SOURCE_SCRIPT));
+    $embedded = run($embedded_path);
+    unlink($embedded_path);
+
+    if ($source !== $embedded) {
+      throw new \RuntimeException(sprintf("Embedding in %s mode changed what the script prints.%s%s--- %s%s%s%s--- embedded copy%s%s", $mode, PHP_EOL, PHP_EOL, SOURCE_SCRIPT, PHP_EOL, $source, PHP_EOL, PHP_EOL, $embedded));
+    }
+
+    info(sprintf('A %s embed of %s prints what it printed before embedding.', $mode, SOURCE_SCRIPT));
+  }
 }
 
 /**
@@ -76,14 +80,17 @@ function main(): void {
  *   Path to the project root.
  * @param string $target_path
  *   Path to build into.
+ * @param array<int, string> $flags
+ *   Extra embed.php options.
  *
  * @throws \RuntimeException
  *   When the embedder fails or writes nothing.
  */
-function build(string $project_dir, string $target_path): void {
+function build(string $project_dir, string $target_path, array $flags): void {
   $cmd = sprintf(
-    'php %s --no-verify %s %s 2>&1',
+    'php %s --no-verify --no-payload-file %s%s %s 2>&1',
     escapeshellarg($project_dir . '/embed.php'),
+    implode('', array_map(fn(string $flag): string => escapeshellarg($flag) . ' ', $flags)),
     escapeshellarg($project_dir . '/' . SOURCE_SCRIPT),
     escapeshellarg($target_path),
   );
