@@ -166,7 +166,8 @@ abstract class EmbedTestCase extends FunctionalTestCase {
    */
   protected function assertStatsRow(string $output, string $label, string $content, string $rest): void {
     $lines = substr_count($content, "\n") + ($content === '' || str_ends_with($content, "\n") ? 0 : 1);
-    $pattern = sprintf('/^  %s +%s bytes +%s lines  %s$/m', preg_quote($label, '/'), preg_quote(number_format(strlen($content)), '/'), preg_quote(number_format($lines), '/'), preg_quote($rest, '/'));
+    // embed.php ends each row with PHP_EOL, which is "\r\n" on Windows.
+    $pattern = sprintf('/^  %s +%s bytes +%s lines  %s\r?$/m', preg_quote($label, '/'), preg_quote(number_format(strlen($content)), '/'), preg_quote(number_format($lines), '/'), preg_quote($rest, '/'));
 
     $this->assertMatchesRegularExpression($pattern, $output);
   }
