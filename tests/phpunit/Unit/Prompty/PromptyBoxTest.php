@@ -151,14 +151,14 @@ final class PromptyBoxTest extends PromptyTestCase {
 
     $output = $this->captureOutput(fn() => Prompty::box('Ring the bell', title: 'Order ready'));
 
-    $this->assertSame(implode(PHP_EOL, [
+    $this->assertSame(implode("\n", [
       '│  ┌───────────────┐',
       '│  │ Order ready   │',
       '│  │ ───────────   │',
       '│  │ Ring the bell │',
       '│  └───────────────┘',
       '│',
-    ]) . PHP_EOL, $output);
+    ]) . "\n", $output);
   }
 
 }

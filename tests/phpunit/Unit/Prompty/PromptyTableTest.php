@@ -222,12 +222,12 @@ final class PromptyTableTest extends PromptyTestCase {
 
     $output = $this->captureOutput(fn() => Prompty::table([['Dish', 'Tart']]));
 
-    $this->assertSame(implode(PHP_EOL, [
+    $this->assertSame(implode("\n", [
       '│  ┌══════┬══════┐',
       '│  ║ Dish ║ Tart ║',
       '│  └══════┴══════┘',
       '│',
-    ]) . PHP_EOL, $output);
+    ]) . "\n", $output);
   }
 
   public function testRenderTableColors(): void {
@@ -278,14 +278,14 @@ final class PromptyTableTest extends PromptyTestCase {
 
     $output = $this->captureOutput(fn() => Prompty::table([['Dish', 'Pear tart']], headers: ['Field', 'Answer']));
 
-    $this->assertSame(implode(PHP_EOL, [
+    $this->assertSame(implode("\n", [
       '│  ┌───────┬───────────┐',
       '│  │ Field │ Answer    │',
       '│  ├───────┼───────────┤',
       '│  │ Dish  │ Pear tart │',
       '│  └───────┴───────────┘',
       '│',
-    ]) . PHP_EOL, $output);
+    ]) . "\n", $output);
   }
 
   public function testTableEmptyPrintsNothing(): void {
