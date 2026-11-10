@@ -11,6 +11,11 @@ namespace AlexSkrypnyk\Prompty\Tests\Fixtures;
  * only when the minifier does, unlike the payloads of Prompty.php.
  *
  * @license MIT
+ *
+ * @phpstan-type Ticket array{
+ *   dish: string,
+ *   copies: int,
+ * }
  */
 class EmbedSource {
 
@@ -102,6 +107,57 @@ class EmbedSource {
    */
   public function pause(?int $seconds = NULL): int {
     return ($seconds ?? 0) * 1000000 + static::PAUSE;
+  }
+
+  /**
+   * Lists a ticket line for each course.
+   *
+   * @param array<string, string> $dishes
+   *   Dish names keyed by course.
+   * @param int $copies
+   *   How many of each dish.
+   *
+   * @return list<string>
+   *   The ticket lines.
+   */
+  public function tickets(array $dishes, int $copies = 1): array {
+    $lines = [];
+
+    foreach ($dishes as $course => $dish) {
+      $lines[] = $this->plate(dish: $dish, copies: $copies) . ' / ' . $this->labelFor($course);
+    }
+
+    return $lines;
+  }
+
+  /**
+   * Counts a dish in a tally.
+   *
+   * @param array<string, int> $counts
+   *   Counts keyed by dish.
+   * @param string $dish
+   *   The dish.
+   */
+  public function tally(array &$counts, string $dish): void {
+    $counts[$dish] = ($counts[$dish] ?? 0) + 1;
+    ksort($counts);
+  }
+
+  /**
+   * Describes several portions of a dish.
+   *
+   * @param string $dish
+   *   The dish name.
+   * @param int $copies
+   *   How many portions.
+   *
+   * @return string
+   *   The portions.
+   */
+  protected function plate(string $dish, int $copies): string {
+    $copies = max(1, $copies);
+
+    return $copies === 1 ? $dish : sprintf('%dx %s', $copies, $dish);
   }
 
   /**

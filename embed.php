@@ -45,6 +45,39 @@ define('EMBED_SUMS_EMBEDDER', 'embed.php');
 // command.
 define('EMBED_NULL_DEVICE', PHP_OS_FAMILY === 'Windows' ? 'NUL' : '/dev/null');
 
+// Docblock tags for static analysis tools, which the embedded class does not
+// need.
+define('EMBED_TOOL_TAG_PATTERN', '/^\s*\*\s*@(?:phpstan|psalm|phan)-/');
+
+define('EMBED_SHORT_NAME_ALPHABET', 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ');
+
+define('EMBED_RESERVED_VARIABLES', [
+  'this', 'GLOBALS', '_SERVER', '_GET', '_POST', '_FILES', '_COOKIE', '_SESSION', '_REQUEST', '_ENV', 'argc', 'argv',
+]);
+
+// Short method names avoid keywords, so a renamed call never reads as one.
+define('EMBED_RESERVED_WORDS', [
+  'abstract', 'and', 'array', 'as', 'break', 'callable', 'case', 'catch', 'class', 'clone', 'const', 'continue', 'declare', 'default', 'die', 'do',
+  'echo', 'else', 'elseif', 'empty', 'enddeclare', 'endfor', 'endforeach', 'endif', 'endswitch', 'endwhile', 'enum', 'eval', 'exit', 'extends',
+  'final', 'finally', 'fn', 'for', 'foreach', 'function', 'global', 'goto', 'if', 'implements', 'include', 'instanceof', 'insteadof', 'interface',
+  'isset', 'list', 'match', 'namespace', 'new', 'or', 'parent', 'print', 'private', 'protected', 'public', 'readonly', 'require', 'return', 'self',
+  'static', 'switch', 'throw', 'trait', 'try', 'unset', 'use', 'var', 'while', 'xor', 'yield',
+]);
+
+// These read or write variables by name, so renaming breaks them.
+define('EMBED_NAME_SENSITIVE_FUNCTIONS', ['compact', 'extract', 'get_defined_vars']);
+
+// Tokens that can sit between a visibility keyword and the member it applies
+// to.
+define('EMBED_MODIFIER_TOKENS', [
+  T_WHITESPACE, T_STRING, T_ARRAY, T_STATIC, T_READONLY, T_FINAL, T_ABSTRACT, T_NS_SEPARATOR, T_NAME_QUALIFIED, T_NAME_FULLY_QUALIFIED,
+]);
+
+define('EMBED_AMPERSAND_TOKENS', [T_AMPERSAND_FOLLOWED_BY_VAR_OR_VARARG, T_AMPERSAND_NOT_FOLLOWED_BY_VAR_OR_VARARG]);
+
+// Tokens before a name that make it a member or a declaration.
+define('EMBED_MEMBER_TOKENS', [T_OBJECT_OPERATOR, T_NULLSAFE_OBJECT_OPERATOR, T_DOUBLE_COLON, T_FUNCTION]);
+
 /**
  * Finds the nearest token that is not whitespace.
  *
@@ -73,23 +106,191 @@ function find_significant_token(array $tokens, int $index, int $step): ?int {
 }
 
 /**
- * Collects the parameter names of a function signature.
+ * Tells whether a token is '&'.
+ *
+ * @param array{int, string, int}|string $token
+ *   A token from token_get_all().
+ *
+ * @return bool
+ *   TRUE for '&' in any of its token types.
+ */
+function embed_is_ampersand(array|string $token): bool {
+  return $token === '&' || (is_array($token) && in_array($token[0], EMBED_AMPERSAND_TOKENS, TRUE));
+}
+
+/**
+ * Removes static analysis tags from a docblock.
+ *
+ * A tag runs to the next tag, blank line or the end of the docblock. A blank
+ * line left doubled or before the end is dropped.
+ *
+ * @param string $docblock
+ *   The docblock.
+ *
+ * @return string
+ *   The docblock without the tags.
+ */
+function embed_docblock_strip_tool_tags(string $docblock): string {
+  $lines = [];
+  $in_tag = FALSE;
+
+  foreach (explode("\n", $docblock) as $line) {
+    if ($in_tag && preg_match('/^\s*\*(?:\s*$|\s*@|\/)/', $line) !== 1) {
+      continue;
+    }
+
+    $in_tag = preg_match(EMBED_TOOL_TAG_PATTERN, $line) === 1;
+
+    if ($in_tag) {
+      continue;
+    }
+
+    $is_blank = preg_match('/^\s*\*\s*$/', $line) === 1;
+    $is_end = str_ends_with(rtrim($line), '*/');
+
+    if (($is_blank || $is_end) && $lines !== [] && preg_match('/^\s*\*\s*$/', $lines[count($lines) - 1]) === 1) {
+      array_pop($lines);
+    }
+
+    $lines[] = $line;
+  }
+
+  return implode("\n", $lines);
+}
+
+/**
+ * Returns the short name at a position: 'a' to 'Z', then 'aa' onwards.
+ *
+ * @param int $index
+ *   The position, from 0.
+ *
+ * @return string
+ *   The short name.
+ */
+function embed_short_name(int $index): string {
+  $base = strlen(EMBED_SHORT_NAME_ALPHABET);
+  $name = '';
+
+  do {
+    $name = EMBED_SHORT_NAME_ALPHABET[$index % $base] . $name;
+    $index = intdiv($index, $base) - 1;
+  } while ($index >= 0);
+
+  return $name;
+}
+
+/**
+ * Assigns short names, the shortest to the most used name.
+ *
+ * @param array<string, int> $counts
+ *   Uses keyed by name, in order of first use.
+ * @param array<string, bool> $reserved
+ *   Lowercase names that no short name may take.
+ * @param bool $case_insensitive
+ *   Whether 2 short names that differ only in case would collide, as method
+ *   names do.
+ *
+ * @return array<string, string>
+ *   Short names keyed by name.
+ */
+function embed_short_names(array $counts, array $reserved, bool $case_insensitive = FALSE): array {
+  // The sort is stable, so names used equally often keep their order.
+  arsort($counts);
+
+  $map = [];
+  $index = 0;
+
+  foreach (array_keys($counts) as $name) {
+    do {
+      $short = embed_short_name($index);
+      $index++;
+    } while (isset($reserved[strtolower($short)]));
+
+    if ($case_insensitive) {
+      $reserved[strtolower($short)] = TRUE;
+    }
+
+    $map[(string) $name] = $short;
+  }
+
+  return $map;
+}
+
+/**
+ * Rejects a class that refers to variables by name.
  *
  * @param array<int, array{int, string, int}|string> $tokens
- *   Tokens from token_get_all().
- * @param int $index
- *   The index of the first token after the function name.
+ *   Tokens of the class from token_get_all().
  *
- * @return array<string, bool>
- *   Parameter names without the leading '$', as keys.
+ * @throws \RuntimeException
+ *   When the class uses a variable variable, 'global', "${...}"
+ *   interpolation or a function that reads variables by name.
  */
-function collect_parameter_names(array $tokens, int $index): array {
-  $names = [];
-  $depth = 0;
-  $count = count($tokens);
+function embed_compact_assert_supported(array $tokens): void {
+  foreach ($tokens as $index => $token) {
+    $construct = match (TRUE) {
+      $token === '$' => 'a variable variable',
+      is_array($token) && $token[0] === T_GLOBAL => '"global"',
+      is_array($token) && $token[0] === T_STRING_VARNAME => '"${...}" interpolation',
+      default => NULL,
+    };
 
-  while ($index < $count) {
-    $token = $tokens[$index];
+    if ($construct === NULL && is_array($token) && in_array($token[0], [T_STRING, T_NAME_FULLY_QUALIFIED], TRUE) && in_array(strtolower(ltrim($token[1], '\\')), EMBED_NAME_SENSITIVE_FUNCTIONS, TRUE)) {
+      $previous = find_significant_token($tokens, $index - 1, -1);
+      $next = find_significant_token($tokens, $index + 1, 1);
+      $is_member = $previous !== NULL && is_array($tokens[$previous]) && in_array($tokens[$previous][0], EMBED_MEMBER_TOKENS, TRUE);
+
+      if (!$is_member && $next !== NULL && $tokens[$next] === '(') {
+        $construct = ltrim($token[1], '\\') . '()';
+      }
+    }
+
+    if ($construct !== NULL) {
+      throw new \RuntimeException(sprintf('The class uses %s, which refers to variables by name, so --compact cannot rename them.', $construct));
+    }
+  }
+}
+
+/**
+ * Reads the name, parameters and extent of a method.
+ *
+ * @param array<int, array{int, string, int}|string> $tokens
+ *   Tokens of the class from token_get_all().
+ * @param int $index
+ *   The index of the method's 'function' token.
+ * @param bool $public
+ *   Whether the method is public.
+ *
+ * @return array{name: string, public: bool, start: int, body: int|null, end: int, parameters: list<string>, references: list<string>}
+ *   The method, with the index of its 'function' token, of the '{' that opens
+ *   its body or NULL when it has none, and of its last token. The
+ *   parameters, and those of them passed by reference.
+ *
+ * @throws \RuntimeException
+ *   When the method has no name, returns by reference, promotes a
+ *   constructor parameter, or has no end.
+ */
+function embed_compact_method(array $tokens, int $index, bool $public): array {
+  $count = count($tokens);
+  $name_index = find_significant_token($tokens, $index + 1, 1);
+
+  if ($name_index !== NULL && embed_is_ampersand($tokens[$name_index])) {
+    throw new \RuntimeException('The class has a method that returns by reference, which --compact does not support.');
+  }
+
+  if ($name_index === NULL || !is_array($tokens[$name_index]) || $tokens[$name_index][0] !== T_STRING) {
+    throw new \RuntimeException('The class has a "function" keyword outside a method body that is not a method declaration.');
+  }
+
+  $name = $tokens[$name_index][1];
+  $parameters = [];
+  $references = [];
+  $by_reference = FALSE;
+  $depth = 0;
+  $i = $name_index + 1;
+
+  for (; $i < $count; $i++) {
+    $token = $tokens[$i];
 
     if ($token === '(') {
       $depth++;
@@ -97,18 +298,496 @@ function collect_parameter_names(array $tokens, int $index): array {
     elseif ($token === ')') {
       $depth--;
 
-      if ($depth <= 0) {
+      if ($depth === 0) {
         break;
       }
     }
-    elseif (is_array($token) && $token[0] === T_VARIABLE && $depth > 0) {
-      $names[substr($token[1], 1)] = TRUE;
+    elseif (is_array($token) && in_array($token[0], [T_PUBLIC, T_PROTECTED, T_PRIVATE, T_READONLY], TRUE)) {
+      throw new \RuntimeException(sprintf('Method %s() promotes a constructor parameter, which --compact does not support.', $name));
     }
+    elseif (embed_is_ampersand($token)) {
+      $by_reference = TRUE;
+    }
+    elseif (is_array($token) && $token[0] === T_VARIABLE) {
+      $parameters[] = substr($token[1], 1);
 
-    $index++;
+      if ($by_reference) {
+        $references[] = substr($token[1], 1);
+      }
+
+      $by_reference = FALSE;
+    }
   }
 
-  return $names;
+  $method = [
+    'name' => $name,
+    'public' => $public,
+    'start' => $index,
+    'body' => NULL,
+    'end' => $i,
+    'parameters' => $parameters,
+    'references' => $references,
+  ];
+  $depth = 0;
+
+  for ($i++; $i < $count; $i++) {
+    $token = $tokens[$i];
+
+    // An abstract method ends at its signature.
+    if ($depth === 0 && $token === ';') {
+      return ['end' => $i] + $method;
+    }
+
+    if ($token === '{' || (is_array($token) && in_array($token[0], [T_CURLY_OPEN, T_DOLLAR_OPEN_CURLY_BRACES], TRUE))) {
+      $method['body'] ??= $i;
+      $depth++;
+    }
+    elseif ($token === '}') {
+      $depth--;
+
+      if ($depth === 0) {
+        return ['end' => $i] + $method;
+      }
+    }
+  }
+
+  throw new \RuntimeException(sprintf('Method %s() has no end.', $name));
+}
+
+/**
+ * Lists the properties and methods of a class.
+ *
+ * @param array<int, array{int, string, int}|string> $tokens
+ *   Tokens of the class from token_get_all().
+ *
+ * @return array{properties: array<string, bool>, methods: list<array{name: string, public: bool, start: int, body: int|null, end: int, parameters: list<string>, references: list<string>}>}
+ *   Whether each property is public, keyed by name, and the methods in
+ *   source order.
+ *
+ * @throws \RuntimeException
+ *   When a method cannot be read.
+ */
+function embed_compact_members(array $tokens): array {
+  $properties = [];
+  $methods = [];
+  $visibility = NULL;
+  $count = count($tokens);
+
+  for ($i = 0; $i < $count; $i++) {
+    if (!is_array($tokens[$i])) {
+      continue;
+    }
+
+    $token_type = $tokens[$i][0];
+
+    if (in_array($token_type, [T_PUBLIC, T_PROTECTED, T_PRIVATE], TRUE)) {
+      $visibility = $token_type;
+      continue;
+    }
+
+    if ($token_type === T_VARIABLE && $visibility !== NULL) {
+      $properties[substr($tokens[$i][1], 1)] = $visibility === T_PUBLIC;
+      $visibility = NULL;
+      continue;
+    }
+
+    // A method without a visibility keyword is public. Skipping its body
+    // leaves only class-level tokens for this loop.
+    if ($token_type === T_FUNCTION) {
+      $method = embed_compact_method($tokens, $i, $visibility === NULL || $visibility === T_PUBLIC);
+      $methods[] = $method;
+      $i = $method['end'];
+      $visibility = NULL;
+      continue;
+    }
+
+    if (!in_array($token_type, EMBED_MODIFIER_TOKENS, TRUE)) {
+      $visibility = NULL;
+    }
+  }
+
+  return ['properties' => $properties, 'methods' => $methods];
+}
+
+/**
+ * Collects the names that calls pass arguments by.
+ *
+ * @param array<int, array{int, string, int}|string> $tokens
+ *   Tokens of the class from token_get_all().
+ *
+ * @return array<string, array<string, bool>>
+ *   Argument names keyed by the lowercase name of the function or method
+ *   called, '__construct' for a call with 'new', or '' when the callee has
+ *   no name, such as a closure in a variable.
+ */
+function embed_compact_named_arguments(array $tokens): array {
+  $named = [];
+  $callees = [];
+  $count = count($tokens);
+
+  for ($i = 0; $i < $count; $i++) {
+    $token = $tokens[$i];
+
+    if ($token === '(') {
+      $callees[] = embed_compact_callee($tokens, $i);
+      continue;
+    }
+
+    if ($token === ')') {
+      array_pop($callees);
+      continue;
+    }
+
+    // A name that is a keyword, such as 'default', has its own token type.
+    if (!is_array($token) || $callees === [] || preg_match('/^[A-Za-z_]\w*$/', $token[1]) !== 1) {
+      continue;
+    }
+
+    $previous = find_significant_token($tokens, $i - 1, -1);
+    $next = find_significant_token($tokens, $i + 1, 1);
+
+    if ($previous !== NULL && $next !== NULL && in_array($tokens[$previous], ['(', ','], TRUE) && $tokens[$next] === ':') {
+      $named[$callees[count($callees) - 1]][$token[1]] = TRUE;
+    }
+  }
+
+  return $named;
+}
+
+/**
+ * Names the function or method that an opening parenthesis calls.
+ *
+ * @param array<int, array{int, string, int}|string> $tokens
+ *   Tokens of the class from token_get_all().
+ * @param int $index
+ *   The index of the '(' token.
+ *
+ * @return string
+ *   The lowercase name, '__construct' after 'new', or '' when there is no
+ *   name.
+ */
+function embed_compact_callee(array $tokens, int $index): string {
+  $name_index = find_significant_token($tokens, $index - 1, -1);
+
+  if ($name_index === NULL || !is_array($tokens[$name_index])) {
+    return '';
+  }
+
+  $previous = find_significant_token($tokens, $name_index - 1, -1);
+
+  if ($previous !== NULL && is_array($tokens[$previous]) && $tokens[$previous][0] === T_NEW) {
+    return '__construct';
+  }
+
+  return $tokens[$name_index][0] === T_STRING ? strtolower($tokens[$name_index][1]) : '';
+}
+
+/**
+ * Picks the parameters whose body uses are shorter through an alias.
+ *
+ * The alias is assigned at the top of the body, so it costs its assignment
+ * and saves the difference in length on every use.
+ *
+ * @param array<int, array{int, string, int}|string> $tokens
+ *   Tokens of the class from token_get_all().
+ * @param array{name: string, public: bool, start: int, body: int|null, end: int, parameters: list<string>, references: list<string>} $method
+ *   The method.
+ * @param array<int, string> $candidates
+ *   Parameters that keep their names in the signature.
+ *
+ * @return list<string>
+ *   The parameters to alias, in signature order.
+ */
+function embed_compact_aliases(array $tokens, array $method, array $candidates): array {
+  if ($method['body'] === NULL || $candidates === []) {
+    return [];
+  }
+
+  $uses = array_fill_keys($candidates, 0);
+
+  for ($i = $method['body']; $i <= $method['end']; $i++) {
+    if (!is_array($tokens[$i]) || $tokens[$i][0] !== T_VARIABLE || !isset($uses[substr($tokens[$i][1], 1)])) {
+      continue;
+    }
+
+    $previous = find_significant_token($tokens, $i - 1, -1);
+
+    if ($previous === NULL || !is_array($tokens[$previous]) || $tokens[$previous][0] !== T_DOUBLE_COLON) {
+      $uses[substr($tokens[$i][1], 1)]++;
+    }
+  }
+
+  // Assumes a 1-letter alias: '$a=$name;' against 'name' becoming 'a'.
+  $aliased = array_filter($uses, fn(int $count, string $name): bool => $count * (strlen($name) - 1) > strlen($name) + 5, ARRAY_FILTER_USE_BOTH);
+
+  return array_values(array_intersect($method['parameters'], array_keys($aliased)));
+}
+
+/**
+ * Tells whether a name token is a method or an instance property.
+ *
+ * @param array<int, array{int, string, int}|string> $tokens
+ *   Tokens of the class from token_get_all().
+ * @param int $index
+ *   The index of the T_STRING token.
+ *
+ * @return string|null
+ *   'method' for a method call or declaration, 'property' for an instance
+ *   property access, or NULL for any other name.
+ */
+function embed_compact_member_role(array $tokens, int $index): ?string {
+  $previous_index = find_significant_token($tokens, $index - 1, -1);
+  $next_index = find_significant_token($tokens, $index + 1, 1);
+  $previous = $previous_index === NULL ? NULL : $tokens[$previous_index];
+  $previous_type = is_array($previous) ? $previous[0] : $previous;
+
+  $is_member = $previous_type === T_OBJECT_OPERATOR || $previous_type === T_NULLSAFE_OBJECT_OPERATOR;
+  $is_call = $next_index !== NULL && $tokens[$next_index] === '(';
+
+  if (($is_call && ($is_member || $previous_type === T_DOUBLE_COLON)) || $previous_type === T_FUNCTION) {
+    return 'method';
+  }
+
+  return $is_member && !$is_call ? 'property' : NULL;
+}
+
+/**
+ * Renames the internals of a class and removes optional whitespace.
+ *
+ * Protected properties and methods get short names, the shortest for the
+ * most used. Variables and parameters get short names per method, closures
+ * included, so every method starts again from 'a'. Parameters of public
+ * methods and parameters that a call passes by name keep their names in the
+ * signature, and the body can use a short alias for them.
+ *
+ * @param string $class_code
+ *   The class declaration, without an opening tag.
+ *
+ * @return string
+ *   The compacted class declaration.
+ *
+ * @throws \RuntimeException
+ *   When the class uses a construct that renaming would break.
+ */
+function embed_compact(string $class_code): string {
+  $tokens = token_get_all('<?php ' . $class_code);
+  embed_compact_assert_supported($tokens);
+
+  $members = embed_compact_members($tokens);
+  $named = embed_compact_named_arguments($tokens);
+  $methods = $members['methods'];
+
+  $renamed_methods = [];
+  $reserved = ['m' => array_fill_keys(EMBED_RESERVED_WORDS, TRUE), 'p' => []];
+
+  foreach ($methods as $method) {
+    if ($method['public'] || str_starts_with($method['name'], '__')) {
+      $reserved['m'][strtolower($method['name'])] = TRUE;
+    }
+    else {
+      $renamed_methods[$method['name']] = TRUE;
+    }
+  }
+
+  $renamed_properties = [];
+
+  foreach ($members['properties'] as $property => $public) {
+    if ($public) {
+      $reserved['p'][strtolower($property)] = TRUE;
+    }
+    else {
+      $renamed_properties[$property] = TRUE;
+    }
+  }
+
+  // Per method scope: variables that keep their names everywhere, and
+  // parameters that keep their names in the signature because a caller can
+  // pass them by name. The body refers to such a parameter through an alias
+  // when that is shorter.
+  $kept = [];
+  $signature_kept = [];
+  $aliases = [];
+
+  foreach ($methods as $scope => $method) {
+    $kept[$scope] = array_fill_keys(EMBED_RESERVED_VARIABLES, TRUE) + ($named[''] ?? []);
+    $by_name = $method['public'] ? $method['parameters'] : array_intersect($method['parameters'], array_keys($named[strtolower($method['name'])] ?? []));
+    $signature_kept[$scope] = array_fill_keys(array_diff($by_name, array_keys($kept[$scope])), TRUE);
+    $aliases[$scope] = embed_compact_aliases($tokens, $method, array_diff(array_keys($signature_kept[$scope]), $method['references']));
+    $reserved['s' . $scope] = array_change_key_case($kept[$scope] + $signature_kept[$scope]);
+  }
+
+  // Each occurrence to rename, keyed by token index, with the group whose
+  // map renames it: 'm' methods, 'p' properties, 's<n>' variables of method n.
+  $occurrences = [];
+  $counts = [];
+  $method_count = count($methods);
+  $scope = 0;
+
+  foreach ($tokens as $index => $token) {
+    if (!is_array($token)) {
+      continue;
+    }
+
+    while ($scope < $method_count && $index > $methods[$scope]['end']) {
+      $scope++;
+    }
+
+    $in_method = $scope < $method_count && $index >= $methods[$scope]['start'];
+    $group = NULL;
+    $name = $token[1];
+
+    if ($token[0] === T_VARIABLE) {
+      $name = substr($name, 1);
+      $previous = find_significant_token($tokens, $index - 1, -1);
+      $is_static_property = $previous !== NULL && is_array($tokens[$previous]) && $tokens[$previous][0] === T_DOUBLE_COLON;
+
+      $in_signature = $in_method && $index < ($methods[$scope]['body'] ?? PHP_INT_MAX);
+
+      if (!$in_method || $is_static_property) {
+        $group = isset($renamed_properties[$name]) ? 'p' : NULL;
+      }
+      elseif (isset($kept[$scope][$name])) {
+        $group = NULL;
+      }
+      elseif (!isset($signature_kept[$scope][$name]) || (!$in_signature && in_array($name, $aliases[$scope], TRUE))) {
+        $group = 's' . $scope;
+      }
+    }
+    elseif ($token[0] === T_STRING) {
+      $role = embed_compact_member_role($tokens, $index);
+      $group = match (TRUE) {
+        $role === 'method' && isset($renamed_methods[$name]) => 'm',
+        $role === 'property' && isset($renamed_properties[$name]) => 'p',
+        default => NULL,
+      };
+    }
+
+    if ($group === NULL) {
+      continue;
+    }
+
+    $occurrences[$index] = [$group, $name];
+    $counts[$group][$name] = ($counts[$group][$name] ?? 0) + 1;
+  }
+
+  // Each alias assignment is 1 more use of the alias.
+  foreach ($aliases as $scope => $names) {
+    foreach ($names as $name) {
+      $counts['s' . $scope][$name]++;
+    }
+  }
+
+  $maps = [];
+
+  foreach ($counts as $group => $group_counts) {
+    $maps[$group] = embed_short_names($group_counts, $reserved[$group] ?? [], $group === 'm');
+  }
+
+  // Alias assignments, keyed by the index of the '{' that opens the body.
+  $insertions = [];
+
+  foreach ($aliases as $scope => $names) {
+    foreach ($names as $name) {
+      $body = (int) $methods[$scope]['body'];
+      $insertions[$body] = ($insertions[$body] ?? '') . sprintf('$%s=$%s;', $maps['s' . $scope][$name], $name);
+    }
+  }
+
+  $output = '';
+
+  // Token 0 is the opening tag added above.
+  foreach (array_slice($tokens, 1, NULL, TRUE) as $index => $token) {
+    if (isset($occurrences[$index])) {
+      [$group, $name] = $occurrences[$index];
+      $output .= (is_array($token) && $token[0] === T_VARIABLE ? '$' : '') . $maps[$group][$name];
+      continue;
+    }
+
+    $output .= (is_array($token) ? $token[1] : $token) . ($insertions[$index] ?? '');
+  }
+
+  return embed_compact_whitespace($output);
+}
+
+/**
+ * Removes the whitespace that PHP does not need between tokens.
+ *
+ * @param string $code
+ *   Code without an opening tag.
+ *
+ * @return string
+ *   The code with a space only between 2 word characters.
+ */
+function embed_compact_whitespace(string $code): string {
+  $tokens = token_get_all('<?php ' . $code);
+  $count = count($tokens);
+  $output = '';
+
+  for ($i = 1; $i < $count; $i++) {
+    if (!is_array($tokens[$i])) {
+      $output .= $tokens[$i];
+      continue;
+    }
+
+    if ($tokens[$i][0] !== T_WHITESPACE) {
+      $output .= $tokens[$i][1];
+      continue;
+    }
+
+    $before = is_array($tokens[$i - 1]) ? $tokens[$i - 1][1] : $tokens[$i - 1];
+    $after = '';
+
+    if ($i + 1 < $count) {
+      $after = is_array($tokens[$i + 1]) ? $tokens[$i + 1][1] : $tokens[$i + 1];
+    }
+
+    $before_last = $before !== '' ? $before[strlen($before) - 1] : '';
+    $after_first = $after !== '' ? $after[0] : '';
+
+    if (preg_match('/[a-zA-Z0-9_$]/', $before_last) && preg_match('/[a-zA-Z0-9_$\\\\]/', $after_first)) {
+      $output .= ' ';
+    }
+  }
+
+  return $output;
+}
+
+/**
+ * Formats the sizes of files as aligned rows.
+ *
+ * @param list<array{label: string, path: string, content: string, note?: string}> $rows
+ *   For each file, its label, its path, its content and an optional note.
+ *
+ * @return string
+ *   The rows under a 'Sizes:' heading.
+ */
+function embed_stats(array $rows): string {
+  $cells = [];
+
+  foreach ($rows as $row) {
+    $bytes = strlen($row['content']);
+    $lines = substr_count($row['content'], "\n") + ($row['content'] === '' || str_ends_with($row['content'], "\n") ? 0 : 1);
+    $cells[] = [
+      $row['label'],
+      number_format($bytes) . ($bytes === 1 ? ' byte' : ' bytes'),
+      number_format($lines) . ($lines === 1 ? ' line' : ' lines'),
+      trim($row['path'] . ' ' . ($row['note'] ?? '')),
+    ];
+  }
+
+  $widths = [];
+
+  for ($column = 0; $column < 3; $column++) {
+    $widths[$column] = max(0, ...array_map(fn(array $cell): int => strlen($cell[$column]), $cells));
+  }
+
+  $output = 'Sizes:' . PHP_EOL;
+
+  foreach ($cells as $cell) {
+    $output .= sprintf('  %s  %s  %s  %s', str_pad($cell[0], $widths[0]), str_pad($cell[1], $widths[1], ' ', STR_PAD_LEFT), str_pad($cell[2], $widths[2], ' ', STR_PAD_LEFT), $cell[3]) . PHP_EOL;
+  }
+
+  return $output;
 }
 
 /**
@@ -589,6 +1268,7 @@ $is_payload_only = FALSE;
 $is_check_mode = FALSE;
 $is_killswitch_skipped = FALSE;
 $is_verification_skipped = FALSE;
+$no_payload_file = FALSE;
 $source_override = NULL;
 $sums_path = NULL;
 $positional = [];
@@ -611,6 +1291,9 @@ for ($arg_i = 1; $arg_i < $argc; $arg_i++) {
   }
   elseif ($argv[$arg_i] === '--no-verify') {
     $is_verification_skipped = TRUE;
+  }
+  elseif ($argv[$arg_i] === '--no-payload-file') {
+    $no_payload_file = TRUE;
   }
   elseif ($argv[$arg_i] === '--source' || $argv[$arg_i] === '--sums') {
     $option = $argv[$arg_i];
@@ -653,7 +1336,8 @@ Options:
   --source <path>   Path to the PHP class file to embed. Defaults to Prompty.php
                     in the same directory as this script.
   --compact         Shorten internal property/method names, rename local
-                    variables, and reduce whitespace for a smaller output.
+                    variables and the parameters of internal methods, and
+                    reduce whitespace for a smaller output.
   --stdout          Output the processed class as a standalone PHP file instead
                     of embedding into a target script.
   --payload         Output exactly the code that embedding inserts between the
@@ -666,6 +1350,15 @@ Options:
                     verification run.
   --no-verify       Skip the post-embed verification run, still injecting the
                     kill switch block.
+  --no-payload-file Skip writing the embedded code to <Class>.<mode>.payload
+                    beside the output script.
+
+Embedding:
+  Before embedding, embed.php writes the code it inserts between the markers to
+  <Class>.<mode>.payload beside the output script, so it can be inspected and
+  compared with the release asset of the same name. After embedding, it prints
+  the sizes of the target script before and after, the source class and the
+  embedded code.
 
 Re-embedding:
   Running embed.php on a previously embedded script replaces the embedded region
@@ -688,6 +1381,11 @@ if ((int) $to_stdout + (int) $is_payload_only + (int) $is_check_mode > 1) {
 
 if ($sums_path !== NULL && !$is_check_mode) {
   fwrite(STDERR, sprintf('Error: --sums is only used with --check.%s', PHP_EOL));
+  exit(1);
+}
+
+if ($no_payload_file && ($to_stdout || $is_payload_only || $is_check_mode)) {
+  fwrite(STDERR, sprintf('Error: --no-payload-file is only used when embedding into a script.%s', PHP_EOL));
   exit(1);
 }
 
@@ -797,7 +1495,7 @@ for ($i = 0; $i < $token_count; $i++) {
 
   if ($token_type === T_COMMENT || $token_type === T_DOC_COMMENT) {
     if ($i === $class_header_index) {
-      $output .= $token_value;
+      $output .= embed_docblock_strip_tool_tags($token_value);
     }
 
     continue;
@@ -861,253 +1559,21 @@ if ($class_start !== NULL) {
   $before_class = array_slice($result_lines, 0, $class_start);
   $class_lines = array_slice($result_lines, $class_start);
   $class_single = implode(' ', array_map(trim(...), $class_lines));
+
+  if ($is_compact) {
+    try {
+      $class_single = embed_compact($class_single);
+    }
+    catch (\RuntimeException $runtime_exception) {
+      fwrite(STDERR, sprintf('Error: %s%s', $runtime_exception->getMessage(), PHP_EOL));
+      exit(1);
+    }
+  }
+
   $result_lines = array_merge($before_class, [$class_single]);
 }
 
 $minified = implode("\n", $result_lines);
-
-// Compact mode: rename internals and reduce whitespace.
-if ($is_compact && $class_start !== NULL) {
-  $class_line = end($result_lines);
-
-  $php_code = '<?php ' . $class_line;
-  $compact_tokens = token_get_all($php_code);
-  $compact_token_count = count($compact_tokens);
-
-  // --- Step 1: Collect protected/private property and method names. ---
-  $protected_props = [];
-  $protected_methods = [];
-  $public_method_params = [];
-
-  $visibility = NULL;
-
-  for ($i = 0; $i < $compact_token_count; $i++) {
-    if (!is_array($compact_tokens[$i])) {
-      continue;
-    }
-
-    $token_type = $compact_tokens[$i][0];
-
-    if ($token_type === T_PUBLIC) {
-      $visibility = 'public';
-      continue;
-    }
-
-    if ($token_type === T_PROTECTED || $token_type === T_PRIVATE) {
-      $visibility = 'protected';
-      continue;
-    }
-
-    // 'static' can follow the visibility keyword, so it must not reset the
-    // visibility.
-    if ($token_type === T_STATIC) {
-      continue;
-    }
-
-    if ($token_type === T_VARIABLE && $visibility !== NULL) {
-      // Treat as a property unless the preceding non-whitespace token is
-      // T_FUNCTION.
-      $previous = find_significant_token($compact_tokens, $i - 1, -1);
-      $is_property = $previous === NULL || !is_array($compact_tokens[$previous]) || $compact_tokens[$previous][0] !== T_FUNCTION;
-
-      if ($is_property && $visibility !== 'public') {
-        $protected_props[] = substr($compact_tokens[$i][1], 1);
-      }
-
-      $visibility = NULL;
-      continue;
-    }
-
-    if ($token_type === T_FUNCTION) {
-      $name_index = find_significant_token($compact_tokens, $i + 1, 1);
-      $name_token = $name_index === NULL ? NULL : $compact_tokens[$name_index];
-
-      if ($name_index !== NULL && is_array($name_token) && $name_token[0] === T_STRING && !str_starts_with($name_token[1], '__')) {
-        if ($visibility !== 'public') {
-          $protected_methods[] = $name_token[1];
-        }
-        else {
-          $public_method_params += collect_parameter_names($compact_tokens, $name_index + 1);
-        }
-      }
-
-      $visibility = NULL;
-      continue;
-    }
-
-    // Reset visibility on any token that cannot be part of a property type.
-    $type_tokens = [T_WHITESPACE, T_STRING, T_ARRAY, T_NS_SEPARATOR, T_NAME_QUALIFIED, T_NAME_FULLY_QUALIFIED];
-
-    if (!in_array($token_type, $type_tokens, TRUE)) {
-      $visibility = NULL;
-    }
-  }
-
-  // --- Step 2: Build rename maps. ---
-  $prop_map = [];
-  $idx = 0;
-
-  foreach (array_unique($protected_props) as $prop) {
-    $prop_map[$prop] = '_p' . $idx;
-    $idx++;
-  }
-
-  $method_map = [];
-  $idx = 0;
-
-  foreach (array_unique($protected_methods) as $method) {
-    $method_map[$method] = '_m' . $idx;
-    $idx++;
-  }
-
-  $superglobals = [
-    'this', 'GLOBALS', '_SERVER', '_GET', '_POST', '_FILES',
-    '_COOKIE', '_SESSION', '_REQUEST', '_ENV', 'argc', 'argv',
-  ];
-
-  $all_vars = [];
-
-  for ($i = 0; $i < $compact_token_count; $i++) {
-    if (!is_array($compact_tokens[$i]) || $compact_tokens[$i][0] !== T_VARIABLE) {
-      continue;
-    }
-
-    $var_name = substr($compact_tokens[$i][1], 1);
-
-    if (in_array($var_name, $superglobals, TRUE)) {
-      continue;
-    }
-
-    // Skip names in the property map: declarations, static::$name
-    // references and same-named locals are renamed via $prop_map instead.
-    if (isset($prop_map[$var_name])) {
-      continue;
-    }
-
-    if (isset($public_method_params[$var_name])) {
-      continue;
-    }
-
-    $all_vars[$var_name] = TRUE;
-  }
-
-  $var_map = [];
-  $idx = 0;
-
-  foreach (array_keys($all_vars) as $var) {
-    $short = '';
-    $n = $idx;
-
-    do {
-      $short = chr(97 + ($n % 26)) . $short;
-      $n = intdiv($n, 26) - 1;
-    } while ($n >= 0);
-
-    $var_map[$var] = $short;
-    $idx++;
-  }
-
-  // --- Step 3: Apply renames via token walk. ---
-  $compact_output = '';
-
-  for ($i = 1; $i < $compact_token_count; $i++) {
-    if (is_string($compact_tokens[$i])) {
-      $compact_output .= $compact_tokens[$i];
-      continue;
-    }
-
-    $token_type = $compact_tokens[$i][0];
-    $token_value = $compact_tokens[$i][1];
-
-    if ($token_type === T_VARIABLE) {
-      $var_name = substr($token_value, 1);
-
-      // In '$this->name', only '$this' is a T_VARIABLE; the property name is a
-      // T_STRING, renamed below.
-      if (isset($var_map[$var_name])) {
-        $compact_output .= '$' . $var_map[$var_name];
-        continue;
-      }
-
-      // Property declaration or static::$propName reference.
-      if (isset($prop_map[$var_name])) {
-        $compact_output .= '$' . $prop_map[$var_name];
-        continue;
-      }
-
-      $compact_output .= $token_value;
-      continue;
-    }
-
-    if ($token_type === T_STRING) {
-      $prev_index = find_significant_token($compact_tokens, $i - 1, -1);
-      $next_index = find_significant_token($compact_tokens, $i + 1, 1);
-      $prev = $prev_index === NULL ? NULL : $compact_tokens[$prev_index];
-      $next = $next_index === NULL ? NULL : $compact_tokens[$next_index];
-
-      $prev_type = is_array($prev) ? $prev[0] : $prev;
-      $is_member = $prev_type === T_OBJECT_OPERATOR || $prev_type === T_NULLSAFE_OBJECT_OPERATOR;
-      $is_call = $next === '(';
-      $is_method = ($is_call && ($is_member || $prev_type === T_DOUBLE_COLON)) || $prev_type === T_FUNCTION;
-
-      if ($is_method && isset($method_map[$token_value])) {
-        $compact_output .= $method_map[$token_value];
-        continue;
-      }
-
-      if ($is_member && !$is_call && isset($prop_map[$token_value])) {
-        $compact_output .= $prop_map[$token_value];
-        continue;
-      }
-    }
-
-    $compact_output .= $token_value;
-  }
-
-  // --- Step 4: Reduce whitespace. ---
-  // Remove spaces around operators where PHP allows it.
-  // Works on tokens so string contents are not modified.
-  $whitespace_tokens = token_get_all('<?php ' . $compact_output);
-  $whitespace_token_count = count($whitespace_tokens);
-  $whitespace_output = '';
-
-  for ($i = 1; $i < $whitespace_token_count; $i++) {
-    if (!is_array($whitespace_tokens[$i])) {
-      $whitespace_output .= $whitespace_tokens[$i];
-      continue;
-    }
-
-    $token_type = $whitespace_tokens[$i][0];
-    $token_value = $whitespace_tokens[$i][1];
-
-    if ($token_type === T_WHITESPACE) {
-      $before = is_array($whitespace_tokens[$i - 1]) ? $whitespace_tokens[$i - 1][1] : $whitespace_tokens[$i - 1];
-      $after = '';
-
-      if ($i + 1 < $whitespace_token_count) {
-        $after = is_array($whitespace_tokens[$i + 1]) ? $whitespace_tokens[$i + 1][1] : $whitespace_tokens[$i + 1];
-      }
-
-      $before_last = $before !== '' ? $before[strlen($before) - 1] : '';
-      $after_first = $after !== '' ? $after[0] : '';
-
-      $before_is_word = preg_match('/[a-zA-Z0-9_$]/', $before_last);
-      $after_is_word = preg_match('/[a-zA-Z0-9_$\\\\]/', $after_first);
-
-      if ($before_is_word && $after_is_word) {
-        $whitespace_output .= ' ';
-      }
-
-      continue;
-    }
-
-    $whitespace_output .= $token_value;
-  }
-
-  $result_lines = $before_class;
-  $result_lines[] = $whitespace_output;
-  $minified = implode("\n", $result_lines);
-}
 
 $namespace = '';
 
@@ -1119,10 +1585,20 @@ $payload = trim($minified) . "\n";
 
 $payload = (string) preg_replace('/^(class\s)/m', "// @phpstan-ignore-next-line\n$1", $payload, 1);
 
+$mode = $is_compact ? 'compact' : 'min';
+$source_row = ['label' => $identity['class'] . ' source', 'path' => $source_path, 'content' => $source];
+$payload_label = $identity['class'] . ' embeddable';
+$payload_note = sprintf('(%s%% of the source)', number_format(strlen($payload) / max(1, strlen($source)) * 100, 1));
+
 if ($is_payload_only) {
-  file_put_contents($stdout_path, $payload);
+  if (file_put_contents($stdout_path, $payload) === FALSE) {
+    fwrite(STDERR, sprintf('Error: Could not write %s%s', $stdout_path, PHP_EOL));
+    exit(1);
+  }
 
   echo sprintf('Written to %s%s', $stdout_path, PHP_EOL);
+  $payload_row = ['label' => $payload_label, 'path' => $stdout_path, 'content' => $payload, 'note' => $payload_note];
+  echo PHP_EOL . embed_stats([$source_row, $payload_row]);
   exit(0);
 }
 
@@ -1148,6 +1624,8 @@ if ($to_stdout) {
   }
 
   echo sprintf('Written to %s%s', $stdout_path, PHP_EOL);
+  $standalone_row = ['label' => $identity['class'] . ' standalone', 'path' => $stdout_path, 'content' => $standalone];
+  echo PHP_EOL . embed_stats([$source_row, $standalone_row]);
   exit(0);
 }
 
@@ -1161,10 +1639,32 @@ if ($embedder_hash === FALSE) {
 $attributes = [
   'class' => $identity['class'],
   'version' => $identity['version'],
-  'mode' => $is_compact ? 'compact' : 'min',
+  'mode' => $mode,
   'sha256' => hash('sha256', $payload),
   'embedder' => $embedder_hash,
 ];
+
+// Written before the target is read, so the payload can be inspected even
+// when embedding fails. The name matches the release asset, so its hash can
+// be compared with the release's SHA256SUMS.
+$payload_file = NULL;
+
+if (!$no_payload_file) {
+  $payload_dir = dirname($target_path);
+  $payload_file = ($payload_dir === '.' ? '' : $payload_dir . '/') . $identity['class'] . '.' . $mode . '.payload';
+
+  if (basename($payload_file) === basename($target_path)) {
+    fwrite(STDERR, sprintf('Error: The payload file would overwrite the target script %s. Pass --no-payload-file.%s', $target_path, PHP_EOL));
+    exit(1);
+  }
+
+  if (file_put_contents($payload_file, $payload) === FALSE) {
+    fwrite(STDERR, sprintf('Error: Could not write the payload file %s%s', $payload_file, PHP_EOL));
+    exit(1);
+  }
+
+  echo sprintf('Wrote the embeddable %s to %s%s', $identity['class'], $payload_file, PHP_EOL);
+}
 
 $embedded = embed_marker_build($attributes) . "\n";
 $embedded .= $payload;
@@ -1242,6 +1742,23 @@ if ($lint_exit !== 0) {
 }
 
 echo sprintf('Embedded into %s%s', $target_path, PHP_EOL);
+
+$growth = strlen((string) $result) - strlen($target);
+$before_row = ['label' => 'Target script before', 'path' => $target_path, 'content' => $target];
+$payload_row = [
+  'label' => $payload_label,
+  'path' => $payload_file ?? '',
+  'content' => $payload,
+  'note' => $payload_note . ($payload_file === NULL ? ' (not written to a file)' : ''),
+];
+$after_row = [
+  'label' => 'Target script after',
+  'path' => $target_path,
+  'content' => (string) $result,
+  'note' => sprintf('(%s%s bytes)', $growth < 0 ? '-' : '+', number_format(abs($growth))),
+];
+
+echo PHP_EOL . embed_stats([$before_row, $source_row, $payload_row, $after_row]);
 
 $final = file_get_contents($target_path);
 $final_has_killswitch = $final !== FALSE && str_contains($final, "if (!getenv('SHOULD_PROCEED'))");
