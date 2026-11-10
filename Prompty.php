@@ -40,6 +40,7 @@ namespace AlexSkrypnyk\Prompty;
  *   scroll: int,
  *   placeholder_fallback: bool,
  *   width: int,
+ *   legend: bool,
  * }
  */
 class Prompty {
@@ -193,6 +194,9 @@ class Prompty {
     'box_bottom_tee' => '┴',
     'box_left_tee' => '├',
     'box_right_tee' => '┤',
+    'legend_vertical' => '↑↓',
+    'legend_horizontal' => '←→',
+    'legend_separator' => '·',
   ];
 
   /**
@@ -230,6 +234,9 @@ class Prompty {
     'box_bottom_tee' => '+',
     'box_left_tee' => '+',
     'box_right_tee' => '+',
+    'legend_vertical' => 'up/down',
+    'legend_horizontal' => 'left/right',
+    'legend_separator' => '-',
   ];
 
   /**
@@ -296,6 +303,12 @@ class Prompty {
     'line' => 'line',
     'lines' => 'lines',
     'step_total' => '(%d/%d)',
+    'legend_move' => 'move',
+    'legend_toggle' => 'toggle',
+    'legend_enter' => 'enter confirm',
+    'legend_space' => 'space toggle',
+    'legend_type' => 'type to filter',
+    'legend_yes_no' => 'y/n choose',
   ];
 
   /**
@@ -353,6 +366,11 @@ class Prompty {
    * Terminal columns that rendered lines wrap to (0 = detect).
    */
   protected int $cfgWidth = 0;
+
+  /**
+   * Whether an active widget draws the keys it accepts under it.
+   */
+  protected bool $cfgLegend = FALSE;
 
   /**
    * Terminal columns measured for the frame being rendered.
@@ -463,6 +481,7 @@ class Prompty {
       'scroll' => $this->cfgScroll,
       'placeholder_fallback' => $this->cfgPlaceholderFallback,
       'width' => $this->cfgWidth,
+      'legend' => $this->cfgLegend,
     ];
   }
 
@@ -488,6 +507,7 @@ class Prompty {
     $this->cfgScroll = $snapshot['scroll'];
     $this->cfgPlaceholderFallback = $snapshot['placeholder_fallback'];
     $this->cfgWidth = $snapshot['width'];
+    $this->cfgLegend = $snapshot['legend'];
     $this->resolveDisplay();
   }
 
@@ -517,6 +537,7 @@ class Prompty {
       'scroll' => $p->cfgScroll,
       'placeholder_fallback' => $p->cfgPlaceholderFallback,
       'width' => $p->cfgWidth,
+      'legend' => $p->cfgLegend,
     ];
   }
 
@@ -587,6 +608,10 @@ class Prompty {
    * @param int|null $width
    *   Terminal columns that rendered lines wrap to. 0 detects the width from
    *   the terminal, falling back to 80.
+   * @param bool|null $legend
+   *   Draw the keys each widget accepts under it while it waits for input
+   *   (TRUE), or leave them out (FALSE). NULL keeps the current setting, which
+   *   is FALSE until set.
    *
    * @throws \InvalidArgumentException
    *   When a map holds an unknown key, a list is empty or holds a blank value,
@@ -609,6 +634,7 @@ class Prompty {
     ?int $scroll = NULL,
     ?bool $placeholder_fallback = NULL,
     ?int $width = NULL,
+    ?bool $legend = NULL,
   ): void {
     $p = static::instance();
 
@@ -717,6 +743,10 @@ class Prompty {
       $p->cfgWidth = $width;
     }
 
+    if ($legend !== NULL) {
+      $p->cfgLegend = $legend;
+    }
+
     $p->resolveDisplay();
   }
 
@@ -779,6 +809,10 @@ class Prompty {
    * @param int|null $width
    *   Terminal columns that rendered lines wrap to. 0 detects the width from
    *   the terminal, falling back to 80.
+   * @param bool|null $legend
+   *   Draw the keys each widget accepts under it while it waits for input
+   *   (TRUE), or leave them out (FALSE). NULL keeps the current setting, which
+   *   is FALSE until set.
    *
    * @return array<string, string|bool|int|array<string,string>>|null
    *   Collected results or NULL if cancelled.
@@ -804,6 +838,7 @@ class Prompty {
     ?int $scroll = NULL,
     ?bool $placeholder_fallback = NULL,
     ?int $width = NULL,
+    ?bool $legend = NULL,
   ): ?array {
     $p = static::instance();
     $snapshot = NULL;
@@ -826,9 +861,10 @@ class Prompty {
       || $interactive !== NULL
       || $scroll !== NULL
       || $placeholder_fallback !== NULL
-      || $width !== NULL) {
+      || $width !== NULL
+      || $legend !== NULL) {
       $snapshot = $p->snapshotConfig();
-      static::configure($symbols_unicode, $symbols_ascii, $colors, $spacing, $labels, $unicode, $ansi, $env_prefix, $truthy, $falsy, $output, $interactive, $scroll, $placeholder_fallback, $width);
+      static::configure($symbols_unicode, $symbols_ascii, $colors, $spacing, $labels, $unicode, $ansi, $env_prefix, $truthy, $falsy, $output, $interactive, $scroll, $placeholder_fallback, $width, $legend);
     }
 
     $p->results = [];
@@ -1128,6 +1164,7 @@ class Prompty {
         $lines = array_merge($lines, $p->wrap($p->bar() . $p->cfgSpacing['indent'], $display, $p->bar() . $p->cfgSpacing['indent']));
         $lines = array_merge($lines, $p->renderError($error));
         $lines = array_merge($lines, $p->renderHelp($help));
+        $lines = array_merge($lines, $p->renderLegend('text'));
         $lines[] = $p->bar();
 
         return $lines;
@@ -1140,6 +1177,7 @@ class Prompty {
       $lines = array_merge($lines, $p->wrap($p->bar() . $body_prefix, $display, $p->bar() . $body_prefix));
       $lines = array_merge($lines, $p->renderError($error, $depth, $open));
       $lines = array_merge($lines, $p->renderHelp($help, $depth, $open));
+      $lines = array_merge($lines, $p->renderLegend('text', $depth, $open));
       $lines[] = $p->bar() . $body_prefix;
 
       return $lines;
@@ -1385,6 +1423,7 @@ class Prompty {
         $lines = array_merge($lines, $p->renderScrollWindow($rows, $first, $visible, count($option_labels)));
         $lines = array_merge($lines, $p->renderError($error));
         $lines = array_merge($lines, $p->renderHelp($help));
+        $lines = array_merge($lines, $p->renderLegend('select'));
         $lines[] = $p->bar();
 
         return $lines;
@@ -1410,6 +1449,7 @@ class Prompty {
       $lines = array_merge($lines, $p->renderScrollWindow($rows, $first, $visible, count($option_labels), $depth, $open));
       $lines = array_merge($lines, $p->renderError($error, $depth, $open));
       $lines = array_merge($lines, $p->renderHelp($help, $depth, $open));
+      $lines = array_merge($lines, $p->renderLegend('select', $depth, $open));
       $lines[] = $p->bar() . $body_prefix;
 
       return $lines;
@@ -1676,6 +1716,7 @@ class Prompty {
         $lines = array_merge($lines, $p->renderScrollWindow($rows, $first, $visible, count($option_labels)));
         $lines = array_merge($lines, $p->renderError($error));
         $lines = array_merge($lines, $p->renderHelp($help));
+        $lines = array_merge($lines, $p->renderLegend('multiselect'));
         $lines[] = $p->bar();
 
         return $lines;
@@ -1702,6 +1743,7 @@ class Prompty {
       $lines = array_merge($lines, $p->renderScrollWindow($rows, $first, $visible, count($option_labels), $depth, $open));
       $lines = array_merge($lines, $p->renderError($error, $depth, $open));
       $lines = array_merge($lines, $p->renderHelp($help, $depth, $open));
+      $lines = array_merge($lines, $p->renderLegend('multiselect', $depth, $open));
       $lines[] = $p->bar() . $body_prefix;
 
       return $lines;
@@ -1968,6 +2010,7 @@ class Prompty {
         $lines = array_merge($lines, $p->renderScrollWindow($rows, $first, $visible, count($matches)));
         $lines = array_merge($lines, $p->renderError($error));
         $lines = array_merge($lines, $p->renderHelp($help));
+        $lines = array_merge($lines, $p->renderLegend('suggest'));
         $lines[] = $p->bar();
 
         return $lines;
@@ -1979,6 +2022,7 @@ class Prompty {
       $lines = array_merge($lines, $p->renderScrollWindow($rows, $first, $visible, count($matches), $depth, $open));
       $lines = array_merge($lines, $p->renderError($error, $depth, $open));
       $lines = array_merge($lines, $p->renderHelp($help, $depth, $open));
+      $lines = array_merge($lines, $p->renderLegend('suggest', $depth, $open));
       $lines[] = $p->bar() . $body_prefix;
 
       return $lines;
@@ -2215,6 +2259,7 @@ class Prompty {
         $lines = array_merge($lines, $p->wrap($p->bar() . $p->cfgSpacing['indent'], $options_display, $p->bar() . $p->cfgSpacing['indent']));
         $lines = array_merge($lines, $p->renderError($error));
         $lines = array_merge($lines, $p->renderHelp($help));
+        $lines = array_merge($lines, $p->renderLegend('confirm'));
         $lines[] = $p->bar();
 
         return $lines;
@@ -2227,6 +2272,7 @@ class Prompty {
       $lines = array_merge($lines, $p->wrap($p->bar() . $body_prefix, $options_display, $p->bar() . $body_prefix));
       $lines = array_merge($lines, $p->renderError($error, $depth, $open));
       $lines = array_merge($lines, $p->renderHelp($help, $depth, $open));
+      $lines = array_merge($lines, $p->renderLegend('confirm', $depth, $open));
       $lines[] = $p->bar() . $body_prefix;
 
       return $lines;
@@ -5235,6 +5281,44 @@ class Prompty {
     }
 
     return $lines;
+  }
+
+  /**
+   * Renders the keys a widget accepts, drawn like help.
+   *
+   * A segment whose label is blank is left out, so an empty label removes
+   * that key from the legend.
+   *
+   * @param string $widget
+   *   The widget type: text, select, multiselect, suggest or confirm.
+   * @param int $depth
+   *   The current nesting depth.
+   * @param array<int, bool> $open
+   *   Tracks which depth levels have continuing siblings.
+   *
+   * @return array<int, string>
+   *   The rendered legend lines, or no lines when the legend is off.
+   */
+  protected function renderLegend(string $widget, int $depth = 0, array $open = []): array {
+    if (!$this->cfgLegend) {
+      return [];
+    }
+
+    $move = $this->label('legend_move') === '' ? '' : $this->cfgSymbols['legend_vertical'] . ' ' . $this->label('legend_move');
+    $toggle = $this->label('legend_toggle') === '' ? '' : $this->cfgSymbols['legend_horizontal'] . ' ' . $this->label('legend_toggle');
+    $enter = $this->label('legend_enter');
+
+    $segments = match ($widget) {
+      'select' => [$move, $enter],
+      'multiselect' => [$move, $this->label('legend_space'), $enter],
+      'suggest' => [$this->label('legend_type'), $move, $enter],
+      'confirm' => [$toggle, $this->label('legend_yes_no'), $enter],
+      default => [$enter],
+    };
+
+    $segments = array_filter($segments, fn(string $segment): bool => trim($segment) !== '');
+
+    return $this->renderHelp(implode(' ' . $this->cfgSymbols['legend_separator'] . ' ', $segments), $depth, $open);
   }
 
   /**

@@ -141,6 +141,13 @@ final class PromptyFlowConfigScopeTest extends PromptyTestCase {
       },
       'width',
     ];
+
+    yield 'legend' => [
+      static function () use ($steps): void {
+        Prompty::flow($steps, legend: TRUE);
+      },
+      'legend',
+    ];
   }
 
   public function testSecondFlowSeesTheGlobalConfiguration(): void {
