@@ -20,6 +20,9 @@ Namespace: `AlexSkrypnyk\Prompty`. Key files: `Prompty.php` (library),
 - **Built steps** - `step()` returns a step array whose `__call` runs a
   builder with the answers so far and then the widget closure it returns.
   `condition` and `children` live on `step()`, so they are known up front.
+- **Sections** - `section()` returns a keyless step array carrying
+  `__section`. `walkFlow()` draws it only when a step in its group (the steps
+  up to the next section) renders, and stores no result. Top level only.
 - **Tree rendering** - nested children use bar connectors; `open` array
   tracks continuing siblings.
 - **Widget signatures** - all 5 widgets share one parameter order, and any

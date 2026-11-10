@@ -32,6 +32,7 @@ Prompty asks questions in the terminal for PHP command-line scripts, from a sing
 - 🔀 [**Flows**](#flows) - group prompts into a wizard with an intro, an outro, numbering and cancellation
 - 🌳 [**Nested flows**](#nested-flows-with-conditions) - conditional children drawn as a tree
 - 🧱 [**Steps built from earlier answers**](#steps-built-from-earlier-answers) - a step's label, options or default taken from the answers before it
+- 🔖 [**Section headings**](#section-headings) - group a long flow's steps under headings in the tree
 - ⚡ [**Standalone mode**](#standalone-mode) - use any widget on its own, outside a flow
 - 🌍 [**Environment variable discovery**](#environment-variable-discovery) - fill answers from environment variables
 - 🤖 [**Non-interactive mode**](#non-interactive-mode) - answer every prompt from its default, for CI and scripted runs
@@ -436,6 +437,66 @@ Pass `condition` and `children` to `step()`, because `flow()` reads them before 
 
 - A builder returns a widget call with its own `condition` or `children`, or returns something other than a widget call. The flow throws an `UnexpectedValueException` when it reaches the step.
 - `step()` runs outside the callable passed to `flow()`. It throws a `LogicException`.
+
+### Section headings
+
+A long flow can group its steps under headings. Add `Prompty::section()` to the steps array without a key. The flow draws its title in bold, with an optional dim description under it:
+
+```php
+$results = Prompty::flow(fn(): array => [
+  Prompty::section('The dish',
+    description: 'Name the dish and place it in the meal.',
+  ),
+  'dish' => Prompty::text('Dish name', placeholder: 'pear tart'),
+  'course' => Prompty::select('Course', options: [
+    'main' => 'Main',
+    'dessert' => 'Dessert',
+  ]),
+
+  Prompty::section('Service'),
+  'table' => Prompty::select('Table', options: [
+    '4' => 'Table 4',
+    '7' => 'Table 7',
+    '12' => 'Table 12',
+  ]),
+  'extras' => Prompty::step(
+    fn(array $r) => Prompty::multiselect('Extras',
+      options: $r['course'] === 'dessert'
+        ? ['honey' => 'Honey', 'almonds' => 'Almonds']
+        : ['bread' => 'Bread', 'olives' => 'Olives'],
+    ),
+  ),
+], intro: 'Compose an order');
+```
+
+The headings sit in the tree among the steps:
+
+```text
+┌  Compose an order
+│
+├  The dish
+│  Name the dish and place it in the meal.
+│
+◆  Dish name
+│  pear tart
+│
+◆  Course
+│  Dessert
+│
+├  Service
+│
+◇  Table
+```
+
+A section adds nothing to the results. Every step after it still receives every earlier answer in `condition` and `step()`, and numbering continues across sections. A newline in the title or the description starts a new line.
+
+A section's group is the steps up to the next section. The flow draws a heading only when at least 1 step in its group renders. In a flow with no `intro`, the first heading opens the tree with `┌`. To hide a heading by itself, pass `condition`. The steps under it keep their own conditions.
+
+`section()` throws an exception in 3 cases:
+
+- It runs outside the callable passed to `flow()`. It throws a `LogicException`.
+- Its title is blank. It throws an `InvalidArgumentException`.
+- It has a string key or sits among a step's `children`. The flow throws an `InvalidArgumentException` before the first prompt.
 
 ## Standalone mode
 
@@ -939,7 +1000,7 @@ The following table lists every option and its default:
 
 The map-valued options take these keys:
 
-- `symbols_unicode`, `symbols_ascii`: `bar`, `completed`, `active`, `intro`, `outro`, `pointer`, `radio_on`, `radio_off`, `check_on`, `check_off`, `hint_arrow`, `error`, `scroll_up`, `scroll_down`
+- `symbols_unicode`, `symbols_ascii`: `bar`, `completed`, `active`, `intro`, `outro`, `section`, `pointer`, `radio_on`, `radio_off`, `check_on`, `check_off`, `hint_arrow`, `error`, `scroll_up`, `scroll_down`
 - `colors`: `reset`, `dim`, `dim_italic`, `cyan`, `green`, `red`, `gray`, `bold`, `white`
 - `spacing`: `indent`, `hint_indent`, `hint_cont`
 - `labels`: `yes`, `no`, `cancelled`, `none`, `separator`, `more`
