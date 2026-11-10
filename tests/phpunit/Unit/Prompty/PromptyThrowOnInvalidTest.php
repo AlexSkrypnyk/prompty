@@ -17,11 +17,11 @@ use PHPUnit\Framework\Attributes\Group;
 #[Group('unit')]
 final class PromptyThrowOnInvalidTest extends PromptyTestCase {
 
-  protected const COURSES = ['starter' => 'Starter', 'main' => 'Main', 'dessert' => 'Dessert'];
+  protected const array COURSES = ['starter' => 'Starter', 'main' => 'Main', 'dessert' => 'Dessert'];
 
-  protected const EXTRAS = ['bread' => 'Bread', 'olives' => 'Olives', 'herbs' => 'Herbs'];
+  protected const array EXTRAS = ['bread' => 'Bread', 'olives' => 'Olives', 'herbs' => 'Herbs'];
 
-  protected const MESSAGE = 'Name the whole dish, such as "pear tart".';
+  protected const string MESSAGE = 'Name the whole dish, such as "pear tart".';
 
   /**
    * Builds a validator that rejects every answer.
