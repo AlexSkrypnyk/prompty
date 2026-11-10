@@ -53,4 +53,17 @@ final class TerminalInputTest extends FunctionalTestCase {
     yield 'enter only, after a letter' => ['x' . self::KEYS['ENTER'], TRUE, 'true'];
   }
 
+  public function testStepBackInTerminal(): void {
+    // Ctrl+U is the terminal's line-kill key, which reaches the flow only
+    // once canonical mode is off.
+    $keystrokes = self::KEYS['DOWN'] . self::KEYS['ENTER'] . "\x15" . self::KEYS['DOWN'] . self::KEYS['ENTER'] . self::KEYS['ENTER'];
+
+    $r = $this->runInTerminal(self::$root . '/tests/phpunit/Fixtures/flow-back.php', 'Course', $keystrokes);
+
+    $this->assertSame(0, $r['exit_code'], 'Script failed: ' . $r['stderr']);
+    $this->assertSame('', $r['stderr']);
+    $this->assertStringContainsString("'course' => 'dessert'", $this->stripAnsi($r['stdout']));
+    $this->assertStringContainsString("'table' => '4'", $this->stripAnsi($r['stdout']));
+  }
+
 }
