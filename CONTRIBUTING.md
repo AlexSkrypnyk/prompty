@@ -153,6 +153,14 @@ Every example in the repository uses 1 kitchen-order theme, with no software or 
 
 Take labels, keys and hints from that file. If a demo needs a concept the file doesn't cover, add the concept there first.
 
+## README layout
+
+A first read of the README shows only headings and images. Follow 3 rules for every section you add:
+
+- Add the heading to the **Contents** list, nested under its parent for a `###` heading.
+- Put the section's images directly under its heading.
+- Put the rest of the section between `<details>` and `<summary>Details</summary>` under the images, and close it with `</details>`. Leave a blank line after `<summary>` and before `</details>`, so GitHub renders the Markdown between them.
+
 ## Regenerating the README assets
 
 The SVGs under `.util/assets/` are recorded from the playground scripts. Regenerate them after any change to rendering:
