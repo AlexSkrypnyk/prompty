@@ -683,6 +683,25 @@ A section's group is the steps up to the next section. The flow draws a heading 
 - Its title is blank. It throws an `InvalidArgumentException`.
 - It has a string key or sits among a step's `children`. The flow throws an `InvalidArgumentException` before the first prompt.
 
+### Step back to an earlier step
+
+In a flow, press <kbd>Ctrl+U</kbd> to go back. The widget you're on disappears, and the previous step opens again with your answer filled in, as you gave it before any `transform`. Its children don't count as previous steps, so from a later sibling the key reopens the parent. From a step's first child, it reopens that parent. When the parent asked nothing, the key reopens the last of its children that did.
+
+Answers you gave after the reopened step become those steps' defaults, so you only press <kbd>Enter</kbd> to move forward again. A step starts from its declared `default` instead in 2 cases:
+
+- The new answer makes the step's `condition` false. The flow skips it, and its answer leaves the results.
+- A `step()` builder returns a widget the old answer doesn't fit, such as a `select` whose options no longer include it.
+
+Steps answered from a [discovered](#environment-variable-discovery) value or an environment variable asked nothing, so the key skips them. [`task()`](#tasks) and [`pause()`](#pause) steps ask nothing either. A task after the reopened step runs its action again when you move forward, and a task before it keeps its outcome. At a pause, the back key steps back instead of continuing. On the first asked step, and outside a flow, the key does nothing.
+
+To use another key, pass `back_key` to [`Prompty::configure()`](#configuration) or `Prompty::flow()`, from `ctrl-a` to `ctrl-z`. `ctrl-c`, `ctrl-h`, `ctrl-i`, `ctrl-j` and `ctrl-m` already mean cancel, backspace, tab and enter, so they throw an `InvalidArgumentException`. To turn the key off, pass `''`:
+
+```php
+Prompty::configure(back_key: 'ctrl-b');
+```
+
+The flow erases the rows it drew since the reopened step. Rows that scrolled off the top of the terminal stay in the scrollback, so on a very long flow the reopened step draws at the top of the screen.
+
 ## Standalone mode
 
 Called outside a flow, a widget sets up the terminal, asks its question and returns the answer:
@@ -949,6 +968,8 @@ Each widget type lists its own keys:
 | `pause` with `enter_only: TRUE` | `enter continue`         |
 
 In ASCII mode, the arrows read `up/down` and `left/right`, and a `-` separates the keys. Like the help, the legend shows only while the widget waits for an answer.
+
+In a flow, a step that can [step back](#step-back-to-an-earlier-step) adds the back key at the end, such as `↑↓ move · enter confirm · ctrl+u back`. The first asked step leaves it out.
 
 To reword the legend, override its `legend_*` [labels](#available-options). The arrows come from the `legend_vertical` and `legend_horizontal` symbols, and the separator from `legend_separator`. A label set to `''` removes its key from the legend:
 
@@ -1350,6 +1371,7 @@ The following table lists every option and its default:
 | `placeholder_fallback` | `bool`             | If false, text and suggest answer an empty submit with `''`. Default `true`.  |
 | `width`           | `int`                   | Columns that lines wrap to. Default `0` detects the terminal width.            |
 | `legend`          | `bool`                  | If true, each widget draws the keys it accepts. Default `false`.              |
+| `back_key`        | `string`                | Key that steps back in a flow, `ctrl-a` to `ctrl-z`. Default `ctrl-u`; `''` turns it off. |
 | `symbols_unicode` | `array<string, string>` | Unicode symbol overrides.                                                     |
 | `symbols_ascii`   | `array<string, string>` | ASCII symbol overrides.                                                       |
 | `colors`          | `array<string, string>` | ANSI color escape overrides.                                                  |
@@ -1361,7 +1383,7 @@ The map-valued options take these keys:
 - `symbols_unicode`, `symbols_ascii`: `bar`, `completed`, `active`, `intro`, `outro`, `section`, `pointer`, `radio_on`, `radio_off`, `check_on`, `check_off`, `hint_arrow`, `error`, `scroll_up`, `scroll_down`, `success`, `spinner`, `ellipsis`, `box_top_left`, `box_top_right`, `box_bottom_left`, `box_bottom_right`, `box_horizontal`, `box_vertical`, `box_cross`, `box_top_tee`, `box_bottom_tee`, `box_left_tee`, `box_right_tee`, `legend_vertical`, `legend_horizontal`, `legend_separator`. Each character of `spinner` is 1 frame.
 - `colors`: `reset`, `dim`, `dim_italic`, `cyan`, `green`, `red`, `gray`, `bold`, `white`, `yellow`, `blue`, `italic`, `underline`
 - `spacing`: `indent`, `hint_indent`, `hint_cont`
-- `labels`: `yes`, `no`, `cancelled`, `none`, `separator`, `more`, `required`, `done`, `failed`, `line`, `lines`, `step_total`, `legend_move`, `legend_toggle`, `legend_enter`, `legend_space`, `legend_type`, `legend_yes_no`, `legend_any_key`, `legend_continue`
+- `labels`: `yes`, `no`, `cancelled`, `none`, `separator`, `more`, `required`, `done`, `failed`, `line`, `lines`, `step_total`, `legend_move`, `legend_toggle`, `legend_enter`, `legend_space`, `legend_type`, `legend_yes_no`, `legend_any_key`, `legend_continue`, `legend_back`
 
 ### Unknown keys are rejected
 
@@ -1566,6 +1588,7 @@ Pass these constants to `promptyKeys()`:
 | `KEY_TAB`        | <kbd>Tab</kbd>       |
 | `KEY_ESCAPE`     | <kbd>Escape</kbd>    |
 | `KEY_CTRL_C`     | <kbd>Ctrl+C</kbd>    |
+| `KEY_CTRL_U`     | <kbd>Ctrl+U</kbd>    |
 | `KEY_UP`         | <kbd>↑</kbd>         |
 | `KEY_DOWN`       | <kbd>↓</kbd>         |
 | `KEY_LEFT`       | <kbd>←</kbd>         |

@@ -41,6 +41,7 @@ namespace AlexSkrypnyk\Prompty;
  *   placeholder_fallback: bool,
  *   width: int,
  *   legend: bool,
+ *   back_key: string,
  * }
  */
 class Prompty {
@@ -76,6 +77,14 @@ class Prompty {
    * Lines of output a live streaming task keeps on screen.
    */
   protected const int STREAM_WINDOW = 5;
+
+  /**
+   * Ctrl keys a terminal sends as cancel, backspace, tab and enter.
+   *
+   * The names readKey() gives them are the names of those keys, so none can
+   * be the back key.
+   */
+  protected const array RESERVED_CTRL_KEYS = ['ctrl-c', 'ctrl-h', 'ctrl-i', 'ctrl-j', 'ctrl-m'];
 
   /**
    * Characters a terminal draws 2 columns wide.
@@ -151,6 +160,49 @@ class Prompty {
    * Whether the running flow has drawn its intro, a step or a section.
    */
   protected bool $drawn = FALSE;
+
+  /**
+   * Terminal rows the running flow has printed.
+   */
+  protected int $rows = 0;
+
+  /**
+   * The steps the running flow has started, in order.
+   *
+   * Each entry holds the step key, its depth, the rows printed before it and
+   * whether its widget read a key.
+   *
+   * @var list<array{key: string, depth: int, rows: int, asked: bool}>
+   */
+  protected array $journal = [];
+
+  /**
+   * Answers from before the user stepped back, which replayed steps take.
+   *
+   * @var array<string, mixed>
+   */
+  protected array $previous = [];
+
+  /**
+   * The input each asked step was accepted with, before its transform.
+   *
+   * A reopened step and the steps after it start from these.
+   *
+   * @var array<string, mixed>
+   */
+  protected array $inputs = [];
+
+  /**
+   * The step key the flow replays up to after stepping back, or NULL.
+   *
+   * Steps before it take their previous answers without being drawn.
+   */
+  protected ?string $replay = NULL;
+
+  /**
+   * The journal index of the step to reopen, set when the user steps back.
+   */
+  protected ?int $stepBack = NULL;
 
   /**
    * Input stream for reading keystrokes (defaults to STDIN).
@@ -311,6 +363,7 @@ class Prompty {
     'legend_yes_no' => 'y/n choose',
     'legend_any_key' => 'any key continue',
     'legend_continue' => 'enter continue',
+    'legend_back' => 'back',
   ];
 
   /**
@@ -373,6 +426,11 @@ class Prompty {
    * Whether an active widget draws the keys it accepts under it.
    */
   protected bool $cfgLegend = FALSE;
+
+  /**
+   * The key that steps back to the previous step in a flow ('' = none).
+   */
+  protected string $cfgBackKey = 'ctrl-u';
 
   /**
    * Terminal columns measured for the frame being rendered.
@@ -484,6 +542,7 @@ class Prompty {
       'placeholder_fallback' => $this->cfgPlaceholderFallback,
       'width' => $this->cfgWidth,
       'legend' => $this->cfgLegend,
+      'back_key' => $this->cfgBackKey,
     ];
   }
 
@@ -510,6 +569,7 @@ class Prompty {
     $this->cfgPlaceholderFallback = $snapshot['placeholder_fallback'];
     $this->cfgWidth = $snapshot['width'];
     $this->cfgLegend = $snapshot['legend'];
+    $this->cfgBackKey = $snapshot['back_key'];
     $this->resolveDisplay();
   }
 
@@ -540,6 +600,7 @@ class Prompty {
       'placeholder_fallback' => $p->cfgPlaceholderFallback,
       'width' => $p->cfgWidth,
       'legend' => $p->cfgLegend,
+      'back_key' => $p->cfgBackKey,
     ];
   }
 
@@ -614,11 +675,15 @@ class Prompty {
    *   Draw the keys each widget accepts under it while it waits for input
    *   (TRUE), or leave them out (FALSE). NULL keeps the current setting, which
    *   is FALSE until set.
+   * @param string|null $back_key
+   *   The key that steps back to the previous step in a flow, from 'ctrl-a'
+   *   to 'ctrl-z'. '' turns stepping back off. NULL keeps the current key,
+   *   which is 'ctrl-u' until set.
    *
    * @throws \InvalidArgumentException
    *   When a map holds an unknown key, a list is empty or holds a blank value,
-   *   $output is not a writable stream or a callable, or $scroll or $width is
-   *   negative.
+   *   $output is not a writable stream or a callable, $scroll or $width is
+   *   negative, or $back_key is not a Ctrl key free for stepping back.
    */
   public static function configure(
     ?array $symbols_unicode = NULL,
@@ -637,6 +702,7 @@ class Prompty {
     ?bool $placeholder_fallback = NULL,
     ?int $width = NULL,
     ?bool $legend = NULL,
+    ?string $back_key = NULL,
   ): void {
     $p = static::instance();
 
@@ -682,6 +748,10 @@ class Prompty {
 
     if ($width !== NULL && $width < 0) {
       throw new \InvalidArgumentException(sprintf('Width %d for "width" is not valid. Use 0 to detect the terminal width, or the number of columns to wrap to.', $width));
+    }
+
+    if ($back_key !== NULL) {
+      $p->assertBackKey($back_key);
     }
 
     if ($symbols_unicode !== NULL) {
@@ -747,6 +817,10 @@ class Prompty {
 
     if ($legend !== NULL) {
       $p->cfgLegend = $legend;
+    }
+
+    if ($back_key !== NULL) {
+      $p->cfgBackKey = $back_key;
     }
 
     $p->resolveDisplay();
@@ -815,6 +889,9 @@ class Prompty {
    *   Draw the keys each widget accepts under it while it waits for input
    *   (TRUE), or leave them out (FALSE). NULL keeps the current setting, which
    *   is FALSE until set.
+   * @param string|null $back_key
+   *   The key that steps back to the previous step, from 'ctrl-a' to
+   *   'ctrl-z'. '' turns stepping back off.
    *
    * @return array<string, string|bool|int|array<string,string>>|null
    *   Collected results or NULL if cancelled.
@@ -841,6 +918,7 @@ class Prompty {
     ?bool $placeholder_fallback = NULL,
     ?int $width = NULL,
     ?bool $legend = NULL,
+    ?string $back_key = NULL,
   ): ?array {
     $p = static::instance();
     $snapshot = NULL;
@@ -864,12 +942,14 @@ class Prompty {
       || $scroll !== NULL
       || $placeholder_fallback !== NULL
       || $width !== NULL
-      || $legend !== NULL) {
+      || $legend !== NULL
+      || $back_key !== NULL) {
       $snapshot = $p->snapshotConfig();
-      static::configure($symbols_unicode, $symbols_ascii, $colors, $spacing, $labels, $unicode, $ansi, $env_prefix, $truthy, $falsy, $output, $interactive, $scroll, $placeholder_fallback, $width, $legend);
+      static::configure($symbols_unicode, $symbols_ascii, $colors, $spacing, $labels, $unicode, $ansi, $env_prefix, $truthy, $falsy, $output, $interactive, $scroll, $placeholder_fallback, $width, $legend, $back_key);
     }
 
     $p->results = [];
+    $p->resetStepBack();
     static::$inFlow = TRUE;
 
     try {
@@ -899,11 +979,16 @@ class Prompty {
         is_callable($intro) ? $intro($p->results) : $p->printLines($p->renderIntro($intro));
       }
 
-      $p->drawn = $intro !== NULL;
+      // Stepping back restarts the walk, which replays the steps before the
+      // reopened one from their answers without drawing them.
+      do {
+        $p->results = [];
+        $p->open = [];
+        $p->drawn = $intro !== NULL;
+        $outcome = $p->walkFlow($steps, 0, $options, '');
+      } while ($outcome === 'back');
 
-      $outcome = $p->walkFlow($steps, 0, $options, '');
-
-      if ($outcome === FALSE) {
+      if ($outcome === 'cancelled') {
         if ($cancelled !== NULL) {
           is_callable($cancelled) ? $cancelled($p->results) : $p->printLines($p->renderOutro($cancelled));
         }
@@ -921,6 +1006,7 @@ class Prompty {
       $p->teardownTty();
       $p->pending = NULL;
       $p->drawn = FALSE;
+      $p->resetStepBack();
       static::$inFlow = FALSE;
 
       if ($snapshot !== NULL) {
@@ -1109,6 +1195,8 @@ class Prompty {
     $results = $ctx['results'] ?? [];
     $plain_label = $label;
 
+    /** @var string $default */
+    $default = $p->previousAnswer($ctx, $default, is_string(...));
     $default = $p->printable($default);
     $placeholder = $p->printable($placeholder);
     $resolved = $discovered ?? $ctx['discovered'] ?? NULL;
@@ -1192,6 +1280,10 @@ class Prompty {
     while (TRUE) {
       $key = $p->readKey();
 
+      if ($p->requestBack($key)) {
+        return NULL;
+      }
+
       if ($p->isCancelKey($key)) {
         $p->redraw($line_count, $p->renderCancelled($label, $value, $depth, $open));
 
@@ -1211,6 +1303,7 @@ class Prompty {
         $error = $p->validateAnswer($plain_label, $required, $validate, $display, $results);
 
         if ($error === NULL) {
+          $p->recordInput($value);
           $open = $p->settleOpen($display, $open);
           $p->redraw($line_count, $p->renderCompleted($label, $display, $depth, $open));
 
@@ -1359,6 +1452,8 @@ class Prompty {
     // Validate before raw mode is entered, so a rejected call cannot leave
     // the terminal unrestored.
     $p->assertDeclaredOptions($label, $options);
+    /** @var string $default */
+    $default = $p->previousAnswer($ctx, $default, fn(mixed $answer): bool => is_string($answer) && array_key_exists($answer, $options));
     $default_key = $default === '' ? NULL : $p->assertOptionKey('Default', $label, $default, $options);
     $resolved = $discovered ?? $ctx['discovered'] ?? NULL;
     $resolved_key = $resolved === NULL ? NULL : $p->assertOptionKey('Discovered', $label, $resolved, $options);
@@ -1471,6 +1566,10 @@ class Prompty {
     while (TRUE) {
       $key = $p->readKey();
 
+      if ($p->requestBack($key)) {
+        return NULL;
+      }
+
       if ($p->isCancelKey($key)) {
         $p->redraw($line_count, $p->renderCancelled($label, $option_labels[$focused], $depth, $open));
 
@@ -1488,6 +1587,7 @@ class Prompty {
         $error = $p->validateAnswer($plain_label, $required, $validate, $selected_key, $results);
 
         if ($error === NULL) {
+          $p->recordInput($option_keys[$focused]);
           $open = $p->settleOpen($selected_key, $open);
           $p->redraw($line_count, $p->renderCompleted($label, $p->optionDisplay($selected_key, $options), $depth, $open));
 
@@ -1650,6 +1750,8 @@ class Prompty {
     // Validate before raw mode is entered, so a rejected call cannot leave
     // the terminal unrestored.
     $p->assertDeclaredOptions($label, $options);
+    /** @var list<int|string> $default */
+    $default = $p->previousAnswer($ctx, $default, fn(mixed $answer): bool => is_array($answer) && array_is_list($answer) && $answer === array_values(array_filter($answer, fn(mixed $key): bool => is_string($key) && array_key_exists($key, $options))));
     $default_keys = $p->assertOptionKeys('Default', $label, $default, $options);
     $resolved_keys = $resolved === NULL ? NULL : $p->assertOptionKeys('Discovered', $label, $resolved, $options);
     $visible = $p->visibleOptions($label, $scroll, count($options));
@@ -1769,6 +1871,10 @@ class Prompty {
     while (TRUE) {
       $key = $p->readKey();
 
+      if ($p->requestBack($key)) {
+        return NULL;
+      }
+
       if ($p->isCancelKey($key)) {
         $p->redraw($line_count, $p->renderCancelled($label, '', $depth, $open));
 
@@ -1782,11 +1888,12 @@ class Prompty {
       }
 
       if ($key === 'enter') {
-        $selected_keys = $p->orderKeys($plain_label, $selection, $order, $options, $default_keys);
-        $selected_keys = $p->transformKeys($plain_label, $transform, $selected_keys);
+        $ordered_keys = $p->orderKeys($plain_label, $selection, $order, $options, $default_keys);
+        $selected_keys = $p->transformKeys($plain_label, $transform, $ordered_keys);
         $error = $p->validateAnswer($plain_label, $required, $validate, $selected_keys, $results);
 
         if ($error === NULL) {
+          $p->recordInput($ordered_keys);
           $open = $p->settleOpen($selected_keys, $open);
           $p->redraw($line_count, $p->renderCompleted($label, $p->optionsDisplay($selected_keys, $options), $depth, $open));
 
@@ -1948,6 +2055,8 @@ class Prompty {
 
     $p->assertScroll($scroll ?? $p->cfgScroll, $label);
 
+    /** @var string $default */
+    $default = $p->previousAnswer($ctx, $default, is_string(...));
     $default = $p->printable($default);
     $placeholder = $p->printable($placeholder);
     $resolved = $discovered ?? $ctx['discovered'] ?? NULL;
@@ -2041,6 +2150,10 @@ class Prompty {
     while (TRUE) {
       $key = $p->readKey();
 
+      if ($p->requestBack($key)) {
+        return NULL;
+      }
+
       if ($p->isCancelKey($key)) {
         $p->redraw($line_count, $p->renderCancelled($label, $focused !== NULL ? $matches[$focused] : $value, $depth, $open));
 
@@ -2060,6 +2173,7 @@ class Prompty {
         $error = $p->validateAnswer($plain_label, $required, $validate, $display, $results);
 
         if ($error === NULL) {
+          $p->recordInput($focused !== NULL ? $matches[$focused] : $value);
           $open = $p->settleOpen($display, $open);
           $p->redraw($line_count, $p->renderCompleted($label, $display, $depth, $open));
 
@@ -2208,6 +2322,8 @@ class Prompty {
     $truthy = $ctx['truthy'] ?? $p->cfgTruthy;
     /** @var list<string> $falsy */
     $falsy = $ctx['falsy'] ?? $p->cfgFalsy;
+    /** @var bool $default */
+    $default = $p->previousAnswer($ctx, $default, is_bool(...));
 
     // Validate before raw mode is entered, so a rejected value cannot leave
     // the terminal unrestored.
@@ -2287,6 +2403,10 @@ class Prompty {
     while (TRUE) {
       $key = $p->readKey();
 
+      if ($p->requestBack($key)) {
+        return NULL;
+      }
+
       if ($p->isCancelKey($key)) {
         $p->redraw($line_count, $p->renderCancelled($label, $yes ? $p->label('yes') : $p->label('no'), $depth, $open));
 
@@ -2304,6 +2424,7 @@ class Prompty {
         $error = $p->validateAnswer($plain_label, $required, $validate, $answer, $results);
 
         if ($error === NULL) {
+          $p->recordInput($yes);
           $open = $p->settleOpen($answer, $open);
           $p->redraw($line_count, $p->renderCompleted($label, $answer ? $p->label('yes') : $p->label('no'), $depth, $open));
 
@@ -2449,7 +2570,12 @@ class Prompty {
 
     try {
       while (TRUE) {
-        $key = $p->readKey();
+        // A pause asks nothing, so stepping back passes over it.
+        $key = $p->readKey(asks: FALSE);
+
+        if ($p->requestBack($key)) {
+          return NULL;
+        }
 
         if ($p->isCancelKey($key)) {
           $p->redraw($line_count, [
@@ -2935,9 +3061,25 @@ class Prompty {
    * Reads a single keypress from the input stream and returns its name.
    *
    * A stream that is exhausted or cannot be read yields 'eof', which ends the
-   * widget instead of being retried.
+   * widget instead of being retried. Any other control byte from 0x01 to
+   * 0x1A reads as 'ctrl-a' to 'ctrl-z'.
+   *
+   * Reading a key marks the flow step being rendered as one that asked,
+   * unless $asks is FALSE.
+   *
+   * @param bool $asks
+   *   Whether the key answers a question the step can be reopened for.
+   *
+   * @return string
+   *   The key name.
    */
-  protected function readKey(): string {
+  protected function readKey(bool $asks = TRUE): string {
+    $last = array_key_last($this->journal);
+
+    if ($asks && $last !== NULL) {
+      $this->journal[$last]['asked'] = TRUE;
+    }
+
     $stream = $this->input ?? STDIN;
     $char = fread($stream, 1);
 
@@ -2945,13 +3087,14 @@ class Prompty {
       return 'eof';
     }
 
-    return match ($char) {
-      "\x03" => 'ctrl-c',
-      "\n", "\r" => 'enter',
-      "\x7f", "\x08" => 'backspace',
-      "\t" => 'tab',
-      ' ' => 'space',
-      "\x1b" => $this->readEscapeSequence($stream),
+    return match (TRUE) {
+      $char === "\x03" => 'ctrl-c',
+      $char === "\n", $char === "\r" => 'enter',
+      $char === "\x7f", $char === "\x08" => 'backspace',
+      $char === "\t" => 'tab',
+      $char === ' ' => 'space',
+      $char === "\x1b" => $this->readEscapeSequence($stream),
+      ord($char) >= 0x01 && ord($char) <= 0x1A => 'ctrl-' . chr(ord($char) + 0x60),
       default => $char,
     };
   }
@@ -3067,6 +3210,149 @@ class Prompty {
   }
 
   /**
+   * Rejects a back key that cannot be told apart from other keys.
+   *
+   * @param string $back_key
+   *   The key name to check.
+   *
+   * @throws \InvalidArgumentException
+   *   When $back_key is neither '' nor a Ctrl key that readKey() names as
+   *   itself.
+   */
+  protected function assertBackKey(string $back_key): void {
+    if ($back_key === '') {
+      return;
+    }
+
+    if (preg_match('/^ctrl-[a-z]$/', $back_key) !== 1 || in_array($back_key, static::RESERVED_CTRL_KEYS, TRUE)) {
+      throw new \InvalidArgumentException(sprintf('Back key "%s" for "back_key" is not valid. Use a Ctrl key from "ctrl-a" to "ctrl-z" other than "ctrl-c", "ctrl-h", "ctrl-i", "ctrl-j" and "ctrl-m", or "" to turn stepping back off.', $back_key));
+    }
+  }
+
+  /**
+   * Checks whether a key steps back, and records the request when it does.
+   *
+   * The key steps back only in a flow step that has an earlier step to
+   * reopen; anywhere else it does nothing.
+   *
+   * @param string $key
+   *   A key name returned by readKey().
+   *
+   * @return bool
+   *   TRUE when the widget ends so the flow can reopen an earlier step.
+   */
+  protected function requestBack(string $key): bool {
+    if ($this->cfgBackKey === '' || $key !== $this->cfgBackKey || $this->pending === NULL) {
+      return FALSE;
+    }
+
+    $this->stepBack = $this->backTarget();
+
+    return $this->stepBack !== NULL;
+  }
+
+  /**
+   * Finds the journal entry of the step to reopen when stepping back.
+   *
+   * The step to reopen is the latest earlier step that read a key, at the
+   * running step's depth or shallower: a previous sibling, else the parent.
+   * When there is none, it is the latest earlier step that read a key.
+   *
+   * @return int|null
+   *   The index of the entry in the journal, or NULL when there is none.
+   */
+  protected function backTarget(): ?int {
+    $earlier = $this->journal;
+    $current = array_pop($earlier);
+    $depth = $current['depth'] ?? 0;
+    $deeper = NULL;
+
+    for ($index = count($earlier) - 1; $index >= 0; $index--) {
+      if (!$earlier[$index]['asked']) {
+        continue;
+      }
+
+      if ($earlier[$index]['depth'] <= $depth) {
+        return $index;
+      }
+
+      $deeper ??= $index;
+    }
+
+    // A parent that asked nothing, such as one answered from the environment,
+    // leaves only its children to go back to.
+    return $deeper;
+  }
+
+  /**
+   * Erases the steps drawn since the step to reopen, and plans the replay.
+   *
+   * The answers so far are kept as defaults, and the walk that follows
+   * replays the steps before the reopened one without drawing them.
+   *
+   * @param int $target
+   *   The journal index of the step to reopen.
+   */
+  protected function stepBackTo(int $target): void {
+    $entry = $this->journal[$target];
+
+    $this->previous = array_replace($this->previous, $this->results);
+    $this->clearRows($this->rows - $entry['rows']);
+    $this->journal = array_slice($this->journal, 0, $target);
+    $this->replay = $entry['key'];
+    $this->stepBack = NULL;
+  }
+
+  /**
+   * Clears the state stepping back keeps for the running flow.
+   */
+  protected function resetStepBack(): void {
+    $this->rows = 0;
+    $this->journal = [];
+    $this->previous = [];
+    $this->inputs = [];
+    $this->replay = NULL;
+    $this->stepBack = NULL;
+  }
+
+  /**
+   * Records the input an asked flow step was accepted with.
+   *
+   * @param mixed $input
+   *   The input before the widget's transform: the typed text, the focused
+   *   option key, the checked option keys or the focused answer.
+   */
+  protected function recordInput(mixed $input): void {
+    if ($this->pending !== NULL) {
+      $this->inputs[(string) $this->pending['key']] = $input;
+    }
+  }
+
+  /**
+   * Returns the input a reopened step was accepted with, when it suits.
+   *
+   * @param array<string, mixed> $ctx
+   *   The flow context, carrying 'previous' when the step was answered
+   *   before the user stepped back.
+   * @param mixed $default
+   *   The widget's declared default.
+   * @param \Closure $accepts
+   *   Receives the previous input and returns whether the widget can start
+   *   from it.
+   *
+   * @return mixed
+   *   The previous input, or $default when there is none or it does not
+   *   suit the widget.
+   */
+  protected function previousAnswer(array $ctx, mixed $default, \Closure $accepts): mixed {
+    if (!array_key_exists('previous', $ctx) || !$accepts($ctx['previous'])) {
+      return $default;
+    }
+
+    return $ctx['previous'];
+  }
+
+  /**
    * Shows the terminal cursor.
    */
   protected function showCursor(): void {
@@ -3111,8 +3397,10 @@ class Prompty {
   protected function enterRawMode(): void {
     // @codeCoverageIgnoreStart
     // -isig delivers Ctrl+C to readKey() as a byte rather than as SIGINT,
-    // which would end the process before the terminal is restored.
-    shell_exec('stty -echo -icanon -isig min 1 time 0 2>' . static::NULL_DEVICE);
+    // which would end the process before the terminal is restored. -ixon and
+    // -iexten deliver Ctrl+S, Ctrl+Q, Ctrl+V and Ctrl+O, which the terminal
+    // driver otherwise consumes, so each can be the back key.
+    shell_exec('stty -echo -icanon -isig -ixon -iexten min 1 time 0 2>' . static::NULL_DEVICE);
     // @codeCoverageIgnoreEnd
   }
 
@@ -3479,7 +3767,7 @@ class Prompty {
 
     // Echoed output reaches the stream through its buffer, so only writes to
     // a stream or callable target are streamed here.
-    if ($this->streamDraw instanceof \Closure && !$this->streamDrawing && $this->cfgOutput !== NULL) {
+    if ($this->capturedByStream() && $this->cfgOutput !== NULL) {
       $this->feedStream($chunk);
 
       return;
@@ -3511,6 +3799,11 @@ class Prompty {
    *   terminal occupies 1 row per terminal width.
    */
   protected function printLines(array $lines): int {
+    // A replayed step is already on screen.
+    if ($this->replay !== NULL) {
+      return 0;
+    }
+
     $this->write(implode(PHP_EOL, $lines) . PHP_EOL);
 
     $columns = $this->columns();
@@ -3522,7 +3815,23 @@ class Prompty {
 
     $this->columns = NULL;
 
+    if (!$this->capturedByStream()) {
+      $this->rows += $rows;
+    }
+
     return $rows;
+  }
+
+  /**
+   * Checks whether output goes into a streaming task's capture.
+   *
+   * A streaming task draws its action's output, and counts the rows, itself.
+   *
+   * @return bool
+   *   TRUE while a streaming task's action runs, outside its own drawing.
+   */
+  protected function capturedByStream(): bool {
+    return $this->streamDraw instanceof \Closure && !$this->streamDrawing;
   }
 
   /**
@@ -3549,8 +3858,14 @@ class Prompty {
    *   The number of terminal rows to erase.
    */
   protected function clearRows(int $rows): void {
-    if ($rows > 0) {
-      $this->write("\033[{$rows}A\r\033[J");
+    if ($rows <= 0) {
+      return;
+    }
+
+    $this->write("\033[{$rows}A\r\033[J");
+
+    if (!$this->capturedByStream()) {
+      $this->rows -= $rows;
     }
   }
 
@@ -5290,7 +5605,8 @@ class Prompty {
    * Renders the keys a widget accepts, drawn like help.
    *
    * A segment whose label is blank is left out, so an empty label removes
-   * that key from the legend.
+   * that key from the legend. The back key is listed last, and only in a flow
+   * step it can step back from.
    *
    * @param string $widget
    *   The widget type: text, select, multiselect, suggest, confirm, pause, or
@@ -5321,6 +5637,10 @@ class Prompty {
       'pause_enter' => [$this->label('legend_continue')],
       default => [$enter],
     };
+
+    if ($this->cfgBackKey !== '' && $this->label('legend_back') !== '' && $this->pending !== NULL && $this->backTarget() !== NULL) {
+      $segments[] = str_replace('-', '+', $this->cfgBackKey) . ' ' . $this->label('legend_back');
+    }
 
     $segments = array_filter($segments, fn(string $segment): bool => trim($segment) !== '');
 
@@ -5836,10 +6156,11 @@ class Prompty {
    * @param string $number_prefix
    *   Dot-separated prefix for hierarchical step numbering.
    *
-   * @return bool
-   *   TRUE if all steps completed, FALSE if the user cancelled.
+   * @return string
+   *   'done' when every step completed, 'cancelled' when the user cancelled,
+   *   or 'back' when the user stepped back and the walk has to restart.
    */
-  protected function walkFlow(array $steps, int $depth, array $options, string $number_prefix): bool {
+  protected function walkFlow(array $steps, int $depth, array $options, string $number_prefix): string {
     $step_number = 0;
     $index = 0;
 
@@ -5896,13 +6217,33 @@ class Prompty {
         'falsy' => $this->cfgFalsy,
       ];
 
+      if (array_key_exists($key, $this->inputs)) {
+        $ctx['previous'] = $this->inputs[$key];
+      }
+
+      // A step before the reopened one takes its previous answer without
+      // being drawn or built again. A step with no previous answer, which a
+      // condition that changes on its own can produce, ends the replay.
+      $replayed = $this->replay !== NULL && $this->replay !== (string) $key && array_key_exists($key, $this->previous);
+
+      if (!$replayed) {
+        $this->replay = NULL;
+        $this->journal[] = ['key' => (string) $key, 'depth' => $depth, 'rows' => $this->rows, 'asked' => FALSE];
+      }
+
       /** @var callable $call */
-      $value = $call($ctx);
+      $value = $replayed ? $this->previous[$key] : $call($ctx);
 
       if ($value === NULL) {
         $this->pending = NULL;
 
-        return FALSE;
+        if ($this->stepBack !== NULL) {
+          $this->stepBackTo($this->stepBack);
+
+          return 'back';
+        }
+
+        return 'cancelled';
       }
 
       $this->results[$key] = $value;
@@ -5918,13 +6259,15 @@ class Prompty {
         $sep = $this->bar() . $this->labelPrefix($child_depth, $this->open) . $this->bar();
         $this->printLines([$sep]);
 
-        if (!$this->walkFlow($children, $child_depth, $options, $number)) {
-          return FALSE;
+        $outcome = $this->walkFlow($children, $child_depth, $options, $number);
+
+        if ($outcome !== 'done') {
+          return $outcome;
         }
       }
     }
 
-    return TRUE;
+    return 'done';
   }
 
 }
