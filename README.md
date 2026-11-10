@@ -29,6 +29,7 @@ Prompty asks questions in the terminal for PHP command-line scripts, from a sing
 
 - 📦 [**Zero dependencies**](#installation) - drop `Prompty.php` into your project or [embed](#embedding) it in your script
 - 🧩 [**Widgets**](#widgets) - `text`, `select`, `multiselect`, `suggest`, `confirm` and `pause`
+- 📣 [**Notes**](#notes) - info, success, warning and error messages in the tree
 - ⏳ [**Tasks**](#tasks) - run work behind a spinner, or stream its output under the label
 - 🔀 [**Flows**](#flows) - group prompts into a wizard with an intro, an outro, numbering and cancellation
 - 🌳 [**Nested flows**](#nested-flows-with-conditions) - conditional children drawn as a tree
@@ -388,6 +389,44 @@ Prompty::pause('Press any key to start the order...',
 To continue only on <kbd>Enter</kbd> and ignore every other key, pass `enter_only: TRUE`. After the key, a completed line replaces the message. To erase the message instead, pass `erase: TRUE`.
 
 In [non-interactive mode](#non-interactive-mode), `pause()` returns `true` without reading a key. Inside a [flow](#flows), a pause is a keyed step that stores `true`.
+
+## Notes
+
+`note()` prints a message between your questions: an informational note, a success, a warning or an error. The type's symbol takes the place of the bar, and the message is drawn in the type's color:
+
+```php
+Prompty::note('The kitchen opens at 5pm.');
+Prompty::note('Order sent to the kitchen.', type: 'success');
+Prompty::note('The pear tart is running low.', type: 'warning');
+Prompty::note("The oven did not reach temperature.\nCheck the fan and try again.", type: 'error');
+```
+
+```
+●  The kitchen opens at 5pm.
+│
+✓  Order sent to the kitchen.
+│
+▲  The pear tart is running low.
+│
+✕  The oven did not reach temperature.
+│  Check the fan and try again.
+│
+```
+
+The type defaults to `info`. A newline starts another line, and a long line wraps with the bar and indent kept. Each type has a `note_<type>` symbol and a `note_<type>` color that you can [configure](#configuration). A note waits for no answer, so it also prints in [non-interactive mode](#non-interactive-mode).
+
+Inside a [flow](#flows), a note is a step without a key. It sits in the tree where you declare it, among top-level steps or children, and adds nothing to the results. Pass `condition` to show it only for some answers:
+
+```php
+$results = Prompty::flow(fn(): array => [
+  Prompty::note('The kitchen opens at 5pm.'),
+  'course' => Prompty::select('Course', options: ['main' => 'Main', 'dessert' => 'Dessert']),
+  Prompty::note('The pear tart is running low.', type: 'warning', condition: fn(array $r): bool => $r['course'] === 'dessert'),
+  'send' => Prompty::confirm('Send order?'),
+]);
+```
+
+A note called while the flow runs, such as from a task's action or the `outro` callable, prints straight away.
 
 ## Tasks
 
@@ -1380,8 +1419,8 @@ The following table lists every option and its default:
 
 The map-valued options take these keys:
 
-- `symbols_unicode`, `symbols_ascii`: `bar`, `completed`, `active`, `intro`, `outro`, `section`, `pointer`, `radio_on`, `radio_off`, `check_on`, `check_off`, `hint_arrow`, `error`, `scroll_up`, `scroll_down`, `success`, `spinner`, `ellipsis`, `box_top_left`, `box_top_right`, `box_bottom_left`, `box_bottom_right`, `box_horizontal`, `box_vertical`, `box_cross`, `box_top_tee`, `box_bottom_tee`, `box_left_tee`, `box_right_tee`, `legend_vertical`, `legend_horizontal`, `legend_separator`. Each character of `spinner` is 1 frame.
-- `colors`: `reset`, `dim`, `dim_italic`, `cyan`, `green`, `red`, `gray`, `bold`, `white`, `yellow`, `blue`, `italic`, `underline`
+- `symbols_unicode`, `symbols_ascii`: `bar`, `completed`, `active`, `intro`, `outro`, `section`, `pointer`, `radio_on`, `radio_off`, `check_on`, `check_off`, `hint_arrow`, `error`, `scroll_up`, `scroll_down`, `success`, `spinner`, `ellipsis`, `box_top_left`, `box_top_right`, `box_bottom_left`, `box_bottom_right`, `box_horizontal`, `box_vertical`, `box_cross`, `box_top_tee`, `box_bottom_tee`, `box_left_tee`, `box_right_tee`, `legend_vertical`, `legend_horizontal`, `legend_separator`, `note_info`, `note_success`, `note_warning`, `note_error`. Each character of `spinner` is 1 frame.
+- `colors`: `reset`, `dim`, `dim_italic`, `cyan`, `green`, `red`, `gray`, `bold`, `white`, `yellow`, `blue`, `italic`, `underline`, `note_info`, `note_success`, `note_warning`, `note_error`
 - `spacing`: `indent`, `hint_indent`, `hint_cont`
 - `labels`: `yes`, `no`, `cancelled`, `none`, `separator`, `more`, `required`, `done`, `failed`, `line`, `lines`, `step_total`, `legend_move`, `legend_toggle`, `legend_enter`, `legend_space`, `legend_type`, `legend_yes_no`, `legend_any_key`, `legend_continue`, `legend_back`
 

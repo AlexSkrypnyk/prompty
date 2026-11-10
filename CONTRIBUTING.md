@@ -100,6 +100,7 @@ The [`playground/`](playground) directory holds runnable demos. Run one to see a
 | `widget-control-chars.php` | What a control character in a value draws as.                          |
 | `widget-legend.php`        | The key legend under each widget, and its wording changed in a flow.   |
 | `widget-transform.php`     | A transform rewriting each widget's answer, and a wrong return type.   |
+| `widget-note.php`          | Notes of each type, standalone and in a nested flow.                   |
 | `widget-pause.php`         | Pauses that wait for any key or for Enter only, or erase the message.  |
 | `widget-task.php`          | Tasks behind a spinner, and tasks streaming a child process's output.  |
 | `table-box.php`            | Summary tables with headers and section rows, and titled boxes.        |

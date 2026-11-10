@@ -28,6 +28,10 @@ Namespace: `AlexSkrypnyk\Prompty`. Key files: `Prompty.php` (library),
 - **Sections** - `section()` returns a keyless step array carrying
   `__section`. `walkFlow()` draws it only when a step in its group (the steps
   up to the next section) renders, and stores no result. Top level only.
+- **Notes** - `note()` returns a keyless step array carrying `__note` only
+  while `$defining` is set, which `flow()` sets only around the steps
+  callable; at any other time, including while the flow walks, it prints.
+  `drawNote()` draws it at its depth and stores no result.
 - **Tree rendering** - nested children use bar connectors; `open` array
   tracks continuing siblings.
 - **Widget signatures** - all 5 widgets share one parameter order, and any
