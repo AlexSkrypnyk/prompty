@@ -1722,9 +1722,16 @@ class Prompty {
    *   Pre-filled value that bypasses interactive input. It is trimmed, and an
    *   empty result resolves as an empty answer: $default, or $placeholder. It
    *   need not be one of the suggestions.
+   * @param callable|null $transform
+   *   Optional transform. Receives the answer string and returns the string
+   *   the widget answers with.
    * @param bool|string $required
    *   TRUE to reject a blank answer with the 'required' label, or the message
    *   to reject it with.
+   * @param callable|null $validate
+   *   Optional validator. Receives the answer string and the flow results
+   *   collected so far, and returns NULL when the answer is valid or an error
+   *   message when it is not.
    * @param callable|null $condition
    *   Optional condition callback; skips the step when it returns FALSE.
    * @param array<string, mixed> $children
@@ -1740,7 +1747,11 @@ class Prompty {
    *
    * @throws \InvalidArgumentException
    *   When $options is an empty list, $scroll is negative, or the answer
-   *   resolved without input is blank while $required is set.
+   *   resolved without input is blank while $required is set or fails
+   *   $validate.
+   * @throws \UnexpectedValueException
+   *   When $transform returns anything other than a string, or $validate
+   *   returns neither NULL nor a string.
    */
   public static function suggest(
     string $label,
@@ -1751,7 +1762,9 @@ class Prompty {
     ?int $scroll = NULL,
     string $help = '',
     mixed $discovered = NULL,
+    ?callable $transform = NULL,
     bool|string $required = FALSE,
+    ?callable $validate = NULL,
     ?callable $condition = NULL,
     array $children = [],
     ?array $ctx = NULL,
@@ -1766,7 +1779,9 @@ class Prompty {
         scroll: $scroll,
         help: $help,
         discovered: $discovered,
+        transform: $transform,
         required: $required,
+        validate: $validate,
         ctx: $ctx,
       );
 
@@ -1811,7 +1826,8 @@ class Prompty {
         $resolved_display = $default !== '' ? $default : $p->placeholderAnswer($placeholder);
       }
 
-      $p->assertResolvedValid($resolved !== NULL ? 'Discovered' : 'Default', $plain_label, $required, NULL, $resolved_display, $results);
+      $resolved_display = $p->printable($p->transformString($plain_label, $transform, $resolved_display));
+      $p->assertResolvedValid($resolved !== NULL ? 'Discovered' : 'Default', $plain_label, $required, $validate, $resolved_display, $results);
     }
 
     if ($standalone && $p->cfgInteractive) {
@@ -1901,7 +1917,8 @@ class Prompty {
       if ($key === 'enter') {
         $value = $p->printable($value);
         $display = $focused !== NULL ? $matches[$focused] : ($value !== '' ? $value : $p->placeholderAnswer($placeholder));
-        $error = $p->validateAnswer($plain_label, $required, NULL, $display, $results);
+        $display = $p->printable($p->transformString($plain_label, $transform, $display));
+        $error = $p->validateAnswer($plain_label, $required, $validate, $display, $results);
 
         if ($error === NULL) {
           $open = $p->settleOpen($display, $open);
@@ -1922,6 +1939,7 @@ class Prompty {
       }
 
       $typed = $value;
+      $previous_focus = $focused;
 
       // Focus steps through the matches and then back to none, so the typed
       // text can still be submitted as is.
@@ -1948,10 +1966,13 @@ class Prompty {
         $visible = $p->visibleOptions($label, $scroll, count($matches));
         $focused = NULL;
         $first = 0;
-        $error = NULL;
       }
       elseif ($focused !== NULL) {
         $first = $p->scrollWindow($first, $focused, $visible);
+      }
+
+      if ($value !== $typed || $focused !== $previous_focus) {
+        $error = NULL;
       }
 
       $line_count = $p->redraw($line_count, $render_active($value, $matches, $focused, $first, $visible, $error));

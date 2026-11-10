@@ -28,6 +28,7 @@ Prompty::configure(unicode: !isset($opts['no-unicode']), ansi: !isset($opts['no-
 $courses = ['starter' => 'Starter', 'main' => 'Main', 'dessert' => 'Dessert'];
 $extras = ['bread' => 'Bread', 'olives' => 'Olives', 'herbs' => 'Herbs'];
 $seats = ['1' => 'Seat 1', '2' => 'Seat 2', '3' => 'Seat 3', '4' => 'Seat 4'];
+$dishes = ['Pear Tart', 'Apple Crumble', 'Onion Soup', 'Lentil Stew', 'Herb Omelette', 'Barley Salad'];
 $whole_dish = fn(string $dish): ?string => str_contains($dish, ' ') ? NULL : 'Name the whole dish, such as "pear tart".';
 
 echo "\n--- Text: a single word is rejected ---\n";
@@ -40,6 +41,10 @@ echo '  Result: ' . (is_string($r) ? $r : 'cancelled') . "\n";
 
 echo "\n--- Suggest: required, with the default message ---\n";
 $r = Prompty::suggest('Dish', options: ['Pear Tart', 'Apple Crumble', 'Onion Soup', 'Lentil Stew'], required: TRUE);
+echo '  Result: ' . (is_string($r) ? $r : 'cancelled') . "\n";
+
+echo "\n--- Suggest: a dish that is not on the menu is rejected ---\n";
+$r = Prompty::suggest('Dish', options: $dishes, description: 'Type a dish that is not on the menu to see the message.', transform: fn(string $dish): string => ucwords(trim($dish)), validate: fn(string $dish): ?string => in_array($dish, $dishes, TRUE) ? NULL : 'Pick a dish from the menu.');
 echo '  Result: ' . (is_string($r) ? $r : 'cancelled') . "\n";
 
 echo "\n--- Select: 1 option is rejected ---\n";
