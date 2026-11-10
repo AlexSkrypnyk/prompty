@@ -63,7 +63,7 @@ $results = Prompty::flow(fn(): array => [
     }
   },
   cancelled: 'Order cancelled.',
-  numbering: TRUE,
+  numbering: 'total',
   unicode: $unicode,
   ansi: $ansi,
   interactive: $interactive,
