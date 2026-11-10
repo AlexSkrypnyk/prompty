@@ -4440,7 +4440,7 @@ class Prompty {
 
     // Echoed output reaches the stream through its buffer, so only writes to
     // a stream or callable target are streamed here.
-    if ($this->capturedByStream() && $this->cfgOutput !== NULL) {
+    if ($this->isCapturedByStream() && $this->cfgOutput !== NULL) {
       $this->feedStream($chunk);
 
       return;
@@ -4488,7 +4488,7 @@ class Prompty {
 
     $this->columns = NULL;
 
-    if (!$this->capturedByStream()) {
+    if (!$this->isCapturedByStream()) {
       $this->rows += $rows;
     }
 
@@ -4503,7 +4503,7 @@ class Prompty {
    * @return bool
    *   TRUE while a streaming task's action runs, outside its own drawing.
    */
-  protected function capturedByStream(): bool {
+  protected function isCapturedByStream(): bool {
     return $this->streamDraw instanceof \Closure && !$this->streamDrawing;
   }
 
@@ -4537,7 +4537,7 @@ class Prompty {
 
     $this->write("\033[{$rows}A\r\033[J");
 
-    if (!$this->capturedByStream()) {
+    if (!$this->isCapturedByStream()) {
       $this->rows -= $rows;
     }
   }
@@ -6109,7 +6109,7 @@ class Prompty {
    * @return bool
    *   TRUE when at least 1 step is unconditional or its condition passes.
    */
-  protected function hasVisibleStep(array $steps, array $results): bool {
+  protected function isAnyStepVisible(array $steps, array $results): bool {
     foreach ($steps as $step) {
       $condition = $this->stepCondition($step);
 
@@ -6228,7 +6228,7 @@ class Prompty {
     $results = $this->results;
     $results[(string) $pending['key']] = $value;
 
-    $this->markOpen($pending['depth'], !$this->hasVisibleStep($pending['rest'], $results));
+    $this->markOpen($pending['depth'], !$this->isAnyStepVisible($pending['rest'], $results));
 
     return $this->open;
   }
@@ -6263,7 +6263,7 @@ class Prompty {
       $group[$key] = $step;
     }
 
-    if (!$this->hasVisibleStep($group, $this->results)) {
+    if (!$this->isAnyStepVisible($group, $this->results)) {
       return;
     }
 
@@ -6293,7 +6293,7 @@ class Prompty {
     }
 
     // The answers so far are known, so the connector settles before drawing.
-    $this->markOpen($depth, !$this->hasVisibleStep($rest, $this->results));
+    $this->markOpen($depth, !$this->isAnyStepVisible($rest, $this->results));
 
     /** @var string $message */
     $message = $note['__note'];
@@ -6420,7 +6420,7 @@ class Prompty {
       $this->settleOpen($value, $this->open);
       $this->pending = NULL;
 
-      if ($this->hasVisibleStep($children, $this->results)) {
+      if ($this->isAnyStepVisible($children, $this->results)) {
         $child_depth = $depth + 1;
         $sep = $this->bar() . $this->labelPrefix($child_depth, $this->open) . $this->bar();
         $this->printLines([$sep]);
