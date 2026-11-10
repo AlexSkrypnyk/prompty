@@ -802,6 +802,20 @@ Default value "pudding" for "Course" is not a valid option. Available options: s
 
 An empty default is always valid. `''` makes `select` focus the first option, and `[]` makes `multiselect` pre-check nothing. Both checks run when the widget starts, before it draws, so a mistyped key in a CI variable or a script fails at the widget that reads it.
 
+A default from outside the script, such as a saved setting or an option list that an earlier answer narrowed, can name an option that's gone. To fall back instead of throwing, pass `strict_default: FALSE` to the widget. To set it for every widget, pass it to [`Prompty::configure()`](#configuration). To set it for 1 flow, pass it to `Prompty::flow()`. A widget's own `strict_default` wins over the configured value:
+
+```php
+Prompty::select('Course', options: $courses, default: $saved_course, strict_default: FALSE);
+Prompty::configure(strict_default: FALSE);
+```
+
+With `strict_default: FALSE`, the widgets treat a default outside `options` as follows:
+
+- `select` ignores the default and focuses the first option, as it does for `''`.
+- `multiselect` drops each key outside `options` and pre-checks the rest.
+
+In [non-interactive mode](#non-interactive-mode), the fallback is the answer: the first option for `select`, the remaining keys for `multiselect`. The `discovered:` argument and the `PROMPTY_*` variable stay strict, because each one is an answer.
+
 ### A blank value means no answer was supplied
 
 A blank value is empty or holds only whitespace. An exported variable that was never filled gives one, and so does `DISH="$(some-command)"` when the command prints nothing. A widget with an answer that means "nothing supplied" takes that answer, and the other widgets reject a blank value:
@@ -1372,6 +1386,7 @@ The following table lists every option and its default:
 | `width`           | `int`                   | Columns that lines wrap to. Default `0` detects the terminal width.            |
 | `legend`          | `bool`                  | If true, each widget draws the keys it accepts. Default `false`.              |
 | `back_key`        | `string`                | Key that steps back in a flow, `ctrl-a` to `ctrl-z`. Default `ctrl-u`; `''` turns it off. |
+| `strict_default`  | `bool`                  | If false, a select or multiselect default outside the options falls back. Default `true`. |
 | `symbols_unicode` | `array<string, string>` | Unicode symbol overrides.                                                     |
 | `symbols_ascii`   | `array<string, string>` | ASCII symbol overrides.                                                       |
 | `colors`          | `array<string, string>` | ANSI color escape overrides.                                                  |

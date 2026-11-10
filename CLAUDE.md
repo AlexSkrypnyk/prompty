@@ -35,13 +35,14 @@ Namespace: `AlexSkrypnyk\Prompty`. Key files: `Prompty.php` (library),
 
   ```
   label, [options], default, [placeholder], description, [hints], [scroll],
-  [order], help, discovered, transform, required, validate, condition,
-  children, ctx
+  [order], [strict_default], help, discovered, transform, required,
+  validate, condition, children, ctx
   ```
 
   Bracketed parameters appear only where they apply: `options` and `scroll`
-  on `select`/`multiselect`/`suggest`, `hints` on `select`/`multiselect`,
-  `placeholder` on `text`/`suggest`, `order` on `multiselect`. `help`,
+  on `select`/`multiselect`/`suggest`, `hints` and `strict_default` on
+  `select`/`multiselect`, `placeholder` on `text`/`suggest`, `order` on
+  `multiselect`. `help`,
   `discovered`, `transform`, `required`, `validate`, `condition`, `children`
   and `ctx` are common to every widget.
   `required` sits between `transform` and `validate` because it runs between

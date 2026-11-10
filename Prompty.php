@@ -42,6 +42,7 @@ namespace AlexSkrypnyk\Prompty;
  *   width: int,
  *   legend: bool,
  *   back_key: string,
+ *   strict_default: bool,
  * }
  */
 class Prompty {
@@ -426,6 +427,9 @@ class Prompty {
    * Whether an active widget draws the keys it accepts under it.
    */
   protected bool $cfgLegend = FALSE;
+   * Whether a select or multiselect default outside the options throws.
+   */
+  protected bool $cfgStrictDefault = TRUE;
 
   /**
    * The key that steps back to the previous step in a flow ('' = none).
@@ -543,6 +547,7 @@ class Prompty {
       'width' => $this->cfgWidth,
       'legend' => $this->cfgLegend,
       'back_key' => $this->cfgBackKey,
+      'strict_default' => $this->cfgStrictDefault,
     ];
   }
 
@@ -570,6 +575,7 @@ class Prompty {
     $this->cfgWidth = $snapshot['width'];
     $this->cfgLegend = $snapshot['legend'];
     $this->cfgBackKey = $snapshot['back_key'];
+    $this->cfgStrictDefault = $snapshot['strict_default'];
     $this->resolveDisplay();
   }
 
@@ -601,6 +607,7 @@ class Prompty {
       'width' => $p->cfgWidth,
       'legend' => $p->cfgLegend,
       'back_key' => $p->cfgBackKey,
+      'strict_default' => $p->cfgStrictDefault,
     ];
   }
 
@@ -679,6 +686,10 @@ class Prompty {
    *   The key that steps back to the previous step in a flow, from 'ctrl-a'
    *   to 'ctrl-z'. '' turns stepping back off. NULL keeps the current key,
    *   which is 'ctrl-u' until set.
+   * @param bool|null $strict_default
+   *   Throw on a select or multiselect default outside the options (TRUE),
+   *   or fall back from it (FALSE). NULL keeps the current setting, which is
+   *   TRUE until set.
    *
    * @throws \InvalidArgumentException
    *   When a map holds an unknown key, a list is empty or holds a blank value,
@@ -703,6 +714,7 @@ class Prompty {
     ?int $width = NULL,
     ?bool $legend = NULL,
     ?string $back_key = NULL,
+    ?bool $strict_default = NULL,
   ): void {
     $p = static::instance();
 
@@ -811,6 +823,10 @@ class Prompty {
       $p->cfgPlaceholderFallback = $placeholder_fallback;
     }
 
+    if ($strict_default !== NULL) {
+      $p->cfgStrictDefault = $strict_default;
+    }
+
     if ($width !== NULL) {
       $p->cfgWidth = $width;
     }
@@ -892,6 +908,9 @@ class Prompty {
    * @param string|null $back_key
    *   The key that steps back to the previous step, from 'ctrl-a' to
    *   'ctrl-z'. '' turns stepping back off.
+   * @param bool|null $strict_default
+   *   Throw on a select or multiselect default outside the options (TRUE),
+   *   or fall back from it (FALSE). NULL keeps the current setting.
    *
    * @return array<string, string|bool|int|array<string,string>>|null
    *   Collected results or NULL if cancelled.
@@ -919,6 +938,7 @@ class Prompty {
     ?int $width = NULL,
     ?bool $legend = NULL,
     ?string $back_key = NULL,
+    ?bool $strict_default = NULL,
   ): ?array {
     $p = static::instance();
     $snapshot = NULL;
@@ -943,9 +963,10 @@ class Prompty {
       || $placeholder_fallback !== NULL
       || $width !== NULL
       || $legend !== NULL
-      || $back_key !== NULL) {
+      || $back_key !== NULL
+      || $strict_default !== NULL) {
       $snapshot = $p->snapshotConfig();
-      static::configure($symbols_unicode, $symbols_ascii, $colors, $spacing, $labels, $unicode, $ansi, $env_prefix, $truthy, $falsy, $output, $interactive, $scroll, $placeholder_fallback, $width, $legend, $back_key);
+      static::configure($symbols_unicode, $symbols_ascii, $colors, $spacing, $labels, $unicode, $ansi, $env_prefix, $truthy, $falsy, $output, $interactive, $scroll, $placeholder_fallback, $width, $legend, $back_key, $strict_default);
     }
 
     $p->results = [];
@@ -1363,6 +1384,10 @@ class Prompty {
    * @param int|null $scroll
    *   Options drawn at once; the window shifts to keep the focused option in
    *   view. 0 draws every option, and NULL uses the configured value.
+   * @param bool|null $strict_default
+   *   Whether a $default outside $options throws (TRUE) or is ignored, so
+   *   the first option is focused and answers without input (FALSE). NULL
+   *   uses the configured value.
    * @param string $help
    *   Optional help rendered below the options while the widget is active.
    * @param mixed $discovered
@@ -1408,6 +1433,7 @@ class Prompty {
     string $description = '',
     array $hints = [],
     ?int $scroll = NULL,
+    ?bool $strict_default = NULL,
     string $help = '',
     mixed $discovered = NULL,
     ?callable $transform = NULL,
@@ -1425,6 +1451,7 @@ class Prompty {
         description: $description,
         hints: $hints,
         scroll: $scroll,
+        strict_default: $strict_default,
         help: $help,
         discovered: $discovered,
         transform: $transform,
@@ -1454,7 +1481,8 @@ class Prompty {
     $p->assertDeclaredOptions($label, $options);
     /** @var string $default */
     $default = $p->previousAnswer($ctx, $default, fn(mixed $answer): bool => is_string($answer) && array_key_exists($answer, $options));
-    $default_key = $default === '' ? NULL : $p->assertOptionKey('Default', $label, $default, $options);
+    $lenient = !($strict_default ?? $p->cfgStrictDefault) && !$p->isOptionKey($default, $options);
+    $default_key = $default === '' || $lenient ? NULL : $p->assertOptionKey('Default', $label, $default, $options);
     $resolved = $discovered ?? $ctx['discovered'] ?? NULL;
     $resolved_key = $resolved === NULL ? NULL : $p->assertOptionKey('Discovered', $label, $resolved, $options);
     $visible = $p->visibleOptions($label, $scroll, count($options));
@@ -1648,6 +1676,10 @@ class Prompty {
    *   $default checked first; a discovered value keeps the order it gives.
    *   A closure is a comparator, as for usort(): it receives 2 option keys
    *   and returns an int. Keys it ranks equal keep the 'selection' order.
+   * @param bool|null $strict_default
+   *   Whether a $default key outside $options throws (TRUE) or is dropped,
+   *   so the remaining keys are pre-checked and answer without input
+   *   (FALSE). NULL uses the configured value.
    * @param string $help
    *   Optional help rendered below the options while the widget is active.
    * @param mixed $discovered
@@ -1696,6 +1728,7 @@ class Prompty {
     array $hints = [],
     ?int $scroll = NULL,
     string|\Closure $order = 'options',
+    ?bool $strict_default = NULL,
     string $help = '',
     mixed $discovered = NULL,
     ?callable $transform = NULL,
@@ -1714,6 +1747,7 @@ class Prompty {
         hints: $hints,
         scroll: $scroll,
         order: $order,
+        strict_default: $strict_default,
         help: $help,
         discovered: $discovered,
         transform: $transform,
@@ -1752,6 +1786,11 @@ class Prompty {
     $p->assertDeclaredOptions($label, $options);
     /** @var list<int|string> $default */
     $default = $p->previousAnswer($ctx, $default, fn(mixed $answer): bool => is_array($answer) && array_is_list($answer) && $answer === array_values(array_filter($answer, fn(mixed $key): bool => is_string($key) && array_key_exists($key, $options))));
+
+    if (!($strict_default ?? $p->cfgStrictDefault)) {
+      $default = array_filter($default, fn(mixed $entry): bool => $p->isOptionKey($entry, $options));
+    }
+
     $default_keys = $p->assertOptionKeys('Default', $label, $default, $options);
     $resolved_keys = $resolved === NULL ? NULL : $p->assertOptionKeys('Discovered', $label, $resolved, $options);
     $visible = $p->visibleOptions($label, $scroll, count($options));
@@ -4532,13 +4571,29 @@ class Prompty {
   protected function assertOptionKey(string $parameter, string $label, mixed $value, array $options): string {
     $key = is_scalar($value) ? trim((string) $value) : get_debug_type($value);
 
-    if (!array_key_exists($key, $options)) {
+    if (!$this->isOptionKey($value, $options)) {
       $available = $options === [] ? 'none' : implode(', ', $this->optionKeys($options));
 
       throw new \InvalidArgumentException(sprintf('%s value "%s" for "%s" is not a valid option. Available options: %s.', $parameter, $key, $label, $available));
     }
 
     return $key;
+  }
+
+  /**
+   * Checks whether a supplied value names one of a widget's options.
+   *
+   * @param mixed $value
+   *   The supplied value.
+   * @param array<int|string, string> $options
+   *   Map of option key to display label.
+   *
+   * @return bool
+   *   TRUE when the value is a scalar whose trimmed form is a key of
+   *   $options.
+   */
+  protected function isOptionKey(mixed $value, array $options): bool {
+    return is_scalar($value) && array_key_exists(trim((string) $value), $options);
   }
 
   /**

@@ -88,6 +88,13 @@ catch (\InvalidArgumentException $exception) {
   echo '  Rejected: ' . $exception->getMessage() . "\n";
 }
 
+echo "\n--- Select: a default outside the options falls back ---\n";
+$r = Prompty::select('Course', options: $courses, default: 'pudding', strict_default: FALSE, description: 'The saved course is gone, so the first option is focused.');
+echo '  Result: ' . (is_string($r) ? $r : 'cancelled') . "\n";
+
+echo "\n--- Multiselect: defaults outside the options are dropped ---\n";
+show_selection(Prompty::multiselect('Extras', options: $extras, default: ['bread', 'pickles'], strict_default: FALSE, description: 'Pickles are off the menu, so only bread is pre-checked.'));
+
 echo "\n--- Multiselect: answered by a command-line flag ---\n";
 $flag = is_string($opts['extras'] ?? NULL) ? $opts['extras'] : NULL;
 echo '  Source: ' . ($flag === NULL ? 'no --extras flag, so the widget asks' : '--extras=' . $flag) . "\n";

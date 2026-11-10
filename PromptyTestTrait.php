@@ -288,6 +288,7 @@ trait PromptyTestTrait {
       'spacing' => 'cfgSpacing',
       'scroll' => 'cfgScroll',
       'placeholder_fallback' => 'cfgPlaceholderFallback',
+      'strict_default' => 'cfgStrictDefault',
       'width' => 'cfgWidth',
       'legend' => 'cfgLegend',
     ];
