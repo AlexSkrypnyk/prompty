@@ -162,6 +162,10 @@ final class PromptyConfigTest extends PromptyTestCase {
     yield 'placeholder_fallback false' => [['placeholder_fallback' => FALSE], 'cfgPlaceholderFallback', FALSE];
 
     yield 'placeholder_fallback true' => [['placeholder_fallback' => TRUE], 'cfgPlaceholderFallback', TRUE];
+
+    yield 'width' => [['width' => 120], 'cfgWidth', 120];
+
+    yield 'width 0' => [['width' => 0], 'cfgWidth', 0];
   }
 
   #[DataProvider('dataProviderConfigurePartialArrayMerge')]
@@ -371,6 +375,7 @@ final class PromptyConfigTest extends PromptyTestCase {
     yield 'empty falsy value' => [['falsy' => ['no', '']], 'Blank value declared for "falsy". Every value must hold a non-space character.'];
     yield 'tab-only falsy value' => [['falsy' => ["\t"]], 'Blank value declared for "falsy". Every value must hold a non-space character.'];
     yield 'negative scroll' => [['scroll' => -1], 'Scroll size -1 for "scroll" is not valid. Use 0 to show every option, or the number of options to show at once.'];
+    yield 'negative width' => [['width' => -1], 'Width -1 for "width" is not valid. Use 0 to detect the terminal width, or the number of columns to wrap to.'];
   }
 
   /**
@@ -410,6 +415,8 @@ final class PromptyConfigTest extends PromptyTestCase {
     ];
 
     yield 'rejected scroll after valid arguments' => [['labels' => ['yes' => 'Aye'], 'env_prefix' => 'KITCHEN_', 'scroll' => -3], ['labels', 'env_prefix', 'scroll']];
+
+    yield 'rejected width after valid arguments' => [['labels' => ['yes' => 'Aye'], 'scroll' => 4, 'width' => -2], ['labels', 'scroll', 'width']];
   }
 
   public function testVersionReturnsDevelopment(): void {

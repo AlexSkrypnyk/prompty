@@ -786,6 +786,27 @@ To set the size for every `select`, `multiselect` and `suggest`, pass `scroll` t
 Prompty::configure(scroll: 10);
 ```
 
+## Long lines
+
+Prompty wraps every line that's wider than the terminal. Labels, descriptions, options, hints, help, errors and answers break between words, and each continuation row starts with the same bar and indent as its first row. A word wider than the row breaks at the row's edge:
+
+```text
+◆  Extras
+│  Sourdough bread, warm, cut at the table, Marinated olives, served in oil,
+│  Herbs picked the same morning
+│
+```
+
+Prompty measures the terminal before it draws each frame. It reads a positive `COLUMNS` environment variable first, then the width `stty size` reports, and falls back to 80 columns. Wide characters such as emoji count as 2 columns.
+
+To wrap at a fixed width, pass `width` to [`Prompty::configure()`](#configuration). To set it for 1 flow, pass it to `Prompty::flow()`. A `width` of `0` detects the terminal width again, and a negative `width` throws an `InvalidArgumentException`:
+
+```php
+Prompty::configure(width: 100);
+```
+
+Lines you print with `Prompty::output()` keep your layout, so Prompty doesn't wrap them.
+
 ## Default values
 
 Every widget takes a `default` that sets its starting state:
@@ -1008,6 +1029,7 @@ The following table lists every option and its default:
 | `interactive`     | `bool`                  | If false, every widget answers without reading input. Default `true`.         |
 | `scroll`          | `int`                   | Options select, multiselect and suggest show at once. Default `0` shows all.   |
 | `placeholder_fallback` | `bool`             | If false, text and suggest answer an empty submit with `''`. Default `true`.  |
+| `width`           | `int`                   | Columns that lines wrap to. Default `0` detects the terminal width.            |
 | `symbols_unicode` | `array<string, string>` | Unicode symbol overrides.                                                     |
 | `symbols_ascii`   | `array<string, string>` | ASCII symbol overrides.                                                       |
 | `colors`          | `array<string, string>` | ANSI color escape overrides.                                                  |
@@ -1154,7 +1176,7 @@ public function testMyScript(): void {
 
 Both helpers return an array whose `output` key holds the output with ANSI codes stripped. `promptyRun()` adds a `result` key with the callback's return value.
 
-Under both helpers, widgets draw ASCII symbols. To change that in `promptyRun()`, pass a configuration array such as `['unicode' => TRUE]` as its third argument.
+Under both helpers, widgets draw ASCII symbols and wrap lines at 80 columns, so the output doesn't depend on the terminal that runs the tests. To change either in `promptyRun()`, pass a configuration array such as `['unicode' => TRUE, 'width' => 120]` as its third argument.
 
 A widget that reads past the last keystroke cancels, so a test with too few keystrokes gets `null` instead of hanging.
 
