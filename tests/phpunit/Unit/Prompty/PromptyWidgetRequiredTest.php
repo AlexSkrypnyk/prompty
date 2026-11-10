@@ -221,6 +221,20 @@ final class PromptyWidgetRequiredTest extends PromptyTestCase {
     yield 'confirm, non-interactive' => [static fn(array $ctx): mixed => Prompty::confirm('Send order?', default: FALSE, required: TRUE, ctx: $ctx), FALSE, FALSE];
   }
 
+  public function testStandaloneSuggestRequired(): void {
+    $stream = $this->installKeystrokes(self::KEY_ENTER . 'soup' . self::KEY_ENTER, FALSE);
+
+    $result = NULL;
+    $output = $this->captureOutput(function () use (&$result): void {
+      $result = Prompty::suggest('Dish', options: self::DISHES, required: TRUE);
+    });
+
+    $this->assertSame('soup', $result);
+    $this->assertSame(1, substr_count($output, '! Required.'));
+
+    fclose($stream);
+  }
+
   public function testRequiredInFlow(): void {
     $r = $this->promptyRun(fn(): ?array => Prompty::flow(fn(): array => [
       'guest' => Prompty::text('Guest name', required: TRUE),
