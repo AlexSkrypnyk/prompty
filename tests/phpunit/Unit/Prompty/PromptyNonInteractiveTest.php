@@ -177,19 +177,19 @@ final class PromptyNonInteractiveTest extends PromptyTestCase {
   }
 
   #[DataProvider('dataProviderFlowArgument')]
-  public function testFlowArgument(bool $is_global, ?bool $is_flow, string $keystrokes, ?array $expected, bool $is_global_after): void {
+  public function testFlowArgument(bool $is_global_interactive, ?bool $is_flow_interactive, string $keystrokes, ?array $expected, bool $is_global_interactive_after): void {
     $stream = $this->installKeystrokes($keystrokes, FALSE);
-    Prompty::configure(interactive: $is_global);
+    Prompty::configure(interactive: $is_global_interactive);
 
     $result = NULL;
-    $this->captureOutput(function () use ($is_flow, &$result): void {
+    $this->captureOutput(function () use ($is_flow_interactive, &$result): void {
       $result = Prompty::flow(fn(): array => [
         'course' => Prompty::select('Course', options: self::COURSES),
-      ], interactive: $is_flow);
+      ], interactive: $is_flow_interactive);
     });
 
     $this->assertSame($expected, $result);
-    $this->assertSame($is_global_after, Prompty::config()['interactive']);
+    $this->assertSame($is_global_interactive_after, Prompty::config()['interactive']);
     fclose($stream);
   }
 

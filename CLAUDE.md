@@ -17,7 +17,7 @@ Namespace: `AlexSkrypnyk\Prompty`. Key files: `Prompty.php` (library),
   runs in a `pcntl_fork()` child. `stream: TRUE` captures output with
   `ob_start()` at chunk size 1; a buffer handler can't echo, so `write()`
   collects drawn output in `$streamBuffer` for the handler to return.
-- **Typed config properties** - `cfgIsUnicode`, `cfgSymbols`, `cfgColors`,
+- **Typed config properties** - `cfgUseUnicode`, `cfgSymbols`, `cfgColors`,
   `cfgSpacing`, `cfgLabels`, `cfgEnvPrefix`, `cfgTruthy`, `cfgFalsy`, etc.
   Configured via `Prompty::configure(...)` named arguments.
 - **Flow definition** - `flow()` takes a callable (not array) so `$isInFlow`
@@ -101,6 +101,7 @@ composer reset         # rm vendor/, vendor-bin/, composer.lock
 
 - `strict_types=1` in all PHP files
 - Single quotes, `snake_case` locals, `camelCase` methods/properties
+- A boolean property or variable is named as the yes/no question it answers, with the prefix that reads naturally: `is` (`$isTerminal`, `$is_live`), `has` (`$hasDrawn`, `$has_killswitch`), `was` (`$was_called`), `should` (`$should_proceed`), `use` / `show` for settings (`$cfgUseAnsi`, `$cfgShowLegend`). Public named arguments (`unicode`, `legend`, `erase`, ...) keep their option names.
 - Files end with newline
 
 ## Testing

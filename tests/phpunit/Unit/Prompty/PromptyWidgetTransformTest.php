@@ -279,9 +279,9 @@ final class PromptyWidgetTransformTest extends PromptyTestCase {
    */
   #[DataProvider('dataProviderCancelSkipsTransform')]
   public function testCancelSkipsTransform(\Closure $widget): void {
-    $is_called = FALSE;
-    $transform = function (mixed $value) use (&$is_called): mixed {
-      $is_called = TRUE;
+    $was_called = FALSE;
+    $transform = function (mixed $value) use (&$was_called): mixed {
+      $was_called = TRUE;
 
       return $value;
     };
@@ -289,7 +289,7 @@ final class PromptyWidgetTransformTest extends PromptyTestCase {
     $r = $this->promptyRun(fn(): mixed => $widget($transform), 'x' . self::KEY_CTRL_C);
 
     $this->assertNull($r['result']);
-    $this->assertFalse($is_called);
+    $this->assertFalse($was_called);
   }
 
   public static function dataProviderCancelSkipsTransform(): \Iterator {

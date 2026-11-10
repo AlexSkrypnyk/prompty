@@ -318,15 +318,15 @@ final class PromptyTaskTest extends PromptyTestCase {
   public function testTaskInFlowReturnsClosure(): void {
     $this->createAndSetInstance([], TRUE);
 
-    $is_run = FALSE;
-    $step = Prompty::task('Preheating the oven', action: function () use (&$is_run): bool {
-      $is_run = TRUE;
+    $has_run = FALSE;
+    $step = Prompty::task('Preheating the oven', action: function () use (&$has_run): bool {
+      $has_run = TRUE;
 
       return TRUE;
     });
 
     $this->assertInstanceOf(\Closure::class, $step);
-    $this->assertFalse($is_run);
+    $this->assertFalse($has_run);
   }
 
   public function testTaskInFlowWithConditionReturnsStepArray(): void {

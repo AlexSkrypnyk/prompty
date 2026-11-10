@@ -19,8 +19,8 @@ final class PromptyPlaceholderFallbackTest extends PromptyTestCase {
   protected const array DISHES = ['Pear Tart', 'Apple Crumble', 'Onion Soup', 'Lentil Stew'];
 
   #[DataProvider('dataProviderEmptyAnswer')]
-  public function testEmptyAnswer(\Closure $widget, string $keystrokes, bool $is_fallback, string $expected): void {
-    $r = $this->promptyRun(fn(): mixed => $widget($this->defaultCtx()), $keystrokes, ['placeholder_fallback' => $is_fallback]);
+  public function testEmptyAnswer(\Closure $widget, string $keystrokes, bool $use_fallback, string $expected): void {
+    $r = $this->promptyRun(fn(): mixed => $widget($this->defaultCtx()), $keystrokes, ['placeholder_fallback' => $use_fallback]);
 
     $this->assertSame($expected, $r['result']);
   }
@@ -83,13 +83,13 @@ final class PromptyPlaceholderFallbackTest extends PromptyTestCase {
   }
 
   #[DataProvider('dataProviderFlowOption')]
-  public function testFlowOption(?bool $is_fallback, string $expected): void {
+  public function testFlowOption(?bool $use_fallback, string $expected): void {
     $this->createAndSetInstance();
     $this->setEnvVars(['dish' => '']);
 
     $result = NULL;
-    $this->captureOutput(function () use (&$result, $is_fallback): void {
-      $result = Prompty::flow(fn(): array => ['dish' => Prompty::text('Dish name', placeholder: 'pear tart')], placeholder_fallback: $is_fallback);
+    $this->captureOutput(function () use (&$result, $use_fallback): void {
+      $result = Prompty::flow(fn(): array => ['dish' => Prompty::text('Dish name', placeholder: 'pear tart')], placeholder_fallback: $use_fallback);
     });
 
     $this->assertSame(['dish' => $expected], $result);

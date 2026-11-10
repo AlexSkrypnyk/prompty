@@ -275,8 +275,8 @@ trait PromptyTestTrait {
     $instance = $ref->newInstanceWithoutConstructor();
 
     $property_map = [
-      'unicode' => 'cfgIsUnicode',
-      'ansi' => 'cfgIsAnsi',
+      'unicode' => 'cfgUseUnicode',
+      'ansi' => 'cfgUseAnsi',
       'env_prefix' => 'cfgEnvPrefix',
       'truthy' => 'cfgTruthy',
       'falsy' => 'cfgFalsy',
@@ -287,9 +287,9 @@ trait PromptyTestTrait {
       'colors' => 'cfgColors',
       'spacing' => 'cfgSpacing',
       'scroll' => 'cfgScroll',
-      'placeholder_fallback' => 'cfgIsPlaceholderFallback',
+      'placeholder_fallback' => 'cfgUsePlaceholderFallback',
       'width' => 'cfgWidth',
-      'legend' => 'cfgIsLegend',
+      'legend' => 'cfgShowLegend',
     ];
 
     foreach ($config as $key => $value) {

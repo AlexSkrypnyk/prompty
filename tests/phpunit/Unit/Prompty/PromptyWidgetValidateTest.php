@@ -635,7 +635,7 @@ final class PromptyWidgetValidateTest extends PromptyTestCase {
     $select = static fn(?\Closure $validate, array $ctx, mixed $discovered): mixed => Prompty::select('Course', options: self::COURSES, discovered: $discovered, transform: static fn(string $key): string => $key . '-course', validate: $validate, ctx: $ctx);
     $multiselect = static fn(?\Closure $validate, array $ctx, mixed $discovered): mixed => Prompty::multiselect('Extras', options: self::EXTRAS, discovered: $discovered, transform: static fn(array $keys): array => array_reverse($keys), validate: $validate, ctx: $ctx);
     $suggest = static fn(?\Closure $validate, array $ctx, mixed $discovered): mixed => Prompty::suggest('Dish', options: self::DISHES, discovered: $discovered, transform: static fn(string $dish): string => ucwords(trim($dish)), validate: $validate, ctx: $ctx);
-    $confirm = static fn(?\Closure $validate, array $ctx, mixed $discovered): mixed => Prompty::confirm('Send order?', discovered: $discovered, transform: static fn(bool $is_sent): bool => !$is_sent, validate: $validate, ctx: $ctx);
+    $confirm = static fn(?\Closure $validate, array $ctx, mixed $discovered): mixed => Prompty::confirm('Send order?', discovered: $discovered, transform: static fn(bool $should_send): bool => !$should_send, validate: $validate, ctx: $ctx);
 
     yield 'text interactive' => [$text, 'pear tart' . self::KEY_ENTER, NULL, 'Pear Tart'];
     yield 'text discovered' => [$text, '', 'onion soup', 'Onion Soup'];

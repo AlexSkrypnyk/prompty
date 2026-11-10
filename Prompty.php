@@ -174,7 +174,7 @@ class Prompty {
   /**
    * Whether the running flow has drawn its intro, a step or a section.
    */
-  protected bool $isDrawn = FALSE;
+  protected bool $hasDrawn = FALSE;
 
   /**
    * Terminal rows the running flow has printed.
@@ -396,12 +396,12 @@ class Prompty {
   /**
    * Whether to use unicode symbols (NULL = auto-detect).
    */
-  protected ?bool $cfgIsUnicode = NULL;
+  protected ?bool $cfgUseUnicode = NULL;
 
   /**
    * Whether to emit ANSI color codes (NULL = auto-detect).
    */
-  protected ?bool $cfgIsAnsi = NULL;
+  protected ?bool $cfgUseAnsi = NULL;
 
   /**
    * Environment variable prefix for auto-discovery.
@@ -442,7 +442,7 @@ class Prompty {
   /**
    * Whether an empty text or suggest answer takes the placeholder.
    */
-  protected bool $cfgIsPlaceholderFallback = TRUE;
+  protected bool $cfgUsePlaceholderFallback = TRUE;
 
   /**
    * Terminal columns that rendered lines wrap to (0 = detect).
@@ -452,7 +452,7 @@ class Prompty {
   /**
    * Whether an active widget draws the keys it accepts under it.
    */
-  protected bool $cfgIsLegend = FALSE;
+  protected bool $cfgShowLegend = FALSE;
 
   /**
    * The key that steps back to the previous step in a flow ('' = none).
@@ -510,16 +510,16 @@ class Prompty {
    * Constructs a Prompty instance.
    */
   protected function __construct() {
-    if ($this->cfgIsUnicode === NULL) {
+    if ($this->cfgUseUnicode === NULL) {
       $lang = getenv('LANG') ?: getenv('LC_ALL') ?: getenv('LC_CTYPE') ?: setlocale(LC_CTYPE, '0') ?: '';
-      $this->cfgIsUnicode = stripos($lang, 'utf') !== FALSE;
+      $this->cfgUseUnicode = stripos($lang, 'utf') !== FALSE;
     }
 
     $this->cfgColorsDefault = $this->cfgColors;
 
-    if ($this->cfgIsAnsi === NULL) {
+    if ($this->cfgUseAnsi === NULL) {
       $no_color = getenv('NO_COLOR');
-      $this->cfgIsAnsi = ($no_color !== FALSE && $no_color !== '') || getenv('TERM') === 'dumb' ? FALSE : TRUE;
+      $this->cfgUseAnsi = ($no_color !== FALSE && $no_color !== '') || getenv('TERM') === 'dumb' ? FALSE : TRUE;
     }
 
     $this->resolveDisplay();
@@ -541,8 +541,8 @@ class Prompty {
    * Resolves the symbol and color sets from the unicode and ANSI settings.
    */
   protected function resolveDisplay(): void {
-    $this->cfgSymbols = $this->cfgIsUnicode ? $this->cfgSymbolsUnicode : $this->cfgSymbolsAscii;
-    $this->cfgColors = $this->cfgIsAnsi ? $this->cfgColorsDefault : array_fill_keys(array_keys($this->cfgColorsDefault), '');
+    $this->cfgSymbols = $this->cfgUseUnicode ? $this->cfgSymbolsUnicode : $this->cfgSymbolsAscii;
+    $this->cfgColors = $this->cfgUseAnsi ? $this->cfgColorsDefault : array_fill_keys(array_keys($this->cfgColorsDefault), '');
   }
 
   /**
@@ -558,17 +558,17 @@ class Prompty {
       'colors' => $this->cfgColorsDefault,
       'spacing' => $this->cfgSpacing,
       'labels' => $this->cfgLabels,
-      'unicode' => $this->cfgIsUnicode,
-      'ansi' => $this->cfgIsAnsi,
+      'unicode' => $this->cfgUseUnicode,
+      'ansi' => $this->cfgUseAnsi,
       'env_prefix' => $this->cfgEnvPrefix,
       'truthy' => $this->cfgTruthy,
       'falsy' => $this->cfgFalsy,
       'output' => $this->cfgOutput,
       'interactive' => $this->cfgIsInteractive,
       'scroll' => $this->cfgScroll,
-      'placeholder_fallback' => $this->cfgIsPlaceholderFallback,
+      'placeholder_fallback' => $this->cfgUsePlaceholderFallback,
       'width' => $this->cfgWidth,
-      'legend' => $this->cfgIsLegend,
+      'legend' => $this->cfgShowLegend,
       'back_key' => $this->cfgBackKey,
     ];
   }
@@ -585,17 +585,17 @@ class Prompty {
     $this->cfgColorsDefault = $snapshot['colors'];
     $this->cfgSpacing = $snapshot['spacing'];
     $this->cfgLabels = $snapshot['labels'];
-    $this->cfgIsUnicode = $snapshot['unicode'];
-    $this->cfgIsAnsi = $snapshot['ansi'];
+    $this->cfgUseUnicode = $snapshot['unicode'];
+    $this->cfgUseAnsi = $snapshot['ansi'];
     $this->cfgEnvPrefix = $snapshot['env_prefix'];
     $this->cfgTruthy = $snapshot['truthy'];
     $this->cfgFalsy = $snapshot['falsy'];
     $this->cfgOutput = $snapshot['output'];
     $this->cfgIsInteractive = $snapshot['interactive'];
     $this->cfgScroll = $snapshot['scroll'];
-    $this->cfgIsPlaceholderFallback = $snapshot['placeholder_fallback'];
+    $this->cfgUsePlaceholderFallback = $snapshot['placeholder_fallback'];
     $this->cfgWidth = $snapshot['width'];
-    $this->cfgIsLegend = $snapshot['legend'];
+    $this->cfgShowLegend = $snapshot['legend'];
     $this->cfgBackKey = $snapshot['back_key'];
     $this->resolveDisplay();
   }
@@ -748,11 +748,11 @@ class Prompty {
     }
 
     if ($unicode !== NULL) {
-      $p->cfgIsUnicode = $unicode;
+      $p->cfgUseUnicode = $unicode;
     }
 
     if ($ansi !== NULL) {
-      $p->cfgIsAnsi = $ansi;
+      $p->cfgUseAnsi = $ansi;
     }
 
     if ($env_prefix !== NULL) {
@@ -780,7 +780,7 @@ class Prompty {
     }
 
     if ($placeholder_fallback !== NULL) {
-      $p->cfgIsPlaceholderFallback = $placeholder_fallback;
+      $p->cfgUsePlaceholderFallback = $placeholder_fallback;
     }
 
     if ($width !== NULL) {
@@ -788,7 +788,7 @@ class Prompty {
     }
 
     if ($legend !== NULL) {
-      $p->cfgIsLegend = $legend;
+      $p->cfgShowLegend = $legend;
     }
 
     if ($back_key !== NULL) {
@@ -814,17 +814,17 @@ class Prompty {
       'colors' => $p->cfgColors,
       'spacing' => $p->cfgSpacing,
       'labels' => $p->cfgLabels,
-      'unicode' => $p->cfgIsUnicode,
-      'ansi' => $p->cfgIsAnsi,
+      'unicode' => $p->cfgUseUnicode,
+      'ansi' => $p->cfgUseAnsi,
       'env_prefix' => $p->cfgEnvPrefix,
       'truthy' => $p->cfgTruthy,
       'falsy' => $p->cfgFalsy,
       'output' => $p->cfgOutput,
       'interactive' => $p->cfgIsInteractive,
       'scroll' => $p->cfgScroll,
-      'placeholder_fallback' => $p->cfgIsPlaceholderFallback,
+      'placeholder_fallback' => $p->cfgUsePlaceholderFallback,
       'width' => $p->cfgWidth,
-      'legend' => $p->cfgIsLegend,
+      'legend' => $p->cfgShowLegend,
       'back_key' => $p->cfgBackKey,
     ];
   }
@@ -1019,7 +1019,7 @@ class Prompty {
       do {
         $p->results = [];
         $p->open = [];
-        $p->isDrawn = $intro !== NULL;
+        $p->hasDrawn = $intro !== NULL;
         $outcome = $p->walkFlow($steps, 0, $options, '');
       } while ($outcome === 'back');
 
@@ -1040,7 +1040,7 @@ class Prompty {
     finally {
       $p->teardownTty();
       $p->pending = NULL;
-      $p->isDrawn = FALSE;
+      $p->hasDrawn = FALSE;
       $p->resetStepBack();
       static::$isInFlow = FALSE;
 
@@ -2477,7 +2477,7 @@ class Prompty {
         continue;
       }
 
-      $is_previous_yes = $is_yes;
+      $was_yes = $is_yes;
 
       if (in_array($key, ['left', 'right', 'up', 'down', 'tab'], TRUE)) {
         $is_yes = !$is_yes;
@@ -2489,7 +2489,7 @@ class Prompty {
         $is_yes = FALSE;
       }
 
-      if ($is_yes !== $is_previous_yes) {
+      if ($is_yes !== $was_yes) {
         $error = NULL;
       }
 
@@ -2737,15 +2737,15 @@ class Prompty {
     $is_live = $p->isLive();
 
     $outcome = function (mixed $value) use ($p, $plain_label, $hint, $success, $failure, $open): array {
-      $is_ok = $value !== FALSE;
-      $message = $p->taskText($plain_label, $is_ok ? 'success' : 'failure', $is_ok ? $success : $failure, $value);
+      $has_succeeded = $value !== FALSE;
+      $message = $p->taskText($plain_label, $has_succeeded ? 'success' : 'failure', $has_succeeded ? $success : $failure, $value);
 
       return [
-        'ok' => $is_ok,
+        'ok' => $has_succeeded,
         'hint' => $p->taskText($plain_label, 'hint', $hint, $value),
         'details' => is_array($value) && array_is_list($value) && count(array_filter($value, is_string(...))) === count($value) ? $value : [],
-        'message' => $message !== '' ? $message : $p->label($is_ok ? 'done' : 'failed'),
-        'open' => $p->settleOpen($is_ok, $open),
+        'message' => $message !== '' ? $message : $p->label($has_succeeded ? 'done' : 'failed'),
+        'open' => $p->settleOpen($has_succeeded, $open),
       ];
     };
 
@@ -3468,7 +3468,7 @@ class Prompty {
    *   $placeholder, or '' when it does not answer.
    */
   protected function placeholderAnswer(string $placeholder): string {
-    return $this->cfgIsInteractive && $this->cfgIsPlaceholderFallback ? $placeholder : '';
+    return $this->cfgIsInteractive && $this->cfgUsePlaceholderFallback ? $placeholder : '';
   }
 
   /**
@@ -4066,7 +4066,7 @@ class Prompty {
    *   a terminal. A callable target is never a terminal.
    */
   protected function isLive(): bool {
-    if (!$this->cfgIsInteractive || !$this->cfgIsAnsi) {
+    if (!$this->cfgIsInteractive || !$this->cfgUseAnsi) {
       return FALSE;
     }
 
@@ -4234,14 +4234,14 @@ class Prompty {
       $this->streamed = NULL;
     }
 
-    $is_ok = $resolved['ok'];
+    $has_succeeded = $resolved['ok'];
     $settled = $resolved['open'];
     $gap = $lines !== [] ? [$this->bar() . ($depth > 0 ? $this->bodyPrefix($depth, $settled) : '')] : [];
     $count = count($lines);
 
     // A collapsed window says how much output it hid.
-    $note = $is_live && $is_ok && $count > 0 ? sprintf(' (%d %s)', $count, $this->label($count === 1 ? 'line' : 'lines')) : '';
-    $result = $this->renderTaskResult($is_ok, $resolved['hint'], $resolved['details'], $resolved['message'], $note, $depth, $settled);
+    $note = $is_live && $has_succeeded && $count > 0 ? sprintf(' (%d %s)', $count, $this->label($count === 1 ? 'line' : 'lines')) : '';
+    $result = $this->renderTaskResult($has_succeeded, $resolved['hint'], $resolved['details'], $resolved['message'], $note, $depth, $settled);
 
     if (!$is_live) {
       $this->printLines(array_merge($gap, $result));
@@ -4250,8 +4250,8 @@ class Prompty {
     }
 
     // A failure keeps every line, since the cause is among them.
-    $body = $is_ok ? $result : array_merge($this->renderTaskLines($lines, $depth, $settled), $gap, $result);
-    $this->redraw($rows, array_merge($this->renderTaskLabel($label, $is_ok, $depth, $settled), $body));
+    $body = $has_succeeded ? $result : array_merge($this->renderTaskLines($lines, $depth, $settled), $gap, $result);
+    $this->redraw($rows, array_merge($this->renderTaskLabel($label, $has_succeeded, $depth, $settled), $body));
 
     return $value;
   }
@@ -4576,7 +4576,7 @@ class Prompty {
         continue;
       }
 
-      if (!$this->cfgIsAnsi) {
+      if (!$this->cfgUseAnsi) {
         continue;
       }
 
@@ -5379,7 +5379,7 @@ class Prompty {
    *   The rendered legend lines, or no lines when the legend is off.
    */
   protected function renderLegend(string $widget, int $depth = 0, array $open = []): array {
-    if (!$this->cfgIsLegend) {
+    if (!$this->cfgShowLegend) {
       return [];
     }
 
@@ -5531,7 +5531,7 @@ class Prompty {
    *
    * @param string $label
    *   The task label.
-   * @param bool $is_ok
+   * @param bool $has_succeeded
    *   Whether the action succeeded.
    * @param int $depth
    *   The current nesting depth.
@@ -5541,14 +5541,14 @@ class Prompty {
    * @return list<string>
    *   The label rows.
    */
-  protected function renderTaskLabel(string $label, bool $is_ok, int $depth = 0, array $open = []): array {
-    return $is_ok ? $this->renderLabel($label, 'completed', 'cyan', $depth, $open) : $this->renderLabel($label, 'active', 'red', $depth, $open);
+  protected function renderTaskLabel(string $label, bool $has_succeeded, int $depth = 0, array $open = []): array {
+    return $has_succeeded ? $this->renderLabel($label, 'completed', 'cyan', $depth, $open) : $this->renderLabel($label, 'active', 'red', $depth, $open);
   }
 
   /**
    * Renders the lines a task draws under its label once the action returns.
    *
-   * @param bool $is_ok
+   * @param bool $has_succeeded
    *   Whether the action succeeded.
    * @param string $hint
    *   The hint, or '' for none. A newline starts another hint line.
@@ -5566,7 +5566,7 @@ class Prompty {
    * @return array<int, string>
    *   The rendered lines, closed with a bar line.
    */
-  protected function renderTaskResult(bool $is_ok, string $hint, array $details, string $message, string $note = '', int $depth = 0, array $open = []): array {
+  protected function renderTaskResult(bool $has_succeeded, string $hint, array $details, string $message, string $note = '', int $depth = 0, array $open = []): array {
     $gutter = $this->bar() . ($depth > 0 ? $this->bodyPrefix($depth, $open) : $this->cfgSpacing['indent']);
     $lines = [];
 
@@ -5580,8 +5580,8 @@ class Prompty {
       $lines = array_merge($lines, $this->renderTaskLine($detail, $depth, $open));
     }
 
-    $marker = $this->cfgSymbols[$is_ok ? 'success' : 'error'] . ' ';
-    $result = $this->color($marker . $this->printable($message), $is_ok ? 'green' : 'red') . ($note !== '' ? $this->color($note, 'dim') : '');
+    $marker = $this->cfgSymbols[$has_succeeded ? 'success' : 'error'] . ' ';
+    $result = $this->color($marker . $this->printable($message), $has_succeeded ? 'green' : 'red') . ($note !== '' ? $this->color($note, 'dim') : '');
     $lines = array_merge($lines, $this->wrap($gutter, $result, $gutter . $this->pad($marker)));
     $lines[] = $this->bar() . ($depth > 0 ? $this->bodyPrefix($depth, $open) : '');
 
@@ -5846,9 +5846,9 @@ class Prompty {
    *
    * @param list<int> $widths
    *   The content width of each column.
-   * @param bool $is_above_divided
+   * @param bool $has_columns_above
    *   Whether the row above the rule is divided into columns.
-   * @param bool $is_below_divided
+   * @param bool $has_columns_below
    *   Whether the row below the rule is divided into columns.
    * @param string $edge
    *   Where the rule sits in the frame: 'top', 'bottom' or 'middle'.
@@ -5856,11 +5856,11 @@ class Prompty {
    * @return string
    *   The rule, after the gutter.
    */
-  protected function boxRule(array $widths, bool $is_above_divided, bool $is_below_divided, string $edge): string {
+  protected function boxRule(array $widths, bool $has_columns_above, bool $has_columns_below, string $edge): string {
     $join = match (TRUE) {
-      $is_above_divided && $is_below_divided => 'box_cross',
-      $is_above_divided => 'box_bottom_tee',
-      $is_below_divided => 'box_top_tee',
+      $has_columns_above && $has_columns_below => 'box_cross',
+      $has_columns_above => 'box_bottom_tee',
+      $has_columns_below => 'box_top_tee',
       default => 'box_horizontal',
     };
 
@@ -6271,8 +6271,8 @@ class Prompty {
     $title = $section['__section'];
     /** @var string $description */
     $description = $section['__description'] ?? '';
-    $this->printLines($this->renderSection($title, $description, !$this->isDrawn));
-    $this->isDrawn = TRUE;
+    $this->printLines($this->renderSection($title, $description, !$this->hasDrawn));
+    $this->hasDrawn = TRUE;
   }
 
   /**
@@ -6300,7 +6300,7 @@ class Prompty {
     /** @var string $type */
     $type = $note['__type'];
     $this->printLines($this->renderNote($message, $type, $depth, $this->open));
-    $this->isDrawn = TRUE;
+    $this->hasDrawn = TRUE;
   }
 
   /**
@@ -6413,7 +6413,7 @@ class Prompty {
       }
 
       $this->results[$key] = $value;
-      $this->isDrawn = TRUE;
+      $this->hasDrawn = TRUE;
 
       // A widget settles the connector before it draws; this settles a step
       // whose widget did not, so its children still see the exact state.

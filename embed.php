@@ -308,10 +308,10 @@ function embed_check(string $script_path, ?string $sums_path): int {
     }
   }
 
-  $is_failed = FALSE;
-  $report = function (bool $is_passed, string $message) use (&$is_failed): void {
-    echo sprintf('  %s  %s%s', $is_passed ? 'OK  ' : 'FAIL', $message, PHP_EOL);
-    $is_failed = $is_failed || !$is_passed;
+  $has_failed = FALSE;
+  $report = function (bool $has_passed, string $message) use (&$has_failed): void {
+    echo sprintf('  %s  %s%s', $has_passed ? 'OK  ' : 'FAIL', $message, PHP_EOL);
+    $has_failed = $has_failed || !$has_passed;
   };
 
   echo sprintf('Embedded %s %s (%s) in %s%s', $attributes['class'], $attributes['version'], $attributes['mode'], $script_path, PHP_EOL);
@@ -322,7 +322,7 @@ function embed_check(string $script_path, ?string $sums_path): int {
   if ($sums_path === NULL) {
     echo sprintf('NOT VERIFIED AGAINST A RELEASE. Pass --sums with the verified SHA256SUMS of %s %s to check that the code is the released code.%s', $attributes['class'], $attributes['version'], PHP_EOL);
 
-    return $is_failed ? 1 : 0;
+    return $has_failed ? 1 : 0;
   }
 
   $sums_content = is_file($sums_path) ? file_get_contents($sums_path) : FALSE;
@@ -366,7 +366,7 @@ function embed_check(string $script_path, ?string $sums_path): int {
 
   echo sprintf('SHA256SUMS is trusted as given. Verify SHA256SUMS.asc or its attestation before relying on this result.%s', PHP_EOL);
 
-  return $is_failed ? 1 : 0;
+  return $has_failed ? 1 : 0;
 }
 
 /**
@@ -584,11 +584,11 @@ SNIPPET;
 }
 
 $is_compact = FALSE;
-$is_stdout = FALSE;
+$to_stdout = FALSE;
 $is_payload_only = FALSE;
-$is_check = FALSE;
+$is_check_mode = FALSE;
 $is_killswitch_skipped = FALSE;
-$is_verify_skipped = FALSE;
+$is_verification_skipped = FALSE;
 $source_override = NULL;
 $sums_path = NULL;
 $positional = [];
@@ -598,19 +598,19 @@ for ($arg_i = 1; $arg_i < $argc; $arg_i++) {
     $is_compact = TRUE;
   }
   elseif ($argv[$arg_i] === '--stdout') {
-    $is_stdout = TRUE;
+    $to_stdout = TRUE;
   }
   elseif ($argv[$arg_i] === '--payload') {
     $is_payload_only = TRUE;
   }
   elseif ($argv[$arg_i] === '--check') {
-    $is_check = TRUE;
+    $is_check_mode = TRUE;
   }
   elseif ($argv[$arg_i] === '--no-killswitch') {
     $is_killswitch_skipped = TRUE;
   }
   elseif ($argv[$arg_i] === '--no-verify') {
-    $is_verify_skipped = TRUE;
+    $is_verification_skipped = TRUE;
   }
   elseif ($argv[$arg_i] === '--source' || $argv[$arg_i] === '--sums') {
     $option = $argv[$arg_i];
@@ -681,17 +681,17 @@ USAGE;
   exit(1);
 }
 
-if ((int) $is_stdout + (int) $is_payload_only + (int) $is_check > 1) {
+if ((int) $to_stdout + (int) $is_payload_only + (int) $is_check_mode > 1) {
   fwrite(STDERR, sprintf('Error: Use only 1 of --stdout, --payload and --check.%s', PHP_EOL));
   exit(1);
 }
 
-if ($sums_path !== NULL && !$is_check) {
+if ($sums_path !== NULL && !$is_check_mode) {
   fwrite(STDERR, sprintf('Error: --sums is only used with --check.%s', PHP_EOL));
   exit(1);
 }
 
-if ($is_check) {
+if ($is_check_mode) {
   exit(embed_check($positional[0], $sums_path));
 }
 
@@ -699,7 +699,7 @@ $stdout_path = $positional[0];
 $target_path = $positional[0];
 
 // --stdout and --payload take an output file, not a target script.
-if (!$is_stdout && !$is_payload_only) {
+if (!$to_stdout && !$is_payload_only) {
   $input_path = $positional[0];
 
   if (!is_file($input_path)) {
@@ -1126,7 +1126,7 @@ if ($is_payload_only) {
   exit(0);
 }
 
-if ($is_stdout) {
+if ($to_stdout) {
   $standalone = "<?php\n\ndeclare(strict_types=1);\n\n";
 
   if ($namespace !== '') {
@@ -1200,9 +1200,9 @@ if ($result === NULL) {
 
 $result = preg_replace('/\n{3,}/', "\n\n", $result);
 
-$is_killswitch_present = str_contains((string) $result, "if (!getenv('SHOULD_PROCEED'))");
+$has_killswitch = str_contains((string) $result, "if (!getenv('SHOULD_PROCEED'))");
 
-if (!$is_killswitch_present && !$is_killswitch_skipped) {
+if (!$has_killswitch && !$is_killswitch_skipped) {
   $killswitch = <<<'KILLSWITCH'
 
 // Kill switch - stop here when running under tests.
@@ -1244,17 +1244,17 @@ if ($lint_exit !== 0) {
 echo sprintf('Embedded into %s%s', $target_path, PHP_EOL);
 
 $final = file_get_contents($target_path);
-$is_final_killswitch_present = $final !== FALSE && str_contains($final, "if (!getenv('SHOULD_PROCEED'))");
+$final_has_killswitch = $final !== FALSE && str_contains($final, "if (!getenv('SHOULD_PROCEED'))");
 
-if (!$is_final_killswitch_present) {
+if (!$final_has_killswitch) {
   fwrite(STDERR, sprintf('Warning: No kill switch found in the target file. Please test the embedded script manually.%s', PHP_EOL));
 }
 
 // Verification runs the embedded script, and --no-killswitch leaves it with
 // nothing to stop before the real work.
-$is_verifying = $is_final_killswitch_present && !$is_killswitch_skipped && !$is_verify_skipped;
+$should_verify = $final_has_killswitch && !$is_killswitch_skipped && !$is_verification_skipped;
 
-if ($is_verifying && stream_isatty(STDIN)) {
+if ($should_verify && stream_isatty(STDIN)) {
   echo sprintf('Verifying embedded script (interactive input required)...%s', PHP_EOL);
 
   $verify_exit = 0;
@@ -1264,7 +1264,7 @@ if ($is_verifying && stream_isatty(STDIN)) {
     fwrite(STDERR, sprintf('Warning: Embedded script exited with code %d.%s', $verify_exit, PHP_EOL));
   }
 }
-elseif ($is_verifying) {
+elseif ($should_verify) {
   echo sprintf('Verifying embedded script...%s', PHP_EOL);
 
   // Non-interactive mode: pipe keystrokes to simulate a quick run.

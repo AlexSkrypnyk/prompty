@@ -408,14 +408,14 @@ final class PromptyFlowStepBackTest extends PromptyTestCase {
   }
 
   public function testReplayEndsAtStepWithoutPreviousAnswer(): void {
-    $is_shown = FALSE;
+    $should_show = FALSE;
     $steps = fn(): array => [
       'guest' => Prompty::text('Guest name'),
-      'table' => Prompty::text('Table', condition: function () use (&$is_shown): bool {
-        return $is_shown;
+      'table' => Prompty::text('Table', condition: function () use (&$should_show): bool {
+        return $should_show;
       }),
-      'note' => Prompty::text('Note for the kitchen', validate: function () use (&$is_shown): ?string {
-        $is_shown = TRUE;
+      'note' => Prompty::text('Note for the kitchen', validate: function () use (&$should_show): ?string {
+        $should_show = TRUE;
 
         return NULL;
       }),

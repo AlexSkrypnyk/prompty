@@ -134,7 +134,7 @@ final class EmbedIntegrityTest extends EmbedTestCase {
    *
    * @param string $mutation
    *   The change made to the script or SHA256SUMS before the check.
-   * @param bool $is_with_sums
+   * @param bool $has_sums
    *   Whether to pass --sums.
    * @param int $expected_exit
    *   The expected exit code.
@@ -142,7 +142,7 @@ final class EmbedIntegrityTest extends EmbedTestCase {
    *   Strings the combined output must contain.
    */
   #[DataProvider('dataProviderCheck')]
-  public function testCheck(string $mutation, bool $is_with_sums, int $expected_exit, array $expected_output): void {
+  public function testCheck(string $mutation, bool $has_sums, int $expected_exit, array $expected_output): void {
     $source = $this->copyReleasedSource();
     $target = $this->prepareTarget('install.php');
     $payload = self::$tmp . '/Prompty.min.payload';
@@ -197,7 +197,7 @@ final class EmbedIntegrityTest extends EmbedTestCase {
     }
 
     $script_arg = $mutation === 'missing script' ? self::$tmp . '/missing.php' : $target;
-    $this->processRun('php', array_merge([self::$root . '/embed.php', '--check', $script_arg], $is_with_sums ? ['--sums', $sums] : []));
+    $this->processRun('php', array_merge([self::$root . '/embed.php', '--check', $script_arg], $has_sums ? ['--sums', $sums] : []));
 
     $output = $this->processGet()->getOutput() . $this->processGet()->getErrorOutput();
     $this->assertSame($expected_exit, $this->processGet()->getExitCode(), $output);
