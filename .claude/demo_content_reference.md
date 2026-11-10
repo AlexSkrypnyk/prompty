@@ -339,7 +339,7 @@ Messages a `validate` callback returns in demos and README snippets:
 
 ## Nested flow shape
 
-`flow-nested.php` asks Course, Extras and Drinks in turn. Course branches one way per option; Extras and Drinks reveal a child per selected option:
+`05-flows-nested.php` asks Course, Extras and Drinks in turn. Course branches one way per option; Extras and Drinks reveal a child per selected option:
 
 ```text
 Course
@@ -390,7 +390,7 @@ $results = Prompty::flow(fn(): array => [
 ], intro: 'Compose an order', outro: 'Order sent!');
 ```
 
-`flow.php` extends this shape with `table` and `seats` between `extras` and `send`, so the linear demo covers numeric option keys.
+`05-flows.php` extends this shape with `table` and `seats` between `extras` and `send`, so the linear demo covers numeric option keys.
 
 ## Flow framing
 
@@ -399,20 +399,20 @@ Intro, outro and cancelled lines stay order-themed and specific to their demo:
 | Demo | Intro | Outro | Cancelled |
 | --- | --- | --- | --- |
 | `starter.php` | `Compose an order` | `Order sent!` | `Order cancelled.` |
-| `flow.php` | `Compose an order` | `Order sent!` | `Order cancelled.` |
-| `flow-nested.php` | `Kitchen order` | `Order sent to the kitchen!` | `Kitchen order cancelled.` |
-| `config.php` | `Order setup` | `All done!` | `Order setup cancelled.` |
-| `flow-scope.php` flow 1 | `A flow with its own configuration` | `Dish noted.` | `Cancelled.` |
-| `flow-scope.php` flow 2 | `A flow that asks for nothing` | `Course noted.` | `Cancelled.` |
-| `flow-scope.php` flow 3 | `A flow after configure()` | `Order sent!` | `Cancelled.` |
+| `05-flows.php` | `Compose an order` | `Order sent!` | `Order cancelled.` |
+| `05-flows-nested.php` | `Kitchen order` | `Order sent to the kitchen!` | `Kitchen order cancelled.` |
+| `08-config.php` | `Order setup` | `All done!` | `Order setup cancelled.` |
+| `05-flows-scope.php` flow 1 | `A flow with its own configuration` | `Dish noted.` | `Cancelled.` |
+| `05-flows-scope.php` flow 2 | `A flow that asks for nothing` | `Course noted.` | `Cancelled.` |
+| `05-flows-scope.php` flow 3 | `A flow after configure()` | `Order sent!` | `Cancelled.` |
 
-Env prefixes: `PROMPTY_` in `flow.php`, `KITCHEN_` in `flow-nested.php`, `config.php` and `flow-scope.php`, `ORDER_` in the `config.php` merge demo.
+Env prefixes: `PROMPTY_` in `05-flows.php`, `KITCHEN_` in `05-flows-nested.php`, `08-config.php` and `05-flows-scope.php`, `ORDER_` in the `08-config.php` merge demo.
 
 ## Recorded inputs
 
 Values typed into text and confirm widgets by the asset recordings and functional tests:
 
-- `flow.php` dish: `plum compote`
-- `widgets.php` dish: `apple crumble`
-- `widget-text.php`: `onion soup`, `Jane Doe`, `no nuts`
+- `05-flows.php` dish: `plum compote`
+- `01-widgets.php` dish: `apple crumble`
+- `02-widgets-text.php`: `onion soup`, `Jane Doe`, `no nuts`
 - Functional tests type `plum compote`, `walnut loaf` and `onion soup` as dish names.

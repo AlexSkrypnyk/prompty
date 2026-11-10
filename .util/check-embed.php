@@ -5,10 +5,10 @@
  * @file
  * Check that embedding does not change what a script does.
  *
- * playground/flow-embed.php loads the class with require; embedding rewrites
- * it into a copy that carries the class inline and requires nothing. Both run
- * the same flow, so anything that differs between what they print is a fault
- * in the embedder.
+ * playground/05-flows-embed.php loads the class with require; embedding
+ * rewrites it into a copy that carries the class inline and requires nothing.
+ * Both run the same flow, so anything that differs between what they print
+ * is a fault in the embedder.
  *
  * This builds that copy into a temporary path, runs both with the same
  * answers supplied through the environment, and compares the output.
@@ -24,7 +24,7 @@
 
 declare(strict_types=1);
 
-define('SOURCE_SCRIPT', 'playground/flow-embed.php');
+define('SOURCE_SCRIPT', 'playground/05-flows-embed.php');
 
 // Answers for every step of the flow, so neither run waits for a keypress.
 define('ANSWERS', [

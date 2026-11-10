@@ -71,7 +71,7 @@ return RectorConfig::configure()
     '*/vendor/*',
     '*/node_modules/*',
     // Built on demand by embed.php and not committed.
-    __DIR__ . '/playground/flow-embed.dist.php',
+    __DIR__ . '/playground/05-flows-embed.dist.php',
   ])
   ->withFileExtensions([
     'php',

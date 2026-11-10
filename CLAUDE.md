@@ -57,9 +57,21 @@ Namespace: `AlexSkrypnyk\Prompty`. Key files: `Prompty.php` (library),
 
 ### Playground
 
-`playground/` holds runnable demos - `widgets*.php` and `widget-*.php` for
-standalone widgets, `flow*.php` for flows, `table-box.php` for tables and boxes. `CONTRIBUTING.md` lists what each
-one shows and which accept `--no-unicode` / `--no-ansi`.
+`playground/` holds runnable demos named `NN-topic-name.php`, numbered in
+README order: `01`-`02` widgets, `03` notes, tables and boxes, `04` tasks,
+`05` flows, `06` answer sources, validation and transforms, `07` long lists
+and the legend, `08` configuration. Related demos share 1 script whose
+sections run top to bottom; a script never branches on a flag to pick what
+it shows. `CONTRIBUTING.md` lists what each one shows and which accept
+`--no-unicode` / `--no-ansi`.
+
+### Method order
+
+`Prompty.php` groups its methods by concern: lifecycle, then the public API
+(configuration, flows, widgets, output, text helpers), then protected helpers
+(config validation, options, answers, key input, step back, terminal, tasks,
+writing, styling, wrapping, chrome, renderers, flow walking). Add a method to
+its group. A boolean method about state is named `is*`.
 
 ## Demo content
 

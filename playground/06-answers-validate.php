@@ -12,7 +12,7 @@
  * A discovered answer has nobody to ask again, so a rejected one throws:
  *
  * @code
- * php playground/widget-validate.php --dish=pear
+ * php playground/06-answers-validate.php --dish=pear
  * @endcode
  */
 

@@ -80,9 +80,9 @@ function getJobs(string $project_dir): array {
   $variants = ['' => '', '-ascii' => ' --no-unicode', '-no-ansi' => ' --no-ansi', '-ascii-no-ansi' => ' --no-unicode --no-ansi'];
 
   $animated_bases = [
-    'widgets' => ['script' => $project_dir . '/playground/widgets.php', 'expect_fn' => 'createWidgetsExpectScript', 'rows' => 18],
-    'flow' => ['script' => $project_dir . '/playground/flow.php', 'expect_fn' => 'createFlowExpectScript', 'rows' => 20],
-    'flow-nested' => ['script' => $project_dir . '/playground/flow-nested.php', 'expect_fn' => 'createFlowNestedExpectScript', 'rows' => 20],
+    'widgets' => ['script' => $project_dir . '/playground/01-widgets.php', 'expect_fn' => 'createWidgetsExpectScript', 'rows' => 18],
+    'flow' => ['script' => $project_dir . '/playground/05-flows.php', 'expect_fn' => 'createFlowExpectScript', 'rows' => 20],
+    'flow-nested' => ['script' => $project_dir . '/playground/05-flows-nested.php', 'expect_fn' => 'createFlowNestedExpectScript', 'rows' => 20],
   ];
 
   $jobs = [];
@@ -95,28 +95,28 @@ function getJobs(string $project_dir): array {
 
   $static_bases = [
     'widget-text' => [
-      'script' => $project_dir . '/playground/widget-text.php',
+      'script' => $project_dir . '/playground/02-widgets-text.php',
       'expect_fn' => 'createWidgetTextExpectScript',
       'at' => 500,
       'rows' => 8,
       'cols' => 40,
     ],
     'widget-select' => [
-      'script' => $project_dir . '/playground/widget-select.php',
+      'script' => $project_dir . '/playground/02-widgets-select.php',
       'expect_fn' => 'createWidgetSelectExpectScript',
       'at' => 500,
       'rows' => 10,
       'cols' => 40,
     ],
     'widget-multiselect' => [
-      'script' => $project_dir . '/playground/widget-multiselect.php',
+      'script' => $project_dir . '/playground/02-widgets-multiselect.php',
       'expect_fn' => 'createWidgetMultiselectExpectScript',
       'at' => 500,
       'rows' => 10,
       'cols' => 40,
     ],
     'widget-confirm' => [
-      'script' => $project_dir . '/playground/widget-confirm.php',
+      'script' => $project_dir . '/playground/02-widgets-confirm.php',
       'expect_fn' => 'createWidgetConfirmExpectScript',
       'at' => 500,
       'rows' => 7,
@@ -133,7 +133,7 @@ function getJobs(string $project_dir): array {
   // The embedded copy of the flow, recorded so that a change in what an
   // embedded script draws shows up as a diff.
   $jobs['flow-embed'] = [
-    'script' => $project_dir . '/playground/flow-embed.dist.php',
+    'script' => $project_dir . '/playground/05-flows-embed.dist.php',
     'expect_fn' => 'createFlowEmbedExpectScript',
     'prepare_fn' => 'buildEmbeddedPlayground',
     'rows' => 20,
@@ -307,8 +307,8 @@ function buildEmbeddedPlayground(string $project_dir): void {
   $cmd = sprintf(
     'php %s --no-verify %s %s 2>&1',
     escapeshellarg($project_dir . '/embed.php'),
-    escapeshellarg($project_dir . '/playground/flow-embed.php'),
-    escapeshellarg($project_dir . '/playground/flow-embed.dist.php'),
+    escapeshellarg($project_dir . '/playground/05-flows-embed.php'),
+    escapeshellarg($project_dir . '/playground/05-flows-embed.dist.php'),
   );
 
   $output = [];
@@ -613,7 +613,7 @@ function convertToSvg(string $cast_file, string $svg_file, string $script_dir, ?
 }
 
 /**
- * Create an expect script for the widgets.php playground.
+ * Create an expect script for the 01-widgets.php playground.
  *
  * @param string $playground_script
  *   Path to the playground PHP script.
@@ -699,7 +699,7 @@ EXPECT;
 }
 
 /**
- * Create an expect script for the flow.php playground.
+ * Create an expect script for the 05-flows.php playground.
  *
  * @param string $playground_script
  *   Path to the playground PHP script.
@@ -802,7 +802,7 @@ EXPECT;
 /**
  * Create an expect script for the embedded flow playground.
  *
- * The embedded copy runs the same 4 prompts as flow-embed.php, so what it
+ * The embedded copy runs the same 4 prompts as 05-flows-embed.php, so what it
  * draws is what that flow draws unless the embedder changed something.
  *
  * @param string $playground_script
@@ -890,7 +890,7 @@ EXPECT;
 }
 
 /**
- * Create an expect script for the flow-nested.php playground.
+ * Create an expect script for the 05-flows-nested.php playground.
  *
  * @param string $playground_script
  *   Path to the playground PHP script.
@@ -1020,7 +1020,7 @@ EXPECT;
 }
 
 /**
- * Create an expect script for the widget-text.php playground.
+ * Create an expect script for the 02-widgets-text.php playground.
  *
  * @param string $playground_script
  *   Path to the playground PHP script.
@@ -1085,7 +1085,7 @@ EXPECT;
 }
 
 /**
- * Create an expect script for the widget-select.php playground.
+ * Create an expect script for the 02-widgets-select.php playground.
  *
  * @param string $playground_script
  *   Path to the playground PHP script.
@@ -1146,7 +1146,7 @@ EXPECT;
 }
 
 /**
- * Create an expect script for the widget-multiselect.php playground.
+ * Create an expect script for the 02-widgets-multiselect.php playground.
  *
  * @param string $playground_script
  *   Path to the playground PHP script.
@@ -1219,7 +1219,7 @@ EXPECT;
 }
 
 /**
- * Create an expect script for the widget-confirm.php playground.
+ * Create an expect script for the 02-widgets-confirm.php playground.
  *
  * @param string $playground_script
  *   Path to the playground PHP script.

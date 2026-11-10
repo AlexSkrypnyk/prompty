@@ -39,7 +39,7 @@ The project's commands run through Composer:
 - **PHPCS** - the Drupal standard plus DrevOps rules, with `strict_types` required in every file. Config in [`phpcs.xml`](phpcs.xml).
 - **PHPStan** - level 9, the strictest level. Config in [`phpstan.neon`](phpstan.neon).
 - **Rector** - PHP 8.3 modernization plus the dead-code, code-quality, coding-style, type-declaration, naming, instanceof, early-return and PHPUnit code-quality sets. Linting runs it in dry-run mode. Config in [`rector.php`](rector.php).
-- **Embedded demo check** - embeds `playground/flow-embed.php` and fails if the copy prints anything different from the original. See [The embedded demo](#the-embedded-demo).
+- **Embedded demo check** - embeds `playground/05-flows-embed.php` and fails if the copy prints anything different from the original. See [The embedded demo](#the-embedded-demo).
 
 CI fails when coverage drops below a threshold: 80% by default, or the value of the `CI_CODE_COVERAGE_THRESHOLD` repository variable. New code needs tests.
 
@@ -84,62 +84,59 @@ composer test -- --filter testRenderIntro
 
 ## Playground
 
-The [`playground/`](playground) directory holds runnable demos. Run one to see a change in a real terminal:
+The [`playground/`](playground) directory holds runnable demos. Each filename starts with a numbered `NN-topic-` prefix that follows the README order, so demos on the same topic sort together. Every script runs its sections in order, top to bottom. Run one to see a change in a real terminal:
 
-| Script                     | Shows                                                                  |
-|----------------------------|------------------------------------------------------------------------|
-| `widgets.php`              | Each widget type standalone, one after another.                        |
-| `widget-text.php`          | Text widget variants.                                                  |
-| `widget-select.php`        | Select widget variants.                                                |
-| `widget-multiselect.php`   | Multiselect widget variants.                                           |
-| `widget-confirm.php`       | Confirm widget variants.                                               |
-| `widget-suggest.php`       | Suggest widget variants, from a list and from a closure.               |
-| `widget-scroll.php`        | Select and multiselect with long lists shown a few options at a time.  |
-| `widget-values.php`        | Where an answer comes from, and what each source is held to.           |
-| `widget-validate.php`      | `validate` and `required` rejecting answers, in widgets and a flow.    |
-| `widget-control-chars.php` | What a control character in a value draws as.                          |
-| `widget-legend.php`        | The key legend under each widget, and its wording changed in a flow.   |
-| `widget-transform.php`     | A transform rewriting each widget's answer, and a wrong return type.   |
-| `widget-note.php`          | Notes of each type, standalone and in a nested flow.                   |
-| `widget-pause.php`         | Pauses that wait for any key or for Enter only, or erase the message.  |
-| `widget-task.php`          | Tasks behind a spinner, and tasks streaming a child process's output.  |
-| `table-box.php`            | Summary tables with headers and section rows, and titled boxes.        |
-| `config.php`               | What `configure()` accepts, how a flow adds to it, what it turns down. |
-| `flow.php`                 | A linear flow with descriptions, hints and help.                       |
-| `flow-nested.php`          | A nested flow with conditionals, 3 levels deep.                        |
-| `flow-steps.php`           | Steps whose options, defaults and descriptions follow earlier answers. |
-| `flow-sections.php`        | Section headings, one hidden by its empty group, and the step total.   |
-| `flow-scope.php`           | Several flows, and how long a flow's own configuration lasts.          |
-| `flow-step-keys.php`       | What a step key becomes, and which are turned down.                    |
-| `flow-embed.php`           | The flow the embedder is tested against.                               |
+| Script                         | Shows                                                                                      |
+|--------------------------------|--------------------------------------------------------------------------------------------|
+| `01-widgets.php`               | Each widget type standalone, one after another.                                            |
+| `02-widgets-text.php`          | Text widget variants.                                                                      |
+| `02-widgets-select.php`        | Select widget variants.                                                                    |
+| `02-widgets-multiselect.php`   | Multiselect widget variants.                                                               |
+| `02-widgets-suggest.php`       | Suggest widget variants, from a list and from a closure.                                   |
+| `02-widgets-confirm.php`       | Confirm widget variants.                                                                   |
+| `02-widgets-pause.php`         | Pauses that wait for any key or for Enter only, or erase the message.                      |
+| `03-output.php`                | Notes of each type, standalone and in a nested flow, then summary tables and titled boxes. |
+| `04-tasks.php`                 | Tasks behind a spinner, and tasks streaming a child process's output.                      |
+| `05-flows.php`                 | A linear flow with descriptions, hints and help.                                           |
+| `05-flows-nested.php`          | A nested flow with conditionals, 3 levels deep.                                            |
+| `05-flows-steps.php`           | Steps that follow earlier answers, then section headings and the step total.               |
+| `05-flows-step-keys.php`       | What a step key becomes, and which are turned down.                                        |
+| `05-flows-scope.php`           | Several flows, and how long a flow's own configuration lasts.                              |
+| `05-flows-embed.php`           | The flow the embedder is tested against.                                                   |
+| `06-answers-values.php`        | Where an answer comes from, and what each source is held to.                               |
+| `06-answers-validate.php`      | `validate` and `required` rejecting answers, in widgets and a flow.                        |
+| `06-answers-transform.php`     | A transform rewriting each widget's answer, and a wrong return type.                       |
+| `06-answers-control-chars.php` | What a control character in a value draws as.                                              |
+| `07-display.php`               | Long lists shown a few options at a time, then the key legend under each widget.           |
+| `08-config.php`                | What `configure()` accepts, how a flow adds to it, what it turns down.                     |
 
 To run a demo:
 
 ```bash
-php playground/flow-nested.php
+php playground/05-flows-nested.php
 ```
 
-All of them except `flow-step-keys.php` accept `--no-unicode` and `--no-ansi` to force a display mode. `widget-task.php` also accepts `--no-interaction`, which prints each task without redrawing it. `widget-pause.php` accepts it too, and continues past each pause without a key:
+All of them except `05-flows-step-keys.php` accept `--no-unicode` and `--no-ansi` to force a display mode. `04-tasks.php` also accepts `--no-interaction`, which prints each task without redrawing it. `02-widgets-pause.php` accepts it too, and continues past each pause without a key:
 
 ```bash
-php playground/flow.php --no-unicode --no-ansi
+php playground/05-flows.php --no-unicode --no-ansi
 ```
 
-`flow.php`, `flow-nested.php`, `flow-steps.php` and `flow-sections.php` also accept `--no-interaction`, which switches on [non-interactive mode](README.md#non-interactive-mode).
+`03-output.php`, `05-flows.php`, `05-flows-nested.php` and `05-flows-steps.php` also accept `--no-interaction`, which switches on [non-interactive mode](README.md#non-interactive-mode).
 
 ### The embedded demo
 
-Consumer scripts run an embedded copy of Prompty, so that copy has to keep working. `flow-embed.php` is the demo that tests it. Embedding writes `flow-embed.dist.php`, which carries the class inline and runs from any directory. To build the copy and run both versions:
+Consumer scripts run an embedded copy of Prompty, so that copy has to keep working. `05-flows-embed.php` is the demo that tests it. Embedding writes `05-flows-embed.dist.php`, which carries the class inline and runs from any directory. To build the copy and run both versions:
 
 ```bash
 php embed.php --no-verify \
-  playground/flow-embed.php playground/flow-embed.dist.php
-php playground/flow-embed.php
-cp playground/flow-embed.dist.php ~/order.php
+  playground/05-flows-embed.php playground/05-flows-embed.dist.php
+php playground/05-flows-embed.php
+cp playground/05-flows-embed.dist.php ~/order.php
 php ~/order.php
 ```
 
-Both versions render the same flow, so any difference between them is an embedder bug. Edit `flow-embed.php` only. The built copy is git-ignored, so build it when you need it.
+Both versions render the same flow, so any difference between them is an embedder bug. Edit `05-flows-embed.php` only. The built copy is git-ignored, so build it when you need it.
 
 2 things catch a difference between the pair:
 
