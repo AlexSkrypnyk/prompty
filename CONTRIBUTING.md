@@ -98,6 +98,7 @@ The [`playground/`](playground) directory holds runnable demos. Run one to see a
 | `widget-values.php`        | Where an answer comes from, and what each source is held to.           |
 | `widget-validate.php`      | `validate` and `required` rejecting answers, in widgets and a flow.    |
 | `widget-control-chars.php` | What a control character in a value draws as.                          |
+| `widget-legend.php`        | The key legend under each widget, and its wording changed in a flow.   |
 | `widget-transform.php`     | A transform rewriting each widget's answer, and a wrong return type.   |
 | `widget-pause.php`         | Pauses that wait for any key or for Enter only, or erase the message.  |
 | `widget-task.php`          | Tasks behind a spinner, and tasks streaming a child process's output.  |

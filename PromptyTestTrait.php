@@ -288,6 +288,7 @@ trait PromptyTestTrait {
       'scroll' => 'cfgScroll',
       'placeholder_fallback' => 'cfgPlaceholderFallback',
       'width' => 'cfgWidth',
+      'legend' => 'cfgLegend',
     ];
 
     foreach ($config as $key => $value) {

@@ -32,12 +32,13 @@ final class PromptyConfigTest extends PromptyTestCase {
     $this->assertSame(['0', 'false', 'no'], $this->getProperty($p, 'cfgFalsy'));
     $this->assertTrue($this->getProperty($p, 'cfgInteractive'));
     $this->assertSame(0, $this->getProperty($p, 'cfgScroll'));
+    $this->assertFalse($this->getProperty($p, 'cfgLegend'));
   }
 
   public function testDefaultConfigSymbolKeys(): void {
     $p = $this->createInstance();
 
-    $expected_symbol_keys = ['bar', 'completed', 'active', 'intro', 'outro', 'section', 'pointer', 'radio_on', 'radio_off', 'check_on', 'check_off', 'hint_arrow', 'error', 'scroll_up', 'scroll_down', 'success', 'spinner', 'ellipsis', 'box_top_left', 'box_top_right', 'box_bottom_left', 'box_bottom_right', 'box_horizontal', 'box_vertical', 'box_cross', 'box_top_tee', 'box_bottom_tee', 'box_left_tee', 'box_right_tee'];
+    $expected_symbol_keys = ['bar', 'completed', 'active', 'intro', 'outro', 'section', 'pointer', 'radio_on', 'radio_off', 'check_on', 'check_off', 'hint_arrow', 'error', 'scroll_up', 'scroll_down', 'success', 'spinner', 'ellipsis', 'box_top_left', 'box_top_right', 'box_bottom_left', 'box_bottom_right', 'box_horizontal', 'box_vertical', 'box_cross', 'box_top_tee', 'box_bottom_tee', 'box_left_tee', 'box_right_tee', 'legend_vertical', 'legend_horizontal', 'legend_separator'];
     /** @var array<string, string> $symbols_unicode */
     $symbols_unicode = $this->getProperty($p, 'cfgSymbolsUnicode');
     /** @var array<string, string> $symbols_ascii */
@@ -166,6 +167,10 @@ final class PromptyConfigTest extends PromptyTestCase {
     yield 'width' => [['width' => 120], 'cfgWidth', 120];
 
     yield 'width 0' => [['width' => 0], 'cfgWidth', 0];
+
+    yield 'legend true' => [['legend' => TRUE], 'cfgLegend', TRUE];
+
+    yield 'legend false' => [['legend' => FALSE], 'cfgLegend', FALSE];
   }
 
   #[DataProvider('dataProviderConfigurePartialArrayMerge')]
@@ -265,6 +270,14 @@ final class PromptyConfigTest extends PromptyTestCase {
 
     $this->createAndSetInstance(['placeholder_fallback' => FALSE]);
     $this->assertFalse(Prompty::config()['placeholder_fallback']);
+  }
+
+  public function testLegendInConfig(): void {
+    $this->createAndSetInstance();
+    $this->assertFalse(Prompty::config()['legend']);
+
+    $this->createAndSetInstance(['legend' => TRUE]);
+    $this->assertTrue(Prompty::config()['legend']);
   }
 
   public function testConfigureUnicodeResolvesSymbols(): void {
