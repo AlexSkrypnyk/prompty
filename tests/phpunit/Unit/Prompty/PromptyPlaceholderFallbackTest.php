@@ -16,7 +16,7 @@ use PHPUnit\Framework\Attributes\Group;
 #[Group('unit')]
 final class PromptyPlaceholderFallbackTest extends PromptyTestCase {
 
-  protected const array DISHES =['Pear Tart', 'Apple Crumble', 'Onion Soup', 'Lentil Stew'];
+  protected const array DISHES = ['Pear Tart', 'Apple Crumble', 'Onion Soup', 'Lentil Stew'];
 
   #[DataProvider('dataProviderEmptyAnswer')]
   public function testEmptyAnswer(\Closure $widget, string $keystrokes, bool $fallback, string $expected): void {
