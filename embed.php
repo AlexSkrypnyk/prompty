@@ -308,10 +308,10 @@ function embed_check(string $script_path, ?string $sums_path): int {
     }
   }
 
-  $failed = FALSE;
-  $report = function (bool $passed, string $message) use (&$failed): void {
-    echo sprintf('  %s  %s%s', $passed ? 'OK  ' : 'FAIL', $message, PHP_EOL);
-    $failed = $failed || !$passed;
+  $is_failed = FALSE;
+  $report = function (bool $is_passed, string $message) use (&$is_failed): void {
+    echo sprintf('  %s  %s%s', $is_passed ? 'OK  ' : 'FAIL', $message, PHP_EOL);
+    $is_failed = $is_failed || !$is_passed;
   };
 
   echo sprintf('Embedded %s %s (%s) in %s%s', $attributes['class'], $attributes['version'], $attributes['mode'], $script_path, PHP_EOL);
@@ -322,7 +322,7 @@ function embed_check(string $script_path, ?string $sums_path): int {
   if ($sums_path === NULL) {
     echo sprintf('NOT VERIFIED AGAINST A RELEASE. Pass --sums with the verified SHA256SUMS of %s %s to check that the code is the released code.%s', $attributes['class'], $attributes['version'], PHP_EOL);
 
-    return $failed ? 1 : 0;
+    return $is_failed ? 1 : 0;
   }
 
   $sums_content = is_file($sums_path) ? file_get_contents($sums_path) : FALSE;
@@ -366,7 +366,7 @@ function embed_check(string $script_path, ?string $sums_path): int {
 
   echo sprintf('SHA256SUMS is trusted as given. Verify SHA256SUMS.asc or its attestation before relying on this result.%s', PHP_EOL);
 
-  return $failed ? 1 : 0;
+  return $is_failed ? 1 : 0;
 }
 
 /**
@@ -583,34 +583,34 @@ SNIPPET;
   return $output;
 }
 
-$compact = FALSE;
-$stdout = FALSE;
-$payload_only = FALSE;
-$check = FALSE;
-$no_killswitch = FALSE;
-$no_verify = FALSE;
+$is_compact = FALSE;
+$is_stdout = FALSE;
+$is_payload_only = FALSE;
+$is_check = FALSE;
+$is_killswitch_skipped = FALSE;
+$is_verify_skipped = FALSE;
 $source_override = NULL;
 $sums_path = NULL;
 $positional = [];
 
 for ($arg_i = 1; $arg_i < $argc; $arg_i++) {
   if ($argv[$arg_i] === '--compact') {
-    $compact = TRUE;
+    $is_compact = TRUE;
   }
   elseif ($argv[$arg_i] === '--stdout') {
-    $stdout = TRUE;
+    $is_stdout = TRUE;
   }
   elseif ($argv[$arg_i] === '--payload') {
-    $payload_only = TRUE;
+    $is_payload_only = TRUE;
   }
   elseif ($argv[$arg_i] === '--check') {
-    $check = TRUE;
+    $is_check = TRUE;
   }
   elseif ($argv[$arg_i] === '--no-killswitch') {
-    $no_killswitch = TRUE;
+    $is_killswitch_skipped = TRUE;
   }
   elseif ($argv[$arg_i] === '--no-verify') {
-    $no_verify = TRUE;
+    $is_verify_skipped = TRUE;
   }
   elseif ($argv[$arg_i] === '--source' || $argv[$arg_i] === '--sums') {
     $option = $argv[$arg_i];
@@ -681,17 +681,17 @@ USAGE;
   exit(1);
 }
 
-if ((int) $stdout + (int) $payload_only + (int) $check > 1) {
+if ((int) $is_stdout + (int) $is_payload_only + (int) $is_check > 1) {
   fwrite(STDERR, sprintf('Error: Use only 1 of --stdout, --payload and --check.%s', PHP_EOL));
   exit(1);
 }
 
-if ($sums_path !== NULL && !$check) {
+if ($sums_path !== NULL && !$is_check) {
   fwrite(STDERR, sprintf('Error: --sums is only used with --check.%s', PHP_EOL));
   exit(1);
 }
 
-if ($check) {
+if ($is_check) {
   exit(embed_check($positional[0], $sums_path));
 }
 
@@ -699,7 +699,7 @@ $stdout_path = $positional[0];
 $target_path = $positional[0];
 
 // --stdout and --payload take an output file, not a target script.
-if (!$stdout && !$payload_only) {
+if (!$is_stdout && !$is_payload_only) {
   $input_path = $positional[0];
 
   if (!is_file($input_path)) {
@@ -753,7 +753,7 @@ for ($i = 0; $i < $token_count; $i++) {
 
 // Build minified output: strip preamble and comments, keep class header.
 $output = '';
-$skip_preamble = TRUE;
+$is_skipping_preamble = TRUE;
 
 for ($i = 0; $i < $token_count; $i++) {
   if (is_string($tokens[$i])) {
@@ -791,7 +791,7 @@ for ($i = 0; $i < $token_count; $i++) {
       }
     }
 
-    $skip_preamble = FALSE;
+    $is_skipping_preamble = FALSE;
     continue;
   }
 
@@ -803,7 +803,7 @@ for ($i = 0; $i < $token_count; $i++) {
     continue;
   }
 
-  if ($skip_preamble && $token_type === T_WHITESPACE) {
+  if ($is_skipping_preamble && $token_type === T_WHITESPACE) {
     continue;
   }
 
@@ -867,7 +867,7 @@ if ($class_start !== NULL) {
 $minified = implode("\n", $result_lines);
 
 // Compact mode: rename internals and reduce whitespace.
-if ($compact && $class_start !== NULL) {
+if ($is_compact && $class_start !== NULL) {
   $class_line = end($result_lines);
 
   $php_code = '<?php ' . $class_line;
@@ -1119,14 +1119,14 @@ $payload = trim($minified) . "\n";
 
 $payload = (string) preg_replace('/^(class\s)/m', "// @phpstan-ignore-next-line\n$1", $payload, 1);
 
-if ($payload_only) {
+if ($is_payload_only) {
   file_put_contents($stdout_path, $payload);
 
   echo sprintf('Written to %s%s', $stdout_path, PHP_EOL);
   exit(0);
 }
 
-if ($stdout) {
+if ($is_stdout) {
   $standalone = "<?php\n\ndeclare(strict_types=1);\n\n";
 
   if ($namespace !== '') {
@@ -1161,7 +1161,7 @@ if ($embedder_hash === FALSE) {
 $attributes = [
   'class' => $identity['class'],
   'version' => $identity['version'],
-  'mode' => $compact ? 'compact' : 'min',
+  'mode' => $is_compact ? 'compact' : 'min',
   'sha256' => hash('sha256', $payload),
   'embedder' => $embedder_hash,
 ];
@@ -1200,9 +1200,9 @@ if ($result === NULL) {
 
 $result = preg_replace('/\n{3,}/', "\n\n", $result);
 
-$has_killswitch = str_contains((string) $result, "if (!getenv('SHOULD_PROCEED'))");
+$is_killswitch_present = str_contains((string) $result, "if (!getenv('SHOULD_PROCEED'))");
 
-if (!$has_killswitch && !$no_killswitch) {
+if (!$is_killswitch_present && !$is_killswitch_skipped) {
   $killswitch = <<<'KILLSWITCH'
 
 // Kill switch - stop here when running under tests.
@@ -1244,17 +1244,17 @@ if ($lint_exit !== 0) {
 echo sprintf('Embedded into %s%s', $target_path, PHP_EOL);
 
 $final = file_get_contents($target_path);
-$final_has_killswitch = $final !== FALSE && str_contains($final, "if (!getenv('SHOULD_PROCEED'))");
+$is_final_killswitch_present = $final !== FALSE && str_contains($final, "if (!getenv('SHOULD_PROCEED'))");
 
-if (!$final_has_killswitch) {
+if (!$is_final_killswitch_present) {
   fwrite(STDERR, sprintf('Warning: No kill switch found in the target file. Please test the embedded script manually.%s', PHP_EOL));
 }
 
 // Verification runs the embedded script, and --no-killswitch leaves it with
 // nothing to stop before the real work.
-$should_verify = $final_has_killswitch && !$no_killswitch && !$no_verify;
+$is_verifying = $is_final_killswitch_present && !$is_killswitch_skipped && !$is_verify_skipped;
 
-if ($should_verify && stream_isatty(STDIN)) {
+if ($is_verifying && stream_isatty(STDIN)) {
   echo sprintf('Verifying embedded script (interactive input required)...%s', PHP_EOL);
 
   $verify_exit = 0;
@@ -1264,7 +1264,7 @@ if ($should_verify && stream_isatty(STDIN)) {
     fwrite(STDERR, sprintf('Warning: Embedded script exited with code %d.%s', $verify_exit, PHP_EOL));
   }
 }
-elseif ($should_verify) {
+elseif ($is_verifying) {
   echo sprintf('Verifying embedded script...%s', PHP_EOL);
 
   // Non-interactive mode: pipe keystrokes to simulate a quick run.
