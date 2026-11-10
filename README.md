@@ -969,6 +969,8 @@ Each widget type lists its own keys:
 
 In ASCII mode, the arrows read `up/down` and `left/right`, and a `-` separates the keys. Like the help, the legend shows only while the widget waits for an answer.
 
+In a flow, a step that can [step back](#step-back-to-an-earlier-step) adds the back key at the end, such as `↑↓ move · enter confirm · ctrl+u back`. The first asked step leaves it out.
+
 To reword the legend, override its `legend_*` [labels](#available-options). The arrows come from the `legend_vertical` and `legend_horizontal` symbols, and the separator from `legend_separator`. A label set to `''` removes its key from the legend:
 
 ```php
@@ -1381,7 +1383,7 @@ The map-valued options take these keys:
 - `symbols_unicode`, `symbols_ascii`: `bar`, `completed`, `active`, `intro`, `outro`, `section`, `pointer`, `radio_on`, `radio_off`, `check_on`, `check_off`, `hint_arrow`, `error`, `scroll_up`, `scroll_down`, `success`, `spinner`, `ellipsis`, `box_top_left`, `box_top_right`, `box_bottom_left`, `box_bottom_right`, `box_horizontal`, `box_vertical`, `box_cross`, `box_top_tee`, `box_bottom_tee`, `box_left_tee`, `box_right_tee`, `legend_vertical`, `legend_horizontal`, `legend_separator`. Each character of `spinner` is 1 frame.
 - `colors`: `reset`, `dim`, `dim_italic`, `cyan`, `green`, `red`, `gray`, `bold`, `white`, `yellow`, `blue`, `italic`, `underline`
 - `spacing`: `indent`, `hint_indent`, `hint_cont`
-- `labels`: `yes`, `no`, `cancelled`, `none`, `separator`, `more`, `required`, `done`, `failed`, `line`, `lines`, `step_total`, `legend_move`, `legend_toggle`, `legend_enter`, `legend_space`, `legend_type`, `legend_yes_no`, `legend_any_key`, `legend_continue`
+- `labels`: `yes`, `no`, `cancelled`, `none`, `separator`, `more`, `required`, `done`, `failed`, `line`, `lines`, `step_total`, `legend_move`, `legend_toggle`, `legend_enter`, `legend_space`, `legend_type`, `legend_yes_no`, `legend_any_key`, `legend_continue`, `legend_back`
 
 ### Unknown keys are rejected
 

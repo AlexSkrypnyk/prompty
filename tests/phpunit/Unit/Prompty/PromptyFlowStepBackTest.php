@@ -478,6 +478,43 @@ final class PromptyFlowStepBackTest extends PromptyTestCase {
     $this->assertStringContainsString("\033[7A\r\033[J", $r['raw']);
   }
 
+  #[DataProvider('dataProviderLegendListsTheBackKey')]
+  public function testLegendListsTheBackKey(array $config, ?string $expected): void {
+    $stream = $this->installKeystrokes('Ann' . self::KEY_ENTER . 'Hot' . self::KEY_ENTER, FALSE);
+    $raw = '';
+    Prompty::configure(...$config, legend: TRUE, output: function (string $chunk) use (&$raw): void {
+      $raw .= $chunk;
+    });
+
+    Prompty::flow(fn(): array => [
+      'guest' => Prompty::text('Guest name'),
+      'note' => Prompty::text('Note for the kitchen'),
+    ], unicode: FALSE);
+    fclose($stream);
+
+    $output = $this->stripAnsi($raw);
+    [$guest, $note] = explode('Note for the kitchen', $output, 2);
+
+    // The first step has nothing to step back to.
+    $this->assertStringNotContainsString(' back', $guest);
+
+    if ($expected === NULL) {
+      $this->assertStringNotContainsString(' back', $note);
+
+      return;
+    }
+
+    $this->assertStringContainsString('enter confirm - ' . $expected, $note);
+  }
+
+  public static function dataProviderLegendListsTheBackKey(): \Iterator {
+    yield 'default key' => [[], 'ctrl+u back'];
+    yield 'custom key' => [['back_key' => 'ctrl-b'], 'ctrl+b back'];
+    yield 'custom label' => [['labels' => ['legend_back' => 'previous step']], 'ctrl+u previous step'];
+    yield 'key turned off' => [['back_key' => ''], NULL];
+    yield 'label blank' => [['labels' => ['legend_back' => '']], NULL];
+  }
+
   public function testStandaloneWidgetIgnoresTheKey(): void {
     $stream = $this->installKeystrokes(self::KEY_CTRL_U . 'Ann' . self::KEY_ENTER, FALSE);
 

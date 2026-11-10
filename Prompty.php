@@ -363,6 +363,7 @@ class Prompty {
     'legend_yes_no' => 'y/n choose',
     'legend_any_key' => 'any key continue',
     'legend_continue' => 'enter continue',
+    'legend_back' => 'back',
   ];
 
   /**
@@ -5604,7 +5605,8 @@ class Prompty {
    * Renders the keys a widget accepts, drawn like help.
    *
    * A segment whose label is blank is left out, so an empty label removes
-   * that key from the legend.
+   * that key from the legend. The back key is listed last, and only in a flow
+   * step it can step back from.
    *
    * @param string $widget
    *   The widget type: text, select, multiselect, suggest, confirm, pause, or
@@ -5635,6 +5637,10 @@ class Prompty {
       'pause_enter' => [$this->label('legend_continue')],
       default => [$enter],
     };
+
+    if ($this->cfgBackKey !== '' && $this->label('legend_back') !== '' && $this->pending !== NULL && $this->backTarget() !== NULL) {
+      $segments[] = str_replace('-', '+', $this->cfgBackKey) . ' ' . $this->label('legend_back');
+    }
 
     $segments = array_filter($segments, fn(string $segment): bool => trim($segment) !== '');
 
