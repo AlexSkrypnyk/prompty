@@ -34,6 +34,9 @@ require __DIR__ . '/../Prompty.php';
 
 use AlexSkrypnyk\Prompty\Prompty;
 
+$opts = getopt('', ['no-unicode', 'no-ansi']);
+Prompty::configure(unicode: !isset($opts['no-unicode']), ansi: !isset($opts['no-ansi']));
+
 echo '--- A key a shell cannot export ---' . PHP_EOL;
 echo 'Trying a flow with a step keyed "dish-name".' . PHP_EOL;
 

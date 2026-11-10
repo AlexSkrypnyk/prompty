@@ -116,13 +116,15 @@ To run a demo:
 php playground/05-flows-nested.php
 ```
 
-All of them except `05-flows-step-keys.php` accept `--no-unicode` and `--no-ansi` to force a display mode. `04-tasks.php` also accepts `--no-interaction`, which prints each task without redrawing it. `02-widgets-pause.php` accepts it too, and continues past each pause without a key:
+Every demo accepts `--no-unicode` and `--no-ansi` to force a display mode. `04-tasks.php` also accepts `--no-interaction`, which prints each task without redrawing it. `02-widgets-pause.php` accepts it too, and continues past each pause without a key:
 
 ```bash
 php playground/05-flows.php --no-unicode --no-ansi
 ```
 
 `03-output.php`, `05-flows.php`, `05-flows-nested.php` and `05-flows-steps.php` also accept `--no-interaction`, which switches on [non-interactive mode](README.md#non-interactive-mode).
+
+CI runs every demo on each PHP version it tests, with 10 <kbd>Enter</kbd> presses as input. Each <kbd>Enter</kbd> accepts a default, and the end of the input cancels any widget still waiting. A demo fails the run when it exits with an error or writes to stderr.
 
 ### The embedded demo
 
