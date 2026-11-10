@@ -3123,7 +3123,9 @@ class Prompty {
     }
 
     // @codeCoverageIgnoreStart
-    posix_kill($pid, SIGTERM);
+    // The child inherits any SIGTERM handler the script installed, which
+    // could keep it running.
+    posix_kill($pid, SIGKILL);
     pcntl_waitpid($pid, $status);
     // @codeCoverageIgnoreEnd
   }
