@@ -51,6 +51,69 @@ Prompty asks questions in the terminal for PHP command-line scripts, from a sing
 - 🚀 [**Starter script**](#starter-script) - [`starter.php`](starter.php) as a template for your own scripts
 - 📥 [**Embedding**](#embedding) - minify the class and embed it in your script
 
+## Contents
+
+- [Installation](#installation)
+  - [Download from releases](#download-from-releases)
+  - [Verifying a download](#verifying-a-download)
+  - [Composer](#composer)
+- [Usage](#usage)
+- [Widgets](#widgets)
+  - [Text](#text)
+  - [Select](#select)
+  - [Multiselect](#multiselect)
+  - [Suggest](#suggest)
+  - [Confirm](#confirm)
+  - [Pause](#pause)
+  - [Notes](#notes)
+  - [Tasks](#tasks)
+    - [Streamed output](#streamed-output)
+- [Flows](#flows)
+  - [Step numbering](#step-numbering)
+  - [Nested flows with conditions](#nested-flows-with-conditions)
+  - [Steps built from earlier answers](#steps-built-from-earlier-answers)
+  - [Section headings](#section-headings)
+  - [Step back to an earlier step](#step-back-to-an-earlier-step)
+- [Standalone mode](#standalone-mode)
+- [Environment variable discovery](#environment-variable-discovery)
+  - [Discovered and default values must be valid answers](#discovered-and-default-values-must-be-valid-answers)
+  - [A blank value means no answer was supplied](#a-blank-value-means-no-answer-was-supplied)
+- [Non-interactive mode](#non-interactive-mode)
+- [Descriptions, hints and help](#descriptions-hints-and-help)
+  - [Key legend](#key-legend)
+- [Long option lists](#long-option-lists)
+- [Long lines](#long-lines)
+- [Tables and boxes](#tables-and-boxes)
+- [Default values](#default-values)
+- [Transform answers](#transform-answers)
+- [Validation](#validation)
+  - [Required answers](#required-answers)
+- [Unicode and ASCII](#unicode-and-ascii)
+- [ANSI colors](#ansi-colors)
+  - [Style your own lines](#style-your-own-lines)
+  - [Display modes](#display-modes)
+- [Configuration](#configuration)
+  - [Available options](#available-options)
+  - [Unknown keys are rejected](#unknown-keys-are-rejected)
+  - [Output target](#output-target)
+  - [Other methods](#other-methods)
+- [Test harness](#test-harness)
+  - [Test a script that configures Prompty](#test-a-script-that-configures-prompty)
+  - [Test a rejected answer](#test-a-rejected-answer)
+  - [Available key constants](#available-key-constants)
+- [Starter script](#starter-script)
+- [Embedding](#embedding)
+  - [Setup](#setup)
+  - [Usage](#usage-1)
+  - [Options](#options)
+  - [Re-embedding](#re-embedding)
+  - [Kill switch](#kill-switch)
+  - [Verification run](#verification-run)
+  - [Verify an embedded script](#verify-an-embedded-script)
+  - [For AI agents](#for-ai-agents)
+- [Contributing](#contributing)
+- [Security](#security)
+
 ## Installation
 
 Prompty is a single PHP file with no dependencies. It requires PHP 8.3 or later.
@@ -101,7 +164,7 @@ To ship a single file instead, [embed](#embedding) the minified class in your sc
 
 ## Widgets
 
-Prompty has 6 widgets. Each returns the answer, or `null` when the user presses <kbd>Escape</kbd> or <kbd>Ctrl+C</kbd>.
+Prompty has 6 widgets that ask a question, and 2 that report between questions: notes and tasks. Each question widget returns the answer, or `null` when the user presses <kbd>Escape</kbd> or <kbd>Ctrl+C</kbd>. Expand a widget's **Details** for its usage and examples.
 
 Widgets draw only printable text. A newline or tab in a value, label or option label becomes a space. Escape sequences and other control characters are removed, so a value can't break the tree or control the terminal. `text` and `suggest` return the same printable text they drew. A [description](#descriptions-hints-and-help) also keeps its text styling.
 
@@ -110,6 +173,27 @@ Widgets draw only printable text. A newline or tab in a value, label or option l
 </p>
 
 ### Text
+
+<table>
+  <tr>
+    <td></td>
+    <td align="center"><strong>ANSI</strong></td>
+    <td align="center"><strong>No ANSI</strong></td>
+  </tr>
+  <tr>
+    <td align="right"><strong>Unicode</strong></td>
+    <td><img src=".util/assets/widget-text.svg" alt="Text: Unicode + ANSI"></td>
+    <td><img src=".util/assets/widget-text-no-ansi.svg" alt="Text: Unicode + No ANSI"></td>
+  </tr>
+  <tr>
+    <td align="right"><strong>ASCII</strong></td>
+    <td><img src=".util/assets/widget-text-ascii.svg" alt="Text: ASCII + ANSI"></td>
+    <td><img src=".util/assets/widget-text-ascii-no-ansi.svg" alt="Text: ASCII + No ANSI"></td>
+  </tr>
+</table>
+
+<details>
+<summary>Details: Text</summary>
 
 Free-form text input, with an optional `default` and `placeholder`:
 
@@ -150,6 +234,10 @@ Prompty::text('Dish name', default: 'pear tart', placeholder: 'e.g. pear tart');
 
 The option covers `text` and `suggest`, and both still draw the placeholder while the input is empty. To make `text` or `suggest` re-prompt on an empty answer, pass [`required`](#required-answers).
 
+</details>
+
+### Select
+
 <table>
   <tr>
     <td></td>
@@ -158,17 +246,18 @@ The option covers `text` and `suggest`, and both still draw the placeholder whil
   </tr>
   <tr>
     <td align="right"><strong>Unicode</strong></td>
-    <td><img src=".util/assets/widget-text.svg" alt="Text: Unicode + ANSI"></td>
-    <td><img src=".util/assets/widget-text-no-ansi.svg" alt="Text: Unicode + No ANSI"></td>
+    <td><img src=".util/assets/widget-select.svg" alt="Select: Unicode + ANSI"></td>
+    <td><img src=".util/assets/widget-select-no-ansi.svg" alt="Select: Unicode + No ANSI"></td>
   </tr>
   <tr>
     <td align="right"><strong>ASCII</strong></td>
-    <td><img src=".util/assets/widget-text-ascii.svg" alt="Text: ASCII + ANSI"></td>
-    <td><img src=".util/assets/widget-text-ascii-no-ansi.svg" alt="Text: ASCII + No ANSI"></td>
+    <td><img src=".util/assets/widget-select-ascii.svg" alt="Select: ASCII + ANSI"></td>
+    <td><img src=".util/assets/widget-select-ascii-no-ansi.svg" alt="Select: ASCII + No ANSI"></td>
   </tr>
 </table>
 
-### Select
+<details>
+<summary>Details: Select</summary>
 
 Pick 1 option from a list. Press the arrow keys to move and <kbd>Enter</kbd> to confirm. To focus an option other than the first, pass its key as `default`:
 
@@ -195,6 +284,10 @@ $course = Prompty::select('Course',
 No options declared for "Course". Provide at least one option.
 ```
 
+</details>
+
+### Multiselect
+
 <table>
   <tr>
     <td></td>
@@ -203,17 +296,18 @@ No options declared for "Course". Provide at least one option.
   </tr>
   <tr>
     <td align="right"><strong>Unicode</strong></td>
-    <td><img src=".util/assets/widget-select.svg" alt="Select: Unicode + ANSI"></td>
-    <td><img src=".util/assets/widget-select-no-ansi.svg" alt="Select: Unicode + No ANSI"></td>
+    <td><img src=".util/assets/widget-multiselect.svg" alt="Multiselect: Unicode + ANSI"></td>
+    <td><img src=".util/assets/widget-multiselect-no-ansi.svg" alt="Multiselect: Unicode + No ANSI"></td>
   </tr>
   <tr>
     <td align="right"><strong>ASCII</strong></td>
-    <td><img src=".util/assets/widget-select-ascii.svg" alt="Select: ASCII + ANSI"></td>
-    <td><img src=".util/assets/widget-select-ascii-no-ansi.svg" alt="Select: ASCII + No ANSI"></td>
+    <td><img src=".util/assets/widget-multiselect-ascii.svg" alt="Multiselect: ASCII + ANSI"></td>
+    <td><img src=".util/assets/widget-multiselect-ascii-no-ansi.svg" alt="Multiselect: ASCII + No ANSI"></td>
   </tr>
 </table>
 
-### Multiselect
+<details>
+<summary>Details: Multiselect</summary>
 
 Pick any number of options from a list. Press <kbd>Space</kbd> to toggle an option and <kbd>Enter</kbd> to confirm. To pre-check options, pass a list of their keys as `default`. Pre-checking every option makes an opt-out list:
 
@@ -272,6 +366,10 @@ Pass a function as a closure, such as `strcmp(...)`. A string `order` is read as
 
 The same `order` applies to a [discovered](#environment-variable-discovery) value and an environment variable. With `'selection'`, those keep the order they give. An unknown `order` throws an `InvalidArgumentException` before the widget draws anything.
 
+</details>
+
+### Suggest
+
 <table>
   <tr>
     <td></td>
@@ -280,17 +378,18 @@ The same `order` applies to a [discovered](#environment-variable-discovery) valu
   </tr>
   <tr>
     <td align="right"><strong>Unicode</strong></td>
-    <td><img src=".util/assets/widget-multiselect.svg" alt="Multiselect: Unicode + ANSI"></td>
-    <td><img src=".util/assets/widget-multiselect-no-ansi.svg" alt="Multiselect: Unicode + No ANSI"></td>
+    <td><img src=".util/assets/widget-suggest.svg" alt="Suggest: Unicode + ANSI"></td>
+    <td><img src=".util/assets/widget-suggest-no-ansi.svg" alt="Suggest: Unicode + No ANSI"></td>
   </tr>
   <tr>
     <td align="right"><strong>ASCII</strong></td>
-    <td><img src=".util/assets/widget-multiselect-ascii.svg" alt="Multiselect: ASCII + ANSI"></td>
-    <td><img src=".util/assets/widget-multiselect-ascii-no-ansi.svg" alt="Multiselect: ASCII + No ANSI"></td>
+    <td><img src=".util/assets/widget-suggest-ascii.svg" alt="Suggest: ASCII + ANSI"></td>
+    <td><img src=".util/assets/widget-suggest-ascii-no-ansi.svg" alt="Suggest: ASCII + No ANSI"></td>
   </tr>
 </table>
 
-### Suggest
+<details>
+<summary>Details: Suggest</summary>
 
 Free-form text input with suggestions. As you type, the options that contain the typed text show under the input, ignoring case. Press <kbd>↑</kbd> or <kbd>↓</kbd> to focus a suggestion and <kbd>Enter</kbd> to take it. With no suggestion focused, <kbd>Enter</kbd> takes the typed text as is, so the answer can be anything:
 
@@ -348,15 +447,9 @@ $dish = Prompty::suggest('Dish', options: $starts_with);
 
 `options` takes a closure, so pass a named function as `find_dishes(...)`. Prompty calls the closure each time the typed text changes, and never for a discovered value. A return value that isn't an array suggests nothing, and entries that aren't strings or numbers are skipped.
 
+</details>
+
 ### Confirm
-
-A yes/no toggle. Press the arrow keys or <kbd>Tab</kbd> to switch, <kbd>y</kbd> or <kbd>n</kbd> to pick directly and <kbd>Enter</kbd> to confirm:
-
-```php
-$send = Prompty::confirm('Send order?',
-  description: 'Passes the order to the kitchen.',
-);
-```
 
 <table>
   <tr>
@@ -376,7 +469,41 @@ $send = Prompty::confirm('Send order?',
   </tr>
 </table>
 
+<details>
+<summary>Details: Confirm</summary>
+
+A yes/no toggle. Press the arrow keys or <kbd>Tab</kbd> to switch, <kbd>y</kbd> or <kbd>n</kbd> to pick directly and <kbd>Enter</kbd> to confirm:
+
+```php
+$send = Prompty::confirm('Send order?',
+  description: 'Passes the order to the kitchen.',
+);
+```
+
+</details>
+
 ### Pause
+
+<table>
+  <tr>
+    <td></td>
+    <td align="center"><strong>ANSI</strong></td>
+    <td align="center"><strong>No ANSI</strong></td>
+  </tr>
+  <tr>
+    <td align="right"><strong>Unicode</strong></td>
+    <td><img src=".util/assets/widget-pause.svg" alt="Pause: Unicode + ANSI"></td>
+    <td><img src=".util/assets/widget-pause-no-ansi.svg" alt="Pause: Unicode + No ANSI"></td>
+  </tr>
+  <tr>
+    <td align="right"><strong>ASCII</strong></td>
+    <td><img src=".util/assets/widget-pause-ascii.svg" alt="Pause: ASCII + ANSI"></td>
+    <td><img src=".util/assets/widget-pause-ascii-no-ansi.svg" alt="Pause: ASCII + No ANSI"></td>
+  </tr>
+</table>
+
+<details>
+<summary>Details: Pause</summary>
 
 A message that waits for a key, such as "Press any key to continue" after a welcome screen. Any key continues and returns `true`:
 
@@ -390,7 +517,30 @@ To continue only on <kbd>Enter</kbd> and ignore every other key, pass `enter_onl
 
 In [non-interactive mode](#non-interactive-mode), `pause()` returns `true` without reading a key. Inside a [flow](#flows), a pause is a keyed step that stores `true`.
 
-## Notes
+</details>
+
+### Notes
+
+<table>
+  <tr>
+    <td></td>
+    <td align="center"><strong>ANSI</strong></td>
+    <td align="center"><strong>No ANSI</strong></td>
+  </tr>
+  <tr>
+    <td align="right"><strong>Unicode</strong></td>
+    <td><img src=".util/assets/widget-note.svg" alt="Notes: Unicode + ANSI"></td>
+    <td><img src=".util/assets/widget-note-no-ansi.svg" alt="Notes: Unicode + No ANSI"></td>
+  </tr>
+  <tr>
+    <td align="right"><strong>ASCII</strong></td>
+    <td><img src=".util/assets/widget-note-ascii.svg" alt="Notes: ASCII + ANSI"></td>
+    <td><img src=".util/assets/widget-note-ascii-no-ansi.svg" alt="Notes: ASCII + No ANSI"></td>
+  </tr>
+</table>
+
+<details>
+<summary>Details: Notes</summary>
 
 `note()` prints a message between your questions: an informational note, a success, a warning or an error. The type's symbol takes the place of the bar, and the message is drawn in the type's color:
 
@@ -428,7 +578,30 @@ $results = Prompty::flow(fn(): array => [
 
 A note called while the flow runs, such as from a task's action or the `outro` callable, prints straight away.
 
-## Tasks
+</details>
+
+### Tasks
+
+<table>
+  <tr>
+    <td></td>
+    <td align="center"><strong>ANSI</strong></td>
+    <td align="center"><strong>No ANSI</strong></td>
+  </tr>
+  <tr>
+    <td align="right"><strong>Unicode</strong></td>
+    <td><img src=".util/assets/widget-task.svg" alt="Tasks: Unicode + ANSI"></td>
+    <td><img src=".util/assets/widget-task-no-ansi.svg" alt="Tasks: Unicode + No ANSI"></td>
+  </tr>
+  <tr>
+    <td align="right"><strong>ASCII</strong></td>
+    <td><img src=".util/assets/widget-task-ascii.svg" alt="Tasks: ASCII + ANSI"></td>
+    <td><img src=".util/assets/widget-task-ascii-no-ansi.svg" alt="Tasks: ASCII + No ANSI"></td>
+  </tr>
+</table>
+
+<details>
+<summary>Details: Tasks</summary>
 
 `task()` runs work between your questions, such as a download or a build step, and reports the result. While the action runs, the label shows a spinner. After the action returns, the label, the `hint` and a result line replace the spinner:
 
@@ -475,7 +648,12 @@ $results = Prompty::flow(fn(): array => [
 ]);
 ```
 
-### Streamed output
+</details>
+
+#### Streamed output
+
+<details>
+<summary>Details: Streamed output</summary>
 
 Some work prints its own output while it runs, such as a build or a package install. To draw that output under the task in place of a spinner, pass `stream: TRUE`:
 
@@ -524,6 +702,8 @@ The stream captures output that reaches PHP's output layer:
 - Prompty's own output, such as `Prompty::output()`.
 
 Output written straight to a file descriptor reaches the terminal unstyled. That covers `fwrite(STDOUT, ...)` and a process started with `proc_open()` that inherits the terminal.
+
+</details>
 
 ## Flows
 
