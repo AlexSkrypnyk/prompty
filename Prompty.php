@@ -216,6 +216,10 @@ class Prompty {
     'gray' => "\033[90m",
     'bold' => "\033[1m",
     'white' => "\033[37m",
+    'yellow' => "\033[33m",
+    'blue' => "\033[34m",
+    'italic' => "\033[3m",
+    'underline' => "\033[4m",
   ];
 
   /**
@@ -2207,6 +2211,98 @@ class Prompty {
   }
 
   /**
+   * Styles text with configured color names.
+   *
+   * Each line is wrapped in the codes and a reset of its own, and an empty
+   * line stays empty. Inside a line, a sequence that switches an attribute
+   * off is followed by the codes again, so a nested style ends without
+   * ending this one. With ANSI off, the text is returned unchanged.
+   *
+   * @param string $text
+   *   The text to style. It may span several lines.
+   * @param string ...$styles
+   *   Names from the 'colors' configuration, such as 'bold' or 'green'.
+   *
+   * @return string
+   *   The styled text.
+   *
+   * @throws \InvalidArgumentException
+   *   When a name is 'reset' or not a key of the 'colors' configuration.
+   */
+  public static function style(string $text, string ...$styles): string {
+    $p = static::instance();
+    $codes = '';
+
+    foreach ($styles as $style) {
+      if ($style === 'reset' || !array_key_exists($style, $p->cfgColors)) {
+        $available = array_diff(array_keys($p->cfgColors), ['reset']);
+
+        throw new \InvalidArgumentException(sprintf('Style "%s" is not valid. Available styles: %s.', $style, implode(', ', $available)));
+      }
+
+      $codes .= $p->cfgColors[$style];
+    }
+
+    if ($codes === '') {
+      return $text;
+    }
+
+    $lines = array_map(function (string $line) use ($p, $codes): string {
+      if ($line === '') {
+        return '';
+      }
+
+      $line = preg_replace_callback('/\033\[[0-9;:]*m/', fn(array $match): string => $match[0] . ($p->switchesOff($match[0]) ? $codes : ''), $line) ?? $line;
+
+      return $codes . $line . $p->cfgColors['reset'];
+    }, explode("\n", $text));
+
+    return implode("\n", $lines);
+  }
+
+  /**
+   * Removes ANSI escape sequences from text.
+   *
+   * @param string $text
+   *   Text that may hold escape sequences.
+   *
+   * @return string
+   *   The text without its escape sequences.
+   */
+  public static function strip(string $text): string {
+    return static::instance()->stripAnsi($text);
+  }
+
+  /**
+   * Measures the columns a terminal uses to draw text.
+   *
+   * This is the measure Prompty lays out and wraps its own lines with.
+   *
+   * @param string $text
+   *   Text that may hold escape sequences. It may span several lines.
+   *
+   * @return int
+   *   The width of the widest line. Escape sequences count as 0 and a wide
+   *   character as 2.
+   */
+  public static function width(string $text): int {
+    $p = static::instance();
+
+    return max(array_map($p->displayWidth(...), explode("\n", $text)));
+  }
+
+  /**
+   * Returns the terminal width Prompty wraps its lines to.
+   *
+   * @return int
+   *   The configured 'width', a positive COLUMNS environment variable, the
+   *   width 'stty size' reports, or 80, in that order.
+   */
+  public static function terminalWidth(): int {
+    return static::instance()->columns();
+  }
+
+  /**
    * Wraps text in an ANSI color sequence.
    */
   protected function color(string $text, string $color): string {
@@ -2618,6 +2714,19 @@ class Prompty {
   }
 
   /**
+   * Removes CSI escape sequences, such as colors and cursor moves.
+   *
+   * @param string $text
+   *   Text that may hold escape sequences.
+   *
+   * @return string
+   *   The text without its escape sequences.
+   */
+  protected function stripAnsi(string $text): string {
+    return preg_replace('/\033\[\??[0-9;:]*[A-Za-z]/', '', $text) ?? $text;
+  }
+
+  /**
    * Measures the columns a terminal uses to draw text.
    *
    * @param string $text
@@ -2628,7 +2737,7 @@ class Prompty {
    *   as 2. Text that is not valid UTF-8 counts 1 column per byte.
    */
   protected function displayWidth(string $text): int {
-    $text = preg_replace('/\033\[\??[0-9;:]*[A-Za-z]/', '', $text) ?? $text;
+    $text = $this->stripAnsi($text);
 
     if (preg_match_all('/./su', $text, $matches) === FALSE) {
       return strlen($text);
