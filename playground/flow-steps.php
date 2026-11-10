@@ -27,14 +27,14 @@ $results = Prompty::flow(fn(): array => [
   ),
 
   'method' => Prompty::step(
-    fn(array $r): \Closure|array|string|null => Prompty::select('Method',
+    fn(array $r): mixed => Prompty::select('Method',
       options: $r['course'] === 'dessert' ? $methods_dessert : $methods,
       default: $r['course'] === 'starter' ? 'poached' : 'baked',
       description: sprintf('How the %s is cooked.', $r['dish']),
     ),
     children: [
       'temperature' => Prompty::step(
-        fn(array $r): \Closure|array|string|null => Prompty::select('Temperature',
+        fn(array $r): mixed => Prompty::select('Temperature',
           options: ['low' => 'Low', 'moderate' => 'Moderate', 'high' => 'High'],
           default: $r['method'] === 'grilled' ? 'high' : 'moderate',
           description: 'Oven setting for the bake.',
@@ -45,7 +45,7 @@ $results = Prompty::flow(fn(): array => [
   ),
 
   'finishes' => Prompty::step(
-    fn(array $r): \Closure|array|string|null => Prompty::multiselect('Finishes',
+    fn(array $r): mixed => Prompty::multiselect('Finishes',
       options: ['glazed' => 'Glazed', 'dusted' => 'Dusted', 'piped' => 'Piped'],
       default: $r['method'] === 'baked' ? ['glazed', 'dusted'] : ['piped'],
       description: 'Applied just before serving.',
@@ -54,10 +54,10 @@ $results = Prompty::flow(fn(): array => [
   ),
 
   'note' => Prompty::step(
-    fn(array $r): \Closure|array|string|null => Prompty::text('Kitchen note', default: sprintf('%s, %s', $r['dish'], $r['method'])),
+    fn(array $r): mixed => Prompty::text('Kitchen note', default: sprintf('%s, %s', $r['dish'], $r['method'])),
   ),
   'send' => Prompty::step(
-    fn(array $r): \Closure|array|string|null => Prompty::confirm('Send order?', description: sprintf('Passes the %s to the kitchen.', $r['dish'])),
+    fn(array $r): mixed => Prompty::confirm('Send order?', description: sprintf('Passes the %s to the kitchen.', $r['dish'])),
   ),
 ],
   intro: 'Kitchen order',

@@ -26,7 +26,7 @@ final class PromptyFlowStepTest extends PromptyTestCase {
     $condition = fn(array $r): bool => TRUE;
     $children = ['note' => Prompty::text('Kitchen note')];
 
-    $step = Prompty::step(function () use (&$built): \Closure|array|string|null {
+    $step = Prompty::step(function () use (&$built): mixed {
       $built = TRUE;
 
       return Prompty::text('Dish name');
@@ -41,7 +41,7 @@ final class PromptyFlowStepTest extends PromptyTestCase {
   public function testStepDefaultsToNoConditionAndNoChildren(): void {
     $this->createAndSetInstance([], TRUE);
 
-    $step = Prompty::step(fn(array $r): \Closure|array|string|null => Prompty::text('Dish name'));
+    $step = Prompty::step(fn(array $r): mixed => Prompty::text('Dish name'));
 
     $this->assertNull($step['__condition']);
     $this->assertSame([], $step['__children']);
@@ -51,7 +51,7 @@ final class PromptyFlowStepTest extends PromptyTestCase {
     $this->expectException(\LogicException::class);
     $this->expectExceptionMessage('Prompty::step() declares a flow step, so it can only be called inside the callable passed to Prompty::flow().');
 
-    Prompty::step(fn(array $r): \Closure|array|string|null => Prompty::text('Dish name'));
+    Prompty::step(fn(array $r): mixed => Prompty::text('Dish name'));
   }
 
   public function testStepBuilderReceivesEarlierAnswers(): void {
@@ -66,7 +66,7 @@ final class PromptyFlowStepTest extends PromptyTestCase {
         return [
           'dish' => Prompty::text('Dish name'),
           'course' => Prompty::select('Course', options: ['main' => 'Main', 'dessert' => 'Dessert']),
-          'note' => Prompty::step(function (array $results) use (&$seen): \Closure|array|string|null {
+          'note' => Prompty::step(function (array $results) use (&$seen): mixed {
             $seen[] = $results;
 
             return Prompty::text('Kitchen note');
@@ -100,49 +100,49 @@ final class PromptyFlowStepTest extends PromptyTestCase {
   public static function dataProviderStepBuildsWidgetFromEarlierAnswers(): \Iterator {
     yield 'text default' => [
       ['dish' => 'pear tart', 'course' => 'dessert'],
-      fn(array $r): \Closure|array|string|null => Prompty::text('Kitchen note', default: sprintf('%s, sliced', $r['dish'])),
+      fn(array $r): mixed => Prompty::text('Kitchen note', default: sprintf('%s, sliced', $r['dish'])),
       'pear tart, sliced',
       "+  Kitchen note\n|  pear tart, sliced\n",
     ];
 
     yield 'text label' => [
       ['dish' => 'pear tart', 'course' => 'dessert', 'answer' => 'no nuts'],
-      fn(array $r): \Closure|array|string|null => Prompty::text(sprintf('Allergy note for %s', $r['dish'])),
+      fn(array $r): mixed => Prompty::text(sprintf('Allergy note for %s', $r['dish'])),
       'no nuts',
       "+  Allergy note for pear tart\n|  no nuts\n",
     ];
 
     yield 'select options' => [
       ['dish' => 'pear tart', 'course' => 'dessert', 'answer' => 'glazed'],
-      fn(array $r): \Closure|array|string|null => Prompty::select('Finish', options: $r['course'] === 'dessert' ? ['glazed' => 'Glazed', 'dusted' => 'Dusted'] : ['baked' => 'Baked']),
+      fn(array $r): mixed => Prompty::select('Finish', options: $r['course'] === 'dessert' ? ['glazed' => 'Glazed', 'dusted' => 'Dusted'] : ['baked' => 'Baked']),
       'glazed',
       "+  Finish\n|  Glazed\n",
     ];
 
     yield 'select default' => [
       ['dish' => 'pear tart', 'course' => 'main'],
-      fn(array $r): \Closure|array|string|null => Prompty::select('Method', options: ['baked' => 'Baked', 'grilled' => 'Grilled'], default: $r['course'] === 'main' ? 'grilled' : 'baked'),
+      fn(array $r): mixed => Prompty::select('Method', options: ['baked' => 'Baked', 'grilled' => 'Grilled'], default: $r['course'] === 'main' ? 'grilled' : 'baked'),
       'grilled',
       "+  Method\n|  Grilled\n",
     ];
 
     yield 'multiselect default' => [
       ['dish' => 'pear tart', 'course' => 'dessert'],
-      fn(array $r): \Closure|array|string|null => Prompty::multiselect('Finishes', options: ['glazed' => 'Glazed', 'dusted' => 'Dusted', 'piped' => 'Piped'], default: $r['course'] === 'dessert' ? ['dusted', 'piped'] : []),
+      fn(array $r): mixed => Prompty::multiselect('Finishes', options: ['glazed' => 'Glazed', 'dusted' => 'Dusted', 'piped' => 'Piped'], default: $r['course'] === 'dessert' ? ['dusted', 'piped'] : []),
       ['dusted', 'piped'],
       "+  Finishes\n|  Dusted, Piped\n",
     ];
 
     yield 'suggest options' => [
       ['dish' => 'pear tart', 'course' => 'dessert'],
-      fn(array $r): \Closure|array|string|null => Prompty::suggest('Special', options: [sprintf('%s', $r['dish']), 'Onion Soup'], default: sprintf('%s', $r['dish'])),
+      fn(array $r): mixed => Prompty::suggest('Special', options: [sprintf('%s', $r['dish']), 'Onion Soup'], default: sprintf('%s', $r['dish'])),
       'pear tart',
       "+  Special\n|  pear tart\n",
     ];
 
     yield 'confirm default' => [
       ['dish' => 'pear tart', 'course' => 'dessert'],
-      fn(array $r): \Closure|array|string|null => Prompty::confirm('Serve warm?', default: $r['course'] === 'dessert'),
+      fn(array $r): mixed => Prompty::confirm('Serve warm?', default: $r['course'] === 'dessert'),
       TRUE,
       "+  Serve warm?\n|  Yes\n",
     ];
@@ -158,7 +158,7 @@ final class PromptyFlowStepTest extends PromptyTestCase {
   public function testStepBuildsFromTypedAnswer(): void {
     $r = $this->promptyRun(fn(): ?array => Prompty::flow(fn(): array => [
       'dish' => Prompty::text('Dish name'),
-      'note' => Prompty::step(fn(array $r): \Closure|array|string|null => Prompty::text('Kitchen note', default: sprintf('%s, sliced', $r['dish']), description: sprintf('Sent with the %s.', $r['dish']))),
+      'note' => Prompty::step(fn(array $r): mixed => Prompty::text('Kitchen note', default: sprintf('%s, sliced', $r['dish']), description: sprintf('Sent with the %s.', $r['dish']))),
     ], unicode: FALSE), 'plum compote' . self::KEY_ENTER . self::KEY_ENTER);
 
     $this->assertSame(['dish' => 'plum compote', 'note' => 'plum compote, sliced'], $r['result']);
@@ -172,7 +172,7 @@ final class PromptyFlowStepTest extends PromptyTestCase {
     $this->captureOutput(function () use (&$result): void {
       $result = Prompty::flow(fn(): array => [
         'dish' => Prompty::text('Dish name'),
-        'note' => Prompty::step(fn(array $r): \Closure|array|string|null => Prompty::text('Kitchen note', default: sprintf('%s, sliced', $r['dish']))),
+        'note' => Prompty::step(fn(array $r): mixed => Prompty::text('Kitchen note', default: sprintf('%s, sliced', $r['dish']))),
       ], unicode: FALSE);
     });
 
@@ -186,7 +186,7 @@ final class PromptyFlowStepTest extends PromptyTestCase {
     $this->captureOutput(function () use (&$result): void {
       $result = Prompty::flow(fn(): array => [
         'dish' => Prompty::text('Dish name'),
-        'note' => Prompty::step(fn(array $r): \Closure|array|string|null => Prompty::text('Kitchen note')),
+        'note' => Prompty::step(fn(array $r): mixed => Prompty::text('Kitchen note')),
       ], unicode: FALSE, env_prefix: 'KITCHEN_');
     });
 
@@ -202,7 +202,7 @@ final class PromptyFlowStepTest extends PromptyTestCase {
       $result = Prompty::flow(function () use (&$built): array {
         return [
           'course' => Prompty::select('Course', options: ['main' => 'Main', 'dessert' => 'Dessert']),
-          'finishes' => Prompty::step(function () use (&$built): \Closure|array|string|null {
+          'finishes' => Prompty::step(function () use (&$built): mixed {
             $built = TRUE;
 
             return Prompty::multiselect('Finishes', options: ['glazed' => 'Glazed']);
@@ -227,7 +227,7 @@ final class PromptyFlowStepTest extends PromptyTestCase {
       $result = Prompty::flow(function () use (&$seen): array {
         return [
           'course' => Prompty::select('Course', options: ['main' => 'Main', 'dessert' => 'Dessert']),
-          'finishes' => Prompty::step(fn(array $r): \Closure|array|string|null => Prompty::multiselect('Finishes', options: ['glazed' => 'Glazed']), condition: function (array $r) use (&$seen): bool {
+          'finishes' => Prompty::step(fn(array $r): mixed => Prompty::multiselect('Finishes', options: ['glazed' => 'Glazed']), condition: function (array $r) use (&$seen): bool {
             $seen[] = $r;
 
             return $r['course'] === 'dessert';
@@ -277,13 +277,13 @@ final class PromptyFlowStepTest extends PromptyTestCase {
     ];
 
     $built_steps = fn(): array => [
-      'course' => Prompty::step(fn(array $r): \Closure|array|string|null => Prompty::select('Course', options: $courses), children: [
-        'method' => Prompty::step(fn(array $r): \Closure|array|string|null => Prompty::select('Method', options: $methods), condition: $is_main, children: [
-          'rest' => Prompty::step(fn(array $r): \Closure|array|string|null => Prompty::confirm('Rest before serving?')),
+      'course' => Prompty::step(fn(array $r): mixed => Prompty::select('Course', options: $courses), children: [
+        'method' => Prompty::step(fn(array $r): mixed => Prompty::select('Method', options: $methods), condition: $is_main, children: [
+          'rest' => Prompty::step(fn(array $r): mixed => Prompty::confirm('Rest before serving?')),
         ]),
-        'finishes' => Prompty::step(fn(array $r): \Closure|array|string|null => Prompty::multiselect('Finishes', options: $finishes), condition: $is_dessert),
+        'finishes' => Prompty::step(fn(array $r): mixed => Prompty::multiselect('Finishes', options: $finishes), condition: $is_dessert),
       ]),
-      'send' => Prompty::step(fn(array $r): \Closure|array|string|null => Prompty::confirm('Send order?')),
+      'send' => Prompty::step(fn(array $r): mixed => Prompty::confirm('Send order?')),
     ];
 
     yield 'main course, numbered' => [
@@ -313,7 +313,7 @@ final class PromptyFlowStepTest extends PromptyTestCase {
 
   public function testStepCancelledReturnsNull(): void {
     $r = $this->promptyRun(fn(): ?array => Prompty::flow(fn(): array => [
-      'dish' => Prompty::step(fn(array $r): \Closure|array|string|null => Prompty::text('Dish name')),
+      'dish' => Prompty::step(fn(array $r): mixed => Prompty::text('Dish name')),
     ], cancelled: 'Order cancelled.', unicode: FALSE), self::KEY_ESCAPE);
 
     $this->assertNull($r['result']);
@@ -333,7 +333,7 @@ final class PromptyFlowStepTest extends PromptyTestCase {
     yield 'duplicate key in children' => [
       fn(): array => [
         'dish' => Prompty::text('Dish name', discovered: 'pear tart'),
-        'course' => Prompty::step(fn(array $r): \Closure|array|string|null => Prompty::confirm('Add dessert?', discovered: TRUE), children: [
+        'course' => Prompty::step(fn(array $r): mixed => Prompty::confirm('Add dessert?', discovered: TRUE), children: [
           'dish' => Prompty::text('Dessert', discovered: 'plum compote'),
         ]),
       ],
@@ -342,7 +342,7 @@ final class PromptyFlowStepTest extends PromptyTestCase {
 
     yield 'child key that cannot be exported' => [
       fn(): array => [
-        'course' => Prompty::step(fn(array $r): \Closure|array|string|null => Prompty::confirm('Add dessert?', discovered: TRUE), children: [
+        'course' => Prompty::step(fn(array $r): mixed => Prompty::confirm('Add dessert?', discovered: TRUE), children: [
           'with-dash' => Prompty::text('Dessert', discovered: 'plum compote'),
         ]),
       ],
@@ -368,17 +368,17 @@ final class PromptyFlowStepTest extends PromptyTestCase {
     $step_array = 'The builder for step "note" returned a step array. Pass condition and children to Prompty::step(), so the flow knows them before the step runs.';
 
     yield 'widget with condition' => [
-      fn(array $r): \Closure|array|string|null => Prompty::text('Kitchen note', condition: fn(array $r): bool => TRUE),
+      fn(array $r): mixed => Prompty::text('Kitchen note', condition: fn(array $r): bool => TRUE),
       $step_array,
     ];
 
     yield 'widget with children' => [
-      fn(array $r): \Closure|array|string|null => Prompty::text('Kitchen note', children: ['allergy' => Prompty::text('Allergy note')]),
+      fn(array $r): mixed => Prompty::text('Kitchen note', children: ['allergy' => Prompty::text('Allergy note')]),
       $step_array,
     ];
 
     yield 'nested step' => [
-      fn(array $r): array => Prompty::step(fn(array $r): \Closure|array|string|null => Prompty::text('Kitchen note')),
+      fn(array $r): array => Prompty::step(fn(array $r): mixed => Prompty::text('Kitchen note')),
       $step_array,
     ];
 
