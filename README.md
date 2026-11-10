@@ -65,7 +65,7 @@ The release has 3 variants of the class:
 |-----------------------|-------------------------------------------------------------------------|
 | `Prompty.php`         | Full source with version imprinted                                      |
 | `Prompty.min.php`     | Minified - comments except the license header and blank lines stripped, class body on 1 line |
-| `Prompty.compact.php` | Minified, plus shortened internal names and no optional whitespace      |
+| `Prompty.compact.php` | Minified with no optional whitespace, plus shortened internal names, variables and parameters |
 
 For testing, also download `PromptyTestTrait.php` from the same release.
 
@@ -1665,7 +1665,7 @@ To start a script, copy `starter.php` under a new name and replace its steps wit
 
 ## Embedding
 
-[`embed.php`](embed.php) minifies `Prompty.php` and writes it into your script, so the script ships as 1 file with no `require_once`. Minifying strips every comment except the license header, drops blank lines and puts the class body on 1 line.
+[`embed.php`](embed.php) minifies `Prompty.php` and writes it into your script, so the script ships as 1 file with no `require_once`. Minifying strips every comment except the license header, drops the static analysis tags from that header, drops blank lines and puts the class body on 1 line.
 
 Download `embed.php` with `Prompty.php` from the [latest release](https://github.com/AlexSkrypnyk/prompty/releases/latest) assets.
 
@@ -1704,6 +1704,18 @@ To write the result to a separate file and leave your script unchanged, add an o
 php embed.php my-script.php dist/my-script.php
 ```
 
+Before it embeds, `embed.php` writes the code it inserts between the markers to `Prompty.min.payload` beside the output script. With `--compact`, the file is `Prompty.compact.payload`. Open the file to read the code your script will carry. Each release ships a file of the same name, so you can compare the 2 hashes. To skip writing the file, pass `--no-payload-file`.
+
+After embedding, `embed.php` prints the size of each file involved:
+
+```text
+Sizes:
+  Target script before    1,799 bytes     50 lines  my-script.php
+  Prompty source        216,660 bytes  6,439 lines  /path/to/Prompty.php
+  Prompty embeddable    105,488 bytes     22 lines  Prompty.min.payload (48.7% of the source)
+  Target script after   107,278 bytes     68 lines  my-script.php (+105,479 bytes)
+```
+
 To silence coding-standard warnings on the minified code, wrap the markers in `// phpcs:disable` and `// phpcs:enable`.
 
 [`starter.php`](starter.php) has the markers in place. [`playground/05-flows-embed.php`](playground/05-flows-embed.php) is the demo the embedder is tested against, and [`CONTRIBUTING.md`](CONTRIBUTING.md#the-embedded-demo) shows how to build and compare its embedded copy.
@@ -1715,13 +1727,14 @@ To silence coding-standard warnings on the minified code, wrap the markers in `/
 | Option            | Description                                                                             |
 |-------------------|-----------------------------------------------------------------------------------------|
 | `--source <path>` | Sets the class file to embed. Defaults to `Prompty.php` beside `embed.php`.             |
-| `--compact`       | Shortens internal names, renames local variables and strips optional whitespace.        |
+| `--compact`       | Strips optional whitespace, shortens internal names and renames local variables and parameters. |
 | `--stdout`        | Writes the processed class as a standalone PHP file instead of embedding it.            |
 | `--payload`       | Writes only the code that embedding puts between the markers.                           |
 | `--check`         | Checks an embedded script. See [Verify an embedded script](#verify-an-embedded-script). |
 | `--sums <path>`   | With `--check`, sets the `SHA256SUMS` file of the release that the start marker names. |
 | `--no-killswitch` | Skips adding the kill switch block and the verification run.                            |
 | `--no-verify`     | Skips the verification run but still adds the kill switch block.                        |
+| `--no-payload-file` | Skips writing the embedded code to a `.payload` file beside the output script.        |
 
 For example:
 
