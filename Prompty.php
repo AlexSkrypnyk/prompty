@@ -2566,7 +2566,7 @@ class Prompty {
    *   as 2. Text that is not valid UTF-8 counts 1 column per byte.
    */
   protected function displayWidth(string $text): int {
-    $text = preg_replace('/\033\[\??[0-9;]*[A-Za-z]/', '', $text) ?? $text;
+    $text = preg_replace('/\033\[\??[0-9;:]*[A-Za-z]/', '', $text) ?? $text;
 
     if (preg_match_all('/./su', $text, $matches) === FALSE) {
       return strlen($text);
@@ -2709,15 +2709,15 @@ class Prompty {
    */
   protected function wrapRuns(string $content): array {
     // Text that is not valid UTF-8 fails the /u match and splits by byte.
-    if (preg_match_all('/\033\[[0-9;]*m| |./su', $content, $matches) === FALSE) {
-      preg_match_all('/\033\[[0-9;]*m| |./s', $content, $matches);
+    if (preg_match_all('/\033\[[0-9;:]*m| |./su', $content, $matches) === FALSE) {
+      preg_match_all('/\033\[[0-9;:]*m| |./s', $content, $matches);
     }
 
     $units = [];
 
     foreach ($matches[0] as $text) {
       $kind = match (TRUE) {
-        preg_match('/^\033\[[0-9;]*m$/', $text) === 1 => 'style',
+        preg_match('/^\033\[[0-9;:]*m$/', $text) === 1 => 'style',
         $text === ' ' => 'space',
         default => 'char',
       };

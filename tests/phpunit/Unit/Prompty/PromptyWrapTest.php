@@ -38,6 +38,7 @@ final class PromptyWrapTest extends PromptyTestCase {
     yield 'ascii' => ['Plum compote', 12];
     yield 'color sequences' => ["\033[2;3mPlum\033[0m", 4];
     yield 'cursor sequence' => ["\033[?25lPlum", 4];
+    yield 'colon parameters' => ["\033[4:3mPlum\033[0m", 4];
     yield 'tree symbols' => ['│◆◇❯●○◼◻↳▲↑↓', 12];
     yield 'wide characters' => ['日本', 4];
     yield 'hangul' => ['한', 2];
@@ -132,6 +133,27 @@ final class PromptyWrapTest extends PromptyTestCase {
     $lines = $this->callProtectedLines($p, 'wrap', '| ', "\033[2mone\033[0m \033[31mtwo three\033[0m", "\033[90m|\033[0m ");
 
     $this->assertSame(["| \033[2mone\033[0m \033[31mtwo\033[0m", "\033[90m|\033[0m \033[31mthree\033[0m"], $lines);
+  }
+
+  public function testDescriptionKeepsInlineStylingAcrossBreak(): void {
+    $p = $this->createInstance(['ansi' => TRUE, 'width' => 20]);
+    $gutter = "\033[90m|\033[0m  ";
+
+    $lines = $this->callProtectedLines($p, 'renderDescription', "Pear \033[1mtart\033[22m with cream and almonds");
+
+    $this->assertSame([
+      $gutter . "\033[2;3mPear \033[1mtart\033[22m\033[2;3m with\033[0m",
+      $gutter . "\033[2;3m\033[1m\033[22m\033[2;3mcream and almonds\033[0m",
+      "\033[90m|\033[0m",
+    ], $lines);
+  }
+
+  public function testSectionWraps(): void {
+    $p = $this->createInstance(['ansi' => FALSE, 'width' => 30]);
+
+    $lines = $this->callProtectedLines($p, 'renderSection', 'Kitchen order for table 12 at the window', 'Read out at the pass with the order.', TRUE);
+
+    $this->assertSame(['', '#  Kitchen order for table 12', '|  at the window', '|  Read out at the pass with', '|  the order.', '|'], $lines);
   }
 
   public function testWrapSplitsTextThatIsNotUtf8ByByte(): void {
