@@ -1402,6 +1402,11 @@ class Prompty {
    *   Options drawn at once; the window shifts to keep the focused option in
    *   view, and opens on the first pre-checked option. 0 draws every option,
    *   and NULL uses the configured value.
+   * @param string $order
+   *   The order of the answered keys. 'options' follows $options. 'default'
+   *   puts the keys of $default first, in $default order, then the rest in
+   *   option order. 'selection' follows the order the keys were checked, with
+   *   $default checked first; a discovered value keeps the order it gives.
    * @param string $help
    *   Optional help rendered below the options while the widget is active.
    * @param mixed $discovered
@@ -1430,12 +1435,13 @@ class Prompty {
    * @return \Closure|array<string, mixed>|list<string>|null
    *   While a flow is being defined, a closure, or a step array when a
    *   condition or children are set. Otherwise the selected option keys,
-   *   deduplicated and in option order, or NULL when the widget is cancelled.
+   *   deduplicated and in $order, or NULL when the widget is cancelled.
    *
    * @throws \InvalidArgumentException
    *   When $options is empty, a default or discovered entry is not a key of
-   *   $options, $scroll is negative, or the answer resolved without input is
-   *   empty while $required is set, or fails $validate.
+   *   $options, $scroll is negative, $order is not a known order, or the
+   *   answer resolved without input is empty while $required is set, or fails
+   *   $validate.
    * @throws \UnexpectedValueException
    *   When $transform returns anything other than a list of strings, or
    *   $validate returns neither NULL nor a string.
@@ -1447,6 +1453,7 @@ class Prompty {
     string $description = '',
     array $hints = [],
     ?int $scroll = NULL,
+    string $order = 'options',
     string $help = '',
     mixed $discovered = NULL,
     ?callable $transform = NULL,
@@ -1464,6 +1471,7 @@ class Prompty {
         description: $description,
         hints: $hints,
         scroll: $scroll,
+        order: $order,
         help: $help,
         discovered: $discovered,
         transform: $transform,
@@ -1503,6 +1511,7 @@ class Prompty {
     $default_keys = $p->assertOptionKeys('Default', $label, $default, $options);
     $resolved_keys = $resolved === NULL ? NULL : $p->assertOptionKeys('Discovered', $label, $resolved, $options);
     $visible = $p->visibleOptions($label, $scroll, count($options));
+    $p->assertOrder($order, $label);
     /** @var array<string, mixed> $results */
     $results = $ctx['results'] ?? [];
 
@@ -1511,6 +1520,7 @@ class Prompty {
     }
 
     if ($resolved_keys !== NULL) {
+      $resolved_keys = $p->orderKeys($resolved_keys, $order, $options, $default_keys);
       $resolved_keys = $p->transformKeys($plain_label, $transform, $resolved_keys);
       $p->assertResolvedValid($resolved !== NULL ? 'Discovered' : 'Default', $plain_label, $required, $validate, $resolved_keys, $results);
     }
@@ -1602,10 +1612,12 @@ class Prompty {
     // A window that opened at the top could hide every pre-checked option, so
     // it opens on the first one. A list drawn in full keeps focus at the top.
     if ($visible < count($option_keys) && $default_keys !== []) {
-      $focused = (int) array_search($default_keys[0], $option_keys, TRUE);
+      $focused = (int) array_search($p->orderKeys($default_keys, 'options', $options, [])[0], $option_keys, TRUE);
     }
 
     $checked = array_map(fn(string $key): bool => in_array($key, $default_keys, TRUE), $option_keys);
+    // Checked keys in the order they were checked, with the default first.
+    $selection = $default_keys;
     $error = NULL;
     $first = $p->scrollWindow(0, $focused, $visible);
     $line_count = $p->printLines($render_active($focused, $checked, $first, $error));
@@ -1626,14 +1638,7 @@ class Prompty {
       }
 
       if ($key === 'enter') {
-        $selected_keys = [];
-
-        foreach ($option_keys as $index => $option_key) {
-          if ($checked[$index]) {
-            $selected_keys[] = $option_key;
-          }
-        }
-
+        $selected_keys = $p->orderKeys($selection, $order, $options, $default_keys);
         $selected_keys = $p->transformKeys($plain_label, $transform, $selected_keys);
         $error = $p->validateAnswer($plain_label, $required, $validate, $selected_keys, $results);
 
@@ -1659,6 +1664,11 @@ class Prompty {
 
       if ($key === 'space') {
         $checked[$focused] = !$checked[$focused];
+        $selection = array_values(array_diff($selection, [$option_keys[$focused]]));
+
+        if ($checked[$focused]) {
+          $selection[] = $option_keys[$focused];
+        }
       }
       elseif ($key === 'up' || $key === 'left') {
         $focused = ($focused - 1 + count($option_labels)) % count($option_labels);
@@ -3187,8 +3197,8 @@ class Prompty {
    *
    * Entries that are empty after trimming are dropped, so an empty value and a
    * trailing comma both mean "nothing selected". Surviving entries are checked
-   * for membership and returned in option order without duplicates, matching
-   * what the interactive path returns.
+   * for membership and returned in the order given, each at its first
+   * position.
    *
    * @param string $parameter
    *   The parameter that supplied the value, capitalized, opening the error
@@ -3201,7 +3211,7 @@ class Prompty {
    *   Map of option key to display label.
    *
    * @return list<string>
-   *   The selected option keys, deduplicated and in option order.
+   *   The selected option keys, deduplicated and in the order given.
    *
    * @throws \InvalidArgumentException
    *   When any entry is not a key of $options.
@@ -3218,7 +3228,52 @@ class Prompty {
       $selected[] = $this->assertOptionKey($parameter, $label, $entry, $options);
     }
 
-    return array_values(array_filter($this->optionKeys($options), fn(string $key): bool => in_array($key, $selected, TRUE)));
+    return array_values(array_unique($selected));
+  }
+
+  /**
+   * Rejects a multiselect answer order that is not known.
+   *
+   * @param string $order
+   *   The order to check.
+   * @param string $label
+   *   The widget label, used to identify the widget in the error message.
+   *
+   * @throws \InvalidArgumentException
+   *   When $order is not 'options', 'default' or 'selection'.
+   */
+  protected function assertOrder(string $order, string $label): void {
+    if (!in_array($order, ['options', 'default', 'selection'], TRUE)) {
+      throw new \InvalidArgumentException(sprintf('Order "%s" for "%s" is not valid. Use "options", "default" or "selection".', $order, $label));
+    }
+  }
+
+  /**
+   * Arranges selected multiselect keys in an answer order.
+   *
+   * @param list<string> $keys
+   *   The selected option keys, in the order they were selected.
+   * @param string $order
+   *   One of 'options', 'default' or 'selection'.
+   * @param array<int|string, string> $options
+   *   Map of option key to display label.
+   * @param list<string> $default_keys
+   *   The default option keys, in default order.
+   *
+   * @return list<string>
+   *   The selected keys in $order.
+   */
+  protected function orderKeys(array $keys, string $order, array $options, array $default_keys): array {
+    $in_options = array_values(array_filter($this->optionKeys($options), fn(string $key): bool => in_array($key, $keys, TRUE)));
+
+    return match ($order) {
+      'selection' => $keys,
+      'default' => [
+        ...array_values(array_filter($default_keys, fn(string $key): bool => in_array($key, $keys, TRUE))),
+        ...array_values(array_filter($in_options, fn(string $key): bool => !in_array($key, $default_keys, TRUE))),
+      ],
+      default => $in_options,
+    };
   }
 
   /**
