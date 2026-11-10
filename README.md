@@ -1030,6 +1030,30 @@ Under both helpers, widgets draw ASCII symbols. To change that in `promptyRun()`
 
 A widget that reads past the last keystroke cancels, so a test with too few keystrokes gets `null` instead of hanging.
 
+### Test a rejected answer
+
+A widget whose [`validate`](#validation) callback rejects an answer asks again. In a test, it then reads past the last keystroke and cancels, so the test gets `null`. To assert on the message instead, call `promptyThrowOnInvalid()` first:
+
+```php
+public function testRejectsSingleWord(): void {
+  $this->promptyThrowOnInvalid();
+
+  $this->expectException(PromptyValidationException::class);
+  $this->expectExceptionMessage('Name the whole dish');
+
+  $this->promptyRun(fn(): mixed => Prompty::text('Dish name',
+    validate: fn(string $dish): ?string => str_contains($dish, ' ')
+      ? NULL : 'Name the whole dish, such as "pear tart".',
+  ), $this->promptyKeys('pear', self::KEY_ENTER));
+}
+```
+
+The first rejected answer throws `AlexSkrypnyk\Prompty\PromptyValidationException`, which `PromptyTestTrait.php` defines. Its `label`, `value` and `reason` properties hold the widget label, the rejected answer and the callback's message. Its message reads `Value "pear" for "Dish name" is not valid.`, followed by the callback's message.
+
+A rejected `discovered:` value or [non-interactive](#non-interactive-mode) default throws the same class. The class extends `InvalidArgumentException`, which those rejections throw without the switch.
+
+The switch lasts across `promptyRun()` calls until `promptyTearDown()` resets it. To switch it off sooner, call `promptyThrowOnInvalid(FALSE)`.
+
 ### Available key constants
 
 Pass these constants to `promptyKeys()`:
