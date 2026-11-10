@@ -16,6 +16,9 @@ $unicode = !isset($opts['no-unicode']);
 $ansi = !isset($opts['no-ansi']);
 $interactive = !isset($opts['no-interaction']);
 
+$methods = ['baked' => 'Baked', 'poached' => 'Poached', 'grilled' => 'Grilled'];
+$methods_dessert = ['baked' => 'Baked', 'poached' => 'Poached'];
+
 $results = Prompty::flow(fn(): array => [
   'dish' => Prompty::text('Dish name', default: 'pear tart', description: 'Written on the order ticket and under "Specials" on the board.'),
   'course' => Prompty::select('Course',
@@ -25,7 +28,7 @@ $results = Prompty::flow(fn(): array => [
 
   'method' => Prompty::step(
     fn(array $r): \Closure|array|string|null => Prompty::select('Method',
-      options: $r['course'] === 'dessert' ? ['baked' => 'Baked', 'poached' => 'Poached'] : ['baked' => 'Baked', 'poached' => 'Poached', 'grilled' => 'Grilled'],
+      options: $r['course'] === 'dessert' ? $methods_dessert : $methods,
       default: $r['course'] === 'starter' ? 'poached' : 'baked',
       description: sprintf('How the %s is cooked.', $r['dish']),
     ),
