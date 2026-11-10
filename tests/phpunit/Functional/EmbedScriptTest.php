@@ -218,7 +218,7 @@ final class EmbedScriptTest extends EmbedTestCase {
   }
 
   #[DataProvider('dataProviderEmbedKillswitchAndVerification')]
-  public function testEmbedKillswitchAndVerification(bool $has_killswitch, string $flags, bool $expected_killswitch, bool $expected_verification): void {
+  public function testEmbedKillswitchAndVerification(bool $has_killswitch, string $flags, bool $expects_killswitch, bool $expects_verification): void {
     $target = $has_killswitch ? $this->prepareTarget() : $this->prepareTargetWithoutKillswitch();
 
     $args = $flags === '' ? [] : explode(' ', $flags);
@@ -229,9 +229,9 @@ final class EmbedScriptTest extends EmbedTestCase {
     $content = file_get_contents($target);
     $this->assertIsString($content);
 
-    $this->assertSame($expected_killswitch ? 1 : 0, substr_count($content, "if (!getenv('SHOULD_PROCEED'))"), 'Kill switch count in the embedded file.');
-    $this->assertSame($expected_verification, str_contains($embed_output, 'Verifying embedded script'), 'Verification run in the embedder output.');
-    $this->assertSame(!$expected_killswitch, str_contains(strtolower($embed_output), 'no kill switch'), 'Missing kill switch warning in the embedder output.');
+    $this->assertSame($expects_killswitch ? 1 : 0, substr_count($content, "if (!getenv('SHOULD_PROCEED'))"), 'Kill switch count in the embedded file.');
+    $this->assertSame($expects_verification, str_contains($embed_output, 'Verifying embedded script'), 'Verification run in the embedder output.');
+    $this->assertSame(!$expects_killswitch, str_contains(strtolower($embed_output), 'no kill switch'), 'Missing kill switch warning in the embedder output.');
   }
 
   public static function dataProviderEmbedKillswitchAndVerification(): \Iterator {
@@ -306,13 +306,13 @@ final class EmbedScriptTest extends EmbedTestCase {
   }
 
   #[DataProvider('dataProviderSourceFlagWithGeneratedInput')]
-  public function testSourceFlagWithGeneratedInput(bool $compact_source, bool $compact_flag): void {
+  public function testSourceFlagWithGeneratedInput(bool $is_compact_source, bool $has_compact_flag): void {
     $target = $this->prepareTarget();
-    $source = $compact_source ? $this->generateCompacted() : $this->generateMinified();
+    $source = $is_compact_source ? $this->generateCompacted() : $this->generateMinified();
 
     $args = ['--source', $source];
 
-    if ($compact_flag) {
+    if ($has_compact_flag) {
       $args[] = '--compact';
     }
 

@@ -181,12 +181,12 @@ final class PromptyTaskStreamTest extends PromptyTestCase {
   }
 
   #[DataProvider('dataProviderStreamToTarget')]
-  public function testStreamToTarget(bool $callable): void {
+  public function testStreamToTarget(bool $is_callable): void {
     $p = $this->createAndSetInstance(['interactive' => FALSE]);
     $stream = fopen('php://memory', 'w+');
     $this->assertIsResource($stream);
     $written = '';
-    $this->setProperty($p, 'cfgOutput', $callable ? function (string $chunk) use (&$written): void {
+    $this->setProperty($p, 'cfgOutput', $is_callable ? function (string $chunk) use (&$written): void {
       $written .= $chunk;
     } : $stream);
 
@@ -197,7 +197,7 @@ final class PromptyTaskStreamTest extends PromptyTestCase {
       return TRUE;
     }, stream: TRUE));
 
-    if (!$callable) {
+    if (!$is_callable) {
       rewind($stream);
       $written = (string) stream_get_contents($stream);
     }
@@ -300,7 +300,7 @@ final class PromptyTaskStreamTest extends PromptyTestCase {
   #[DataProvider('dataProviderStreamLive')]
   public function testStreamLive(\Closure $action, array $frames): void {
     $p = $this->createAndSetInstance();
-    $this->setProperty($p, 'terminal', TRUE);
+    $this->setProperty($p, 'isTerminal', TRUE);
 
     $output = $this->captureRaw(fn(): mixed => Prompty::task('Baking the tart', action: $action, success: 'Tart baked', failure: 'Tart burnt', stream: TRUE));
 
@@ -395,7 +395,7 @@ final class PromptyTaskStreamTest extends PromptyTestCase {
 
   public function testStreamLiveWindow(): void {
     $p = $this->createAndSetInstance();
-    $this->setProperty($p, 'terminal', TRUE);
+    $this->setProperty($p, 'isTerminal', TRUE);
 
     $output = $this->captureOutput(fn(): mixed => Prompty::task('Baking the tart', action: function (): bool {
       echo "Tray 1 in\nTray 2 in\nTray 3 in\nTray 4 in\nTray 5 in\nTray 6 in\nTray 7 in\n";
@@ -409,7 +409,7 @@ final class PromptyTaskStreamTest extends PromptyTestCase {
 
   public function testStreamLiveCutsLongLines(): void {
     $p = $this->createAndSetInstance();
-    $this->setProperty($p, 'terminal', TRUE);
+    $this->setProperty($p, 'isTerminal', TRUE);
 
     $output = $this->captureOutput(fn(): mixed => Prompty::task('Baking the tart', action: function (): bool {
       echo str_repeat('Pastry rolled thin ', 5) . "and lined into the tin\n";
@@ -424,7 +424,7 @@ final class PromptyTaskStreamTest extends PromptyTestCase {
 
   public function testStreamLiveExceptionExpandsOutput(): void {
     $p = $this->createAndSetInstance();
-    $this->setProperty($p, 'terminal', TRUE);
+    $this->setProperty($p, 'isTerminal', TRUE);
 
     ob_start();
 
@@ -448,7 +448,7 @@ final class PromptyTaskStreamTest extends PromptyTestCase {
 
   public function testStreamLiveTextCallableException(): void {
     $p = $this->createAndSetInstance();
-    $this->setProperty($p, 'terminal', TRUE);
+    $this->setProperty($p, 'isTerminal', TRUE);
 
     $output = $this->captureOutputThrows(\UnexpectedValueException::class, 'The success callable for task "Baking the tart" returned int. It must return the text to draw.', fn(): mixed => Prompty::task('Baking the tart', action: function (): bool {
       echo "Oven at 180°C\n";

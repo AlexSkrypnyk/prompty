@@ -387,7 +387,7 @@ final class PromptyWidgetResolvedTest extends PromptyTestCase {
   }
 
   public function testConfirmStandaloneUsesConfiguredTruthyFalsy(): void {
-    $this->setStaticProperty('inFlow', FALSE);
+    $this->setStaticProperty('isInFlow', FALSE);
     $this->createAndSetInstance(['truthy' => ['on'], 'falsy' => ['off']]);
 
     $r = $this->runWidget(fn(): mixed => Prompty::confirm('OK?', discovered: 'off'));
@@ -396,7 +396,7 @@ final class PromptyWidgetResolvedTest extends PromptyTestCase {
   }
 
   public function testConfirmStandaloneRejectsValueOutsideConfiguredLists(): void {
-    $this->setStaticProperty('inFlow', FALSE);
+    $this->setStaticProperty('isInFlow', FALSE);
     $this->createAndSetInstance(['truthy' => ['on'], 'falsy' => ['off']]);
 
     $this->captureOutputThrows(
@@ -454,7 +454,7 @@ final class PromptyWidgetResolvedTest extends PromptyTestCase {
 
   #[DataProvider('dataProviderWidgetStandaloneWithDiscovered')]
   public function testWidgetStandaloneWithDiscovered(\Closure $call, mixed $expected, string $expected_output): void {
-    $this->setStaticProperty('inFlow', FALSE);
+    $this->setStaticProperty('isInFlow', FALSE);
     $this->createAndSetInstance();
 
     $r = $this->runWidget(fn(): mixed => $call());

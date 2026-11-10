@@ -12,15 +12,15 @@ Namespace: `AlexSkrypnyk\Prompty`. Key files: `Prompty.php` (library),
 - **Dual-mode widgets** - `text`, `select`, `multiselect`, `suggest`,
   `confirm`, `pause` and `task` return closures (step arrays when given a
   condition or children) while a flow is being defined, and values otherwise.
-- **Tasks** - `task()` redraws only when `isLive()`; tests set the `terminal`
+- **Tasks** - `task()` redraws only when `isLive()`; tests set the `isTerminal`
   property to force it. A flow stores a task's outcome as a bool. The spinner
   runs in a `pcntl_fork()` child. `stream: TRUE` captures output with
   `ob_start()` at chunk size 1; a buffer handler can't echo, so `write()`
   collects drawn output in `$streamBuffer` for the handler to return.
-- **Typed config properties** - `cfgUnicode`, `cfgSymbols`, `cfgColors`,
+- **Typed config properties** - `cfgUseUnicode`, `cfgSymbols`, `cfgColors`,
   `cfgSpacing`, `cfgLabels`, `cfgEnvPrefix`, `cfgTruthy`, `cfgFalsy`, etc.
   Configured via `Prompty::configure(...)` named arguments.
-- **Flow definition** - `flow()` takes a callable (not array) so `$inFlow`
+- **Flow definition** - `flow()` takes a callable (not array) so `$isInFlow`
   is set before widget evaluation.
 - **Built steps** - `step()` returns a step array whose `__call` runs a
   builder with the answers so far and then the widget closure it returns.
@@ -29,7 +29,7 @@ Namespace: `AlexSkrypnyk\Prompty`. Key files: `Prompty.php` (library),
   `__section`. `walkFlow()` draws it only when a step in its group (the steps
   up to the next section) renders, and stores no result. Top level only.
 - **Notes** - `note()` returns a keyless step array carrying `__note` only
-  while `$defining` is set, which `flow()` sets only around the steps
+  while `$isDefining` is set, which `flow()` sets only around the steps
   callable; at any other time, including while the flow walks, it prints.
   `drawNote()` draws it at its depth and stores no result.
 - **Tree rendering** - nested children use bar connectors; `open` array
@@ -101,6 +101,7 @@ composer reset         # rm vendor/, vendor-bin/, composer.lock
 
 - `strict_types=1` in all PHP files
 - Single quotes, `snake_case` locals, `camelCase` methods/properties
+- A boolean property or variable is named as the yes/no question it answers, with the prefix that reads naturally: `is` (`$isTerminal`, `$is_live`), `has` (`$hasDrawn`, `$has_killswitch`), `was` (`$was_called`), `should` (`$should_proceed`), `use` / `show` for settings (`$cfgUseAnsi`, `$cfgShowLegend`). Public named arguments (`unicode`, `legend`, `erase`, ...) keep their option names.
 - Files end with newline
 
 ## Testing

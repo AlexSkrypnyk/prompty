@@ -51,12 +51,12 @@ abstract class PromptyTestCase extends TestCase {
   /**
    * Create a Prompty instance and set it as the singleton.
    */
-  protected function createAndSetInstance(array $config = [], bool $in_flow = FALSE): Prompty {
+  protected function createAndSetInstance(array $config = [], bool $is_in_flow = FALSE): Prompty {
     $p = $this->promptyCreateInstance($config);
     $this->promptySetStatic('instance', $p);
 
-    if ($in_flow) {
-      $this->promptySetStatic('inFlow', TRUE);
+    if ($is_in_flow) {
+      $this->promptySetStatic('isInFlow', TRUE);
     }
 
     return $p;
@@ -198,14 +198,14 @@ abstract class PromptyTestCase extends TestCase {
    *
    * @param string $keystrokes
    *   Raw keystroke bytes to feed.
-   * @param bool $in_flow
+   * @param bool $is_in_flow
    *   Whether to mark a flow as already running.
    *
    * @return resource
    *   The stream, positioned at the first keystroke.
    */
-  protected function installKeystrokes(string $keystrokes, bool $in_flow = TRUE) {
-    $p = $this->createAndSetInstance(['unicode' => FALSE], $in_flow);
+  protected function installKeystrokes(string $keystrokes, bool $is_in_flow = TRUE) {
+    $p = $this->createAndSetInstance(['unicode' => FALSE], $is_in_flow);
 
     $stream = fopen('php://memory', 'r+') ?: NULL;
     $this->assertNotNull($stream);

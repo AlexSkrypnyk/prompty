@@ -134,7 +134,7 @@ final class PromptyWidgetTransformTest extends PromptyTestCase {
     ];
 
     yield 'confirm inverted' => [
-      fn(mixed $discovered): mixed => Prompty::confirm('Order', discovered: $discovered, transform: fn(bool $yes): bool => !$yes, ctx: self::context()),
+      fn(mixed $discovered): mixed => Prompty::confirm('Order', discovered: $discovered, transform: fn(bool $is_yes): bool => !$is_yes, ctx: self::context()),
       self::KEY_ENTER,
       'yes',
       FALSE,
@@ -259,7 +259,7 @@ final class PromptyWidgetTransformTest extends PromptyTestCase {
 
     yield 'suggest' => [fn(): mixed => Prompty::suggest('Order', options: self::DISHES, default: 'Pear Tart', transform: strtoupper(...)), 'PEAR TART', 'PEAR TART'];
 
-    yield 'confirm' => [fn(): mixed => Prompty::confirm('Order', default: TRUE, transform: fn(bool $yes): bool => !$yes), FALSE, 'No'];
+    yield 'confirm' => [fn(): mixed => Prompty::confirm('Order', default: TRUE, transform: fn(bool $is_yes): bool => !$is_yes), FALSE, 'No'];
   }
 
   public function testSiblingConditionSeesTransformedAnswer(): void {
@@ -279,9 +279,9 @@ final class PromptyWidgetTransformTest extends PromptyTestCase {
    */
   #[DataProvider('dataProviderCancelSkipsTransform')]
   public function testCancelSkipsTransform(\Closure $widget): void {
-    $called = FALSE;
-    $transform = function (mixed $value) use (&$called): mixed {
-      $called = TRUE;
+    $was_called = FALSE;
+    $transform = function (mixed $value) use (&$was_called): mixed {
+      $was_called = TRUE;
 
       return $value;
     };
@@ -289,7 +289,7 @@ final class PromptyWidgetTransformTest extends PromptyTestCase {
     $r = $this->promptyRun(fn(): mixed => $widget($transform), 'x' . self::KEY_CTRL_C);
 
     $this->assertNull($r['result']);
-    $this->assertFalse($called);
+    $this->assertFalse($was_called);
   }
 
   public static function dataProviderCancelSkipsTransform(): \Iterator {
@@ -382,7 +382,7 @@ final class PromptyWidgetTransformTest extends PromptyTestCase {
     ];
 
     yield 'confirm returning a string' => [
-      fn(mixed $discovered): mixed => Prompty::confirm('Order', discovered: $discovered, transform: fn(bool $yes): mixed => $yes ? 'yes' : 'no', ctx: self::context()),
+      fn(mixed $discovered): mixed => Prompty::confirm('Order', discovered: $discovered, transform: fn(bool $is_yes): mixed => $is_yes ? 'yes' : 'no', ctx: self::context()),
       self::KEY_ENTER,
       'yes',
       sprintf($message, 'string', 'a boolean'),

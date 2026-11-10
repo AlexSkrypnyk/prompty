@@ -138,7 +138,7 @@ final class PromptyWidgetPauseTest extends PromptyTestCase {
     $stream = $this->installKeystrokes('x', FALSE);
     $p = $this->getStaticProperty('instance');
     $this->assertInstanceOf(Prompty::class, $p);
-    $this->setProperty($p, 'cfgInteractive', FALSE);
+    $this->setProperty($p, 'cfgIsInteractive', FALSE);
 
     $result = NULL;
     $output = $this->captureOutput(function () use (&$result, $erase): void {

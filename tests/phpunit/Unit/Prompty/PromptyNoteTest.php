@@ -141,12 +141,12 @@ final class PromptyNoteTest extends PromptyTestCase {
 
   public function testNoteReturnsStepArrayWhileDefining(): void {
     $this->createAndSetInstance();
-    $this->setStaticProperty('defining', TRUE);
+    $this->setStaticProperty('isDefining', TRUE);
 
     $condition = fn(array $r): bool => TRUE;
     $step = Prompty::note('The kitchen opens at 5pm.', 'warning', $condition);
 
-    $this->setStaticProperty('defining', FALSE);
+    $this->setStaticProperty('isDefining', FALSE);
 
     $this->assertSame(['__note' => 'The kitchen opens at 5pm.', '__type' => 'warning', '__condition' => $condition], $step);
   }
@@ -278,7 +278,7 @@ final class PromptyNoteTest extends PromptyTestCase {
       // Asserted below.
     }
 
-    $this->assertFalse($this->getStaticProperty('defining'));
+    $this->assertFalse($this->getStaticProperty('isDefining'));
   }
 
   /**

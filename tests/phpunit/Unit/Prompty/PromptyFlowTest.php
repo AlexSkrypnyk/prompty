@@ -254,27 +254,27 @@ final class PromptyFlowTest extends PromptyTestCase {
   public function testFlowIntroOutroCallable(): void {
     $this->setEnvVars(['name' => 'test']);
 
-    $intro_called = FALSE;
-    $outro_called = FALSE;
+    $was_intro_called = FALSE;
+    $was_outro_called = FALSE;
 
-    $output = $this->captureOutput(function () use (&$intro_called, &$outro_called): void {
+    $output = $this->captureOutput(function () use (&$was_intro_called, &$was_outro_called): void {
       Prompty::flow(fn(): array => [
         'name' => Prompty::text('Name'),
       ],
-        intro: function () use (&$intro_called): void {
-          $intro_called = TRUE;
+        intro: function () use (&$was_intro_called): void {
+          $was_intro_called = TRUE;
           echo "Custom intro\n";
         },
-        outro: function (array $results) use (&$outro_called): void {
-          $outro_called = TRUE;
+        outro: function (array $results) use (&$was_outro_called): void {
+          $was_outro_called = TRUE;
           echo 'Custom outro: ' . $results['name'] . "\n";
         },
         unicode: FALSE,
       );
     });
 
-    $this->assertTrue($intro_called);
-    $this->assertTrue($outro_called);
+    $this->assertTrue($was_intro_called);
+    $this->assertTrue($was_outro_called);
     $expected = <<<'EXPECTED'
     Custom intro
     +  Name
@@ -380,7 +380,7 @@ final class PromptyFlowTest extends PromptyTestCase {
 
     $this->captureOutputThrows(\InvalidArgumentException::class, $message, $run);
 
-    $this->assertFalse($this->getStaticProperty('inFlow'));
+    $this->assertFalse($this->getStaticProperty('isInFlow'));
   }
 
   public static function dataProviderFlowRejectsOutOfDomainEnv(): \Iterator {
@@ -440,19 +440,19 @@ final class PromptyFlowTest extends PromptyTestCase {
   }
 
   public function testFlowCancelledWithCallable(): void {
-    $called = FALSE;
+    $was_called = FALSE;
 
-    $r = $this->promptyRun(function () use (&$called): mixed {
+    $r = $this->promptyRun(function () use (&$was_called): mixed {
       return Prompty::flow(fn(): array => [
         'name' => Prompty::text('Name'),
-      ], cancelled: function () use (&$called): void {
-        $called = TRUE;
+      ], cancelled: function () use (&$was_called): void {
+        $was_called = TRUE;
         echo "Custom cancel\n";
       }, unicode: FALSE);
     }, self::KEY_ESCAPE);
 
     $this->assertNull($r['result']);
-    $this->assertTrue($called);
+    $this->assertTrue($was_called);
     $this->assertStringContainsString('Custom cancel', $r['output']);
   }
 
@@ -462,7 +462,7 @@ final class PromptyFlowTest extends PromptyTestCase {
 
     $this->captureOutputThrows(\RuntimeException::class, 'boom', $run);
 
-    $this->assertFalse($this->getStaticProperty('inFlow'));
+    $this->assertFalse($this->getStaticProperty('isInFlow'));
   }
 
   public static function dataProviderFlowResetsStateWhenCallbackThrows(): \Iterator {

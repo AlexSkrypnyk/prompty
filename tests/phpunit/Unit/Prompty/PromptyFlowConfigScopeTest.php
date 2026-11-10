@@ -216,7 +216,7 @@ final class PromptyFlowConfigScopeTest extends PromptyTestCase {
     $this->assertSame('No values declared for "truthy". Provide at least one value.', $thrown);
     $this->assertSame($before['env_prefix'], Prompty::config()['env_prefix']);
     $this->assertSame($before['truthy'], Prompty::config()['truthy']);
-    $this->assertFalse($this->getStaticProperty('inFlow'));
+    $this->assertFalse($this->getStaticProperty('isInFlow'));
   }
 
   public function testGlobalConfigureStillPersists(): void {
