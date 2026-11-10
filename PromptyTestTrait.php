@@ -70,7 +70,7 @@ trait PromptyTestTrait {
    *
    * @var resource|null
    */
-  protected $promptyInputStream = NULL;
+  protected $promptyInputStream;
 
   /**
    * Run a callable with simulated keystrokes and capture Prompty output.

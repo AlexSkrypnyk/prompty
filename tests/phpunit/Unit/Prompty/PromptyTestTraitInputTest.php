@@ -27,30 +27,42 @@ final class PromptyTestTraitInputTest extends PromptyTestCase {
   #[DataProvider('dataProviderKeepsConfiguredInstance')]
   public function testKeepsConfiguredInstance(\Closure $configure): void {
     $configure();
-    $instance = $this->getStaticProperty('instance');
-    $config = Prompty::config();
+    $instance = $this->currentInstance();
+    $configured = Prompty::config();
 
     $this->promptyInput('pear tart' . self::KEY_ENTER);
 
-    $this->assertSame($instance, $this->getStaticProperty('instance'));
-    $this->assertSame($config, Prompty::config());
+    $this->assertSame($instance, $this->currentInstance());
+    $this->assertSame($configured, Prompty::config());
   }
 
   public static function dataProviderKeepsConfiguredInstance(): \Iterator {
-    $buffer = '';
+    $output = static function (): void {
+      Prompty::configure(output: static function (string $chunk): void {});
+    };
+    $non_interactive = static function (): void {
+      Prompty::configure(interactive: FALSE);
+    };
+    $no_fallback = static function (): void {
+      Prompty::configure(placeholder_fallback: FALSE);
+    };
+    $scroll = static function (): void {
+      Prompty::configure(scroll: 2);
+    };
+    $display = static function (): void {
+      Prompty::configure(unicode: TRUE, ansi: FALSE, width: 60);
+    };
 
-    yield 'output callable' => [static fn(): mixed => Prompty::configure(output: function (string $chunk) use (&$buffer): void {
-      $buffer .= $chunk;
-    })];
-    yield 'non-interactive' => [static fn(): mixed => Prompty::configure(interactive: FALSE)];
-    yield 'placeholder fallback off' => [static fn(): mixed => Prompty::configure(placeholder_fallback: FALSE)];
-    yield 'scroll' => [static fn(): mixed => Prompty::configure(scroll: 2)];
-    yield 'display' => [static fn(): mixed => Prompty::configure(unicode: TRUE, ansi: FALSE, width: 60)];
+    yield 'output callable' => [$output];
+    yield 'non-interactive' => [$non_interactive];
+    yield 'placeholder fallback off' => [$no_fallback];
+    yield 'scroll' => [$scroll];
+    yield 'display' => [$display];
   }
 
   public function testKeepsCollectedResults(): void {
     Prompty::configure(unicode: FALSE);
-    $this->setProperty($this->getStaticProperty('instance'), 'results', ['course' => 'main']);
+    $this->setProperty($this->currentInstance(), 'results', ['course' => 'main']);
 
     $this->promptyInput(self::KEY_ENTER);
 
@@ -99,9 +111,9 @@ final class PromptyTestTraitInputTest extends PromptyTestCase {
 
   public function testOutputReachesConfiguredTarget(): void {
     $buffer = '';
-    Prompty::configure(unicode: FALSE, ansi: FALSE, width: 80, output: function (string $chunk) use (&$buffer): void {
+    Prompty::configure(unicode: FALSE, ansi: FALSE, output: function (string $chunk) use (&$buffer): void {
       $buffer .= $chunk;
-    });
+    }, width: 80);
     $this->promptyInput('pear tart' . self::KEY_ENTER);
 
     $dish = NULL;
@@ -206,10 +218,26 @@ final class PromptyTestTraitInputTest extends PromptyTestCase {
    *   The stream promptyInput() installed.
    */
   protected function inputStream() {
-    $stream = $this->getProperty($this->getStaticProperty('instance'), 'input');
+    $stream = $this->getProperty($this->currentInstance(), 'input');
     $this->assertIsResource($stream);
 
     return $stream;
+  }
+
+  /**
+   * Returns the current Prompty singleton.
+   *
+   * @return \AlexSkrypnyk\Prompty\Prompty
+   *   The instance the widgets run on.
+   */
+  protected function currentInstance(): Prompty {
+    $instance = $this->getStaticProperty('instance');
+
+    if (!$instance instanceof Prompty) {
+      $this->fail('No Prompty instance is installed.');
+    }
+
+    return $instance;
   }
 
 }
