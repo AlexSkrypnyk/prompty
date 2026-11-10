@@ -94,16 +94,18 @@ abstract class FunctionalTestCase extends TestCase {
    *   Text the script prints once it reads keystrokes.
    * @param string $keystrokes
    *   Raw keystroke bytes, sent in 1 write.
+   * @param list<string> $arguments
+   *   Arguments passed to the script.
    *
    * @return array{stdout: string, stderr: string, exit_code: int}
    *   Process output.
    */
-  protected function runInTerminal(string $script_path, string $ready, string $keystrokes): array {
+  protected function runInTerminal(string $script_path, string $ready, string $keystrokes, array $arguments = []): array {
     $descriptors = [0 => ['pty'], 1 => ['pipe', 'w'], 2 => ['pipe', 'w']];
 
     // proc_open() warns before it fails when PHP was built without pty
     // support.
-    $process = @proc_open(['php', '-d', 'display_errors=stderr', $script_path], $descriptors, $pipes);
+    $process = @proc_open(['php', '-d', 'display_errors=stderr', $script_path, ...$arguments], $descriptors, $pipes);
 
     if (!is_resource($process)) {
       $this->markTestSkipped('This PHP build cannot open a pseudo-terminal.');
