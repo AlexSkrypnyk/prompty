@@ -692,7 +692,7 @@ Answers you gave after the reopened step become those steps' defaults, so you on
 - The new answer makes the step's `condition` false. The flow skips it, and its answer leaves the results.
 - A `step()` builder returns a widget the old answer doesn't fit, such as a `select` whose options no longer include it.
 
-Steps answered from a [discovered](#environment-variable-discovery) value or an environment variable asked nothing, so the key skips them. A [`task()`](#tasks) step asks nothing either. A task after the reopened step runs its action again when you move forward, and a task before it keeps its outcome. On the first asked step, and outside a flow, the key does nothing.
+Steps answered from a [discovered](#environment-variable-discovery) value or an environment variable asked nothing, so the key skips them. [`task()`](#tasks) and [`pause()`](#pause) steps ask nothing either. A task after the reopened step runs its action again when you move forward, and a task before it keeps its outcome. At a pause, the back key steps back instead of continuing. On the first asked step, and outside a flow, the key does nothing.
 
 To use another key, pass `back_key` to [`Prompty::configure()`](#configuration) or `Prompty::flow()`, from `ctrl-a` to `ctrl-z`. `ctrl-c`, `ctrl-h`, `ctrl-i`, `ctrl-j` and `ctrl-m` already mean cancel, backspace, tab and enter, so they throw an `InvalidArgumentException`. To turn the key off, pass `''`:
 
