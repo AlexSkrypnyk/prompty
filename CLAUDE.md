@@ -17,6 +17,9 @@ Namespace: `AlexSkrypnyk\Prompty`. Key files: `Prompty.php` (library),
   Configured via `Prompty::configure(...)` named arguments.
 - **Flow definition** - `flow()` takes a callable (not array) so `$inFlow`
   is set before widget evaluation.
+- **Built steps** - `step()` returns a step array whose `__call` runs a
+  builder with the answers so far and then the widget closure it returns.
+  `condition` and `children` live on `step()`, so they are known up front.
 - **Tree rendering** - nested children use bar connectors; `open` array
   tracks continuing siblings.
 - **Widget signatures** - all 5 widgets share one parameter order, and any
