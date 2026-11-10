@@ -883,6 +883,7 @@ The callback returns the type its widget answers with:
 | `text`        | `string`                   | The returned text, with control characters removed.                   |
 | `select`      | `string` (option key)      | The option's label for a key of `options`, otherwise the string.      |
 | `multiselect` | `list<string>` (keys)      | Each entry as for `select`, joined by commas. `None` for no entries.  |
+| `suggest`     | `string`                   | The returned text, with control characters removed.                   |
 | `confirm`     | `bool`                     | Yes or No.                                                            |
 
 A return value of any other type throws an `UnexpectedValueException` that names the widget:
@@ -912,6 +913,7 @@ The answer has the type the widget returns:
 | `text`        | The string, including a `default` or `placeholder` taken on empty input |
 | `select`      | The option key                                                          |
 | `multiselect` | The list of option keys                                                 |
+| `suggest`     | The focused suggestion, or the string as for `text`                     |
 | `confirm`     | `true` or `false`                                                       |
 
 On a widget with a [`transform`](#transform-answers), `validate` receives the transformed answer, so the rule checks what the widget returns.

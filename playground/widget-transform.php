@@ -49,6 +49,9 @@ show(Prompty::text('Dish name', discovered: $flag, transform: $dish_name));
 echo "\n--- Text: a built-in function is a transform ---\n";
 show(Prompty::text('Kitchen note', placeholder: 'no onions', description: 'Leading and trailing spaces are dropped.', transform: trim(...)));
 
+echo "\n--- Suggest: a typed dish is capitalized like the menu ---\n";
+show(Prompty::suggest('Dish', options: ['Pear Tart', 'Apple Crumble', 'Onion Soup', 'Lentil Stew'], description: 'Try typing "  lentil STEW ".', transform: $dish_name));
+
 echo "\n--- Select: a starter is served as a main ---\n";
 show(Prompty::select('Course', options: $courses, transform: fn(string $key): string => $key === 'starter' ? 'main' : $key));
 
