@@ -10,8 +10,8 @@ Namespace: `AlexSkrypnyk\Prompty`. Key files: `Prompty.php` (library),
 
 - **Singleton** - `static::$instance`, never `new Prompty()`.
 - **Dual-mode widgets** - `text`, `select`, `multiselect`, `suggest`,
-  `confirm` and `task` return closures (step arrays when given a condition or
-  children) while a flow is being defined, and values otherwise.
+  `confirm`, `pause` and `task` return closures (step arrays when given a
+  condition or children) while a flow is being defined, and values otherwise.
 - **Tasks** - `task()` redraws only when `isLive()`; tests set the `terminal`
   property to force it. A flow stores a task's outcome as a bool. The spinner
   runs in a `pcntl_fork()` child. `stream: TRUE` captures output with
@@ -45,7 +45,9 @@ Namespace: `AlexSkrypnyk\Prompty`. Key files: `Prompty.php` (library),
   `discovered`, `transform`, `required`, `validate`, `condition`, `children`
   and `ctx` are common to every widget.
   `required` sits between `transform` and `validate` because it runs between
-  them. Callers pass `label` positionally and
+  them. `pause` has no answer to resolve, so it takes only `label`,
+  `description`, `help`, its own `enter_only` and `erase`, then `condition`,
+  `children` and `ctx`. Callers pass `label` positionally and
   everything else by name, so the order matters to the signature, not to call
   sites.
 

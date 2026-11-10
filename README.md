@@ -28,7 +28,7 @@ Prompty asks questions in the terminal for PHP command-line scripts, from a sing
 ## Features
 
 - 📦 [**Zero dependencies**](#installation) - drop `Prompty.php` into your project or [embed](#embedding) it in your script
-- 🧩 [**Widgets**](#widgets) - `text`, `select`, `multiselect`, `suggest` and `confirm`
+- 🧩 [**Widgets**](#widgets) - `text`, `select`, `multiselect`, `suggest`, `confirm` and `pause`
 - ⏳ [**Tasks**](#tasks) - run work behind a spinner, or stream its output under the label
 - 🔀 [**Flows**](#flows) - group prompts into a wizard with an intro, an outro, numbering and cancellation
 - 🌳 [**Nested flows**](#nested-flows-with-conditions) - conditional children drawn as a tree
@@ -98,7 +98,7 @@ To ship a single file instead, [embed](#embedding) the minified class in your sc
 
 ## Widgets
 
-Prompty has 5 widgets. Each returns the answer, or `null` when the user presses <kbd>Escape</kbd> or <kbd>Ctrl+C</kbd>.
+Prompty has 6 widgets. Each returns the answer, or `null` when the user presses <kbd>Escape</kbd> or <kbd>Ctrl+C</kbd>.
 
 Widgets draw only printable text. A newline or tab in a value, label or option label becomes a space. Escape sequences and other control characters are removed, so a value can't break the tree or control the terminal. `text` and `suggest` return the same printable text they drew. A [description](#descriptions-hints-and-help) also keeps its text styling.
 
@@ -372,6 +372,20 @@ $send = Prompty::confirm('Send order?',
     <td><img src=".util/assets/widget-confirm-ascii-no-ansi.svg" alt="Confirm: ASCII + No ANSI"></td>
   </tr>
 </table>
+
+### Pause
+
+A message that waits for a key, such as "Press any key to continue" after a welcome screen. Any key continues and returns `true`:
+
+```php
+Prompty::pause('Press any key to start the order...',
+  description: 'The kitchen opens at noon.',
+);
+```
+
+To continue only on <kbd>Enter</kbd> and ignore every other key, pass `enter_only: TRUE`. After the key, a completed line replaces the message. To erase the message instead, pass `erase: TRUE`.
+
+In [non-interactive mode](#non-interactive-mode), `pause()` returns `true` without reading a key. Inside a [flow](#flows), a pause is a keyed step that stores `true`.
 
 ## Tasks
 
