@@ -31,6 +31,7 @@ Prompty asks questions in the terminal for PHP command-line scripts, from a sing
 - 🧩 [**Widgets**](#widgets) - `text`, `select`, `multiselect`, `suggest` and `confirm`
 - 🔀 [**Flows**](#flows) - group prompts into a wizard with an intro, an outro, numbering and cancellation
 - 🌳 [**Nested flows**](#nested-flows-with-conditions) - conditional children drawn as a tree
+- 🧱 [**Steps built from earlier answers**](#steps-built-from-earlier-answers) - a step's label, options or default taken from the answers before it
 - ⚡ [**Standalone mode**](#standalone-mode) - use any widget on its own, outside a flow
 - 🌍 [**Environment variable discovery**](#environment-variable-discovery) - fill answers from environment variables
 - 🤖 [**Non-interactive mode**](#non-interactive-mode) - answer every prompt from its default, for CI and scripted runs
@@ -397,6 +398,44 @@ $results = Prompty::flow(fn(): array => [
   ),
 ]);
 ```
+
+### Steps built from earlier answers
+
+`flow()` reads every widget's arguments when it builds the steps array, before the first prompt. To take a step's label, options, default or description from an earlier answer, wrap the widget in `Prompty::step()`. Its builder receives the answers collected so far and returns the widget call:
+
+```php
+$results = Prompty::flow(fn(): array => [
+  'dish' => Prompty::text('Dish name', placeholder: 'pear tart'),
+  'course' => Prompty::select('Course', options: [
+    'main' => 'Main',
+    'dessert' => 'Dessert',
+  ]),
+  'method' => Prompty::step(
+    fn(array $r) => Prompty::select('Method',
+      options: $r['course'] === 'main'
+        ? ['grilled' => 'Grilled', 'poached' => 'Poached']
+        : ['baked' => 'Baked', 'poached' => 'Poached'],
+      description: 'How the ' . $r['dish'] . ' is cooked.',
+    ),
+    children: [
+      'rest' => Prompty::confirm('Rest before serving?'),
+    ],
+  ),
+  'note' => Prompty::step(
+    fn(array $r) => Prompty::text('Kitchen note',
+      default: $r['dish'] . ', ' . $r['method'],
+    ),
+    condition: fn(array $r): bool => $r['course'] === 'dessert',
+  ),
+]);
+```
+
+The builder runs when the flow reaches the step. A step that its `condition` skips never calls its builder. A built step is numbered, drawn in the tree and filled from its [environment variable](#environment-variable-discovery) like any other step.
+
+Pass `condition` and `children` to `step()`, because `flow()` reads them before the builder runs. `step()` throws an exception in 2 cases:
+
+- A builder returns a widget call with its own `condition` or `children`, or returns something other than a widget call. The flow throws an `UnexpectedValueException` when it reaches the step.
+- `step()` runs outside the callable passed to `flow()`. It throws a `LogicException`.
 
 ## Standalone mode
 
