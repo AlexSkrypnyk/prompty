@@ -139,6 +139,43 @@ abstract class FunctionalTestCase extends TestCase {
   }
 
   /**
+   * Run a script that draws to a pseudo-terminal until it prints EXITED.
+   *
+   * Stdin and stdout share the terminal, so the script sees a terminal it can
+   * redraw. The terminal turns each "\n" into "\r\n", and the output keeps it.
+   * A terminal does not report the end of output when the script exits, so
+   * the script marks its end itself.
+   *
+   * Skips the test when PHP cannot open a pseudo-terminal.
+   *
+   * @param string $script_path
+   *   Path to the script to run.
+   *
+   * @return array{stdout: string, stderr: string, exit_code: int}
+   *   Process output.
+   */
+  protected function runOnTerminal(string $script_path): array {
+    $descriptors = [0 => ['pty'], 1 => ['pty'], 2 => ['pipe', 'w']];
+
+    $process = @proc_open(['php', '-d', 'display_errors=stderr', $script_path], $descriptors, $pipes);
+
+    if (!is_resource($process)) {
+      $this->markTestSkipped('This PHP build cannot open a pseudo-terminal.');
+    }
+
+    $stdout = $this->readPipe($pipes[1], microtime(TRUE) + 15, 'EXITED');
+    $stderr = (string) stream_get_contents($pipes[2]);
+    fclose($pipes[0]);
+    fclose($pipes[1]);
+    fclose($pipes[2]);
+    $exit_code = proc_close($process);
+
+    $this->assertStringContainsString('EXITED', $stdout, sprintf('The script did not finish. It printed:%s%s%s', PHP_EOL, $stdout, $stderr));
+
+    return ['stdout' => $stdout, 'stderr' => $stderr, 'exit_code' => $exit_code];
+  }
+
+  /**
    * Read a pipe until it holds $needle, closes, or the deadline passes.
    *
    * @param resource $pipe

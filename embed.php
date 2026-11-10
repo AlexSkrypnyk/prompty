@@ -935,8 +935,10 @@ if ($compact && $class_start !== NULL) {
       continue;
     }
 
-    // Reset visibility on any unexpected token.
-    if (!in_array($token_type, [T_WHITESPACE, T_STRING, T_ARRAY, T_NS_SEPARATOR, T_NAME_QUALIFIED, T_NAME_FULLY_QUALIFIED], TRUE)) {
+    // Reset visibility on any token that cannot be part of a property type.
+    $type_tokens = [T_WHITESPACE, T_STRING, T_ARRAY, T_NS_SEPARATOR, T_NAME_QUALIFIED, T_NAME_FULLY_QUALIFIED];
+
+    if (!in_array($token_type, $type_tokens, TRUE)) {
       $visibility = NULL;
     }
   }
