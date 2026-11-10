@@ -6198,14 +6198,14 @@ class Prompty {
    *   Flow steps still to come at 1 depth.
    *
    * @return int
-   *   The number of steps that are not sections and whose condition is
-   *   absent or passes.
+   *   The number of steps that are not sections or notes and whose condition
+   *   is absent or passes.
    */
   protected function dueStepCount(array $steps): int {
     $count = 0;
 
     foreach ($steps as $step) {
-      if ($this->isSection($step)) {
+      if ($this->isSection($step) || $this->isNote($step)) {
         continue;
       }
 

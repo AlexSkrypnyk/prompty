@@ -225,6 +225,20 @@ final class PromptyNoteTest extends PromptyTestCase {
     ];
   }
 
+  public function testNotesLeaveTheStepTotal(): void {
+    $output = $this->captureOutput(function (): void {
+      Prompty::flow(fn(): array => [
+        Prompty::note('The kitchen opens at 5pm.'),
+        'dish' => Prompty::text('Dish name', default: 'pear tart'),
+        Prompty::note('The pear tart is running low.', type: 'warning'),
+        'send' => Prompty::confirm('Send order?'),
+      ], numbering: 'total', unicode: FALSE, ansi: FALSE, interactive: FALSE);
+    });
+
+    $this->assertStringContainsString('+  Dish name (1/2)', $output);
+    $this->assertStringContainsString('+  Send order? (2/2)', $output);
+  }
+
   public function testNoteInFlowWithKeyThrows(): void {
     $this->expectException(\InvalidArgumentException::class);
     $this->expectExceptionMessage('Note "The kitchen opens at 5pm." has the key "opening". A note adds no answer to the results, so it takes no key.');
