@@ -2356,10 +2356,27 @@ class Prompty {
       $p->hideCursor();
     }
 
+    // A flow holds the terminal in raw mode, where Ctrl+C is a key rather than
+    // SIGINT. The action runs with the settings the flow saved, so Ctrl+C
+    // stops it and its child processes read a normal terminal.
+    $tty = $p->prevTty;
+
+    if ($tty !== NULL) {
+      // @codeCoverageIgnoreStart
+      $p->restoreTty($tty);
+      // @codeCoverageIgnoreEnd
+    }
+
     try {
       return $stream ? $p->runStreamed($label, $action, $outcome, $depth, $open, $live) : $p->runSpinner($label, $action, $outcome, $depth, $open, $live);
     }
     finally {
+      if ($tty !== NULL) {
+        // @codeCoverageIgnoreStart
+        $p->enterRawMode();
+        // @codeCoverageIgnoreEnd
+      }
+
       if ($live && $standalone) {
         $p->showCursor();
       }
@@ -2774,12 +2791,21 @@ class Prompty {
     if ($this->prevTty !== NULL) {
       // @codeCoverageIgnoreStart
       $this->prevTty = trim($this->prevTty);
-      // -isig delivers Ctrl+C to readKey() as a byte rather than as SIGINT,
-      // which would end the process before the terminal is restored.
-      shell_exec('stty -echo -icanon -isig min 1 time 0 2>' . static::NULL_DEVICE);
+      $this->enterRawMode();
       $this->hideCursor();
       // @codeCoverageIgnoreEnd
     }
+  }
+
+  /**
+   * Switches the terminal to unbuffered input without echo or signals.
+   */
+  protected function enterRawMode(): void {
+    // @codeCoverageIgnoreStart
+    // -isig delivers Ctrl+C to readKey() as a byte rather than as SIGINT,
+    // which would end the process before the terminal is restored.
+    shell_exec('stty -echo -icanon -isig min 1 time 0 2>' . static::NULL_DEVICE);
+    // @codeCoverageIgnoreEnd
   }
 
   /**
