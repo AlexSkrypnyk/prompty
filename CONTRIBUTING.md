@@ -106,7 +106,7 @@ The [`playground/`](playground) directory holds runnable demos. Run one to see a
 | `flow.php`                 | A linear flow with descriptions, hints and help.                       |
 | `flow-nested.php`          | A nested flow with conditionals, 3 levels deep.                        |
 | `flow-steps.php`           | Steps whose options, defaults and descriptions follow earlier answers. |
-| `flow-sections.php`        | Steps grouped under section headings, one hidden by its empty group.   |
+| `flow-sections.php`        | Section headings, one hidden by its empty group, and the step total.   |
 | `flow-scope.php`           | Several flows, and how long a flow's own configuration lasts.          |
 | `flow-step-keys.php`       | What a step key becomes, and which are turned down.                    |
 | `flow-embed.php`           | The flow the embedder is tested against.                               |

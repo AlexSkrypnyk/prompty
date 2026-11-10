@@ -523,6 +523,37 @@ $results = Prompty::flow(fn(): array => [ /* ... */ ],
 );
 ```
 
+### Step numbering
+
+`numbering: TRUE` adds the step number to each label: `(1)` and `(2)` at the top level, `(2.1)` for a child of step 2. To show how many top-level steps are due as well, pass `numbering: 'total'`:
+
+```php
+$results = Prompty::flow(fn(): array => [ /* ... */ ], numbering: 'total');
+```
+
+```text
+◆  Dish name (1/5)
+│  pear tart
+│
+◆  Course (2/5)
+│  Dessert
+│
+◆  Finishes (3/6)
+│  Dusted
+```
+
+The total counts the completed top-level steps, the current step and each remaining top-level step whose `condition` passes against the answers so far. An answer can make a later step due or not due, so the next step shows the new total. A step keeps the total it was answered with. In the preceding output, the `Dessert` answer made `Finishes` due. Children keep the `(2.1)` form, and sections aren't counted.
+
+Prompty tests each remaining condition before the answers it reads exist. While counting, a condition that raises a warning or throws counts as not due. When the flow reaches the step, Prompty calls the condition again, and any error surfaces there.
+
+To change the format, set the `step_total` label. It's a `sprintf()` format that receives the step number and then the total, `(%d/%d)` by default:
+
+```php
+Prompty::flow(fn(): array => [ /* ... */ ], numbering: 'total', labels: ['step_total' => '[%d of %d]']);
+```
+
+A `step_total` format that needs more than 2 values, or holds an unknown conversion, throws an `InvalidArgumentException`. So does a `numbering` string other than `'total'`.
+
 ### Nested flows with conditions
 
 Prompty draws a widget's `children` as an indented tree under it, joined by vertical bars. Any step can take a `condition`, which receives the answers collected so far. When the condition returns `false`, the flow skips the step:
@@ -1290,7 +1321,7 @@ The map-valued options take these keys:
 - `symbols_unicode`, `symbols_ascii`: `bar`, `completed`, `active`, `intro`, `outro`, `section`, `pointer`, `radio_on`, `radio_off`, `check_on`, `check_off`, `hint_arrow`, `error`, `scroll_up`, `scroll_down`, `success`, `spinner`, `ellipsis`, `box_top_left`, `box_top_right`, `box_bottom_left`, `box_bottom_right`, `box_horizontal`, `box_vertical`, `box_cross`, `box_top_tee`, `box_bottom_tee`, `box_left_tee`, `box_right_tee`. Each character of `spinner` is 1 frame.
 - `colors`: `reset`, `dim`, `dim_italic`, `cyan`, `green`, `red`, `gray`, `bold`, `white`, `yellow`, `blue`, `italic`, `underline`
 - `spacing`: `indent`, `hint_indent`, `hint_cont`
-- `labels`: `yes`, `no`, `cancelled`, `none`, `separator`, `more`, `required`, `done`, `failed`, `line`, `lines`
+- `labels`: `yes`, `no`, `cancelled`, `none`, `separator`, `more`, `required`, `done`, `failed`, `line`, `lines`, `step_total`
 
 ### Unknown keys are rejected
 

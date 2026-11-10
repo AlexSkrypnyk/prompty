@@ -295,6 +295,7 @@ class Prompty {
     'failed' => 'Failed',
     'line' => 'line',
     'lines' => 'lines',
+    'step_total' => '(%d/%d)',
   ];
 
   /**
@@ -631,6 +632,10 @@ class Prompty {
 
     if ($labels !== NULL) {
       $p->assertConfigKeys('labels', $labels, $p->cfgLabels);
+
+      if (isset($labels['step_total'])) {
+        $p->assertStepTotalFormat($labels['step_total']);
+      }
     }
 
     if ($truthy !== NULL) {
@@ -733,8 +738,10 @@ class Prompty {
    *   Outro message or callable to render after the last step.
    * @param string|callable|null $cancelled
    *   Message or callable to render when the flow is cancelled.
-   * @param bool $numbering
-   *   Whether to number steps.
+   * @param bool|string $numbering
+   *   TRUE numbers steps as (1), (2) and nested (2.1). 'total' also shows the
+   *   number of top-level steps due, through the 'step_total' label. FALSE
+   *   draws no numbers.
    * @param array<string, string>|null $symbols_unicode
    *   Partial unicode symbol overrides.
    * @param array<string, string>|null $symbols_ascii
@@ -781,7 +788,7 @@ class Prompty {
     string|callable|null $intro = NULL,
     string|callable|null $outro = NULL,
     string|callable|null $cancelled = NULL,
-    bool $numbering = FALSE,
+    bool|string $numbering = FALSE,
     ?array $symbols_unicode = NULL,
     ?array $symbols_ascii = NULL,
     ?array $colors = NULL,
@@ -800,6 +807,10 @@ class Prompty {
   ): ?array {
     $p = static::instance();
     $snapshot = NULL;
+
+    if (is_string($numbering) && $numbering !== 'total') {
+      throw new \InvalidArgumentException(sprintf('Numbering "%s" for "numbering" is not valid. Use TRUE to number steps, "total" to number them with the total, or FALSE for no numbers.', $numbering));
+    }
 
     if ($symbols_unicode !== NULL
       || $symbols_ascii !== NULL
@@ -3894,8 +3905,9 @@ class Prompty {
     if (isset($ctx['number'])) {
       /** @var string $number */
       $number = $ctx['number'];
+      $suffix = is_int($ctx['total'] ?? NULL) ? sprintf($this->label('step_total'), (int) $number, $ctx['total']) : '(' . $number . ')';
 
-      return $label . ' ' . $this->color('(' . $number . ')', 'dim');
+      return $label . ' ' . $this->color($suffix, 'dim');
     }
 
     return $label;
@@ -4023,6 +4035,25 @@ class Prompty {
       if (!array_key_exists($key, $declared)) {
         throw new \InvalidArgumentException(sprintf('Configuration key "%s" for "%s" is not valid. Available keys: %s.', $key, $parameter, implode(', ', array_keys($declared))));
       }
+    }
+  }
+
+  /**
+   * Rejects a step total format that sprintf() cannot fill.
+   *
+   * @param string $format
+   *   The format, which receives the step number and then the total.
+   *
+   * @throws \InvalidArgumentException
+   *   When the format needs more than 2 arguments or holds an unknown
+   *   conversion.
+   */
+  protected function assertStepTotalFormat(string $format): void {
+    try {
+      sprintf($format, 1, 1);
+    }
+    catch (\ValueError | \ArgumentCountError $error) {
+      throw new \InvalidArgumentException(sprintf('Format "%s" for the "step_total" label is not valid (%s). Use a format that takes the step number and the total, such as "(%%d/%%d)".', $format, $error->getMessage()), 0, $error);
     }
   }
 
@@ -5592,6 +5623,63 @@ class Prompty {
   }
 
   /**
+   * Counts the steps that are due against the current results.
+   *
+   * @param array<array-key, mixed> $steps
+   *   Flow steps still to come at 1 depth.
+   *
+   * @return int
+   *   The number of steps that are not sections and whose condition is
+   *   absent or passes.
+   */
+  protected function dueStepCount(array $steps): int {
+    $count = 0;
+
+    foreach ($steps as $step) {
+      if ($this->isSection($step)) {
+        continue;
+      }
+
+      $condition = $this->stepCondition($step);
+
+      if ($condition === NULL || $this->predictCondition($condition)) {
+        $count++;
+      }
+    }
+
+    return $count;
+  }
+
+  /**
+   * Tests a condition ahead of its step against the current results.
+   *
+   * The condition may read an answer that has not been collected yet, so a
+   * warning or an exception counts as a failed condition. The step's own
+   * evaluation in walkFlow() runs unguarded.
+   *
+   * @param callable $condition
+   *   The step condition.
+   *
+   * @return bool
+   *   TRUE when the condition returns a truthy value without an error.
+   */
+  protected function predictCondition(callable $condition): bool {
+    set_error_handler(static function (int $severity, string $message): never {
+      throw new \ErrorException($message, 0, $severity);
+    });
+
+    try {
+      return (bool) $condition($this->results);
+    }
+    catch (\Throwable) {
+      return FALSE;
+    }
+    finally {
+      restore_error_handler();
+    }
+  }
+
+  /**
    * Marks whether a depth level still has siblings to come.
    *
    * @param int $depth
@@ -5703,6 +5791,7 @@ class Prompty {
       $this->pending = ['key' => $key, 'depth' => $depth, 'rest' => $rest];
 
       $number = $number_prefix !== '' ? $number_prefix . '.' . $step_number : (string) $step_number;
+      $total = $depth === 0 && ($options['numbering'] ?? FALSE) === 'total' ? $step_number + $this->dueStepCount($rest) : NULL;
       $env_value = getenv($this->cfgEnvPrefix . strtoupper((string) $key));
 
       $ctx = [
@@ -5711,6 +5800,7 @@ class Prompty {
         'open' => $this->open,
         'results' => $this->results,
         'number' => ($options['numbering'] ?? FALSE) ? $number : NULL,
+        'total' => $total,
         'discovered' => $env_value !== FALSE ? $env_value : NULL,
         'truthy' => $this->cfgTruthy,
         'falsy' => $this->cfgFalsy,
