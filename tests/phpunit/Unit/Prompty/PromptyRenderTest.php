@@ -135,6 +135,133 @@ EXPECTED,
       // bodyPrefix(2, [1=>TRUE, 2=>TRUE]) = '  |  |  '.
       "|  |  |  How pages are rendered.\n|  |  |  Choose carefully.\n|  |  |  ",
     ];
+
+    yield 'styled, depth 0' => [
+      "Served \033[1mwarm\033[22m at the table.\n\033[4mBaked fresh\033[0m every morning.",
+      0,
+      [],
+      <<<'EXPECTED'
+|  Served warm at the table.
+|  Baked fresh every morning.
+|
+EXPECTED,
+    ];
+
+    yield 'styled, depth 1, open' => [
+      "Served \033[1mwarm\033[22m.",
+      1,
+      [1 => TRUE],
+      "|  |  Served warm.\n|  |  ",
+    ];
+  }
+
+  #[DataProvider('dataProviderRenderDescriptionStyled')]
+  public function testRenderDescriptionStyled(string $description, bool $ansi, array $expected): void {
+    $p = $this->createInstance(['ansi' => $ansi]);
+
+    $lines = $this->callProtectedLines($p, 'renderDescription', $description);
+
+    $this->assertSame($expected, $lines);
+  }
+
+  public static function dataProviderRenderDescriptionStyled(): \Iterator {
+    $bar = "\033[90m|\033[0m";
+    $base = "\033[2;3m";
+    $reset = "\033[0m";
+
+    yield 'plain text' => [
+      'Served warm.',
+      TRUE,
+      [$bar . '  ' . $base . 'Served warm.' . $reset, $bar],
+    ];
+
+    yield 'bold closed by intensity off' => [
+      "Served \033[1mwarm\033[22m today.",
+      TRUE,
+      [$bar . '  ' . $base . "Served \033[1mwarm\033[22m" . $base . ' today.' . $reset, $bar],
+    ];
+
+    yield 'underline closed by full reset' => [
+      "\033[4mBaked fresh\033[0m every morning.",
+      TRUE,
+      [$bar . '  ' . $base . "\033[4mBaked fresh\033[0m" . $base . ' every morning.' . $reset, $bar],
+    ];
+
+    yield 'reset without parameters' => [
+      "\033[4mfresh\033[m bread",
+      TRUE,
+      [$bar . '  ' . $base . "\033[4mfresh\033[m" . $base . ' bread' . $reset, $bar],
+    ];
+
+    yield 'italic off' => [
+      "\033[23mupright\033[3m again",
+      TRUE,
+      [$bar . '  ' . $base . "\033[23m" . $base . "upright\033[3m again" . $reset, $bar],
+    ];
+
+    yield 'colour left open' => [
+      "Served \033[31mhot",
+      TRUE,
+      [$bar . '  ' . $base . "Served \033[31mhot" . $reset, $bar],
+    ];
+
+    yield 'colour closed by default foreground' => [
+      "\033[31mhot\033[39m plate",
+      TRUE,
+      [$bar . '  ' . $base . "\033[31mhot\033[39m" . $base . ' plate' . $reset, $bar],
+    ];
+
+    yield 'off parameter among others' => [
+      "\033[1;4mwarm\033[1;24m bread",
+      TRUE,
+      [$bar . '  ' . $base . "\033[1;4mwarm\033[1;24m" . $base . ' bread' . $reset, $bar],
+    ];
+
+    yield 'colon sub-parameters are not an off parameter' => [
+      "\033[38:5:22mgreen herbs",
+      TRUE,
+      [$bar . '  ' . $base . "\033[38:5:22mgreen herbs" . $reset, $bar],
+    ];
+
+    yield 'cursor and erase sequences removed beside styling' => [
+      "pear\033[2K \033[1mtart\033[22m\033[2A",
+      TRUE,
+      [$bar . '  ' . $base . "pear \033[1mtart\033[22m" . $base . $reset, $bar],
+    ];
+
+    yield 'private sequence removed' => [
+      "\033[?25lpear tart",
+      TRUE,
+      [$bar . '  ' . $base . 'pear tart' . $reset, $bar],
+    ];
+
+    yield 'lone escape removed' => [
+      "\033pear tart",
+      TRUE,
+      [$bar . '  ' . $base . 'pear tart' . $reset, $bar],
+    ];
+
+    yield 'tab becomes a space' => [
+      "pear\t\033[1mtart\033[22m",
+      TRUE,
+      [$bar . '  ' . $base . "pear \033[1mtart\033[22m" . $base . $reset, $bar],
+    ];
+
+    yield 'each line styled on its own' => [
+      "Served \033[1mwarm\033[22m.\nBaked \033[4mfresh\033[0m.",
+      TRUE,
+      [
+        $bar . '  ' . $base . "Served \033[1mwarm\033[22m" . $base . '.' . $reset,
+        $bar . '  ' . $base . "Baked \033[4mfresh\033[0m" . $base . '.' . $reset,
+        $bar,
+      ],
+    ];
+
+    yield 'ansi off removes styling' => [
+      "Served \033[1mwarm\033[22m \033[38:5:22mtoday\033[0m.",
+      FALSE,
+      ['|  Served warm today.', '|'],
+    ];
   }
 
   #[DataProvider('dataProviderRenderHint')]
@@ -510,6 +637,7 @@ EXPECTED,
     yield 'show cursor' => ["\033[?25hhello", 'hello'];
     yield 'cursor pair around text' => ["\033[?25lhello\033[?25h", 'hello'];
     yield 'mixed private and standard' => ["\033[?25l\033[36mhello\033[0m\033[?25h", 'hello'];
+    yield 'colon sub-parameters' => ["\033[38:5:22mhello\033[0m", 'hello'];
     yield 'no escapes to strip' => ['[?25l', '[?25l'];
   }
 
