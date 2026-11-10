@@ -2568,11 +2568,49 @@ class Prompty {
   protected function displayWidth(string $text): int {
     $text = preg_replace('/\033\[\??[0-9;]*[A-Za-z]/', '', $text) ?? $text;
 
-    if (preg_match_all('/\X/u', $text, $matches) === FALSE) {
+    if (preg_match_all('/./su', $text, $matches) === FALSE) {
       return strlen($text);
     }
 
-    return array_sum(array_map($this->clusterWidth(...), $matches[0]));
+    $clusters = [];
+
+    foreach ($matches[0] as $char) {
+      $last = array_key_last($clusters);
+
+      if ($last !== NULL && $this->joinsCluster($clusters[$last], $char)) {
+        $clusters[$last] .= $char;
+
+        continue;
+      }
+
+      $clusters[] = $char;
+    }
+
+    return array_sum(array_map($this->clusterWidth(...), $clusters));
+  }
+
+  /**
+   * Checks whether a character continues the cluster before it.
+   *
+   * Grapheme clusters are formed here rather than with \X, because PCRE2
+   * releases before 10.43 join adjacent pictographic characters such as '◼◻'.
+   *
+   * @param string $cluster
+   *   The cluster so far.
+   * @param string $char
+   *   The next character.
+   *
+   * @return bool
+   *   TRUE for a combining mark, a joiner, a variation selector or a skin
+   *   tone, for any character after a zero-width joiner, and for the second
+   *   regional indicator of a flag.
+   */
+  protected function joinsCluster(string $cluster, string $char): bool {
+    if (str_ends_with($cluster, "\u{200D}") || preg_match('/^[\p{Mn}\p{Me}\x{200D}\x{FE00}-\x{FE0F}\x{1F3FB}-\x{1F3FF}]$/u', $char) === 1) {
+      return TRUE;
+    }
+
+    return preg_match('/^[\x{1F1E6}-\x{1F1FF}]$/u', $cluster) === 1 && preg_match('/^[\x{1F1E6}-\x{1F1FF}]$/u', $char) === 1;
   }
 
   /**
@@ -2670,10 +2708,8 @@ class Prompty {
    *   ('space') or a grapheme cluster ('char').
    */
   protected function wrapRuns(string $content): array {
-    $pattern = '/\033\[[0-9;]*m| |\X/u';
-
     // Text that is not valid UTF-8 fails the /u match and splits by byte.
-    if (preg_match_all($pattern, $content, $matches) === FALSE) {
+    if (preg_match_all('/\033\[[0-9;]*m| |./su', $content, $matches) === FALSE) {
       preg_match_all('/\033\[[0-9;]*m| |./s', $content, $matches);
     }
 
@@ -2687,6 +2723,15 @@ class Prompty {
       };
       $width = $kind === 'char' ? $this->clusterWidth($text) : (int) ($kind === 'space');
       $last = array_key_last($runs);
+      $previous = $last === NULL ? NULL : array_key_last($runs[$last]['units']);
+
+      if ($kind === 'char' && $previous !== NULL && $runs[$last]['units'][$previous]['kind'] === 'char' && $this->joinsCluster($runs[$last]['units'][$previous]['text'], $text)) {
+        $cluster = $runs[$last]['units'][$previous]['text'] . $text;
+        $runs[$last]['width'] += $this->clusterWidth($cluster) - $runs[$last]['units'][$previous]['width'];
+        $runs[$last]['units'][$previous] = ['text' => $cluster, 'kind' => 'char', 'width' => $this->clusterWidth($cluster)];
+
+        continue;
+      }
 
       if ($last === NULL || ($kind !== 'style' && $runs[$last]['space'] !== ($kind === 'space'))) {
         $runs[] = ['space' => $kind === 'space', 'width' => 0, 'units' => []];

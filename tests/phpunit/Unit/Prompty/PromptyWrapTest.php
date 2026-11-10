@@ -45,7 +45,12 @@ final class PromptyWrapTest extends PromptyTestCase {
     yield 'emoji' => ['🍐', 2];
     yield 'emoji with variation selector' => ["\u{2764}\u{FE0F}", 2];
     yield 'flag' => ["\u{1F1FA}\u{1F1E6}", 2];
+    yield 'adjacent pictographs' => ['◼◻◼', 3];
+    yield 'zero-width joiner sequence' => ["\u{1F469}\u{200D}\u{1F373}", 2];
+    yield 'skin tone' => ["\u{1F44D}\u{1F3FD}", 2];
+    yield 'two flags' => ["\u{1F1FA}\u{1F1E6}\u{1F1FA}\u{1F1E6}", 4];
     yield 'combining mark' => ["e\u{0301}", 1];
+    yield 'leading combining mark' => ["\u{0301}e", 1];
     yield 'zero-width space' => ["\u{200B}", 0];
     yield 'invalid utf-8' => ["Plum\xff", 5];
   }
@@ -103,6 +108,10 @@ final class PromptyWrapTest extends PromptyTestCase {
     yield 'wide characters' => [9, '|  ', '日本 日本語', '|  ', ['|  日本', '|  日本語']];
 
     yield 'wide characters in a long word' => [8, '|  ', '日本語日本', '|  ', ['|  日本', '|  語日', '|  本']];
+
+    yield 'flags break whole' => [6, '|  ', "\u{1F1FA}\u{1F1E6}\u{1F1FA}\u{1F1E6}", '|  ', ['|  ' . "\u{1F1FA}\u{1F1E6}", '|  ' . "\u{1F1FA}\u{1F1E6}"]];
+
+    yield 'combining marks break with their letter' => [6, '|  ', "e\u{0301}e\u{0301}e\u{0301}e\u{0301}", '|  ', ['|  ' . "e\u{0301}e\u{0301}e\u{0301}", '|  ' . "e\u{0301}"]];
 
     yield 'gutter fills the width' => [3, '|  ', 'Plum compote', '|  ', ['|  Plum compote']];
 
