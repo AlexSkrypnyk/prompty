@@ -37,8 +37,8 @@ final class TerminalInputTest extends FunctionalTestCase {
   }
 
   #[DataProvider('dataProviderPauseInTerminal')]
-  public function testPauseInTerminal(string $keystrokes, array $arguments, string $expected): void {
-    $r = $this->runInTerminal(self::$root . '/tests/phpunit/Fixtures/pause.php', 'Press any key', $keystrokes, $arguments);
+  public function testPauseInTerminal(string $keystrokes, bool $enter_only, string $expected): void {
+    $r = $this->runInTerminal(self::$root . '/tests/phpunit/Fixtures/pause.php', 'Press any key', $keystrokes, $enter_only ? ['--enter-only'] : []);
 
     $this->assertSame(0, $r['exit_code'], 'Script failed: ' . $r['stderr']);
     $this->assertSame('', $r['stderr']);
@@ -46,11 +46,11 @@ final class TerminalInputTest extends FunctionalTestCase {
   }
 
   public static function dataProviderPauseInTerminal(): \Iterator {
-    yield 'letter without enter' => ['x', [], 'true'];
-    yield 'cursor key' => [self::KEYS['DOWN'], [], 'true'];
-    yield 'escape' => [self::KEYS['ESCAPE'], [], 'NULL'];
-    yield 'interrupt' => [self::KEYS['CTRL_C'], [], 'NULL'];
-    yield 'enter only, after a letter' => ['x' . self::KEYS['ENTER'], ['--enter-only'], 'true'];
+    yield 'letter without enter' => ['x', FALSE, 'true'];
+    yield 'cursor key' => [self::KEYS['DOWN'], FALSE, 'true'];
+    yield 'escape' => [self::KEYS['ESCAPE'], FALSE, 'NULL'];
+    yield 'interrupt' => [self::KEYS['CTRL_C'], FALSE, 'NULL'];
+    yield 'enter only, after a letter' => ['x' . self::KEYS['ENTER'], TRUE, 'true'];
   }
 
 }
