@@ -29,6 +29,7 @@ Prompty asks questions in the terminal for PHP command-line scripts, from a sing
 
 - 📦 [**Zero dependencies**](#installation) - drop `Prompty.php` into your project or [embed](#embedding) it in your script
 - 🧩 [**Widgets**](#widgets) - `text`, `select`, `multiselect`, `suggest` and `confirm`
+- ⏳ [**Tasks**](#tasks) - run work behind a spinner, or stream its output under the label
 - 🔀 [**Flows**](#flows) - group prompts into a wizard with an intro, an outro, numbering and cancellation
 - 🌳 [**Nested flows**](#nested-flows-with-conditions) - conditional children drawn as a tree
 - 🧱 [**Steps built from earlier answers**](#steps-built-from-earlier-answers) - a step's label, options or default taken from the answers before it
@@ -371,6 +372,103 @@ $send = Prompty::confirm('Send order?',
     <td><img src=".util/assets/widget-confirm-ascii-no-ansi.svg" alt="Confirm: ASCII + No ANSI"></td>
   </tr>
 </table>
+
+## Tasks
+
+`task()` runs work between your questions, such as a download or a build step, and reports the result. While the action runs, the label shows a spinner. After the action returns, the label, the `hint` and a result line replace the spinner:
+
+```php
+$ready = Prompty::task('Preheating the oven',
+  action: fn(): bool => $oven->preheat(180),
+  hint: 'Fan oven, 180°C',
+  success: 'Oven ready',
+  failure: 'Oven did not reach temperature',
+);
+```
+
+The finished task looks like this:
+
+```
+◆  Preheating the oven
+│  Fan oven, 180°C
+│  ✓ Oven ready
+│
+```
+
+The action fails when it returns `false` and succeeds with any other value. `task()` returns the action's return value. `hint`, `success` and `failure` each take a string, or a callable that receives the return value:
+
+```php
+$degrees = Prompty::task('Preheating the oven',
+  action: fn(): int => $oven->preheat(180),
+  success: fn(int $degrees): string => sprintf('Oven at %d°C', $degrees),
+);
+```
+
+An empty `success` or `failure` draws the `done` or `failed` label. When the action returns a list of strings, each string is drawn as a dim detail line under the label. An exception from the action clears the spinner and is rethrown.
+
+The spinner animates in a forked child process, which needs the `pcntl` and `posix` extensions. Without them, it shows 1 still frame. It also shows a still frame while your script buffers output with `ob_start()` or writes to a callable [output target](#output-target).
+
+A task redraws only on a live terminal: interactive, with ANSI on and output going to a terminal. Otherwise, the label is printed before the action runs and the result after it.
+
+Inside a [flow](#flows), a task is a keyed step that takes `condition` and `children`. The flow stores `true` when the action succeeded and `false` when it failed:
+
+```php
+$results = Prompty::flow(fn(): array => [
+  'dish' => Prompty::text('Dish name', placeholder: 'pear tart'),
+  'oven' => Prompty::task('Preheating the oven', action: fn(): bool => $oven->preheat(180)),
+  'send' => Prompty::confirm('Send order?', condition: fn(array $r): bool => $r['oven']),
+]);
+```
+
+### Streamed output
+
+Some work prints its own output while it runs, such as a build or a package install. To draw that output under the task in place of a spinner, pass `stream: TRUE`:
+
+```php
+Prompty::task('Baking the tart',
+  action: function (): bool {
+    echo "Oven at 180°C\n";
+    passthru('bake --timer 40m 2>&1', $code);
+
+    return $code === 0;
+  },
+  success: 'Tart baked',
+  failure: 'The tart did not bake',
+  stream: TRUE,
+);
+```
+
+On a live terminal, the last 5 lines stay on screen under the label, with a count of the earlier lines. A line still being written, such as a progress meter, updates in place:
+
+```
+◇  Baking the tart
+│  ↑ 2 more
+│    Rising 100%
+│    Crust golden at the edges
+│    Tray 2 of 2 in the top rack
+│    Fan cycling, temperature held
+│    Both trays out, resting on the rack
+```
+
+When the action succeeds, the window collapses into the result line:
+
+```
+◆  Baking the tart
+│  ✓ Tart baked (7 lines)
+│
+```
+
+When the action fails or throws, the window expands into every line it wrote, because the cause is usually among them. Without a live terminal, each line is printed once as it arrives.
+
+Each line is drawn dim and indented on the tree's bar, with its colors kept. A long line wraps with its indent kept. In the window, it's cut to 1 row with an ellipsis. A line redrawn with carriage returns shows only its last state.
+
+The stream captures output that reaches PHP's output layer:
+
+- `echo` and `print`.
+- Child processes run with `passthru()` or `system()`. Their stderr goes straight to the terminal, so add `2>&1` to the command to stream it too.
+- Prompty's own output, such as `Prompty::output()`.
+
+Output written straight to a file descriptor reaches the terminal unstyled. That covers `fwrite(STDOUT, ...)` and a process started with `proc_open()` that inherits the terminal.
 
 ## Flows
 
@@ -1101,7 +1199,7 @@ The following table lists every option and its default:
 | `unicode`         | `bool`                  | Forces Unicode or ASCII symbols. Detected from the locale by default.         |
 | `ansi`            | `bool`                  | Forces ANSI colors on or off. On unless `NO_COLOR` or `TERM=dumb` is set.     |
 | `env_prefix`      | `string`                | Prefix for environment variable discovery. Default `PROMPTY_`.                |
-| `labels`          | `array<string, string>` | UI labels: `yes`, `no`, `cancelled`, `none`, `separator`, `more`, `required`. |
+| `labels`          | `array<string, string>` | UI labels. The keys follow this table.                                        |
 | `truthy`          | `list<string>`          | Values a confirm reads as yes. Default `1`, `true`, `yes`.                    |
 | `falsy`           | `list<string>`          | Values a confirm reads as no. Default `0`, `false`, `no`.                     |
 | `interactive`     | `bool`                  | If false, every widget answers without reading input. Default `true`.         |
@@ -1116,10 +1214,10 @@ The following table lists every option and its default:
 
 The map-valued options take these keys:
 
-- `symbols_unicode`, `symbols_ascii`: `bar`, `completed`, `active`, `intro`, `outro`, `section`, `pointer`, `radio_on`, `radio_off`, `check_on`, `check_off`, `hint_arrow`, `error`, `scroll_up`, `scroll_down`
+- `symbols_unicode`, `symbols_ascii`: `bar`, `completed`, `active`, `intro`, `outro`, `section`, `pointer`, `radio_on`, `radio_off`, `check_on`, `check_off`, `hint_arrow`, `error`, `scroll_up`, `scroll_down`, `success`, `spinner`, `ellipsis`. Each character of `spinner` is 1 frame.
 - `colors`: `reset`, `dim`, `dim_italic`, `cyan`, `green`, `red`, `gray`, `bold`, `white`, `yellow`, `blue`, `italic`, `underline`
 - `spacing`: `indent`, `hint_indent`, `hint_cont`
-- `labels`: `yes`, `no`, `cancelled`, `none`, `separator`, `more`, `required`
+- `labels`: `yes`, `no`, `cancelled`, `none`, `separator`, `more`, `required`, `done`, `failed`, `line`, `lines`
 
 ### Unknown keys are rejected
 

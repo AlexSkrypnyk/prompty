@@ -50,10 +50,16 @@ class EmbedSource {
   protected array $extras = [];
 
   /**
+   * Rewrites each ticket line, or NULL to keep it as it is.
+   */
+  protected ?\Closure $formatter = NULL;
+
+  /**
    * Creates the shared instance.
    */
   protected function __construct() {
     $this->extras = [];
+    $this->formatter = NULL;
   }
 
   /**

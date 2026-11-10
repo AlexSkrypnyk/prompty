@@ -10,8 +10,13 @@ Namespace: `AlexSkrypnyk\Prompty`. Key files: `Prompty.php` (library),
 
 - **Singleton** - `static::$instance`, never `new Prompty()`.
 - **Dual-mode widgets** - `text`, `select`, `multiselect`, `suggest`,
-  `confirm` return closures (step arrays when given a condition or children)
-  while a flow is being defined, and values otherwise.
+  `confirm` and `task` return closures (step arrays when given a condition or
+  children) while a flow is being defined, and values otherwise.
+- **Tasks** - `task()` redraws only when `isLive()`; tests set the `terminal`
+  property to force it. A flow stores a task's outcome as a bool. The spinner
+  runs in a `pcntl_fork()` child. `stream: TRUE` captures output with
+  `ob_start()` at chunk size 1; a buffer handler can't echo, so `write()`
+  collects drawn output in `$streamBuffer` for the handler to return.
 - **Typed config properties** - `cfgUnicode`, `cfgSymbols`, `cfgColors`,
   `cfgSpacing`, `cfgLabels`, `cfgEnvPrefix`, `cfgTruthy`, `cfgFalsy`, etc.
   Configured via `Prompty::configure(...)` named arguments.

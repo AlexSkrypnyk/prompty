@@ -290,6 +290,16 @@ Headings that group a flow's steps with `Prompty::section()`:
 - `Service` - with `Table and extras` as a second title line, and the description `Where the order is going and what is served alongside.` Groups Table and Extras.
 - `Ticket` - no description. Groups Send order?.
 
+### Tasks
+
+Work a demo runs with `Prompty::task()`, between its questions:
+
+- `Preheating the oven` - hint `Fan oven, 180°C`, success `Oven ready`, failure `Oven did not reach temperature`.
+- `Setting the table` - returns the detail lines `Table 7` and `Seats 2 and 4`, success `Table set`.
+- `Proving the dough` - fails with `Dough did not rise`.
+- `Baking the tart` - streamed. Writes `Oven at 180°C`, `Tray 1 of 2 in the top rack`, a `Rising 20%` to `Rising 100%` progress meter, `Crust golden at the edges`, `Tray 2 of 2 in the top rack`, `Fan cycling, temperature held` and `Both trays out, resting on the rack`. Success `Tart baked`.
+- `Poaching the pears` - streamed. Writes `Syrup at a low simmer`, `Pears in, lid half on` and `Checked at 20 minutes: still firm`, then fails with `Pears are not soft yet`.
+
 ### Validation messages
 
 Messages a `validate` callback returns in demos and README snippets:
