@@ -155,11 +155,13 @@ Take labels, keys and hints from that file. If a demo needs a concept the file d
 
 ## README layout
 
-A first read of the README shows only headings and images. Follow 3 rules for every section you add:
+Add every new heading to the README's **Contents** list, nested under its parent heading.
 
-- Add the heading to the **Contents** list, nested under its parent for a `###` heading.
-- Put the section's images directly under its heading.
-- Under the images, open `<details>`, add `<summary>Details: <heading></summary>` with the section's heading text, then the rest of the section, then `</details>`. Leave a blank line after `<summary>` and before `</details>`, so GitHub renders the Markdown between them.
+Each widget is a `###` section under `## Widgets` that shows its screenshot grid and folds its usage. Follow 3 rules for a new widget:
+
+- Record its 4 display variants as `widget-<name>` SVGs, as described in [Regenerating the README assets](#regenerating-the-readme-assets).
+- Put its screenshot grid directly under its heading.
+- Under the grid, open `<details>`, add `<summary>Details: <heading></summary>` with the widget's heading text, then the rest of the section, then `</details>`. Leave a blank line after `<summary>` and before `</details>`, so GitHub renders the Markdown between them.
 
 ## Regenerating the README assets
 
@@ -169,7 +171,7 @@ The SVGs under `.util/assets/` are recorded from the playground scripts. Regener
 php .util/update-assets.php
 ```
 
-The command records 7 scripts in 4 flag variants each, plus the embedded copy of the flow. It runs a few recordings at a time. To record 1 asset again, pass its filename without `.svg`:
+The command records 11 scripts in 4 flag variants each, plus the embedded copy of the flow. It runs a few recordings at a time. To record 1 asset again, pass its filename without `.svg`:
 
 ```bash
 php .util/update-assets.php --record widgets
