@@ -845,7 +845,7 @@ To wrap at a fixed width, pass `width` to [`Prompty::configure()`](#configuratio
 Prompty::configure(width: 100);
 ```
 
-Lines you print with `Prompty::output()` keep your layout, so Prompty doesn't wrap them.
+Lines you print with `Prompty::output()` keep your layout, so Prompty doesn't wrap them. To fit them to the terminal yourself, measure them with [`Prompty::width()` and `Prompty::terminalWidth()`](#style-your-own-lines).
 
 ## Default values
 
@@ -998,6 +998,32 @@ To force them for 1 flow:
 $results = Prompty::flow(fn(): array => [/* ... */], ansi: FALSE);
 ```
 
+### Style your own lines
+
+To print lines of your own between widgets, style and measure them with the helpers Prompty uses for its own layout. Each one follows the `ansi` setting and `NO_COLOR`. To line up a column of styled dishes:
+
+```php
+$dishes = ['Pear tart' => 'Table 4', 'Plum compote' => 'Table 12'];
+$lines = [];
+
+foreach ($dishes as $dish => $table) {
+  $name = Prompty::style($dish, 'bold');
+  $pad = str_repeat(' ', 14 - Prompty::width($name));
+  $lines[] = $name . $pad . Prompty::style($table, 'dim');
+}
+
+Prompty::output($lines);
+```
+
+The class has 4 helpers:
+
+- `Prompty::style($text, ...$styles)` wraps each line of `$text` in the named styles and ends it with a reset, so the next line starts unstyled. Inside a line, a nested `style()` call ends its own style and the outer style continues. With ANSI off, it returns `$text` unchanged.
+- `Prompty::strip($text)` removes ANSI escape sequences.
+- `Prompty::width($text)` returns the columns the widest line of `$text` takes. Escape sequences count as 0, and wide characters such as emoji count as 2.
+- `Prompty::terminalWidth()` returns the width Prompty wraps its lines to, as described in [Long lines](#long-lines).
+
+`style()` takes every key of the `colors` [configuration](#available-options) except `reset`: `dim`, `dim_italic`, `cyan`, `green`, `red`, `gray`, `bold`, `white`, `yellow`, `blue`, `italic` and `underline`. A `colors` override changes the codes `style()` writes. An unknown name throws an `InvalidArgumentException` that lists the available names.
+
 ### Display modes
 
 `unicode` and `ansi` combine into 4 display modes. The following table shows a flat flow in each mode:
@@ -1089,7 +1115,7 @@ The following table lists every option and its default:
 The map-valued options take these keys:
 
 - `symbols_unicode`, `symbols_ascii`: `bar`, `completed`, `active`, `intro`, `outro`, `section`, `pointer`, `radio_on`, `radio_off`, `check_on`, `check_off`, `hint_arrow`, `error`, `scroll_up`, `scroll_down`
-- `colors`: `reset`, `dim`, `dim_italic`, `cyan`, `green`, `red`, `gray`, `bold`, `white`
+- `colors`: `reset`, `dim`, `dim_italic`, `cyan`, `green`, `red`, `gray`, `bold`, `white`, `yellow`, `blue`, `italic`, `underline`
 - `spacing`: `indent`, `hint_indent`, `hint_cont`
 - `labels`: `yes`, `no`, `cancelled`, `none`, `separator`, `more`, `required`
 
@@ -1147,6 +1173,10 @@ Besides the 5 widgets, `flow()` and `configure()`, the class has these methods:
 | `Prompty::intro($message)`   | `void`   | Prints an intro banner outside `flow()`.                        |
 | `Prompty::outro($message)`   | `void`   | Prints an outro banner outside `flow()`.                        |
 | `Prompty::output($lines)`    | `int`    | Prints an array of lines, 1 per line. Returns the count.        |
+| `Prompty::style($text, ...)` | `string` | Styles each line of the text with the named colors.             |
+| `Prompty::strip($text)`      | `string` | Removes ANSI escape sequences from the text.                    |
+| `Prompty::width($text)`      | `int`    | Display width of the widest line of the text.                   |
+| `Prompty::terminalWidth()`   | `int`    | The terminal width Prompty wraps its lines to.                  |
 
 The following example reads the answers 2 ways and prints a banner:
 
