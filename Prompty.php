@@ -601,61 +601,6 @@ class Prompty {
   }
 
   /**
-   * Get the resolved configuration array.
-   *
-   * @return array<string, mixed>
-   *   The resolved configuration.
-   */
-  public static function config(): array {
-    $p = static::instance();
-
-    return [
-      'symbols_unicode' => $p->cfgSymbolsUnicode,
-      'symbols_ascii' => $p->cfgSymbolsAscii,
-      'symbols' => $p->cfgSymbols,
-      'colors' => $p->cfgColors,
-      'spacing' => $p->cfgSpacing,
-      'labels' => $p->cfgLabels,
-      'unicode' => $p->cfgUnicode,
-      'ansi' => $p->cfgAnsi,
-      'env_prefix' => $p->cfgEnvPrefix,
-      'truthy' => $p->cfgTruthy,
-      'falsy' => $p->cfgFalsy,
-      'output' => $p->cfgOutput,
-      'interactive' => $p->cfgInteractive,
-      'scroll' => $p->cfgScroll,
-      'placeholder_fallback' => $p->cfgPlaceholderFallback,
-      'width' => $p->cfgWidth,
-      'legend' => $p->cfgLegend,
-      'back_key' => $p->cfgBackKey,
-    ];
-  }
-
-  /**
-   * Get the collected results from the last flow.
-   *
-   * @return array<string, mixed>
-   *   The collected results.
-   */
-  public static function results(): array {
-    return static::instance()->results;
-  }
-
-  /**
-   * Get the library version.
-   *
-   * Returns 'development' when the version token has not been replaced
-   * (i.e. running from source). During release, the __PROMPTY_VERSION__
-   * token is replaced with the actual tag.
-   *
-   * @return string
-   *   The version string.
-   */
-  public static function version(): string {
-    return str_starts_with(static::VERSION, '__') ? 'development' : static::VERSION;
-  }
-
-  /**
    * Configure the singleton instance.
    *
    * Creates the singleton if it does not exist yet. The settings apply to every
@@ -851,6 +796,61 @@ class Prompty {
     }
 
     $p->resolveDisplay();
+  }
+
+  /**
+   * Get the resolved configuration array.
+   *
+   * @return array<string, mixed>
+   *   The resolved configuration.
+   */
+  public static function config(): array {
+    $p = static::instance();
+
+    return [
+      'symbols_unicode' => $p->cfgSymbolsUnicode,
+      'symbols_ascii' => $p->cfgSymbolsAscii,
+      'symbols' => $p->cfgSymbols,
+      'colors' => $p->cfgColors,
+      'spacing' => $p->cfgSpacing,
+      'labels' => $p->cfgLabels,
+      'unicode' => $p->cfgUnicode,
+      'ansi' => $p->cfgAnsi,
+      'env_prefix' => $p->cfgEnvPrefix,
+      'truthy' => $p->cfgTruthy,
+      'falsy' => $p->cfgFalsy,
+      'output' => $p->cfgOutput,
+      'interactive' => $p->cfgInteractive,
+      'scroll' => $p->cfgScroll,
+      'placeholder_fallback' => $p->cfgPlaceholderFallback,
+      'width' => $p->cfgWidth,
+      'legend' => $p->cfgLegend,
+      'back_key' => $p->cfgBackKey,
+    ];
+  }
+
+  /**
+   * Get the collected results from the last flow.
+   *
+   * @return array<string, mixed>
+   *   The collected results.
+   */
+  public static function results(): array {
+    return static::instance()->results;
+  }
+
+  /**
+   * Get the library version.
+   *
+   * Returns 'development' when the version token has not been replaced
+   * (i.e. running from source). During release, the __PROMPTY_VERSION__
+   * token is replaced with the actual tag.
+   *
+   * @return string
+   *   The version string.
+   */
+  public static function version(): string {
+    return str_starts_with(static::VERSION, '__') ? 'development' : static::VERSION;
   }
 
   /**
@@ -1134,49 +1134,6 @@ class Prompty {
     }
 
     return ['__section' => $title, '__description' => $description, '__condition' => $condition];
-  }
-
-  /**
-   * Prints an informational, success, warning or error message.
-   *
-   * The type's symbol takes the place of the bar on the first line, and the
-   * message is drawn in the type's colour. Inside the steps callable of a
-   * flow it declares a keyless step instead, drawn in the tree where it sits.
-   * A note adds nothing to the results.
-   *
-   * @param string $message
-   *   The message. A newline starts another line, and SGR styling is kept.
-   * @param string $type
-   *   One of 'info', 'success', 'warning' or 'error'.
-   * @param callable|null $condition
-   *   Optional condition callback; hides the note when it returns FALSE. Only
-   *   a note declared in a flow has answers to test.
-   *
-   * @return array<string, mixed>|null
-   *   The note step array while a flow is being defined, otherwise NULL.
-   *
-   * @throws \InvalidArgumentException
-   *   When the type is not one of the 4 types.
-   * @throws \LogicException
-   *   When a condition is given outside the steps callable of a flow.
-   */
-  public static function note(string $message, string $type = 'info', ?callable $condition = NULL): ?array {
-    if (!in_array($type, static::NOTE_TYPES, TRUE)) {
-      throw new \InvalidArgumentException(sprintf('Note type "%s" is not valid. Use 1 of: %s.', $type, implode(', ', static::NOTE_TYPES)));
-    }
-
-    if (static::$defining) {
-      return ['__note' => $message, '__type' => $type, '__condition' => $condition];
-    }
-
-    if ($condition !== NULL) {
-      throw new \LogicException('A note condition tests the answers collected so far, so it can only be given to a note declared inside the callable passed to Prompty::flow().');
-    }
-
-    $p = static::instance();
-    $p->printLines($p->renderNote($message, $type));
-
-    return NULL;
   }
 
   /**
@@ -2824,6 +2781,49 @@ class Prompty {
   }
 
   /**
+   * Prints an informational, success, warning or error message.
+   *
+   * The type's symbol takes the place of the bar on the first line, and the
+   * message is drawn in the type's colour. Inside the steps callable of a
+   * flow it declares a keyless step instead, drawn in the tree where it sits.
+   * A note adds nothing to the results.
+   *
+   * @param string $message
+   *   The message. A newline starts another line, and SGR styling is kept.
+   * @param string $type
+   *   One of 'info', 'success', 'warning' or 'error'.
+   * @param callable|null $condition
+   *   Optional condition callback; hides the note when it returns FALSE. Only
+   *   a note declared in a flow has answers to test.
+   *
+   * @return array<string, mixed>|null
+   *   The note step array while a flow is being defined, otherwise NULL.
+   *
+   * @throws \InvalidArgumentException
+   *   When the type is not one of the 4 types.
+   * @throws \LogicException
+   *   When a condition is given outside the steps callable of a flow.
+   */
+  public static function note(string $message, string $type = 'info', ?callable $condition = NULL): ?array {
+    if (!in_array($type, static::NOTE_TYPES, TRUE)) {
+      throw new \InvalidArgumentException(sprintf('Note type "%s" is not valid. Use 1 of: %s.', $type, implode(', ', static::NOTE_TYPES)));
+    }
+
+    if (static::$defining) {
+      return ['__note' => $message, '__type' => $type, '__condition' => $condition];
+    }
+
+    if ($condition !== NULL) {
+      throw new \LogicException('A note condition tests the answers collected so far, so it can only be given to a note declared inside the callable passed to Prompty::flow().');
+    }
+
+    $p = static::instance();
+    $p->printLines($p->renderNote($message, $type));
+
+    return NULL;
+  }
+
+  /**
    * Prints an intro banner.
    */
   public static function intro(string $message): void {
@@ -2991,148 +2991,731 @@ class Prompty {
   }
 
   /**
-   * Wraps text in an ANSI color sequence.
+   * Rejects configuration keys outside the set the default declares.
+   *
+   * @param string $parameter
+   *   The configure() parameter that supplied the values.
+   * @param array<string, string> $values
+   *   The supplied overrides.
+   * @param array<string, string> $declared
+   *   The defaults, whose keys are the valid set.
+   *
+   * @throws \InvalidArgumentException
+   *   When a key is not part of the declared set.
    */
-  protected function color(string $text, string $color): string {
-    return isset($this->cfgColors[$color]) ? $this->cfgColors[$color] . $text . $this->cfgColors['reset'] : $text;
-  }
-
-  /**
-   * Neutralizes control characters that would break a rendered line.
-   *
-   * A newline or tab becomes a space, so text stays on the line the tree drew
-   * for it. Escape sequences and the remaining control characters are removed,
-   * since a terminal acts on them rather than showing them.
-   *
-   * @param string $text
-   *   Text supplied by the caller or discovered from the environment.
-   *
-   * @return string
-   *   Text safe to compose into a rendered line.
-   */
-  protected function printable(string $text): string {
-    $text = preg_replace('/\033\[\??[0-9;]*[A-Za-z]/', '', $text) ?? $text;
-    $text = preg_replace('/[\t\n\x0b\x0c\r]+/', ' ', $text) ?? $text;
-    $text = preg_replace('/[\x00-\x1f\x7f]/', '', $text) ?? $text;
-
-    // Match the remaining C1 controls by character, since their second UTF-8
-    // byte also occurs inside characters such as 'ą'. Text that is not valid
-    // UTF-8 fails the /u match and keeps the result of the passes above.
-    return preg_replace('/\p{Cc}/u', '', $text) ?? $text;
-  }
-
-  /**
-   * Draws text in a base style and keeps the SGR sequences it carries.
-   *
-   * The text between SGR sequences is made printable. A kept sequence that
-   * switches an attribute off is followed by the base style, so the base
-   * resumes where the caller closed a run. With ANSI off, the SGR sequences
-   * are removed as well.
-   *
-   * @param string $text
-   *   Text supplied by the caller.
-   * @param string $base
-   *   The color the text is drawn in.
-   *
-   * @return string
-   *   The text in the base style, closed with a reset.
-   */
-  protected function styled(string $text, string $base): string {
-    $parts = preg_split('/(\033\[[0-9;:]*m)/', $text, -1, PREG_SPLIT_DELIM_CAPTURE) ?: [$text];
-    $styled = '';
-
-    foreach ($parts as $index => $part) {
-      if ($index % 2 === 0) {
-        $styled .= $this->printable($part);
-
-        continue;
-      }
-
-      if (!$this->cfgAnsi) {
-        continue;
-      }
-
-      $styled .= $part;
-
-      if ($this->switchesOff($part)) {
-        $styled .= $this->cfgColors[$base] ?? '';
+  protected function assertConfigKeys(string $parameter, array $values, array $declared): void {
+    foreach (array_keys($values) as $key) {
+      if (!array_key_exists($key, $declared)) {
+        throw new \InvalidArgumentException(sprintf('Configuration key "%s" for "%s" is not valid. Available keys: %s.', $key, $parameter, implode(', ', array_keys($declared))));
       }
     }
-
-    return $this->color($styled, $base);
   }
 
   /**
-   * Checks whether an SGR sequence switches an attribute off.
+   * Rejects a configuration list that holds nothing usable.
    *
-   * Parameter 0 (or none), 21-29, 39 and 49 switch an attribute off. The
-   * arguments of an extended colour (38, 48 or 58 followed by ';5;n' or
-   * ';2;r;g;b') are colour values, so they are skipped.
+   * @param string $parameter
+   *   The configure() parameter that supplied the values.
+   * @param list<string> $values
+   *   The supplied values.
    *
-   * @param string $sequence
-   *   An SGR sequence, from the escape byte to the final 'm'.
+   * @throws \InvalidArgumentException
+   *   When the list is empty or holds a blank value.
+   */
+  protected function assertConfigList(string $parameter, array $values): void {
+    if ($values === []) {
+      throw new \InvalidArgumentException(sprintf('No values declared for "%s". Provide at least one value.', $parameter));
+    }
+
+    foreach ($values as $value) {
+      // Values are matched after trimming, so a blank entry would match an
+      // empty discovered value, which the widget otherwise rejects.
+      if (trim($value) === '') {
+        throw new \InvalidArgumentException(sprintf('Blank value declared for "%s". Every value must hold a non-space character.', $parameter));
+      }
+    }
+  }
+
+  /**
+   * Rejects a step total format that sprintf() cannot fill.
+   *
+   * @param string $format
+   *   The format, which receives the step number and then the total.
+   *
+   * @throws \InvalidArgumentException
+   *   When the format needs more than 2 arguments or holds an unknown
+   *   conversion.
+   */
+  protected function assertStepTotalFormat(string $format): void {
+    try {
+      sprintf($format, 1, 1);
+    }
+    catch (\ValueError | \ArgumentCountError $error) {
+      throw new \InvalidArgumentException(sprintf('Format "%s" for the "step_total" label is not valid (%s). Use a format that takes the step number and the total, such as "(%%d/%%d)".', $format, $error->getMessage()), 0, $error);
+    }
+  }
+
+  /**
+   * Rejects a back key that cannot be told apart from other keys.
+   *
+   * @param string $back_key
+   *   The key name to check.
+   *
+   * @throws \InvalidArgumentException
+   *   When $back_key is neither '' nor a Ctrl key that readKey() names as
+   *   itself.
+   */
+  protected function assertBackKey(string $back_key): void {
+    if ($back_key === '') {
+      return;
+    }
+
+    if (preg_match('/^ctrl-[a-z]$/', $back_key) !== 1 || in_array($back_key, static::RESERVED_CTRL_KEYS, TRUE)) {
+      throw new \InvalidArgumentException(sprintf('Back key "%s" for "back_key" is not valid. Use a Ctrl key from "ctrl-a" to "ctrl-z" other than "ctrl-c", "ctrl-h", "ctrl-i", "ctrl-j" and "ctrl-m", or "" to turn stepping back off.', $back_key));
+    }
+  }
+
+  /**
+   * Rejects a scroll size that cannot be drawn.
+   *
+   * @param int $scroll
+   *   The supplied scroll size.
+   * @param string $subject
+   *   The widget label, or the configure() parameter that supplied the size.
+   *
+   * @throws \InvalidArgumentException
+   *   When the size is negative.
+   */
+  protected function assertScroll(int $scroll, string $subject): void {
+    if ($scroll < 0) {
+      throw new \InvalidArgumentException(sprintf('Scroll size %d for "%s" is not valid. Use 0 to show every option, or the number of options to show at once.', $scroll, $subject));
+    }
+  }
+
+  /**
+   * Validates an output target and returns it in the form write() uses.
+   *
+   * @param mixed $output
+   *   The supplied target.
+   *
+   * @return resource|\Closure
+   *   The stream as given, or the callable as a closure.
+   *
+   * @throws \InvalidArgumentException
+   *   When the target is neither a callable nor an open, writable stream.
+   */
+  protected function resolveOutputTarget(mixed $output) {
+    if (is_callable($output)) {
+      return $output(...);
+    }
+
+    if (!is_resource($output) || get_resource_type($output) !== 'stream') {
+      throw new \InvalidArgumentException(sprintf('Output target of type "%s" for "output" is not valid. Provide a writable stream or a callable that receives each chunk.', get_debug_type($output)));
+    }
+
+    $mode = stream_get_meta_data($output)['mode'];
+
+    if (strpbrk($mode, 'waxc+') === FALSE) {
+      throw new \InvalidArgumentException(sprintf('Output stream for "output" is opened in read-only mode "%s". Provide a writable stream.', $mode));
+    }
+
+    return $output;
+  }
+
+  /**
+   * Rejects a widget declared without options.
+   *
+   * @param string $label
+   *   The widget label, used to identify the widget in the error message.
+   * @param array<int|string, string> $options
+   *   Map of option key to display label.
+   *
+   * @throws \InvalidArgumentException
+   *   When $options is empty.
+   */
+  protected function assertDeclaredOptions(string $label, array $options): void {
+    if ($options === []) {
+      throw new \InvalidArgumentException(sprintf('No options declared for "%s". Provide at least one option.', $label));
+    }
+  }
+
+  /**
+   * Validates a supplied value against a widget's declared options.
+   *
+   * @param string $parameter
+   *   The parameter that supplied the value, capitalized, opening the error
+   *   message: 'Discovered' or 'Default'.
+   * @param string $label
+   *   The widget label, used to identify the widget in the error message.
+   * @param mixed $value
+   *   The supplied value.
+   * @param array<int|string, string> $options
+   *   Map of option key to display label.
+   *
+   * @return string
+   *   The supplied value as a trimmed option key.
+   *
+   * @throws \InvalidArgumentException
+   *   When the value is not a key of $options.
+   */
+  protected function assertOptionKey(string $parameter, string $label, mixed $value, array $options): string {
+    $key = is_scalar($value) ? trim((string) $value) : get_debug_type($value);
+
+    if (!array_key_exists($key, $options)) {
+      $available = $options === [] ? 'none' : implode(', ', $this->optionKeys($options));
+
+      throw new \InvalidArgumentException(sprintf('%s value "%s" for "%s" is not a valid option. Available options: %s.', $parameter, $key, $label, $available));
+    }
+
+    return $key;
+  }
+
+  /**
+   * Validates supplied multiselect values against the declared options.
+   *
+   * Entries that are empty after trimming are dropped, so an empty value and a
+   * trailing comma both mean "nothing selected". Surviving entries are checked
+   * for membership and returned in the order given, each at its first
+   * position.
+   *
+   * @param string $parameter
+   *   The parameter that supplied the value, capitalized, opening the error
+   *   message: 'Discovered' or 'Default'.
+   * @param string $label
+   *   The widget label, used to identify the widget in the error message.
+   * @param mixed $value
+   *   The supplied value: a list of option keys, or a single option key.
+   * @param array<int|string, string> $options
+   *   Map of option key to display label.
+   *
+   * @return list<string>
+   *   The selected option keys, deduplicated and in the order given.
+   *
+   * @throws \InvalidArgumentException
+   *   When any entry is not a key of $options.
+   */
+  protected function assertOptionKeys(string $parameter, string $label, mixed $value, array $options): array {
+    $entries = is_array($value) ? $value : [$value];
+    $selected = [];
+
+    foreach ($entries as $entry) {
+      if (is_scalar($entry) && trim((string) $entry) === '') {
+        continue;
+      }
+
+      $selected[] = $this->assertOptionKey($parameter, $label, $entry, $options);
+    }
+
+    return array_values(array_unique($selected));
+  }
+
+  /**
+   * Rejects a multiselect answer order that is not known.
+   *
+   * @param string|\Closure $order
+   *   The order to check. A closure is always accepted.
+   * @param string $label
+   *   The widget label, used to identify the widget in the error message.
+   *
+   * @throws \InvalidArgumentException
+   *   When $order is a string other than 'options', 'default' or 'selection'.
+   */
+  protected function assertOrder(string|\Closure $order, string $label): void {
+    if (is_string($order) && !in_array($order, ['options', 'default', 'selection'], TRUE)) {
+      throw new \InvalidArgumentException(sprintf('Order "%s" for "%s" is not valid. Use "options", "default" or "selection".', $order, $label));
+    }
+  }
+
+  /**
+   * Arranges selected multiselect keys in an answer order.
+   *
+   * @param string $label
+   *   The widget label, used to identify the widget in the error message.
+   * @param list<string> $keys
+   *   The selected option keys, in the order they were selected.
+   * @param string|\Closure $order
+   *   One of 'options', 'default' or 'selection', or a comparator closure.
+   * @param array<int|string, string> $options
+   *   Map of option key to display label.
+   * @param list<string> $default_keys
+   *   The default option keys, in default order.
+   *
+   * @return list<string>
+   *   The selected keys in $order.
+   *
+   * @throws \UnexpectedValueException
+   *   When a comparator returns anything other than an int.
+   */
+  protected function orderKeys(string $label, array $keys, string|\Closure $order, array $options, array $default_keys): array {
+    if ($order instanceof \Closure) {
+      // usort() is stable, so keys the comparator ranks equal keep the order
+      // they were selected in.
+      usort($keys, function (string $a, string $b) use ($label, $order): int {
+        $result = $order($a, $b);
+
+        if (!is_int($result)) {
+          $this->teardownTty();
+
+          throw new \UnexpectedValueException(sprintf('Order for "%s" returned %s. An order closure compares 2 option keys and returns an int, as for usort().', $label, get_debug_type($result)));
+        }
+
+        return $result;
+      });
+
+      return $keys;
+    }
+
+    $in_options = array_values(array_filter($this->optionKeys($options), fn(string $key): bool => in_array($key, $keys, TRUE)));
+
+    return match ($order) {
+      'selection' => $keys,
+      'default' => [
+        ...array_values(array_filter($default_keys, fn(string $key): bool => in_array($key, $keys, TRUE))),
+        ...array_values(array_filter($in_options, fn(string $key): bool => !in_array($key, $default_keys, TRUE))),
+      ],
+      default => $in_options,
+    };
+  }
+
+  /**
+   * Lists a widget's option keys as strings.
+   *
+   * PHP casts a canonical decimal-integer string array key to an int, so
+   * array_keys() over options such as ['10' => 'Table 10'] yields ints.
+   *
+   * @param array<int|string, string> $options
+   *   Map of option key to display label.
+   *
+   * @return list<string>
+   *   The option keys in declaration order.
+   */
+  protected function optionKeys(array $options): array {
+    return array_map(strval(...), array_keys($options));
+  }
+
+  /**
+   * Returns the text the completed line shows for a single answer key.
+   *
+   * @param string $key
+   *   The answer key.
+   * @param array<int|string, string> $options
+   *   Map of option key to display label.
+   *
+   * @return string
+   *   The option label for a key of $options, or the key itself.
+   */
+  protected function optionDisplay(string $key, array $options): string {
+    return array_key_exists($key, $options) ? $options[$key] : $key;
+  }
+
+  /**
+   * Returns the text the completed line shows for a list of answer keys.
+   *
+   * @param list<string> $keys
+   *   The answer keys.
+   * @param array<int|string, string> $options
+   *   Map of option key to display label.
+   *
+   * @return string
+   *   The comma-separated labels, or the 'none' label for an empty list.
+   */
+  protected function optionsDisplay(array $keys, array $options): string {
+    if ($keys === []) {
+      return $this->label('none');
+    }
+
+    return implode(', ', array_map(fn(string $key): string => $this->optionDisplay($key, $options), $keys));
+  }
+
+  /**
+   * Resolves how many of a widget's options are drawn at once.
+   *
+   * @param string $label
+   *   The widget label, used to identify the widget in the error message.
+   * @param int|null $scroll
+   *   The widget's scroll size, or NULL to use the configured one.
+   * @param int $count
+   *   The number of declared options.
+   *
+   * @return int
+   *   The number of options to draw, at most $count.
+   *
+   * @throws \InvalidArgumentException
+   *   When the scroll size is negative.
+   */
+  protected function visibleOptions(string $label, ?int $scroll, int $count): int {
+    $scroll ??= $this->cfgScroll;
+    $this->assertScroll($scroll, $label);
+
+    return $scroll === 0 ? $count : min($scroll, $count);
+  }
+
+  /**
+   * Moves a window of options so that it contains the focused option.
+   *
+   * @param int $first
+   *   Index of the first option in the window.
+   * @param int $focused
+   *   Index of the focused option.
+   * @param int $visible
+   *   The number of options in the window.
+   *
+   * @return int
+   *   Index of the first option in the moved window. It changes only when the
+   *   focused option is outside the window.
+   */
+  protected function scrollWindow(int $first, int $focused, int $visible): int {
+    if ($focused < $first) {
+      return $focused;
+    }
+
+    if ($focused >= $first + $visible) {
+      return $focused - $visible + 1;
+    }
+
+    return $first;
+  }
+
+  /**
+   * Lists the suggestions for the typed text.
+   *
+   * @param array<int|string, string>|\Closure $options
+   *   The suggestions, or a closure returning them for the typed text.
+   * @param string $typed
+   *   The text in the input buffer.
+   *
+   * @return list<string>
+   *   The matching suggestions as printable text, in the order given.
+   */
+  protected function suggestMatches(array|\Closure $options, string $typed): array {
+    $typed = $this->printable($typed);
+
+    if ($options instanceof \Closure) {
+      $found = $options($typed);
+
+      return is_array($found) ? array_values(array_map(fn(string|int|float|bool $entry): string => $this->printable((string) $entry), array_filter($found, is_scalar(...)))) : [];
+    }
+
+    $candidates = array_values(array_map($this->printable(...), $options));
+
+    if ($typed === '') {
+      return $candidates;
+    }
+
+    // A UTF-8 character typed 1 byte at a time leaves the buffer invalid until
+    // its last byte arrives, and a /u pattern cannot be built from it.
+    $pattern = preg_match('//u', $typed) === 1 ? '/' . preg_quote($typed, '/') . '/iu' : NULL;
+
+    // Text that is not valid UTF-8 is compared byte by byte, folding ASCII
+    // case only.
+    return array_values(array_filter($candidates, function (string $candidate) use ($pattern, $typed): bool {
+      $matched = $pattern === NULL ? FALSE : preg_match($pattern, $candidate);
+
+      return $matched === FALSE ? stripos($candidate, $typed) !== FALSE : $matched === 1;
+    }));
+  }
+
+  /**
+   * Coerces a discovered value to a boolean using the truthy/falsy lists.
+   *
+   * @param string $label
+   *   The widget label, used to identify the widget in the error message.
+   * @param mixed $value
+   *   The discovered value.
+   * @param list<string> $truthy
+   *   Values treated as TRUE.
+   * @param list<string> $falsy
+   *   Values treated as FALSE.
    *
    * @return bool
-   *   TRUE when any parameter of the sequence switches an attribute off.
+   *   The coerced boolean.
+   *
+   * @throws \InvalidArgumentException
+   *   When the value appears in neither list.
    */
-  protected function switchesOff(string $sequence): bool {
-    $params = explode(';', substr($sequence, 2, -1));
-    $count = count($params);
-
-    for ($i = 0; $i < $count; $i++) {
-      if (in_array($params[$i], ['38', '48', '58'], TRUE)) {
-        $i += match ($params[$i + 1] ?? '') {
-          '5' => 2,
-          '2' => 4,
-          default => 0,
-        };
-
-        continue;
-      }
-
-      if (preg_match('/^(?:0*|2[0-9]|39|49)$/', $params[$i]) === 1) {
-        return TRUE;
-      }
+  protected function assertDiscoveredBool(string $label, mixed $value, array $truthy, array $falsy): bool {
+    if (is_bool($value)) {
+      return $value;
     }
 
-    return FALSE;
+    $display = is_scalar($value) ? trim((string) $value) : get_debug_type($value);
+    $normalize = fn(string $token): string => strtolower(trim($token));
+    $normalized = $normalize($display);
+
+    if (in_array($normalized, array_map($normalize, $truthy), TRUE)) {
+      return TRUE;
+    }
+
+    if (in_array($normalized, array_map($normalize, $falsy), TRUE)) {
+      return FALSE;
+    }
+
+    $accepted = implode(', ', array_merge($truthy, $falsy));
+
+    throw new \InvalidArgumentException(sprintf('Discovered value "%s" for "%s" is not a valid answer. Accepted values: %s.', $display, $label, $accepted));
   }
 
   /**
-   * Returns a configured label as printable text.
+   * Returns the answer a text or suggest gives when nothing was entered.
    *
-   * @param string $name
-   *   The label to read.
+   * A widget that reads no input never shows its placeholder, so the
+   * placeholder answers only when input is read and the fallback is on.
+   *
+   * @param string $placeholder
+   *   The widget's placeholder.
    *
    * @return string
-   *   The label, safe to compose into a rendered line.
+   *   $placeholder, or '' when it does not answer.
    */
-  protected function label(string $name): string {
-    return $this->printable($this->cfgLabels[$name] ?? '');
+  protected function placeholderAnswer(string $placeholder): string {
+    return $this->cfgInteractive && $this->cfgPlaceholderFallback ? $placeholder : '';
   }
 
   /**
-   * Returns the styled vertical bar character for the tree connector.
-   */
-  protected function bar(): string {
-    return $this->color($this->cfgSymbols['bar'], 'gray');
-  }
-
-  /**
-   * Returns the pointer gutter shown before an option's indicator.
+   * Applies a widget's transform to a string answer.
    *
-   * Marks the focused row independently of the selection state, so it stays
-   * distinguishable even when it is already checked.
-   *
-   * @param bool $focused
-   *   Whether this option is the focused one.
+   * @param string $label
+   *   The widget label, used to identify the widget in the error message.
+   * @param callable|null $transform
+   *   The transform, or NULL when the widget has none.
+   * @param string $value
+   *   The answer, as the widget would return it.
    *
    * @return string
-   *   The styled pointer when focused, or equal-width padding when not,
-   *   followed by a separating space.
+   *   The transformed answer, or $value when there is no transform.
+   *
+   * @throws \UnexpectedValueException
+   *   When the transform returns anything other than a string.
    */
-  protected function pointer(bool $focused): string {
-    return ($focused ? $this->color($this->cfgSymbols['pointer'], 'cyan') : ' ') . ' ';
+  protected function transformString(string $label, ?callable $transform, string $value): string {
+    if ($transform === NULL) {
+      return $value;
+    }
+
+    $transformed = $this->runTransform($transform, $value);
+
+    if (!is_string($transformed)) {
+      $this->rejectTransformed($label, get_debug_type($transformed), 'a string');
+    }
+
+    return $transformed;
+  }
+
+  /**
+   * Applies a widget's transform to a list of option keys.
+   *
+   * @param string $label
+   *   The widget label, used to identify the widget in the error message.
+   * @param callable|null $transform
+   *   The transform, or NULL when the widget has none.
+   * @param list<string> $value
+   *   The answer, as the widget would return it.
+   *
+   * @return list<string>
+   *   The transformed answer, or $value when there is no transform.
+   *
+   * @throws \UnexpectedValueException
+   *   When the transform returns anything other than a list of strings.
+   */
+  protected function transformKeys(string $label, ?callable $transform, array $value): array {
+    if ($transform === NULL) {
+      return $value;
+    }
+
+    $transformed = $this->runTransform($transform, $value);
+
+    if (!is_array($transformed) || !array_is_list($transformed)) {
+      $this->rejectTransformed($label, get_debug_type($transformed), 'a list of strings');
+    }
+
+    $keys = [];
+
+    foreach ($transformed as $entry) {
+      if (!is_string($entry)) {
+        $this->rejectTransformed($label, 'a list holding ' . get_debug_type($entry), 'a list of strings');
+      }
+
+      $keys[] = $entry;
+    }
+
+    return $keys;
+  }
+
+  /**
+   * Applies a widget's transform to a boolean answer.
+   *
+   * @param string $label
+   *   The widget label, used to identify the widget in the error message.
+   * @param callable|null $transform
+   *   The transform, or NULL when the widget has none.
+   * @param bool $value
+   *   The answer, as the widget would return it.
+   *
+   * @return bool
+   *   The transformed answer, or $value when there is no transform.
+   *
+   * @throws \UnexpectedValueException
+   *   When the transform returns anything other than a boolean.
+   */
+  protected function transformBool(string $label, ?callable $transform, bool $value): bool {
+    if ($transform === NULL) {
+      return $value;
+    }
+
+    $transformed = $this->runTransform($transform, $value);
+
+    if (!is_bool($transformed)) {
+      $this->rejectTransformed($label, get_debug_type($transformed), 'a boolean');
+    }
+
+    return $transformed;
+  }
+
+  /**
+   * Calls a widget's transform.
+   *
+   * The transform is caller code that can run while the terminal is in raw
+   * mode, so the terminal is restored before any exception leaves the widget.
+   *
+   * @param callable $transform
+   *   The transform.
+   * @param string|bool|list<string> $value
+   *   The answer, as the widget would return it.
+   *
+   * @return mixed
+   *   Whatever the transform returns.
+   */
+  protected function runTransform(callable $transform, string|bool|array $value): mixed {
+    try {
+      return $transform($value);
+    }
+    catch (\Throwable $throwable) {
+      $this->teardownTty();
+
+      throw $throwable;
+    }
+  }
+
+  /**
+   * Rejects a transformed answer of the wrong type.
+   *
+   * @param string $label
+   *   The widget label, used to identify the widget in the error message.
+   * @param string $actual
+   *   A description of what the transform returned.
+   * @param string $expected
+   *   A description of the type the widget answers with.
+   *
+   * @throws \UnexpectedValueException
+   *   Always.
+   */
+  protected function rejectTransformed(string $label, string $actual, string $expected): never {
+    $this->teardownTty();
+
+    throw new \UnexpectedValueException(sprintf('Transform for "%s" returned %s. A transform returns %s, the type the widget answers with.', $label, $actual, $expected));
+  }
+
+  /**
+   * Runs a widget's validator against an answer.
+   *
+   * The validator is caller code that can run while the terminal is in raw
+   * mode, so the terminal is restored before any exception leaves the widget.
+   *
+   * An empty answer to a required widget is rejected before the validator
+   * runs, so the validator only receives answers that are not empty.
+   *
+   * @param string $label
+   *   The widget label, used to identify the widget in the error message.
+   * @param bool|string $required
+   *   FALSE, TRUE to reject an empty answer with the 'required' label, or the
+   *   message to reject it with.
+   * @param callable|null $validate
+   *   The validator, or NULL when the widget has none.
+   * @param string|bool|list<string> $value
+   *   The answer, as the widget would return it.
+   * @param array<string, mixed> $results
+   *   The flow results collected so far.
+   *
+   * @return string|null
+   *   The trimmed error message, or NULL when the answer is valid. A message
+   *   with no printable text counts as valid.
+   *
+   * @throws \UnexpectedValueException
+   *   When the validator returns neither NULL nor a string.
+   */
+  protected function validateAnswer(string $label, bool|string $required, ?callable $validate, string|bool|array $value, array $results): ?string {
+    $is_empty = is_array($value) ? $value === [] : is_string($value) && trim($value) === '';
+
+    if (($required === FALSE || !$is_empty) && $validate === NULL) {
+      return NULL;
+    }
+
+    try {
+      if ($required !== FALSE && $is_empty) {
+        // A blank message would read as no error, so it takes the label.
+        $error = is_string($required) && trim($this->printable($required)) !== '' ? trim($required) : $this->label('required');
+      }
+      else {
+        /** @var callable $validate */
+        $error = $validate($value, $results);
+
+        if ($error !== NULL && !is_string($error)) {
+          throw new \UnexpectedValueException(sprintf('Validator for "%s" returned %s. A validator returns NULL for a valid answer or an error message string.', $label, get_debug_type($error)));
+        }
+
+        $error = $error === NULL || trim($this->printable($error)) === '' ? NULL : trim($error);
+      }
+
+      if ($error !== NULL && static::$onInvalid instanceof \Closure) {
+        (static::$onInvalid)($label, $value, $error);
+      }
+    }
+    catch (\Throwable $throwable) {
+      $this->teardownTty();
+
+      throw $throwable;
+    }
+
+    return $error;
+  }
+
+  /**
+   * Rejects an empty or invalid answer that was resolved without input.
+   *
+   * @param string $parameter
+   *   The source of the answer, capitalized, opening the error message:
+   *   'Discovered' or 'Default'.
+   * @param string $label
+   *   The widget label, used to identify the widget in the error message.
+   * @param bool|string $required
+   *   FALSE, TRUE to reject an empty answer with the 'required' label, or the
+   *   message to reject it with.
+   * @param callable|null $validate
+   *   The validator, or NULL when the widget has none.
+   * @param string|bool|list<string> $value
+   *   The resolved answer, as the widget would return it.
+   * @param array<string, mixed> $results
+   *   The flow results collected so far.
+   *
+   * @throws \InvalidArgumentException
+   *   When the answer is required and empty, or the validator returns an
+   *   error message.
+   */
+  protected function assertResolvedValid(string $parameter, string $label, bool|string $required, ?callable $validate, string|bool|array $value, array $results): void {
+    $error = $this->validateAnswer($label, $required, $validate, $value, $results);
+
+    if ($error === NULL) {
+      return;
+    }
+
+    // A list is shown in the comma-separated form a variable supplies it in.
+    $display = match (TRUE) {
+      is_bool($value) => $value ? 'true' : 'false',
+      is_array($value) => implode(',', $value),
+      default => $value,
+    };
+
+    throw new \InvalidArgumentException(sprintf('%s value "%s" for "%s" is not valid. %s', $parameter, $display, $label, $error));
   }
 
   /**
@@ -3247,19 +3830,6 @@ class Prompty {
   }
 
   /**
-   * Checks whether a key leaves the widget without an answer.
-   *
-   * @param string $key
-   *   A key name returned by readKey().
-   *
-   * @return bool
-   *   TRUE for the 2 cancel keys and for the end of the input stream.
-   */
-  protected function isCancelKey(string $key): bool {
-    return in_array($key, ['ctrl-c', 'escape', 'eof'], TRUE);
-  }
-
-  /**
    * Reads the remaining bytes of a UTF-8 character whose first byte is a key.
    *
    * A key is read 1 byte at a time by readKey(), so a multibyte character left
@@ -3288,23 +3858,16 @@ class Prompty {
   }
 
   /**
-   * Rejects a back key that cannot be told apart from other keys.
+   * Checks whether a key leaves the widget without an answer.
    *
-   * @param string $back_key
-   *   The key name to check.
+   * @param string $key
+   *   A key name returned by readKey().
    *
-   * @throws \InvalidArgumentException
-   *   When $back_key is neither '' nor a Ctrl key that readKey() names as
-   *   itself.
+   * @return bool
+   *   TRUE for the 2 cancel keys and for the end of the input stream.
    */
-  protected function assertBackKey(string $back_key): void {
-    if ($back_key === '') {
-      return;
-    }
-
-    if (preg_match('/^ctrl-[a-z]$/', $back_key) !== 1 || in_array($back_key, static::RESERVED_CTRL_KEYS, TRUE)) {
-      throw new \InvalidArgumentException(sprintf('Back key "%s" for "back_key" is not valid. Use a Ctrl key from "ctrl-a" to "ctrl-z" other than "ctrl-c", "ctrl-h", "ctrl-i", "ctrl-j" and "ctrl-m", or "" to turn stepping back off.', $back_key));
-    }
+  protected function isCancelKey(string $key): bool {
+    return in_array($key, ['ctrl-c', 'escape', 'eof'], TRUE);
   }
 
   /**
@@ -3431,27 +3994,6 @@ class Prompty {
   }
 
   /**
-   * Shows the terminal cursor.
-   */
-  protected function showCursor(): void {
-    $this->write("\033[?25h");
-  }
-
-  /**
-   * Hides the terminal cursor.
-   */
-  protected function hideCursor(): void {
-    $this->write("\033[?25l");
-  }
-
-  /**
-   * Restores TTY settings to the previously saved state.
-   */
-  protected function restoreTty(string $prev): void {
-    shell_exec('stty ' . $prev . ' 2>' . static::NULL_DEVICE);
-  }
-
-  /**
    * Puts the terminal into raw mode and saves the settings it replaces.
    *
    * Leaves prevTty NULL when an input stream is injected or stdin is not a
@@ -3493,6 +4035,82 @@ class Prompty {
       $this->prevTty = NULL;
       // @codeCoverageIgnoreEnd
     }
+  }
+
+  /**
+   * Restores TTY settings to the previously saved state.
+   */
+  protected function restoreTty(string $prev): void {
+    shell_exec('stty ' . $prev . ' 2>' . static::NULL_DEVICE);
+  }
+
+  /**
+   * Shows the terminal cursor.
+   */
+  protected function showCursor(): void {
+    $this->write("\033[?25h");
+  }
+
+  /**
+   * Hides the terminal cursor.
+   */
+  protected function hideCursor(): void {
+    $this->write("\033[?25l");
+  }
+
+  /**
+   * Checks whether output can be redrawn in place while work runs.
+   *
+   * @return bool
+   *   TRUE when the widget is interactive, ANSI is on and the output target is
+   *   a terminal. A callable target is never a terminal.
+   */
+  protected function isLive(): bool {
+    if (!$this->cfgInteractive || !$this->cfgAnsi) {
+      return FALSE;
+    }
+
+    if ($this->terminal !== NULL) {
+      return $this->terminal;
+    }
+
+    if ($this->cfgOutput instanceof \Closure) {
+      return FALSE;
+    }
+
+    return stream_isatty($this->cfgOutput ?? STDOUT);
+  }
+
+  /**
+   * Resolves a task's hint or result text.
+   *
+   * @param string $label
+   *   The task label, used to identify the task in the error message.
+   * @param string $parameter
+   *   The task() parameter the text came from.
+   * @param string|callable $text
+   *   The text, or a callable that receives the action's return value.
+   * @param mixed $value
+   *   The action's return value.
+   *
+   * @return string
+   *   The text to draw.
+   *
+   * @throws \UnexpectedValueException
+   *   When the callable returns anything other than a string.
+   */
+  protected function taskText(string $label, string $parameter, string|callable $text, mixed $value): string {
+    if (is_string($text)) {
+      return $text;
+    }
+
+    $resolved = $text($value);
+
+    if (!is_string($resolved)) {
+      throw new \UnexpectedValueException(sprintf('The %s callable for task "%s" returned %s. It must return the text to draw.', $parameter, $label, get_debug_type($resolved)));
+    }
+
+    return $resolved;
   }
 
   /**
@@ -3744,29 +4362,6 @@ class Prompty {
   }
 
   /**
-   * Checks whether output can be redrawn in place while work runs.
-   *
-   * @return bool
-   *   TRUE when the widget is interactive, ANSI is on and the output target is
-   *   a terminal. A callable target is never a terminal.
-   */
-  protected function isLive(): bool {
-    if (!$this->cfgInteractive || !$this->cfgAnsi) {
-      return FALSE;
-    }
-
-    if ($this->terminal !== NULL) {
-      return $this->terminal;
-    }
-
-    if ($this->cfgOutput instanceof \Closure) {
-      return FALSE;
-    }
-
-    return stream_isatty($this->cfgOutput ?? STDOUT);
-  }
-
-  /**
    * Starts a child process that redraws the spinner frames.
    *
    * @param \Closure $frame
@@ -3948,6 +4543,127 @@ class Prompty {
   }
 
   /**
+   * Wraps text in an ANSI color sequence.
+   */
+  protected function color(string $text, string $color): string {
+    return isset($this->cfgColors[$color]) ? $this->cfgColors[$color] . $text . $this->cfgColors['reset'] : $text;
+  }
+
+  /**
+   * Draws text in a base style and keeps the SGR sequences it carries.
+   *
+   * The text between SGR sequences is made printable. A kept sequence that
+   * switches an attribute off is followed by the base style, so the base
+   * resumes where the caller closed a run. With ANSI off, the SGR sequences
+   * are removed as well.
+   *
+   * @param string $text
+   *   Text supplied by the caller.
+   * @param string $base
+   *   The color the text is drawn in.
+   *
+   * @return string
+   *   The text in the base style, closed with a reset.
+   */
+  protected function styled(string $text, string $base): string {
+    $parts = preg_split('/(\033\[[0-9;:]*m)/', $text, -1, PREG_SPLIT_DELIM_CAPTURE) ?: [$text];
+    $styled = '';
+
+    foreach ($parts as $index => $part) {
+      if ($index % 2 === 0) {
+        $styled .= $this->printable($part);
+
+        continue;
+      }
+
+      if (!$this->cfgAnsi) {
+        continue;
+      }
+
+      $styled .= $part;
+
+      if ($this->switchesOff($part)) {
+        $styled .= $this->cfgColors[$base] ?? '';
+      }
+    }
+
+    return $this->color($styled, $base);
+  }
+
+  /**
+   * Checks whether an SGR sequence switches an attribute off.
+   *
+   * Parameter 0 (or none), 21-29, 39 and 49 switch an attribute off. The
+   * arguments of an extended colour (38, 48 or 58 followed by ';5;n' or
+   * ';2;r;g;b') are colour values, so they are skipped.
+   *
+   * @param string $sequence
+   *   An SGR sequence, from the escape byte to the final 'm'.
+   *
+   * @return bool
+   *   TRUE when any parameter of the sequence switches an attribute off.
+   */
+  protected function switchesOff(string $sequence): bool {
+    $params = explode(';', substr($sequence, 2, -1));
+    $count = count($params);
+
+    for ($i = 0; $i < $count; $i++) {
+      if (in_array($params[$i], ['38', '48', '58'], TRUE)) {
+        $i += match ($params[$i + 1] ?? '') {
+          '5' => 2,
+          '2' => 4,
+          default => 0,
+        };
+
+        continue;
+      }
+
+      if (preg_match('/^(?:0*|2[0-9]|39|49)$/', $params[$i]) === 1) {
+        return TRUE;
+      }
+    }
+
+    return FALSE;
+  }
+
+  /**
+   * Neutralizes control characters that would break a rendered line.
+   *
+   * A newline or tab becomes a space, so text stays on the line the tree drew
+   * for it. Escape sequences and the remaining control characters are removed,
+   * since a terminal acts on them rather than showing them.
+   *
+   * @param string $text
+   *   Text supplied by the caller or discovered from the environment.
+   *
+   * @return string
+   *   Text safe to compose into a rendered line.
+   */
+  protected function printable(string $text): string {
+    $text = preg_replace('/\033\[\??[0-9;]*[A-Za-z]/', '', $text) ?? $text;
+    $text = preg_replace('/[\t\n\x0b\x0c\r]+/', ' ', $text) ?? $text;
+    $text = preg_replace('/[\x00-\x1f\x7f]/', '', $text) ?? $text;
+
+    // Match the remaining C1 controls by character, since their second UTF-8
+    // byte also occurs inside characters such as 'ą'. Text that is not valid
+    // UTF-8 fails the /u match and keeps the result of the passes above.
+    return preg_replace('/\p{Cc}/u', '', $text) ?? $text;
+  }
+
+  /**
+   * Removes CSI escape sequences, such as colors and cursor moves.
+   *
+   * @param string $text
+   *   Text that may hold escape sequences.
+   *
+   * @return string
+   *   The text without its escape sequences.
+   */
+  protected function stripAnsi(string $text): string {
+    return preg_replace('/\033\[\??[0-9;:]*[A-Za-z]/', '', $text) ?? $text;
+  }
+
+  /**
    * Returns the terminal columns that rendered lines wrap to.
    *
    * Takes the configured width, then a positive COLUMNS environment
@@ -3984,19 +4700,6 @@ class Prompty {
     }
 
     return $this->columns = $columns;
-  }
-
-  /**
-   * Removes CSI escape sequences, such as colors and cursor moves.
-   *
-   * @param string $text
-   *   Text that may hold escape sequences.
-   *
-   * @return string
-   *   The text without its escape sequences.
-   */
-  protected function stripAnsi(string $text): string {
-    return preg_replace('/\033\[\??[0-9;:]*[A-Za-z]/', '', $text) ?? $text;
   }
 
   /**
@@ -4276,6 +4979,36 @@ class Prompty {
   }
 
   /**
+   * Cuts content to the row it starts on, ending a cut row with an ellipsis.
+   *
+   * @param string $gutter
+   *   The prefix drawn before the content.
+   * @param string $content
+   *   The text to fit, with any color sequences.
+   *
+   * @return string
+   *   The row, no wider than the terminal.
+   */
+  protected function fitRow(string $gutter, string $content): string {
+    $rows = $this->wrap($gutter, $content, $gutter);
+
+    if (count($rows) === 1) {
+      return $rows[0];
+    }
+
+    $ellipsis = $this->color($this->cfgSymbols['ellipsis'], 'dim');
+    $width = $this->cfgWidth;
+
+    // The content is wrapped again, narrower by the ellipsis, so the cut row
+    // and the ellipsis fit together.
+    $this->cfgWidth = max(1, $this->columns() - $this->displayWidth($ellipsis));
+    $row = $this->wrap($gutter, $content, $gutter)[0];
+    $this->cfgWidth = $width;
+
+    return $row . $ellipsis;
+  }
+
+  /**
    * Returns blank padding as wide as the given text.
    *
    * @param string $text
@@ -4286,6 +5019,43 @@ class Prompty {
    */
   protected function pad(string $text): string {
     return str_repeat(' ', $this->displayWidth($text));
+  }
+
+  /**
+   * Returns a configured label as printable text.
+   *
+   * @param string $name
+   *   The label to read.
+   *
+   * @return string
+   *   The label, safe to compose into a rendered line.
+   */
+  protected function label(string $name): string {
+    return $this->printable($this->cfgLabels[$name] ?? '');
+  }
+
+  /**
+   * Returns the styled vertical bar character for the tree connector.
+   */
+  protected function bar(): string {
+    return $this->color($this->cfgSymbols['bar'], 'gray');
+  }
+
+  /**
+   * Returns the pointer gutter shown before an option's indicator.
+   *
+   * Marks the focused row independently of the selection state, so it stays
+   * distinguishable even when it is already checked.
+   *
+   * @param bool $focused
+   *   Whether this option is the focused one.
+   *
+   * @return string
+   *   The styled pointer when focused, or equal-width padding when not,
+   *   followed by a separating space.
+   */
+  protected function pointer(bool $focused): string {
+    return ($focused ? $this->color($this->cfgSymbols['pointer'], 'cyan') : ' ') . ' ';
   }
 
   /**
@@ -4353,822 +5123,6 @@ class Prompty {
     }
 
     return $label;
-  }
-
-  /**
-   * Lists a widget's option keys as strings.
-   *
-   * PHP casts a canonical decimal-integer string array key to an int, so
-   * array_keys() over options such as ['10' => 'Table 10'] yields ints.
-   *
-   * @param array<int|string, string> $options
-   *   Map of option key to display label.
-   *
-   * @return list<string>
-   *   The option keys in declaration order.
-   */
-  protected function optionKeys(array $options): array {
-    return array_map(strval(...), array_keys($options));
-  }
-
-  /**
-   * Resolves how many of a widget's options are drawn at once.
-   *
-   * @param string $label
-   *   The widget label, used to identify the widget in the error message.
-   * @param int|null $scroll
-   *   The widget's scroll size, or NULL to use the configured one.
-   * @param int $count
-   *   The number of declared options.
-   *
-   * @return int
-   *   The number of options to draw, at most $count.
-   *
-   * @throws \InvalidArgumentException
-   *   When the scroll size is negative.
-   */
-  protected function visibleOptions(string $label, ?int $scroll, int $count): int {
-    $scroll ??= $this->cfgScroll;
-    $this->assertScroll($scroll, $label);
-
-    return $scroll === 0 ? $count : min($scroll, $count);
-  }
-
-  /**
-   * Moves a window of options so that it contains the focused option.
-   *
-   * @param int $first
-   *   Index of the first option in the window.
-   * @param int $focused
-   *   Index of the focused option.
-   * @param int $visible
-   *   The number of options in the window.
-   *
-   * @return int
-   *   Index of the first option in the moved window. It changes only when the
-   *   focused option is outside the window.
-   */
-  protected function scrollWindow(int $first, int $focused, int $visible): int {
-    if ($focused < $first) {
-      return $focused;
-    }
-
-    if ($focused >= $first + $visible) {
-      return $focused - $visible + 1;
-    }
-
-    return $first;
-  }
-
-  /**
-   * Lists the suggestions for the typed text.
-   *
-   * @param array<int|string, string>|\Closure $options
-   *   The suggestions, or a closure returning them for the typed text.
-   * @param string $typed
-   *   The text in the input buffer.
-   *
-   * @return list<string>
-   *   The matching suggestions as printable text, in the order given.
-   */
-  protected function suggestMatches(array|\Closure $options, string $typed): array {
-    $typed = $this->printable($typed);
-
-    if ($options instanceof \Closure) {
-      $found = $options($typed);
-
-      return is_array($found) ? array_values(array_map(fn(string|int|float|bool $entry): string => $this->printable((string) $entry), array_filter($found, is_scalar(...)))) : [];
-    }
-
-    $candidates = array_values(array_map($this->printable(...), $options));
-
-    if ($typed === '') {
-      return $candidates;
-    }
-
-    // A UTF-8 character typed 1 byte at a time leaves the buffer invalid until
-    // its last byte arrives, and a /u pattern cannot be built from it.
-    $pattern = preg_match('//u', $typed) === 1 ? '/' . preg_quote($typed, '/') . '/iu' : NULL;
-
-    // Text that is not valid UTF-8 is compared byte by byte, folding ASCII
-    // case only.
-    return array_values(array_filter($candidates, function (string $candidate) use ($pattern, $typed): bool {
-      $matched = $pattern === NULL ? FALSE : preg_match($pattern, $candidate);
-
-      return $matched === FALSE ? stripos($candidate, $typed) !== FALSE : $matched === 1;
-    }));
-  }
-
-  /**
-   * Rejects configuration keys outside the set the default declares.
-   *
-   * @param string $parameter
-   *   The configure() parameter that supplied the values.
-   * @param array<string, string> $values
-   *   The supplied overrides.
-   * @param array<string, string> $declared
-   *   The defaults, whose keys are the valid set.
-   *
-   * @throws \InvalidArgumentException
-   *   When a key is not part of the declared set.
-   */
-  protected function assertConfigKeys(string $parameter, array $values, array $declared): void {
-    foreach (array_keys($values) as $key) {
-      if (!array_key_exists($key, $declared)) {
-        throw new \InvalidArgumentException(sprintf('Configuration key "%s" for "%s" is not valid. Available keys: %s.', $key, $parameter, implode(', ', array_keys($declared))));
-      }
-    }
-  }
-
-  /**
-   * Rejects a step total format that sprintf() cannot fill.
-   *
-   * @param string $format
-   *   The format, which receives the step number and then the total.
-   *
-   * @throws \InvalidArgumentException
-   *   When the format needs more than 2 arguments or holds an unknown
-   *   conversion.
-   */
-  protected function assertStepTotalFormat(string $format): void {
-    try {
-      sprintf($format, 1, 1);
-    }
-    catch (\ValueError | \ArgumentCountError $error) {
-      throw new \InvalidArgumentException(sprintf('Format "%s" for the "step_total" label is not valid (%s). Use a format that takes the step number and the total, such as "(%%d/%%d)".', $format, $error->getMessage()), 0, $error);
-    }
-  }
-
-  /**
-   * Rejects a configuration list that holds nothing usable.
-   *
-   * @param string $parameter
-   *   The configure() parameter that supplied the values.
-   * @param list<string> $values
-   *   The supplied values.
-   *
-   * @throws \InvalidArgumentException
-   *   When the list is empty or holds a blank value.
-   */
-  protected function assertConfigList(string $parameter, array $values): void {
-    if ($values === []) {
-      throw new \InvalidArgumentException(sprintf('No values declared for "%s". Provide at least one value.', $parameter));
-    }
-
-    foreach ($values as $value) {
-      // Values are matched after trimming, so a blank entry would match an
-      // empty discovered value, which the widget otherwise rejects.
-      if (trim($value) === '') {
-        throw new \InvalidArgumentException(sprintf('Blank value declared for "%s". Every value must hold a non-space character.', $parameter));
-      }
-    }
-  }
-
-  /**
-   * Validates an output target and returns it in the form write() uses.
-   *
-   * @param mixed $output
-   *   The supplied target.
-   *
-   * @return resource|\Closure
-   *   The stream as given, or the callable as a closure.
-   *
-   * @throws \InvalidArgumentException
-   *   When the target is neither a callable nor an open, writable stream.
-   */
-  protected function resolveOutputTarget(mixed $output) {
-    if (is_callable($output)) {
-      return $output(...);
-    }
-
-    if (!is_resource($output) || get_resource_type($output) !== 'stream') {
-      throw new \InvalidArgumentException(sprintf('Output target of type "%s" for "output" is not valid. Provide a writable stream or a callable that receives each chunk.', get_debug_type($output)));
-    }
-
-    $mode = stream_get_meta_data($output)['mode'];
-
-    if (strpbrk($mode, 'waxc+') === FALSE) {
-      throw new \InvalidArgumentException(sprintf('Output stream for "output" is opened in read-only mode "%s". Provide a writable stream.', $mode));
-    }
-
-    return $output;
-  }
-
-  /**
-   * Rejects a scroll size that cannot be drawn.
-   *
-   * @param int $scroll
-   *   The supplied scroll size.
-   * @param string $subject
-   *   The widget label, or the configure() parameter that supplied the size.
-   *
-   * @throws \InvalidArgumentException
-   *   When the size is negative.
-   */
-  protected function assertScroll(int $scroll, string $subject): void {
-    if ($scroll < 0) {
-      throw new \InvalidArgumentException(sprintf('Scroll size %d for "%s" is not valid. Use 0 to show every option, or the number of options to show at once.', $scroll, $subject));
-    }
-  }
-
-  /**
-   * Rejects a widget declared without options.
-   *
-   * @param string $label
-   *   The widget label, used to identify the widget in the error message.
-   * @param array<int|string, string> $options
-   *   Map of option key to display label.
-   *
-   * @throws \InvalidArgumentException
-   *   When $options is empty.
-   */
-  protected function assertDeclaredOptions(string $label, array $options): void {
-    if ($options === []) {
-      throw new \InvalidArgumentException(sprintf('No options declared for "%s". Provide at least one option.', $label));
-    }
-  }
-
-  /**
-   * Validates a supplied value against a widget's declared options.
-   *
-   * @param string $parameter
-   *   The parameter that supplied the value, capitalized, opening the error
-   *   message: 'Discovered' or 'Default'.
-   * @param string $label
-   *   The widget label, used to identify the widget in the error message.
-   * @param mixed $value
-   *   The supplied value.
-   * @param array<int|string, string> $options
-   *   Map of option key to display label.
-   *
-   * @return string
-   *   The supplied value as a trimmed option key.
-   *
-   * @throws \InvalidArgumentException
-   *   When the value is not a key of $options.
-   */
-  protected function assertOptionKey(string $parameter, string $label, mixed $value, array $options): string {
-    $key = is_scalar($value) ? trim((string) $value) : get_debug_type($value);
-
-    if (!array_key_exists($key, $options)) {
-      $available = $options === [] ? 'none' : implode(', ', $this->optionKeys($options));
-
-      throw new \InvalidArgumentException(sprintf('%s value "%s" for "%s" is not a valid option. Available options: %s.', $parameter, $key, $label, $available));
-    }
-
-    return $key;
-  }
-
-  /**
-   * Validates supplied multiselect values against the declared options.
-   *
-   * Entries that are empty after trimming are dropped, so an empty value and a
-   * trailing comma both mean "nothing selected". Surviving entries are checked
-   * for membership and returned in the order given, each at its first
-   * position.
-   *
-   * @param string $parameter
-   *   The parameter that supplied the value, capitalized, opening the error
-   *   message: 'Discovered' or 'Default'.
-   * @param string $label
-   *   The widget label, used to identify the widget in the error message.
-   * @param mixed $value
-   *   The supplied value: a list of option keys, or a single option key.
-   * @param array<int|string, string> $options
-   *   Map of option key to display label.
-   *
-   * @return list<string>
-   *   The selected option keys, deduplicated and in the order given.
-   *
-   * @throws \InvalidArgumentException
-   *   When any entry is not a key of $options.
-   */
-  protected function assertOptionKeys(string $parameter, string $label, mixed $value, array $options): array {
-    $entries = is_array($value) ? $value : [$value];
-    $selected = [];
-
-    foreach ($entries as $entry) {
-      if (is_scalar($entry) && trim((string) $entry) === '') {
-        continue;
-      }
-
-      $selected[] = $this->assertOptionKey($parameter, $label, $entry, $options);
-    }
-
-    return array_values(array_unique($selected));
-  }
-
-  /**
-   * Rejects a multiselect answer order that is not known.
-   *
-   * @param string|\Closure $order
-   *   The order to check. A closure is always accepted.
-   * @param string $label
-   *   The widget label, used to identify the widget in the error message.
-   *
-   * @throws \InvalidArgumentException
-   *   When $order is a string other than 'options', 'default' or 'selection'.
-   */
-  protected function assertOrder(string|\Closure $order, string $label): void {
-    if (is_string($order) && !in_array($order, ['options', 'default', 'selection'], TRUE)) {
-      throw new \InvalidArgumentException(sprintf('Order "%s" for "%s" is not valid. Use "options", "default" or "selection".', $order, $label));
-    }
-  }
-
-  /**
-   * Arranges selected multiselect keys in an answer order.
-   *
-   * @param string $label
-   *   The widget label, used to identify the widget in the error message.
-   * @param list<string> $keys
-   *   The selected option keys, in the order they were selected.
-   * @param string|\Closure $order
-   *   One of 'options', 'default' or 'selection', or a comparator closure.
-   * @param array<int|string, string> $options
-   *   Map of option key to display label.
-   * @param list<string> $default_keys
-   *   The default option keys, in default order.
-   *
-   * @return list<string>
-   *   The selected keys in $order.
-   *
-   * @throws \UnexpectedValueException
-   *   When a comparator returns anything other than an int.
-   */
-  protected function orderKeys(string $label, array $keys, string|\Closure $order, array $options, array $default_keys): array {
-    if ($order instanceof \Closure) {
-      // usort() is stable, so keys the comparator ranks equal keep the order
-      // they were selected in.
-      usort($keys, function (string $a, string $b) use ($label, $order): int {
-        $result = $order($a, $b);
-
-        if (!is_int($result)) {
-          $this->teardownTty();
-
-          throw new \UnexpectedValueException(sprintf('Order for "%s" returned %s. An order closure compares 2 option keys and returns an int, as for usort().', $label, get_debug_type($result)));
-        }
-
-        return $result;
-      });
-
-      return $keys;
-    }
-
-    $in_options = array_values(array_filter($this->optionKeys($options), fn(string $key): bool => in_array($key, $keys, TRUE)));
-
-    return match ($order) {
-      'selection' => $keys,
-      'default' => [
-        ...array_values(array_filter($default_keys, fn(string $key): bool => in_array($key, $keys, TRUE))),
-        ...array_values(array_filter($in_options, fn(string $key): bool => !in_array($key, $default_keys, TRUE))),
-      ],
-      default => $in_options,
-    };
-  }
-
-  /**
-   * Rejects steps whose key is reused or cannot be exported.
-   *
-   * A step is looked up as its key uppercased behind the prefix.
-   *
-   * A parent process can set a name that is not a shell identifier, but a
-   * shell cannot export it and most .env files cannot hold it. Such a step
-   * could never be filled through either.
-   *
-   * The results are flat, so a key reused anywhere in the tree would let a
-   * later answer overwrite an earlier one.
-   *
-   * A section stores no answer, so it is checked for a key it would ignore
-   * rather than for a reusable one.
-   *
-   * @param array<array-key, mixed> $steps
-   *   Flow steps, keyed by step name.
-   * @param array<string, true> $seen
-   *   Keys already validated elsewhere in the tree.
-   * @param bool $nested
-   *   Whether $steps are the children of a step.
-   *
-   * @throws \InvalidArgumentException
-   *   When a key is reused, the name a step resolves through is not a valid
-   *   variable name, or a section has a key or is nested.
-   */
-  protected function assertStepKeys(array $steps, array &$seen = [], bool $nested = FALSE): void {
-    foreach ($steps as $key => $step) {
-      if ($this->isSection($step)) {
-        /** @var array{__section: string} $step */
-        if (is_string($key)) {
-          throw new \InvalidArgumentException(sprintf('Section "%s" has the key "%s". A section adds no answer to the results, so it takes no key.', $step['__section'], $key));
-        }
-
-        if ($nested) {
-          throw new \InvalidArgumentException(sprintf('Section "%s" is among the children of a step. A section heads top-level steps, so it can only appear in the steps array of the flow itself.', $step['__section']));
-        }
-
-        continue;
-      }
-
-      if ($this->isNote($step)) {
-        /** @var array{__note: string} $step */
-        if (is_string($key)) {
-          throw new \InvalidArgumentException(sprintf('Note "%s" has the key "%s". A note adds no answer to the results, so it takes no key.', $step['__note'], $key));
-        }
-
-        continue;
-      }
-
-      if ((string) $key === '') {
-        throw new \InvalidArgumentException('A step must have a key: it names the answer in the results and the variable the answer can come from.');
-      }
-
-      if (isset($seen[(string) $key])) {
-        throw new \InvalidArgumentException(sprintf('Step "%s" appears more than once in the flow. Each answer is stored under its step key, so a later step would overwrite the earlier answer in the results.', $key));
-      }
-
-      $seen[(string) $key] = TRUE;
-
-      $name = $this->cfgEnvPrefix . strtoupper((string) $key);
-
-      // The name is checked rather than the key, so a prefix that cannot be
-      // exported is caught as well as a key that cannot.
-      if (preg_match('/^[A-Za-z_][A-Za-z0-9_]*$/', $name) !== 1) {
-        throw new \InvalidArgumentException(sprintf('Step "%s" is looked up as the environment variable "%s", which cannot be exported. A variable name may hold only letters, digits and underscores, and may not start with a digit.', $key, $name));
-      }
-
-      $children = is_array($step) ? $step['__children'] ?? NULL : NULL;
-
-      if (is_array($children)) {
-        $this->assertStepKeys($children, $seen, TRUE);
-      }
-    }
-  }
-
-  /**
-   * Coerces a discovered value to a boolean using the truthy/falsy lists.
-   *
-   * @param string $label
-   *   The widget label, used to identify the widget in the error message.
-   * @param mixed $value
-   *   The discovered value.
-   * @param list<string> $truthy
-   *   Values treated as TRUE.
-   * @param list<string> $falsy
-   *   Values treated as FALSE.
-   *
-   * @return bool
-   *   The coerced boolean.
-   *
-   * @throws \InvalidArgumentException
-   *   When the value appears in neither list.
-   */
-  protected function assertDiscoveredBool(string $label, mixed $value, array $truthy, array $falsy): bool {
-    if (is_bool($value)) {
-      return $value;
-    }
-
-    $display = is_scalar($value) ? trim((string) $value) : get_debug_type($value);
-    $normalize = fn(string $token): string => strtolower(trim($token));
-    $normalized = $normalize($display);
-
-    if (in_array($normalized, array_map($normalize, $truthy), TRUE)) {
-      return TRUE;
-    }
-
-    if (in_array($normalized, array_map($normalize, $falsy), TRUE)) {
-      return FALSE;
-    }
-
-    $accepted = implode(', ', array_merge($truthy, $falsy));
-
-    throw new \InvalidArgumentException(sprintf('Discovered value "%s" for "%s" is not a valid answer. Accepted values: %s.', $display, $label, $accepted));
-  }
-
-  /**
-   * Returns the answer a text or suggest gives when nothing was entered.
-   *
-   * A widget that reads no input never shows its placeholder, so the
-   * placeholder answers only when input is read and the fallback is on.
-   *
-   * @param string $placeholder
-   *   The widget's placeholder.
-   *
-   * @return string
-   *   $placeholder, or '' when it does not answer.
-   */
-  protected function placeholderAnswer(string $placeholder): string {
-    return $this->cfgInteractive && $this->cfgPlaceholderFallback ? $placeholder : '';
-  }
-
-  /**
-   * Applies a widget's transform to a string answer.
-   *
-   * @param string $label
-   *   The widget label, used to identify the widget in the error message.
-   * @param callable|null $transform
-   *   The transform, or NULL when the widget has none.
-   * @param string $value
-   *   The answer, as the widget would return it.
-   *
-   * @return string
-   *   The transformed answer, or $value when there is no transform.
-   *
-   * @throws \UnexpectedValueException
-   *   When the transform returns anything other than a string.
-   */
-  protected function transformString(string $label, ?callable $transform, string $value): string {
-    if ($transform === NULL) {
-      return $value;
-    }
-
-    $transformed = $this->runTransform($transform, $value);
-
-    if (!is_string($transformed)) {
-      $this->rejectTransformed($label, get_debug_type($transformed), 'a string');
-    }
-
-    return $transformed;
-  }
-
-  /**
-   * Applies a widget's transform to a list of option keys.
-   *
-   * @param string $label
-   *   The widget label, used to identify the widget in the error message.
-   * @param callable|null $transform
-   *   The transform, or NULL when the widget has none.
-   * @param list<string> $value
-   *   The answer, as the widget would return it.
-   *
-   * @return list<string>
-   *   The transformed answer, or $value when there is no transform.
-   *
-   * @throws \UnexpectedValueException
-   *   When the transform returns anything other than a list of strings.
-   */
-  protected function transformKeys(string $label, ?callable $transform, array $value): array {
-    if ($transform === NULL) {
-      return $value;
-    }
-
-    $transformed = $this->runTransform($transform, $value);
-
-    if (!is_array($transformed) || !array_is_list($transformed)) {
-      $this->rejectTransformed($label, get_debug_type($transformed), 'a list of strings');
-    }
-
-    $keys = [];
-
-    foreach ($transformed as $entry) {
-      if (!is_string($entry)) {
-        $this->rejectTransformed($label, 'a list holding ' . get_debug_type($entry), 'a list of strings');
-      }
-
-      $keys[] = $entry;
-    }
-
-    return $keys;
-  }
-
-  /**
-   * Applies a widget's transform to a boolean answer.
-   *
-   * @param string $label
-   *   The widget label, used to identify the widget in the error message.
-   * @param callable|null $transform
-   *   The transform, or NULL when the widget has none.
-   * @param bool $value
-   *   The answer, as the widget would return it.
-   *
-   * @return bool
-   *   The transformed answer, or $value when there is no transform.
-   *
-   * @throws \UnexpectedValueException
-   *   When the transform returns anything other than a boolean.
-   */
-  protected function transformBool(string $label, ?callable $transform, bool $value): bool {
-    if ($transform === NULL) {
-      return $value;
-    }
-
-    $transformed = $this->runTransform($transform, $value);
-
-    if (!is_bool($transformed)) {
-      $this->rejectTransformed($label, get_debug_type($transformed), 'a boolean');
-    }
-
-    return $transformed;
-  }
-
-  /**
-   * Calls a widget's transform.
-   *
-   * The transform is caller code that can run while the terminal is in raw
-   * mode, so the terminal is restored before any exception leaves the widget.
-   *
-   * @param callable $transform
-   *   The transform.
-   * @param string|bool|list<string> $value
-   *   The answer, as the widget would return it.
-   *
-   * @return mixed
-   *   Whatever the transform returns.
-   */
-  protected function runTransform(callable $transform, string|bool|array $value): mixed {
-    try {
-      return $transform($value);
-    }
-    catch (\Throwable $throwable) {
-      $this->teardownTty();
-
-      throw $throwable;
-    }
-  }
-
-  /**
-   * Rejects a transformed answer of the wrong type.
-   *
-   * @param string $label
-   *   The widget label, used to identify the widget in the error message.
-   * @param string $actual
-   *   A description of what the transform returned.
-   * @param string $expected
-   *   A description of the type the widget answers with.
-   *
-   * @throws \UnexpectedValueException
-   *   Always.
-   */
-  protected function rejectTransformed(string $label, string $actual, string $expected): never {
-    $this->teardownTty();
-
-    throw new \UnexpectedValueException(sprintf('Transform for "%s" returned %s. A transform returns %s, the type the widget answers with.', $label, $actual, $expected));
-  }
-
-  /**
-   * Resolves a task's hint or result text.
-   *
-   * @param string $label
-   *   The task label, used to identify the task in the error message.
-   * @param string $parameter
-   *   The task() parameter the text came from.
-   * @param string|callable $text
-   *   The text, or a callable that receives the action's return value.
-   * @param mixed $value
-   *   The action's return value.
-   *
-   * @return string
-   *   The text to draw.
-   *
-   * @throws \UnexpectedValueException
-   *   When the callable returns anything other than a string.
-   */
-  protected function taskText(string $label, string $parameter, string|callable $text, mixed $value): string {
-    if (is_string($text)) {
-      return $text;
-    }
-
-    $resolved = $text($value);
-
-    if (!is_string($resolved)) {
-      throw new \UnexpectedValueException(sprintf('The %s callable for task "%s" returned %s. It must return the text to draw.', $parameter, $label, get_debug_type($resolved)));
-    }
-
-    return $resolved;
-  }
-
-  /**
-   * Returns the text the completed line shows for a single answer key.
-   *
-   * @param string $key
-   *   The answer key.
-   * @param array<int|string, string> $options
-   *   Map of option key to display label.
-   *
-   * @return string
-   *   The option label for a key of $options, or the key itself.
-   */
-  protected function optionDisplay(string $key, array $options): string {
-    return array_key_exists($key, $options) ? $options[$key] : $key;
-  }
-
-  /**
-   * Returns the text the completed line shows for a list of answer keys.
-   *
-   * @param list<string> $keys
-   *   The answer keys.
-   * @param array<int|string, string> $options
-   *   Map of option key to display label.
-   *
-   * @return string
-   *   The comma-separated labels, or the 'none' label for an empty list.
-   */
-  protected function optionsDisplay(array $keys, array $options): string {
-    if ($keys === []) {
-      return $this->label('none');
-    }
-
-    return implode(', ', array_map(fn(string $key): string => $this->optionDisplay($key, $options), $keys));
-  }
-
-  /**
-   * Runs a widget's validator against an answer.
-   *
-   * The validator is caller code that can run while the terminal is in raw
-   * mode, so the terminal is restored before any exception leaves the widget.
-   *
-   * An empty answer to a required widget is rejected before the validator
-   * runs, so the validator only receives answers that are not empty.
-   *
-   * @param string $label
-   *   The widget label, used to identify the widget in the error message.
-   * @param bool|string $required
-   *   FALSE, TRUE to reject an empty answer with the 'required' label, or the
-   *   message to reject it with.
-   * @param callable|null $validate
-   *   The validator, or NULL when the widget has none.
-   * @param string|bool|list<string> $value
-   *   The answer, as the widget would return it.
-   * @param array<string, mixed> $results
-   *   The flow results collected so far.
-   *
-   * @return string|null
-   *   The trimmed error message, or NULL when the answer is valid. A message
-   *   with no printable text counts as valid.
-   *
-   * @throws \UnexpectedValueException
-   *   When the validator returns neither NULL nor a string.
-   */
-  protected function validateAnswer(string $label, bool|string $required, ?callable $validate, string|bool|array $value, array $results): ?string {
-    $is_empty = is_array($value) ? $value === [] : is_string($value) && trim($value) === '';
-
-    if (($required === FALSE || !$is_empty) && $validate === NULL) {
-      return NULL;
-    }
-
-    try {
-      if ($required !== FALSE && $is_empty) {
-        // A blank message would read as no error, so it takes the label.
-        $error = is_string($required) && trim($this->printable($required)) !== '' ? trim($required) : $this->label('required');
-      }
-      else {
-        /** @var callable $validate */
-        $error = $validate($value, $results);
-
-        if ($error !== NULL && !is_string($error)) {
-          throw new \UnexpectedValueException(sprintf('Validator for "%s" returned %s. A validator returns NULL for a valid answer or an error message string.', $label, get_debug_type($error)));
-        }
-
-        $error = $error === NULL || trim($this->printable($error)) === '' ? NULL : trim($error);
-      }
-
-      if ($error !== NULL && static::$onInvalid instanceof \Closure) {
-        (static::$onInvalid)($label, $value, $error);
-      }
-    }
-    catch (\Throwable $throwable) {
-      $this->teardownTty();
-
-      throw $throwable;
-    }
-
-    return $error;
-  }
-
-  /**
-   * Rejects an empty or invalid answer that was resolved without input.
-   *
-   * @param string $parameter
-   *   The source of the answer, capitalized, opening the error message:
-   *   'Discovered' or 'Default'.
-   * @param string $label
-   *   The widget label, used to identify the widget in the error message.
-   * @param bool|string $required
-   *   FALSE, TRUE to reject an empty answer with the 'required' label, or the
-   *   message to reject it with.
-   * @param callable|null $validate
-   *   The validator, or NULL when the widget has none.
-   * @param string|bool|list<string> $value
-   *   The resolved answer, as the widget would return it.
-   * @param array<string, mixed> $results
-   *   The flow results collected so far.
-   *
-   * @throws \InvalidArgumentException
-   *   When the answer is required and empty, or the validator returns an
-   *   error message.
-   */
-  protected function assertResolvedValid(string $parameter, string $label, bool|string $required, ?callable $validate, string|bool|array $value, array $results): void {
-    $error = $this->validateAnswer($label, $required, $validate, $value, $results);
-
-    if ($error === NULL) {
-      return;
-    }
-
-    // A list is shown in the comma-separated form a variable supplies it in.
-    $display = match (TRUE) {
-      is_bool($value) => $value ? 'true' : 'false',
-      is_array($value) => implode(',', $value),
-      default => $value,
-    };
-
-    throw new \InvalidArgumentException(sprintf('%s value "%s" for "%s" is not valid. %s', $parameter, $display, $label, $error));
   }
 
   /**
@@ -5246,6 +5200,466 @@ class Prompty {
     $lines[] = $this->bar();
 
     return $lines;
+  }
+
+  /**
+   * Renders a note: its type's symbol, then the message in its type's colour.
+   *
+   * @param string $message
+   *   The message. A newline starts another line.
+   * @param string $type
+   *   The note type, 1 of NOTE_TYPES.
+   * @param int $depth
+   *   The current nesting depth.
+   * @param array<int, bool> $open
+   *   Tracks which depth levels have continuing siblings.
+   *
+   * @return array<int, string>
+   *   The rendered lines, closed with a bar line.
+   */
+  protected function renderNote(string $message, string $type, int $depth = 0, array $open = []): array {
+    $key = 'note_' . $type;
+    $body = $this->bar() . ($depth > 0 ? $this->bodyPrefix($depth, $open) : $this->cfgSpacing['indent']);
+    $text_lines = explode("\n", $message);
+
+    $lines = $this->renderMarkedLabel($this->styled(array_shift($text_lines), $key), $this->color($this->cfgSymbols[$key], $key), $depth, $open);
+
+    foreach ($text_lines as $text_line) {
+      $lines = array_merge($lines, $this->wrap($body, $this->styled($text_line, $key), $body));
+    }
+
+    $lines[] = $this->bar() . ($depth > 0 ? $this->bodyPrefix($depth, $open) : '');
+
+    return $lines;
+  }
+
+  /**
+   * Renders a widget's label after its state symbol.
+   *
+   * @param string $label
+   *   The widget label.
+   * @param string $symbol
+   *   The key of the symbol drawn before the label.
+   * @param string $color
+   *   The color of the symbol.
+   * @param int $depth
+   *   The current nesting depth.
+   * @param array<int, bool> $open
+   *   Tracks which depth levels have continuing siblings.
+   *
+   * @return list<string>
+   *   The label rows. Continuation rows align with the widget's body lines.
+   */
+  protected function renderLabel(string $label, string $symbol, string $color, int $depth = 0, array $open = []): array {
+    return $this->renderMarkedLabel($label, $this->color($this->cfgSymbols[$symbol], $color), $depth, $open);
+  }
+
+  /**
+   * Renders a widget's label after a marker.
+   *
+   * @param string $label
+   *   The widget label.
+   * @param string $marker
+   *   The styled text drawn before the label.
+   * @param int $depth
+   *   The current nesting depth.
+   * @param array<int, bool> $open
+   *   Tracks which depth levels have continuing siblings.
+   *
+   * @return list<string>
+   *   The label rows. Continuation rows align with the widget's body lines.
+   */
+  protected function renderMarkedLabel(string $label, string $marker, int $depth = 0, array $open = []): array {
+    $gutter = ($depth > 0 ? $this->bar() . $this->labelPrefix($depth, $open) : '') . $marker . $this->cfgSpacing['indent'];
+
+    return $this->wrap($gutter, $label, $this->bar() . ($depth > 0 ? $this->bodyPrefix($depth, $open) : $this->cfgSpacing['indent']));
+  }
+
+  /**
+   * Renders description text lines with appropriate depth indentation.
+   *
+   * @param string $description
+   *   The description text to render.
+   * @param int $depth
+   *   The current nesting depth.
+   * @param array<int, bool> $open
+   *   Tracks which depth levels have continuing siblings.
+   *
+   * @return array<int, string>
+   *   The rendered description lines.
+   */
+  protected function renderDescription(string $description, int $depth = 0, array $open = []): array {
+    $gutter = $this->bar() . ($depth > 0 ? $this->bodyPrefix($depth, $open) : $this->cfgSpacing['indent']);
+    $lines = [];
+
+    foreach (explode("\n", $description) as $text_line) {
+      $lines = array_merge($lines, $this->wrap($gutter, $this->styled($text_line, 'dim_italic'), $gutter));
+    }
+
+    $lines[] = $this->bar() . ($depth > 0 ? $this->bodyPrefix($depth, $open) : '');
+
+    return $lines;
+  }
+
+  /**
+   * Renders hint text lines with arrow prefix and depth indentation.
+   *
+   * @param string $hint
+   *   The hint text to render.
+   * @param int $depth
+   *   The current nesting depth.
+   * @param array<int, bool> $open
+   *   Tracks which depth levels have continuing siblings.
+   *
+   * @return array<int, string>
+   *   The rendered hint lines.
+   */
+  protected function renderHint(string $hint, int $depth = 0, array $open = []): array {
+    $body_prefix = $this->bar() . ($depth > 0 ? $this->bodyPrefix($depth, $open) : '');
+    $continuation = $body_prefix . $this->cfgSpacing['hint_cont'];
+    $gutter = $body_prefix . $this->cfgSpacing['hint_indent'] . $this->color($this->cfgSymbols['hint_arrow'], 'dim') . ' ';
+    $lines = [];
+
+    foreach (explode("\n", $hint) as $text_line) {
+      $lines = array_merge($lines, $this->wrap($gutter, $this->color($this->printable($text_line), 'dim_italic'), $continuation));
+      $gutter = $continuation;
+    }
+
+    return $lines;
+  }
+
+  /**
+   * Renders help text lines below a widget's input with depth indentation.
+   *
+   * A blank bar line comes first, so the help stays apart from the input
+   * above it, which can also be dim.
+   *
+   * @param string $help
+   *   The help text to render.
+   * @param int $depth
+   *   The current nesting depth.
+   * @param array<int, bool> $open
+   *   Tracks which depth levels have continuing siblings.
+   *
+   * @return array<int, string>
+   *   The rendered help lines, or no lines when the help is empty.
+   */
+  protected function renderHelp(string $help, int $depth = 0, array $open = []): array {
+    if ($help === '') {
+      return [];
+    }
+
+    $body_prefix = $depth > 0 ? $this->bodyPrefix($depth, $open) : $this->cfgSpacing['indent'];
+
+    $lines = [$this->bar() . ($depth > 0 ? $body_prefix : '')];
+
+    foreach (explode("\n", $help) as $text_line) {
+      $lines = array_merge($lines, $this->wrap($this->bar() . $body_prefix, $this->color($this->printable($text_line), 'dim'), $this->bar() . $body_prefix));
+    }
+
+    return $lines;
+  }
+
+  /**
+   * Renders the keys a widget accepts, drawn like help.
+   *
+   * A segment whose label is blank is left out, so an empty label removes
+   * that key from the legend. The back key is listed last, and only in a flow
+   * step it can step back from.
+   *
+   * @param string $widget
+   *   The widget type: text, select, multiselect, suggest, confirm, pause, or
+   *   pause_enter for a pause that continues only on Enter.
+   * @param int $depth
+   *   The current nesting depth.
+   * @param array<int, bool> $open
+   *   Tracks which depth levels have continuing siblings.
+   *
+   * @return array<int, string>
+   *   The rendered legend lines, or no lines when the legend is off.
+   */
+  protected function renderLegend(string $widget, int $depth = 0, array $open = []): array {
+    if (!$this->cfgLegend) {
+      return [];
+    }
+
+    $move = $this->label('legend_move') === '' ? '' : $this->cfgSymbols['legend_vertical'] . ' ' . $this->label('legend_move');
+    $toggle = $this->label('legend_toggle') === '' ? '' : $this->cfgSymbols['legend_horizontal'] . ' ' . $this->label('legend_toggle');
+    $enter = $this->label('legend_enter');
+
+    $segments = match ($widget) {
+      'select' => [$move, $enter],
+      'multiselect' => [$move, $this->label('legend_space'), $enter],
+      'suggest' => [$this->label('legend_type'), $move, $enter],
+      'confirm' => [$toggle, $this->label('legend_yes_no'), $enter],
+      'pause' => [$this->label('legend_any_key')],
+      'pause_enter' => [$this->label('legend_continue')],
+      default => [$enter],
+    };
+
+    if ($this->cfgBackKey !== '' && $this->label('legend_back') !== '' && $this->pending !== NULL && $this->backTarget() !== NULL) {
+      $segments[] = str_replace('-', '+', $this->cfgBackKey) . ' ' . $this->label('legend_back');
+    }
+
+    $segments = array_filter($segments, fn(string $segment): bool => trim($segment) !== '');
+
+    return $this->renderHelp(implode(' ' . $this->cfgSymbols['legend_separator'] . ' ', $segments), $depth, $open);
+  }
+
+  /**
+   * Renders a validation error line with depth indentation.
+   *
+   * @param string|null $error
+   *   The error message, or NULL when the answer has not been rejected.
+   * @param int $depth
+   *   The current nesting depth.
+   * @param array<int, bool> $open
+   *   Tracks which depth levels have continuing siblings.
+   *
+   * @return array<int, string>
+   *   The rendered error line, or no lines when $error is NULL.
+   */
+  protected function renderError(?string $error, int $depth = 0, array $open = []): array {
+    if ($error === NULL) {
+      return [];
+    }
+
+    $gutter = $this->bar() . ($depth > 0 ? $this->bodyPrefix($depth, $open) : $this->cfgSpacing['indent']);
+    $marker = $this->cfgSymbols['error'] . ' ';
+
+    return $this->wrap($gutter, $this->color($marker . $this->printable($error), 'red'), $gutter . $this->pad($marker));
+  }
+
+  /**
+   * Frames a window of option rows with the count hidden on each side.
+   *
+   * Both indicator rows are drawn while the list is windowed, blank on a side
+   * with nothing hidden, so the widget keeps its height as the window moves.
+   *
+   * @param array<int, string> $rows
+   *   The rendered rows of the options in the window, hints included.
+   * @param int $first
+   *   Index of the first option in the window.
+   * @param int $visible
+   *   The number of options in the window.
+   * @param int $count
+   *   The number of declared options.
+   * @param int $depth
+   *   The current nesting depth.
+   * @param array<int, bool> $open
+   *   Tracks which depth levels have continuing siblings.
+   *
+   * @return array<int, string>
+   *   The rows between the indicators, or the rows alone when every option is
+   *   in the window.
+   */
+  protected function renderScrollWindow(array $rows, int $first, int $visible, int $count, int $depth = 0, array $open = []): array {
+    if ($visible >= $count) {
+      return $rows;
+    }
+
+    $prefix = $this->bar() . ($depth > 0 ? $this->bodyPrefix($depth, $open) : '');
+    $indicator = fn(string $symbol, int $hidden): string => $hidden > 0
+      ? $prefix . $this->pointer(FALSE) . $this->color($this->cfgSymbols[$symbol] . ' ' . $hidden . ' ' . $this->label('more'), 'dim')
+      : $prefix;
+
+    return [
+      $indicator('scroll_up', $first),
+      ...$rows,
+      $indicator('scroll_down', $count - $first - $visible),
+    ];
+  }
+
+  /**
+   * Renders the completed state lines for a widget.
+   *
+   * @param string $label
+   *   The widget label.
+   * @param string $value
+   *   The submitted value to display.
+   * @param int $depth
+   *   The current nesting depth.
+   * @param array<int, bool> $open
+   *   Tracks which depth levels have continuing siblings.
+   *
+   * @return array<int, string>
+   *   The rendered completed-state lines.
+   */
+  protected function renderCompleted(string $label, string $value, int $depth = 0, array $open = []): array {
+    $label = $this->printable($label);
+    $value = $this->printable($value);
+
+    $gutter = $this->bar() . ($depth > 0 ? $this->bodyPrefix($depth, $open) : $this->cfgSpacing['indent']);
+
+    return [
+      ...$this->renderLabel($label, 'completed', 'cyan', $depth, $open),
+      ...$this->wrap($gutter, $this->color($value, 'dim'), $gutter),
+      $this->bar() . ($depth > 0 ? $this->bodyPrefix($depth, $open) : ''),
+    ];
+  }
+
+  /**
+   * Renders the cancelled state lines for a widget.
+   *
+   * @param string $label
+   *   The widget label.
+   * @param string $value
+   *   The current value at the time of cancellation.
+   * @param int $depth
+   *   The current nesting depth.
+   * @param array<int, bool> $open
+   *   Tracks which depth levels have continuing siblings.
+   *
+   * @return array<int, string>
+   *   The rendered cancelled-state lines.
+   */
+  protected function renderCancelled(string $label, string $value, int $depth = 0, array $open = []): array {
+    $label = $this->printable($label);
+    $value = $this->printable($value);
+
+    $gutter = $this->bar() . ($depth > 0 ? $this->bodyPrefix($depth, $open) : $this->cfgSpacing['indent']);
+
+    return [
+      ...$this->renderLabel($label, 'active', 'red', $depth, $open),
+      ...$this->wrap($gutter, $this->color($value, 'dim') . $this->color(' ' . $this->label('cancelled'), 'red'), $gutter),
+      $this->bar() . ($depth > 0 ? $this->bodyPrefix($depth, $open) : ''),
+    ];
+  }
+
+  /**
+   * Renders a task's label once its action has returned.
+   *
+   * @param string $label
+   *   The task label.
+   * @param bool $ok
+   *   Whether the action succeeded.
+   * @param int $depth
+   *   The current nesting depth.
+   * @param array<int, bool> $open
+   *   Tracks which depth levels have continuing siblings.
+   *
+   * @return list<string>
+   *   The label rows.
+   */
+  protected function renderTaskLabel(string $label, bool $ok, int $depth = 0, array $open = []): array {
+    return $ok ? $this->renderLabel($label, 'completed', 'cyan', $depth, $open) : $this->renderLabel($label, 'active', 'red', $depth, $open);
+  }
+
+  /**
+   * Renders the lines a task draws under its label once the action returns.
+   *
+   * @param bool $ok
+   *   Whether the action succeeded.
+   * @param string $hint
+   *   The hint, or '' for none. A newline starts another hint line.
+   * @param list<string> $details
+   *   Detail lines the action returned.
+   * @param string $message
+   *   The result message.
+   * @param string $note
+   *   Text drawn dim after the message, or '' for none.
+   * @param int $depth
+   *   The current nesting depth.
+   * @param array<int, bool> $open
+   *   Tracks which depth levels have continuing siblings.
+   *
+   * @return array<int, string>
+   *   The rendered lines, closed with a bar line.
+   */
+  protected function renderTaskResult(bool $ok, string $hint, array $details, string $message, string $note = '', int $depth = 0, array $open = []): array {
+    $gutter = $this->bar() . ($depth > 0 ? $this->bodyPrefix($depth, $open) : $this->cfgSpacing['indent']);
+    $lines = [];
+
+    if ($hint !== '') {
+      foreach (explode("\n", $hint) as $text_line) {
+        $lines = array_merge($lines, $this->wrap($gutter, $this->styled($text_line, 'dim'), $gutter));
+      }
+    }
+
+    foreach ($details as $detail) {
+      $lines = array_merge($lines, $this->renderTaskLine($detail, $depth, $open));
+    }
+
+    $marker = $this->cfgSymbols[$ok ? 'success' : 'error'] . ' ';
+    $result = $this->color($marker . $this->printable($message), $ok ? 'green' : 'red') . ($note !== '' ? $this->color($note, 'dim') : '');
+    $lines = array_merge($lines, $this->wrap($gutter, $result, $gutter . $this->pad($marker)));
+    $lines[] = $this->bar() . ($depth > 0 ? $this->bodyPrefix($depth, $open) : '');
+
+    return $lines;
+  }
+
+  /**
+   * Renders lines of task output.
+   *
+   * @param list<string> $lines
+   *   The lines.
+   * @param int $depth
+   *   The current nesting depth.
+   * @param array<int, bool> $open
+   *   Tracks which depth levels have continuing siblings.
+   *
+   * @return array<int, string>
+   *   The rendered rows.
+   */
+  protected function renderTaskLines(array $lines, int $depth = 0, array $open = []): array {
+    $rows = [];
+
+    foreach ($lines as $line) {
+      $rows = array_merge($rows, $this->renderTaskLine($line, $depth, $open));
+    }
+
+    return $rows;
+  }
+
+  /**
+   * Renders the last streamed lines under a count of the earlier ones.
+   *
+   * The line still being written is drawn last. Each line is cut to 1 row,
+   * so the window keeps its height as lines arrive.
+   *
+   * @param int $depth
+   *   The current nesting depth.
+   * @param array<int, bool> $open
+   *   Tracks which depth levels have continuing siblings.
+   *
+   * @return array<int, string>
+   *   The rendered rows: the count while lines are hidden, then the window.
+   */
+  protected function renderTaskWindow(int $depth = 0, array $open = []): array {
+    $lines = $this->streamed ?? [];
+
+    if ($this->streamPartial !== '') {
+      $lines[] = $this->lastFrame($this->streamPartial);
+    }
+
+    $hidden = max(0, count($lines) - static::STREAM_WINDOW);
+    $body = $this->bar() . ($depth > 0 ? $this->bodyPrefix($depth, $open) : $this->cfgSpacing['indent']);
+    $rows = $hidden > 0 ? [$body . $this->color($this->cfgSymbols['scroll_up'] . ' ' . $hidden . ' ' . $this->label('more'), 'dim')] : [];
+
+    foreach (array_slice($lines, $hidden) as $line) {
+      $rows[] = $this->fitRow($body . $this->cfgSpacing['indent'], $this->styled($line, 'dim'));
+    }
+
+    return $rows;
+  }
+
+  /**
+   * Renders 1 line of task output, dim and indented below the task's body.
+   *
+   * @param string $line
+   *   The line. SGR sequences in it are kept.
+   * @param int $depth
+   *   The current nesting depth.
+   * @param array<int, bool> $open
+   *   Tracks which depth levels have continuing siblings.
+   *
+   * @return array<int, string>
+   *   The rendered rows. A wrapped row keeps the indent.
+   */
+  protected function renderTaskLine(string $line, int $depth = 0, array $open = []): array {
+    $gutter = $this->bar() . ($depth > 0 ? $this->bodyPrefix($depth, $open) : $this->cfgSpacing['indent']) . $this->cfgSpacing['indent'];
+
+    return $this->wrap($gutter, $this->styled($line, 'dim'), $gutter);
   }
 
   /**
@@ -5564,493 +5978,79 @@ class Prompty {
   }
 
   /**
-   * Renders description text lines with appropriate depth indentation.
+   * Rejects steps whose key is reused or cannot be exported.
    *
-   * @param string $description
-   *   The description text to render.
-   * @param int $depth
-   *   The current nesting depth.
-   * @param array<int, bool> $open
-   *   Tracks which depth levels have continuing siblings.
+   * A step is looked up as its key uppercased behind the prefix.
    *
-   * @return array<int, string>
-   *   The rendered description lines.
+   * A parent process can set a name that is not a shell identifier, but a
+   * shell cannot export it and most .env files cannot hold it. Such a step
+   * could never be filled through either.
+   *
+   * The results are flat, so a key reused anywhere in the tree would let a
+   * later answer overwrite an earlier one.
+   *
+   * A section stores no answer, so it is checked for a key it would ignore
+   * rather than for a reusable one.
+   *
+   * @param array<array-key, mixed> $steps
+   *   Flow steps, keyed by step name.
+   * @param array<string, true> $seen
+   *   Keys already validated elsewhere in the tree.
+   * @param bool $nested
+   *   Whether $steps are the children of a step.
+   *
+   * @throws \InvalidArgumentException
+   *   When a key is reused, the name a step resolves through is not a valid
+   *   variable name, or a section has a key or is nested.
    */
-  protected function renderDescription(string $description, int $depth = 0, array $open = []): array {
-    $gutter = $this->bar() . ($depth > 0 ? $this->bodyPrefix($depth, $open) : $this->cfgSpacing['indent']);
-    $lines = [];
+  protected function assertStepKeys(array $steps, array &$seen = [], bool $nested = FALSE): void {
+    foreach ($steps as $key => $step) {
+      if ($this->isSection($step)) {
+        /** @var array{__section: string} $step */
+        if (is_string($key)) {
+          throw new \InvalidArgumentException(sprintf('Section "%s" has the key "%s". A section adds no answer to the results, so it takes no key.', $step['__section'], $key));
+        }
 
-    foreach (explode("\n", $description) as $text_line) {
-      $lines = array_merge($lines, $this->wrap($gutter, $this->styled($text_line, 'dim_italic'), $gutter));
-    }
+        if ($nested) {
+          throw new \InvalidArgumentException(sprintf('Section "%s" is among the children of a step. A section heads top-level steps, so it can only appear in the steps array of the flow itself.', $step['__section']));
+        }
 
-    $lines[] = $this->bar() . ($depth > 0 ? $this->bodyPrefix($depth, $open) : '');
+        continue;
+      }
 
-    return $lines;
-  }
+      if ($this->isNote($step)) {
+        /** @var array{__note: string} $step */
+        if (is_string($key)) {
+          throw new \InvalidArgumentException(sprintf('Note "%s" has the key "%s". A note adds no answer to the results, so it takes no key.', $step['__note'], $key));
+        }
 
-  /**
-   * Renders hint text lines with arrow prefix and depth indentation.
-   *
-   * @param string $hint
-   *   The hint text to render.
-   * @param int $depth
-   *   The current nesting depth.
-   * @param array<int, bool> $open
-   *   Tracks which depth levels have continuing siblings.
-   *
-   * @return array<int, string>
-   *   The rendered hint lines.
-   */
-  protected function renderHint(string $hint, int $depth = 0, array $open = []): array {
-    $body_prefix = $this->bar() . ($depth > 0 ? $this->bodyPrefix($depth, $open) : '');
-    $continuation = $body_prefix . $this->cfgSpacing['hint_cont'];
-    $gutter = $body_prefix . $this->cfgSpacing['hint_indent'] . $this->color($this->cfgSymbols['hint_arrow'], 'dim') . ' ';
-    $lines = [];
+        continue;
+      }
 
-    foreach (explode("\n", $hint) as $text_line) {
-      $lines = array_merge($lines, $this->wrap($gutter, $this->color($this->printable($text_line), 'dim_italic'), $continuation));
-      $gutter = $continuation;
-    }
+      if ((string) $key === '') {
+        throw new \InvalidArgumentException('A step must have a key: it names the answer in the results and the variable the answer can come from.');
+      }
 
-    return $lines;
-  }
+      if (isset($seen[(string) $key])) {
+        throw new \InvalidArgumentException(sprintf('Step "%s" appears more than once in the flow. Each answer is stored under its step key, so a later step would overwrite the earlier answer in the results.', $key));
+      }
 
-  /**
-   * Frames a window of option rows with the count hidden on each side.
-   *
-   * Both indicator rows are drawn while the list is windowed, blank on a side
-   * with nothing hidden, so the widget keeps its height as the window moves.
-   *
-   * @param array<int, string> $rows
-   *   The rendered rows of the options in the window, hints included.
-   * @param int $first
-   *   Index of the first option in the window.
-   * @param int $visible
-   *   The number of options in the window.
-   * @param int $count
-   *   The number of declared options.
-   * @param int $depth
-   *   The current nesting depth.
-   * @param array<int, bool> $open
-   *   Tracks which depth levels have continuing siblings.
-   *
-   * @return array<int, string>
-   *   The rows between the indicators, or the rows alone when every option is
-   *   in the window.
-   */
-  protected function renderScrollWindow(array $rows, int $first, int $visible, int $count, int $depth = 0, array $open = []): array {
-    if ($visible >= $count) {
-      return $rows;
-    }
+      $seen[(string) $key] = TRUE;
 
-    $prefix = $this->bar() . ($depth > 0 ? $this->bodyPrefix($depth, $open) : '');
-    $indicator = fn(string $symbol, int $hidden): string => $hidden > 0
-      ? $prefix . $this->pointer(FALSE) . $this->color($this->cfgSymbols[$symbol] . ' ' . $hidden . ' ' . $this->label('more'), 'dim')
-      : $prefix;
+      $name = $this->cfgEnvPrefix . strtoupper((string) $key);
 
-    return [
-      $indicator('scroll_up', $first),
-      ...$rows,
-      $indicator('scroll_down', $count - $first - $visible),
-    ];
-  }
+      // The name is checked rather than the key, so a prefix that cannot be
+      // exported is caught as well as a key that cannot.
+      if (preg_match('/^[A-Za-z_][A-Za-z0-9_]*$/', $name) !== 1) {
+        throw new \InvalidArgumentException(sprintf('Step "%s" is looked up as the environment variable "%s", which cannot be exported. A variable name may hold only letters, digits and underscores, and may not start with a digit.', $key, $name));
+      }
 
-  /**
-   * Renders help text lines below a widget's input with depth indentation.
-   *
-   * A blank bar line comes first, so the help stays apart from the input
-   * above it, which can also be dim.
-   *
-   * @param string $help
-   *   The help text to render.
-   * @param int $depth
-   *   The current nesting depth.
-   * @param array<int, bool> $open
-   *   Tracks which depth levels have continuing siblings.
-   *
-   * @return array<int, string>
-   *   The rendered help lines, or no lines when the help is empty.
-   */
-  protected function renderHelp(string $help, int $depth = 0, array $open = []): array {
-    if ($help === '') {
-      return [];
-    }
+      $children = is_array($step) ? $step['__children'] ?? NULL : NULL;
 
-    $body_prefix = $depth > 0 ? $this->bodyPrefix($depth, $open) : $this->cfgSpacing['indent'];
-
-    $lines = [$this->bar() . ($depth > 0 ? $body_prefix : '')];
-
-    foreach (explode("\n", $help) as $text_line) {
-      $lines = array_merge($lines, $this->wrap($this->bar() . $body_prefix, $this->color($this->printable($text_line), 'dim'), $this->bar() . $body_prefix));
-    }
-
-    return $lines;
-  }
-
-  /**
-   * Renders the keys a widget accepts, drawn like help.
-   *
-   * A segment whose label is blank is left out, so an empty label removes
-   * that key from the legend. The back key is listed last, and only in a flow
-   * step it can step back from.
-   *
-   * @param string $widget
-   *   The widget type: text, select, multiselect, suggest, confirm, pause, or
-   *   pause_enter for a pause that continues only on Enter.
-   * @param int $depth
-   *   The current nesting depth.
-   * @param array<int, bool> $open
-   *   Tracks which depth levels have continuing siblings.
-   *
-   * @return array<int, string>
-   *   The rendered legend lines, or no lines when the legend is off.
-   */
-  protected function renderLegend(string $widget, int $depth = 0, array $open = []): array {
-    if (!$this->cfgLegend) {
-      return [];
-    }
-
-    $move = $this->label('legend_move') === '' ? '' : $this->cfgSymbols['legend_vertical'] . ' ' . $this->label('legend_move');
-    $toggle = $this->label('legend_toggle') === '' ? '' : $this->cfgSymbols['legend_horizontal'] . ' ' . $this->label('legend_toggle');
-    $enter = $this->label('legend_enter');
-
-    $segments = match ($widget) {
-      'select' => [$move, $enter],
-      'multiselect' => [$move, $this->label('legend_space'), $enter],
-      'suggest' => [$this->label('legend_type'), $move, $enter],
-      'confirm' => [$toggle, $this->label('legend_yes_no'), $enter],
-      'pause' => [$this->label('legend_any_key')],
-      'pause_enter' => [$this->label('legend_continue')],
-      default => [$enter],
-    };
-
-    if ($this->cfgBackKey !== '' && $this->label('legend_back') !== '' && $this->pending !== NULL && $this->backTarget() !== NULL) {
-      $segments[] = str_replace('-', '+', $this->cfgBackKey) . ' ' . $this->label('legend_back');
-    }
-
-    $segments = array_filter($segments, fn(string $segment): bool => trim($segment) !== '');
-
-    return $this->renderHelp(implode(' ' . $this->cfgSymbols['legend_separator'] . ' ', $segments), $depth, $open);
-  }
-
-  /**
-   * Renders a validation error line with depth indentation.
-   *
-   * @param string|null $error
-   *   The error message, or NULL when the answer has not been rejected.
-   * @param int $depth
-   *   The current nesting depth.
-   * @param array<int, bool> $open
-   *   Tracks which depth levels have continuing siblings.
-   *
-   * @return array<int, string>
-   *   The rendered error line, or no lines when $error is NULL.
-   */
-  protected function renderError(?string $error, int $depth = 0, array $open = []): array {
-    if ($error === NULL) {
-      return [];
-    }
-
-    $gutter = $this->bar() . ($depth > 0 ? $this->bodyPrefix($depth, $open) : $this->cfgSpacing['indent']);
-    $marker = $this->cfgSymbols['error'] . ' ';
-
-    return $this->wrap($gutter, $this->color($marker . $this->printable($error), 'red'), $gutter . $this->pad($marker));
-  }
-
-  /**
-   * Renders the completed state lines for a widget.
-   *
-   * @param string $label
-   *   The widget label.
-   * @param string $value
-   *   The submitted value to display.
-   * @param int $depth
-   *   The current nesting depth.
-   * @param array<int, bool> $open
-   *   Tracks which depth levels have continuing siblings.
-   *
-   * @return array<int, string>
-   *   The rendered completed-state lines.
-   */
-  protected function renderCompleted(string $label, string $value, int $depth = 0, array $open = []): array {
-    $label = $this->printable($label);
-    $value = $this->printable($value);
-
-    $gutter = $this->bar() . ($depth > 0 ? $this->bodyPrefix($depth, $open) : $this->cfgSpacing['indent']);
-
-    return [
-      ...$this->renderLabel($label, 'completed', 'cyan', $depth, $open),
-      ...$this->wrap($gutter, $this->color($value, 'dim'), $gutter),
-      $this->bar() . ($depth > 0 ? $this->bodyPrefix($depth, $open) : ''),
-    ];
-  }
-
-  /**
-   * Renders the lines a task draws under its label once the action returns.
-   *
-   * @param bool $ok
-   *   Whether the action succeeded.
-   * @param string $hint
-   *   The hint, or '' for none. A newline starts another hint line.
-   * @param list<string> $details
-   *   Detail lines the action returned.
-   * @param string $message
-   *   The result message.
-   * @param string $note
-   *   Text drawn dim after the message, or '' for none.
-   * @param int $depth
-   *   The current nesting depth.
-   * @param array<int, bool> $open
-   *   Tracks which depth levels have continuing siblings.
-   *
-   * @return array<int, string>
-   *   The rendered lines, closed with a bar line.
-   */
-  protected function renderTaskResult(bool $ok, string $hint, array $details, string $message, string $note = '', int $depth = 0, array $open = []): array {
-    $gutter = $this->bar() . ($depth > 0 ? $this->bodyPrefix($depth, $open) : $this->cfgSpacing['indent']);
-    $lines = [];
-
-    if ($hint !== '') {
-      foreach (explode("\n", $hint) as $text_line) {
-        $lines = array_merge($lines, $this->wrap($gutter, $this->styled($text_line, 'dim'), $gutter));
+      if (is_array($children)) {
+        $this->assertStepKeys($children, $seen, TRUE);
       }
     }
-
-    foreach ($details as $detail) {
-      $lines = array_merge($lines, $this->renderTaskLine($detail, $depth, $open));
-    }
-
-    $marker = $this->cfgSymbols[$ok ? 'success' : 'error'] . ' ';
-    $result = $this->color($marker . $this->printable($message), $ok ? 'green' : 'red') . ($note !== '' ? $this->color($note, 'dim') : '');
-    $lines = array_merge($lines, $this->wrap($gutter, $result, $gutter . $this->pad($marker)));
-    $lines[] = $this->bar() . ($depth > 0 ? $this->bodyPrefix($depth, $open) : '');
-
-    return $lines;
-  }
-
-  /**
-   * Renders a task's label once its action has returned.
-   *
-   * @param string $label
-   *   The task label.
-   * @param bool $ok
-   *   Whether the action succeeded.
-   * @param int $depth
-   *   The current nesting depth.
-   * @param array<int, bool> $open
-   *   Tracks which depth levels have continuing siblings.
-   *
-   * @return list<string>
-   *   The label rows.
-   */
-  protected function renderTaskLabel(string $label, bool $ok, int $depth = 0, array $open = []): array {
-    return $ok ? $this->renderLabel($label, 'completed', 'cyan', $depth, $open) : $this->renderLabel($label, 'active', 'red', $depth, $open);
-  }
-
-  /**
-   * Renders lines of task output.
-   *
-   * @param list<string> $lines
-   *   The lines.
-   * @param int $depth
-   *   The current nesting depth.
-   * @param array<int, bool> $open
-   *   Tracks which depth levels have continuing siblings.
-   *
-   * @return array<int, string>
-   *   The rendered rows.
-   */
-  protected function renderTaskLines(array $lines, int $depth = 0, array $open = []): array {
-    $rows = [];
-
-    foreach ($lines as $line) {
-      $rows = array_merge($rows, $this->renderTaskLine($line, $depth, $open));
-    }
-
-    return $rows;
-  }
-
-  /**
-   * Renders the last streamed lines under a count of the earlier ones.
-   *
-   * The line still being written is drawn last. Each line is cut to 1 row,
-   * so the window keeps its height as lines arrive.
-   *
-   * @param int $depth
-   *   The current nesting depth.
-   * @param array<int, bool> $open
-   *   Tracks which depth levels have continuing siblings.
-   *
-   * @return array<int, string>
-   *   The rendered rows: the count while lines are hidden, then the window.
-   */
-  protected function renderTaskWindow(int $depth = 0, array $open = []): array {
-    $lines = $this->streamed ?? [];
-
-    if ($this->streamPartial !== '') {
-      $lines[] = $this->lastFrame($this->streamPartial);
-    }
-
-    $hidden = max(0, count($lines) - static::STREAM_WINDOW);
-    $body = $this->bar() . ($depth > 0 ? $this->bodyPrefix($depth, $open) : $this->cfgSpacing['indent']);
-    $rows = $hidden > 0 ? [$body . $this->color($this->cfgSymbols['scroll_up'] . ' ' . $hidden . ' ' . $this->label('more'), 'dim')] : [];
-
-    foreach (array_slice($lines, $hidden) as $line) {
-      $rows[] = $this->fitRow($body . $this->cfgSpacing['indent'], $this->styled($line, 'dim'));
-    }
-
-    return $rows;
-  }
-
-  /**
-   * Cuts content to the row it starts on, ending a cut row with an ellipsis.
-   *
-   * @param string $gutter
-   *   The prefix drawn before the content.
-   * @param string $content
-   *   The text to fit, with any color sequences.
-   *
-   * @return string
-   *   The row, no wider than the terminal.
-   */
-  protected function fitRow(string $gutter, string $content): string {
-    $rows = $this->wrap($gutter, $content, $gutter);
-
-    if (count($rows) === 1) {
-      return $rows[0];
-    }
-
-    $ellipsis = $this->color($this->cfgSymbols['ellipsis'], 'dim');
-    $width = $this->cfgWidth;
-
-    // The content is wrapped again, narrower by the ellipsis, so the cut row
-    // and the ellipsis fit together.
-    $this->cfgWidth = max(1, $this->columns() - $this->displayWidth($ellipsis));
-    $row = $this->wrap($gutter, $content, $gutter)[0];
-    $this->cfgWidth = $width;
-
-    return $row . $ellipsis;
-  }
-
-  /**
-   * Renders 1 line of task output, dim and indented below the task's body.
-   *
-   * @param string $line
-   *   The line. SGR sequences in it are kept.
-   * @param int $depth
-   *   The current nesting depth.
-   * @param array<int, bool> $open
-   *   Tracks which depth levels have continuing siblings.
-   *
-   * @return array<int, string>
-   *   The rendered rows. A wrapped row keeps the indent.
-   */
-  protected function renderTaskLine(string $line, int $depth = 0, array $open = []): array {
-    $gutter = $this->bar() . ($depth > 0 ? $this->bodyPrefix($depth, $open) : $this->cfgSpacing['indent']) . $this->cfgSpacing['indent'];
-
-    return $this->wrap($gutter, $this->styled($line, 'dim'), $gutter);
-  }
-
-  /**
-   * Renders the cancelled state lines for a widget.
-   *
-   * @param string $label
-   *   The widget label.
-   * @param string $value
-   *   The current value at the time of cancellation.
-   * @param int $depth
-   *   The current nesting depth.
-   * @param array<int, bool> $open
-   *   Tracks which depth levels have continuing siblings.
-   *
-   * @return array<int, string>
-   *   The rendered cancelled-state lines.
-   */
-  protected function renderCancelled(string $label, string $value, int $depth = 0, array $open = []): array {
-    $label = $this->printable($label);
-    $value = $this->printable($value);
-
-    $gutter = $this->bar() . ($depth > 0 ? $this->bodyPrefix($depth, $open) : $this->cfgSpacing['indent']);
-
-    return [
-      ...$this->renderLabel($label, 'active', 'red', $depth, $open),
-      ...$this->wrap($gutter, $this->color($value, 'dim') . $this->color(' ' . $this->label('cancelled'), 'red'), $gutter),
-      $this->bar() . ($depth > 0 ? $this->bodyPrefix($depth, $open) : ''),
-    ];
-  }
-
-  /**
-   * Renders a widget's label after its state symbol.
-   *
-   * @param string $label
-   *   The widget label.
-   * @param string $symbol
-   *   The key of the symbol drawn before the label.
-   * @param string $color
-   *   The color of the symbol.
-   * @param int $depth
-   *   The current nesting depth.
-   * @param array<int, bool> $open
-   *   Tracks which depth levels have continuing siblings.
-   *
-   * @return list<string>
-   *   The label rows. Continuation rows align with the widget's body lines.
-   */
-  protected function renderLabel(string $label, string $symbol, string $color, int $depth = 0, array $open = []): array {
-    return $this->renderMarkedLabel($label, $this->color($this->cfgSymbols[$symbol], $color), $depth, $open);
-  }
-
-  /**
-   * Renders a widget's label after a marker.
-   *
-   * @param string $label
-   *   The widget label.
-   * @param string $marker
-   *   The styled text drawn before the label.
-   * @param int $depth
-   *   The current nesting depth.
-   * @param array<int, bool> $open
-   *   Tracks which depth levels have continuing siblings.
-   *
-   * @return list<string>
-   *   The label rows. Continuation rows align with the widget's body lines.
-   */
-  protected function renderMarkedLabel(string $label, string $marker, int $depth = 0, array $open = []): array {
-    $gutter = ($depth > 0 ? $this->bar() . $this->labelPrefix($depth, $open) : '') . $marker . $this->cfgSpacing['indent'];
-
-    return $this->wrap($gutter, $label, $this->bar() . ($depth > 0 ? $this->bodyPrefix($depth, $open) : $this->cfgSpacing['indent']));
-  }
-
-  /**
-   * Renders a note: its type's symbol, then the message in its type's colour.
-   *
-   * @param string $message
-   *   The message. A newline starts another line.
-   * @param string $type
-   *   The note type, 1 of NOTE_TYPES.
-   * @param int $depth
-   *   The current nesting depth.
-   * @param array<int, bool> $open
-   *   Tracks which depth levels have continuing siblings.
-   *
-   * @return array<int, string>
-   *   The rendered lines, closed with a bar line.
-   */
-  protected function renderNote(string $message, string $type, int $depth = 0, array $open = []): array {
-    $key = 'note_' . $type;
-    $body = $this->bar() . ($depth > 0 ? $this->bodyPrefix($depth, $open) : $this->cfgSpacing['indent']);
-    $text_lines = explode("\n", $message);
-
-    $lines = $this->renderMarkedLabel($this->styled(array_shift($text_lines), $key), $this->color($this->cfgSymbols[$key], $key), $depth, $open);
-
-    foreach ($text_lines as $text_line) {
-      $lines = array_merge($lines, $this->wrap($body, $this->styled($text_line, $key), $body));
-    }
-
-    $lines[] = $this->bar() . ($depth > 0 ? $this->bodyPrefix($depth, $open) : '');
-
-    return $lines;
   }
 
   /**
@@ -6096,76 +6096,6 @@ class Prompty {
    */
   protected function isNote(mixed $step): bool {
     return is_array($step) && array_key_exists('__note', $step);
-  }
-
-  /**
-   * Draws a flow note at its depth in the tree, unless its condition fails.
-   *
-   * @param array<string, mixed> $note
-   *   The note step array.
-   * @param array<array-key, mixed> $rest
-   *   The steps after the note at the same depth.
-   * @param int $depth
-   *   The nesting depth of the note.
-   */
-  protected function drawNote(array $note, array $rest, int $depth): void {
-    $condition = $this->stepCondition($note);
-
-    if ($condition !== NULL && !$condition($this->results)) {
-      return;
-    }
-
-    // The answers so far are known, so the connector settles before drawing.
-    $this->markOpen($depth, !$this->hasVisibleStep($rest, $this->results));
-
-    /** @var string $message */
-    $message = $note['__note'];
-    /** @var string $type */
-    $type = $note['__type'];
-    $this->printLines($this->renderNote($message, $type, $depth, $this->open));
-    $this->drawn = TRUE;
-  }
-
-  /**
-   * Draws a section heading when its group has a step that will render.
-   *
-   * A group step's condition can only read an answer from the group once an
-   * earlier group step renders, and that step already makes the group
-   * visible. Testing the group against the current results is therefore
-   * exact.
-   *
-   * @param array<string, mixed> $section
-   *   The section step array.
-   * @param array<array-key, mixed> $rest
-   *   The steps after the section.
-   */
-  protected function drawSection(array $section, array $rest): void {
-    $condition = $this->stepCondition($section);
-
-    if ($condition !== NULL && !$condition($this->results)) {
-      return;
-    }
-
-    $group = [];
-
-    foreach ($rest as $key => $step) {
-      if ($this->isSection($step)) {
-        break;
-      }
-
-      $group[$key] = $step;
-    }
-
-    if (!$this->hasVisibleStep($group, $this->results)) {
-      return;
-    }
-
-    /** @var string $title */
-    $title = $section['__section'];
-    /** @var string $description */
-    $description = $section['__description'] ?? '';
-    $this->printLines($this->renderSection($title, $description, !$this->drawn));
-    $this->drawn = TRUE;
   }
 
   /**
@@ -6301,6 +6231,76 @@ class Prompty {
     $this->markOpen($pending['depth'], !$this->hasVisibleStep($pending['rest'], $results));
 
     return $this->open;
+  }
+
+  /**
+   * Draws a section heading when its group has a step that will render.
+   *
+   * A group step's condition can only read an answer from the group once an
+   * earlier group step renders, and that step already makes the group
+   * visible. Testing the group against the current results is therefore
+   * exact.
+   *
+   * @param array<string, mixed> $section
+   *   The section step array.
+   * @param array<array-key, mixed> $rest
+   *   The steps after the section.
+   */
+  protected function drawSection(array $section, array $rest): void {
+    $condition = $this->stepCondition($section);
+
+    if ($condition !== NULL && !$condition($this->results)) {
+      return;
+    }
+
+    $group = [];
+
+    foreach ($rest as $key => $step) {
+      if ($this->isSection($step)) {
+        break;
+      }
+
+      $group[$key] = $step;
+    }
+
+    if (!$this->hasVisibleStep($group, $this->results)) {
+      return;
+    }
+
+    /** @var string $title */
+    $title = $section['__section'];
+    /** @var string $description */
+    $description = $section['__description'] ?? '';
+    $this->printLines($this->renderSection($title, $description, !$this->drawn));
+    $this->drawn = TRUE;
+  }
+
+  /**
+   * Draws a flow note at its depth in the tree, unless its condition fails.
+   *
+   * @param array<string, mixed> $note
+   *   The note step array.
+   * @param array<array-key, mixed> $rest
+   *   The steps after the note at the same depth.
+   * @param int $depth
+   *   The nesting depth of the note.
+   */
+  protected function drawNote(array $note, array $rest, int $depth): void {
+    $condition = $this->stepCondition($note);
+
+    if ($condition !== NULL && !$condition($this->results)) {
+      return;
+    }
+
+    // The answers so far are known, so the connector settles before drawing.
+    $this->markOpen($depth, !$this->hasVisibleStep($rest, $this->results));
+
+    /** @var string $message */
+    $message = $note['__note'];
+    /** @var string $type */
+    $type = $note['__type'];
+    $this->printLines($this->renderNote($message, $type, $depth, $this->open));
+    $this->drawn = TRUE;
   }
 
   /**
