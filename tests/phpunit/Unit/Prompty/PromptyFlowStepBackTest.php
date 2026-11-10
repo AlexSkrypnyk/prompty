@@ -355,6 +355,47 @@ final class PromptyFlowStepBackTest extends PromptyTestCase {
     $this->assertSame('', $r['unread']);
   }
 
+  public function testTaskAfterReopenedStepRunsAgain(): void {
+    $runs = [];
+    $steps = function () use (&$runs): array {
+      return [
+        'guest' => Prompty::text('Guest name'),
+        'ticket' => Prompty::task('Print the ticket', function () use (&$runs): bool {
+          $runs[] = Prompty::results()['guest'] ?? NULL;
+
+          return TRUE;
+        }),
+        'note' => Prompty::text('Note for the kitchen'),
+      ];
+    };
+
+    $r = $this->runFlow($steps, 'Ann' . self::KEY_ENTER . self::KEY_CTRL_U . 'e' . self::KEY_ENTER . 'Hot' . self::KEY_ENTER);
+
+    // The task asks nothing, so the key skips it and reopens the guest step.
+    $this->assertSame(['guest' => 'Anne', 'ticket' => TRUE, 'note' => 'Hot'], $r['result']);
+    $this->assertSame(['Ann', 'Anne'], $runs);
+  }
+
+  public function testTaskBeforeReopenedStepIsNotRunAgain(): void {
+    $runs = 0;
+    $steps = function () use (&$runs): array {
+      return [
+        'ticket' => Prompty::task('Print the ticket', function () use (&$runs): bool {
+          $runs++;
+
+          return TRUE;
+        }),
+        'guest' => Prompty::text('Guest name'),
+        'note' => Prompty::text('Note for the kitchen'),
+      ];
+    };
+
+    $r = $this->runFlow($steps, 'Ann' . self::KEY_ENTER . self::KEY_CTRL_U . 'e' . self::KEY_ENTER . 'Hot' . self::KEY_ENTER);
+
+    $this->assertSame(['ticket' => TRUE, 'guest' => 'Anne', 'note' => 'Hot'], $r['result']);
+    $this->assertSame(1, $runs);
+  }
+
   public function testEraseMovesUpTheRowsDrawnSinceTheReopenedStep(): void {
     $r = $this->runFlow(self::textSteps(), 'Ann' . self::KEY_ENTER . self::KEY_CTRL_U . self::KEY_ENTER . '4' . self::KEY_ENTER . 'Hot' . self::KEY_ENTER);
 
