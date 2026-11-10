@@ -133,6 +133,17 @@ Prompty::text('Dish name', placeholder: 'pear tart', discovered: '  ');
 
 In a flow with a `dish` step, an empty `PROMPTY_DISH=` takes the fallback without prompting. An unset `PROMPTY_DISH` opens the prompt, where submitting without typing gives the same fallback.
 
+A placeholder such as `e.g. pear tart` is an example, so it makes a poor answer. To keep it out of the results, pass `placeholder_fallback: FALSE` to [`Prompty::configure()`](#configuration). To set it for 1 flow, pass it to `Prompty::flow()`. An empty submit then returns `''`, and so does a blank discovered value when no `default` is set:
+
+```php
+Prompty::configure(placeholder_fallback: FALSE);
+
+// Returns '' when the user clears the input and presses Enter.
+Prompty::text('Dish name', default: 'pear tart', placeholder: 'e.g. pear tart');
+```
+
+The option covers `text` and `suggest`, and both still draw the placeholder while the input is empty. To make `text` re-prompt on an empty answer, add a [`validate`](#validation) callback that rejects `''`.
+
 <table>
   <tr>
     <td></td>
@@ -493,8 +504,8 @@ A blank value is empty or holds only whitespace. An exported variable that was n
 
 | Widget        | A blank value resolves to                                       |
 |---------------|-----------------------------------------------------------------|
-| `text`        | The `default`, or the `placeholder` when no default was seeded  |
-| `suggest`     | The `default`, or the `placeholder` when no default was seeded  |
+| `text`        | The `default`, or the [`placeholder`](#text) when no default was seeded |
+| `suggest`     | The `default`, or the [`placeholder`](#text) when no default was seeded |
 | `multiselect` | An empty selection, `[]`                                        |
 | `select`      | Rejected - one choice has no answer that means "nothing chosen" |
 | `confirm`     | Rejected - yes and no are the only answers                      |
@@ -880,6 +891,7 @@ The following table lists every option and its default:
 | `falsy`           | `list<string>`          | Values a confirm reads as no. Default `0`, `false`, `no`.                     |
 | `interactive`     | `bool`                  | If false, every widget answers without reading input. Default `true`.         |
 | `scroll`          | `int`                   | Options select, multiselect and suggest show at once. Default `0` shows all.   |
+| `placeholder_fallback` | `bool`             | If false, text and suggest answer an empty submit with `''`. Default `true`.  |
 | `symbols_unicode` | `array<string, string>` | Unicode symbol overrides.                                                     |
 | `symbols_ascii`   | `array<string, string>` | ASCII symbol overrides.                                                       |
 | `colors`          | `array<string, string>` | ANSI color escape overrides.                                                  |
