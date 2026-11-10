@@ -59,3 +59,24 @@ $r = Prompty::multiselect('Seats',
 );
 $selection = is_array($r) ? array_filter($r, is_string(...)) : NULL;
 echo '  Result: ' . ($selection === NULL ? 'cancelled' : ($selection === [] ? 'none' : var_export($selection, TRUE))) . "\n";
+
+echo "\n--- Multiselect: answer order ---\n";
+// Accepting the default answers herbs, bread. Anything newly checked follows
+// in option order.
+$r = Prompty::multiselect('Extras',
+  options: ['bread' => 'Bread', 'olives' => 'Olives', 'herbs' => 'Herbs'],
+  default: ['herbs', 'bread'],
+  description: 'Answered in the order of the default.',
+  order: 'default',
+);
+$selection = is_array($r) ? array_filter($r, is_string(...)) : NULL;
+echo '  Result: ' . ($selection === NULL ? 'cancelled' : ($selection === [] ? 'none' : implode(', ', $selection))) . "\n";
+
+echo "\n--- Multiselect: answer order follows the checks ---\n";
+$r = Prompty::multiselect('Drinks',
+  options: ['tea' => 'Tea', 'coffee' => 'Coffee', 'juice' => 'Juice'],
+  description: 'Poured in the order they are checked.',
+  order: 'selection',
+);
+$selection = is_array($r) ? array_filter($r, is_string(...)) : NULL;
+echo '  Result: ' . ($selection === NULL ? 'cancelled' : ($selection === [] ? 'none' : implode(', ', $selection))) . "\n";

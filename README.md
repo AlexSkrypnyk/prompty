@@ -228,6 +228,28 @@ $extras = Prompty::multiselect('Extras',
 
 As with [select](#select), an empty `options` throws an `InvalidArgumentException` that names the widget.
 
+The answer lists the checked keys in option order. To answer a saved list in its own order, pass `order`:
+
+```php
+$extras = Prompty::multiselect('Extras',
+  options: [
+    'bread' => 'Bread',
+    'olives' => 'Olives',
+    'herbs' => 'Herbs',
+  ],
+  default: ['herbs', 'bread'],
+  order: 'default',
+);
+```
+
+Accepting that default gives `['herbs', 'bread']`. Pick the `order` that matches how you use the answer:
+
+- `'options'`, the default, lists the keys in option order.
+- `'default'` lists the `default` keys that are still checked, in `default` order. Newly checked keys follow in option order.
+- `'selection'` lists the keys in the order they were checked. The `default` keys count as checked first, in `default` order. A key checked again moves to the end.
+
+The same `order` applies to a [discovered](#environment-variable-discovery) value and an environment variable. With `'selection'`, those keep the order they give. An unknown `order` throws an `InvalidArgumentException` before the widget draws anything.
+
 ### Suggest
 
 Free-form text input with suggestions. As you type, the options that contain the typed text show under the input, ignoring case. Press <kbd>↑</kbd> or <kbd>↓</kbd> to focus a suggestion and <kbd>Enter</kbd> to take it. With no suggestion focused, <kbd>Enter</kbd> takes the typed text as is, so the answer can be anything:
@@ -543,7 +565,7 @@ To change the prefix for 1 flow, pass `env_prefix`. To change it for every flow,
 $results = Prompty::flow(fn(): array => [/* ... */], env_prefix: 'KITCHEN_');
 ```
 
-A multiselect reads its variable as a comma-separated list, so `PROMPTY_EXTRAS=bread,olives` selects both options. The result is deduplicated and in declared option order, so `PROMPTY_EXTRAS=olives,bread,olives` also gives `['bread', 'olives']`. A trailing comma is ignored.
+A multiselect reads its variable as a comma-separated list, so `PROMPTY_EXTRAS=bread,olives` selects both options. The result is deduplicated and follows the widget's [`order`](#multiselect). With the default `'options'`, `PROMPTY_EXTRAS=olives,bread,olives` also gives `['bread', 'olives']`. A trailing comma is ignored.
 
 Every widget also takes a `discovered:` argument for an answer the script already holds, such as a parsed `--extras=bread,olives` flag. A widget given a `discovered:` value skips its prompt, inside a flow or outside one. In a flow, the `discovered:` value wins over the environment variable.
 
