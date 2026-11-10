@@ -57,8 +57,8 @@ Prompty::table([
 ], headers: ['Field', 'Answer']);
 
 echo "\n--- Box: with a title ---\n";
+Prompty::intro('Kitchen order');
 Prompty::box("Plate the tart, then:\n  ring the bell\n  call the table", title: 'Order ready');
-Prompty::outro('Order sent!');
 
 echo "\n--- Box: without a title ---\n";
 Prompty::intro('Kitchen order');
