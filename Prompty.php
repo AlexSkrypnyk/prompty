@@ -427,6 +427,8 @@ class Prompty {
    * Whether an active widget draws the keys it accepts under it.
    */
   protected bool $cfgLegend = FALSE;
+
+  /**
    * Whether a select or multiselect default outside the options throws.
    */
   protected bool $cfgStrictDefault = TRUE;
