@@ -87,6 +87,13 @@ class Prompty {
   protected const array RESERVED_CTRL_KEYS = ['ctrl-c', 'ctrl-h', 'ctrl-i', 'ctrl-j', 'ctrl-m'];
 
   /**
+   * The types a note can have.
+   *
+   * Each type has a 'note_<type>' symbol and a 'note_<type>' colour.
+   */
+  protected const array NOTE_TYPES = ['info', 'success', 'warning', 'error'];
+
+  /**
    * Characters a terminal draws 2 columns wide.
    *
    * Covers the East Asian wide and fullwidth ranges, emoji presentation
@@ -116,6 +123,14 @@ class Prompty {
    * Whether a flow is currently being defined/executed.
    */
   protected static bool $inFlow = FALSE;
+
+  /**
+   * Whether the steps callable of a flow is running.
+   *
+   * A note declares a step only then; once the flow walks its steps, a note
+   * prints.
+   */
+  protected static bool $defining = FALSE;
 
   /**
    * Handler called for every answer a validator rejects.
@@ -249,6 +264,10 @@ class Prompty {
     'legend_vertical' => '↑↓',
     'legend_horizontal' => '←→',
     'legend_separator' => '·',
+    'note_info' => '●',
+    'note_success' => '✓',
+    'note_warning' => '▲',
+    'note_error' => '✕',
   ];
 
   /**
@@ -289,6 +308,10 @@ class Prompty {
     'legend_vertical' => 'up/down',
     'legend_horizontal' => 'left/right',
     'legend_separator' => '-',
+    'note_info' => '*',
+    'note_success' => '+',
+    'note_warning' => '!',
+    'note_error' => 'x',
   ];
 
   /**
@@ -317,6 +340,10 @@ class Prompty {
     'blue' => "\033[34m",
     'italic' => "\033[3m",
     'underline' => "\033[4m",
+    'note_info' => "\033[34m",
+    'note_success' => "\033[32m",
+    'note_warning' => "\033[33m",
+    'note_error' => "\033[31m",
   ];
 
   /**
@@ -953,7 +980,15 @@ class Prompty {
     static::$inFlow = TRUE;
 
     try {
-      $steps = $steps();
+      static::$defining = TRUE;
+
+      try {
+        $steps = $steps();
+      }
+      finally {
+        static::$defining = FALSE;
+      }
+
       $p->assertStepKeys($steps);
 
       $options = [
@@ -1029,7 +1064,7 @@ class Prompty {
    * @param callable|null $condition
    *   Optional condition callback; skips the step when it returns FALSE. The
    *   builder is not called for a skipped step.
-   * @param array<string, mixed> $children
+   * @param array<array-key, mixed> $children
    *   Child steps to execute after this step.
    *
    * @return array<string, mixed>
@@ -1102,6 +1137,49 @@ class Prompty {
   }
 
   /**
+   * Prints an informational, success, warning or error message.
+   *
+   * The type's symbol takes the place of the bar on the first line, and the
+   * message is drawn in the type's colour. Inside the steps callable of a
+   * flow it declares a keyless step instead, drawn in the tree where it sits.
+   * A note adds nothing to the results.
+   *
+   * @param string $message
+   *   The message. A newline starts another line, and SGR styling is kept.
+   * @param string $type
+   *   One of 'info', 'success', 'warning' or 'error'.
+   * @param callable|null $condition
+   *   Optional condition callback; hides the note when it returns FALSE. Only
+   *   a note declared in a flow has answers to test.
+   *
+   * @return array<string, mixed>|null
+   *   The note step array while a flow is being defined, otherwise NULL.
+   *
+   * @throws \InvalidArgumentException
+   *   When the type is not one of the 4 types.
+   * @throws \LogicException
+   *   When a condition is given outside the steps callable of a flow.
+   */
+  public static function note(string $message, string $type = 'info', ?callable $condition = NULL): ?array {
+    if (!in_array($type, static::NOTE_TYPES, TRUE)) {
+      throw new \InvalidArgumentException(sprintf('Note type "%s" is not valid. Use 1 of: %s.', $type, implode(', ', static::NOTE_TYPES)));
+    }
+
+    if (static::$defining) {
+      return ['__note' => $message, '__type' => $type, '__condition' => $condition];
+    }
+
+    if ($condition !== NULL) {
+      throw new \LogicException('A note condition tests the answers collected so far, so it can only be given to a note declared inside the callable passed to Prompty::flow().');
+    }
+
+    $p = static::instance();
+    $p->printLines($p->renderNote($message, $type));
+
+    return NULL;
+  }
+
+  /**
    * Renders a text input widget, returning the user's input string.
    *
    * @param string $label
@@ -1132,7 +1210,7 @@ class Prompty {
    *   message when it is not.
    * @param callable|null $condition
    *   Optional condition callback; skips the step when it returns FALSE.
-   * @param array<string, mixed> $children
+   * @param array<array-key, mixed> $children
    *   Child steps to execute after this widget.
    * @param array<string, mixed>|null $ctx
    *   Flow context passed by the flow walker.
@@ -1383,7 +1461,7 @@ class Prompty {
    *   an error message when it is not.
    * @param callable|null $condition
    *   Optional condition callback; skips the step when it returns FALSE.
-   * @param array<string, mixed> $children
+   * @param array<array-key, mixed> $children
    *   Child steps to execute after this widget.
    * @param array<string, mixed>|null $ctx
    *   Flow context passed by the flow walker.
@@ -1668,7 +1746,7 @@ class Prompty {
    *   or an error message when it is not.
    * @param callable|null $condition
    *   Optional condition callback; skips the step when it returns FALSE.
-   * @param array<string, mixed> $children
+   * @param array<array-key, mixed> $children
    *   Child steps to execute after this widget.
    * @param array<string, mixed>|null $ctx
    *   Flow context passed by the flow walker.
@@ -1978,7 +2056,7 @@ class Prompty {
    *   message when it is not.
    * @param callable|null $condition
    *   Optional condition callback; skips the step when it returns FALSE.
-   * @param array<string, mixed> $children
+   * @param array<array-key, mixed> $children
    *   Child steps to execute after this widget.
    * @param array<string, mixed>|null $ctx
    *   Flow context passed by the flow walker.
@@ -2259,7 +2337,7 @@ class Prompty {
    *   message when it is not.
    * @param callable|null $condition
    *   Optional condition callback; skips the step when it returns FALSE.
-   * @param array<string, mixed> $children
+   * @param array<array-key, mixed> $children
    *   Child steps to execute after this widget.
    * @param array<string, mixed>|null $ctx
    *   Flow context passed by the flow walker.
@@ -2481,7 +2559,7 @@ class Prompty {
    *   completed line.
    * @param callable|null $condition
    *   Optional condition callback; skips the step when it returns FALSE.
-   * @param array<string, mixed> $children
+   * @param array<array-key, mixed> $children
    *   Child steps to execute after this widget.
    * @param array<string, mixed>|null $ctx
    *   Flow context passed by the flow walker.
@@ -2639,7 +2717,7 @@ class Prompty {
    *   result on success and expands into the full output on failure.
    * @param callable|null $condition
    *   Optional condition callback; skips the step when it returns FALSE.
-   * @param array<string, mixed> $children
+   * @param array<array-key, mixed> $children
    *   Child steps to execute after this task.
    * @param array<string, mixed>|null $ctx
    *   Flow context passed by the flow walker.
@@ -4689,6 +4767,15 @@ class Prompty {
         continue;
       }
 
+      if ($this->isNote($step)) {
+        /** @var array{__note: string} $step */
+        if (is_string($key)) {
+          throw new \InvalidArgumentException(sprintf('Note "%s" has the key "%s". A note adds no answer to the results, so it takes no key.', $step['__note'], $key));
+        }
+
+        continue;
+      }
+
       if ((string) $key === '') {
         throw new \InvalidArgumentException('A step must have a key: it names the answer in the results and the variable the answer can come from.');
       }
@@ -5936,6 +6023,37 @@ class Prompty {
   }
 
   /**
+   * Renders a note: its type's symbol, then the message in its type's colour.
+   *
+   * @param string $message
+   *   The message. A newline starts another line.
+   * @param string $type
+   *   The note type, 1 of NOTE_TYPES.
+   * @param int $depth
+   *   The current nesting depth.
+   * @param array<int, bool> $open
+   *   Tracks which depth levels have continuing siblings.
+   *
+   * @return array<int, string>
+   *   The rendered lines, closed with a bar line.
+   */
+  protected function renderNote(string $message, string $type, int $depth = 0, array $open = []): array {
+    $key = 'note_' . $type;
+    $body = $this->bar() . ($depth > 0 ? $this->bodyPrefix($depth, $open) : $this->cfgSpacing['indent']);
+    $text_lines = explode("\n", $message);
+
+    $lines = $this->renderMarkedLabel($this->styled(array_shift($text_lines), $key), $this->color($this->cfgSymbols[$key], $key), $depth, $open);
+
+    foreach ($text_lines as $text_line) {
+      $lines = array_merge($lines, $this->wrap($body, $this->styled($text_line, $key), $body));
+    }
+
+    $lines[] = $this->bar() . ($depth > 0 ? $this->bodyPrefix($depth, $open) : '');
+
+    return $lines;
+  }
+
+  /**
    * Extracts the condition callback a flow step was declared with.
    *
    * @param mixed $step
@@ -5965,6 +6083,47 @@ class Prompty {
    */
   protected function isSection(mixed $step): bool {
     return is_array($step) && array_key_exists('__section', $step);
+  }
+
+  /**
+   * Checks whether a flow step is a note.
+   *
+   * @param mixed $step
+   *   A flow step.
+   *
+   * @return bool
+   *   TRUE when the step was declared with Prompty::note().
+   */
+  protected function isNote(mixed $step): bool {
+    return is_array($step) && array_key_exists('__note', $step);
+  }
+
+  /**
+   * Draws a flow note at its depth in the tree, unless its condition fails.
+   *
+   * @param array<string, mixed> $note
+   *   The note step array.
+   * @param array<array-key, mixed> $rest
+   *   The steps after the note at the same depth.
+   * @param int $depth
+   *   The nesting depth of the note.
+   */
+  protected function drawNote(array $note, array $rest, int $depth): void {
+    $condition = $this->stepCondition($note);
+
+    if ($condition !== NULL && !$condition($this->results)) {
+      return;
+    }
+
+    // The answers so far are known, so the connector settles before drawing.
+    $this->markOpen($depth, !$this->hasVisibleStep($rest, $this->results));
+
+    /** @var string $message */
+    $message = $note['__note'];
+    /** @var string $type */
+    $type = $note['__type'];
+    $this->printLines($this->renderNote($message, $type, $depth, $this->open));
+    $this->drawn = TRUE;
   }
 
   /**
@@ -6170,6 +6329,13 @@ class Prompty {
       if ($this->isSection($step)) {
         /** @var array<string, mixed> $step */
         $this->drawSection($step, array_slice($steps, $index));
+
+        continue;
+      }
+
+      if ($this->isNote($step)) {
+        /** @var array<string, mixed> $step */
+        $this->drawNote($step, array_slice($steps, $index), $depth);
 
         continue;
       }
