@@ -129,6 +129,30 @@ final class PromptyTaskOutputTest extends PromptyTestCase {
     yield 'live' => [TRUE, "\033[?25l|  Preheating the oven\n\033[1A\r\033[J+  Preheating the oven\n|  + Oven ready\n|\n\033[?25h"];
   }
 
+  #[DataProvider('dataProviderConfigureOutputWhileDrawing')]
+  public function testConfigureOutputWhileDrawing(bool $is_streamed): void {
+    $p = $this->createAndSetInstance(['interactive' => FALSE]);
+    $this->setProperty($p, 'cfgOutput', function (string $chunk): void {
+      $this->started .= $chunk;
+
+      if (str_contains($chunk, 'Oven ready')) {
+        Prompty::configure(output: $this->collectConfigured(...));
+      }
+    });
+
+    Prompty::task('Preheating the oven', action: fn(): bool => TRUE, success: 'Oven ready', stream: $is_streamed);
+    Prompty::output(['Oven off']);
+
+    $this->assertSame("o  Preheating the oven\n|  + Oven ready\n|\n", $this->promptyNormalizeOutput($this->started));
+    $this->assertSame("Oven off\n", $this->promptyNormalizeOutput($this->configured));
+    $this->assertSame([], $this->getProperty($p, 'drawTargets'));
+  }
+
+  public static function dataProviderConfigureOutputWhileDrawing(): \Iterator {
+    yield 'spinner' => [FALSE];
+    yield 'streamed' => [TRUE];
+  }
+
   public function testStreamLiveConfigureOutput(): void {
     $p = $this->createAndSetInstance();
     $this->setProperty($p, 'isTerminal', TRUE);

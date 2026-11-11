@@ -527,6 +527,13 @@ class Prompty {
   protected ?int $streamDrawing = NULL;
 
   /**
+   * Output targets pinned by drawTo(), innermost last.
+   *
+   * @var list<resource|\Closure|null>
+   */
+  protected array $drawTargets = [];
+
+  /**
    * Output drawn while the stream's buffer handler runs, or NULL outside it.
    */
   protected ?string $streamBuffer = NULL;
@@ -4005,13 +4012,18 @@ class Prompty {
    * Writes a chunk of rendered output to the configured target.
    *
    * While a streamed task runs, the target is the one the outermost stream
-   * started on, since every stream draws into it.
+   * started on, since every stream draws into it. Otherwise a target pinned
+   * by drawTo() comes before the configured one.
    *
    * @param string $chunk
    *   The bytes to write, escape sequences included.
    */
   protected function write(string $chunk): void {
-    $target = $this->streams === [] ? $this->cfgOutput : $this->streams[0]['output'];
+    $target = match (TRUE) {
+      $this->streams !== [] => $this->streams[0]['output'],
+      $this->drawTargets !== [] => $this->drawTargets[array_key_last($this->drawTargets)],
+      default => $this->cfgOutput,
+    };
 
     if ($this->streamBuffer !== NULL && $target === NULL) {
       $this->streamBuffer .= $chunk;
@@ -4045,7 +4057,7 @@ class Prompty {
   }
 
   /**
-   * Runs a draw against an output target and restores the configured one.
+   * Runs a draw against an output target, leaving the configuration alone.
    *
    * A task draws its result on the target it started on, even when its action
    * configured another.
@@ -4056,14 +4068,13 @@ class Prompty {
    *   Draws the output.
    */
   protected function drawTo($target, \Closure $draw): void {
-    $configured = $this->cfgOutput;
-    $this->cfgOutput = $target;
+    $this->drawTargets[] = $target;
 
     try {
       $draw();
     }
     finally {
-      $this->cfgOutput = $configured;
+      array_pop($this->drawTargets);
     }
   }
 
