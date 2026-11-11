@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace AlexSkrypnyk\Prompty\Tests\Unit\Prompty;
 
 use AlexSkrypnyk\Prompty\Prompty;
+use AlexSkrypnyk\Prompty\PromptyFlow;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Group;
@@ -307,8 +308,8 @@ final class PromptyWidgetSuggestTest extends PromptyTestCase {
   }
 
   #[DataProvider('dataProviderInFlow')]
-  public function testInFlow(\Closure $steps, string $keystrokes, array $expected): void {
-    $r = $this->promptyRun(fn(): mixed => Prompty::flow($steps, numbering: TRUE), $keystrokes);
+  public function testInFlow(\Closure $build, string $keystrokes, array $expected): void {
+    $r = $this->promptyRun(fn(): mixed => $build(Prompty::flow())->run(numbering: TRUE), $keystrokes);
 
     $this->assertSame($expected, $r['result']);
     $this->assertStringContainsString('+  Dish (1)', $r['output']);
@@ -316,16 +317,17 @@ final class PromptyWidgetSuggestTest extends PromptyTestCase {
 
   public static function dataProviderInFlow(): \Iterator {
     yield 'closure' => [
-      static fn(): array => ['dish' => Prompty::suggest('Dish', options: self::DISHES, scroll: 2)],
+      static fn(PromptyFlow $flow): PromptyFlow => $flow->suggest('dish', 'Dish', options: self::DISHES, scroll: 2),
       'ou' . self::KEY_DOWN . self::KEY_ENTER,
       ['dish' => 'Onion Soup'],
     ];
     yield 'step with a condition and children' => [
-      static fn(): array => [
-        'dish' => Prompty::suggest('Dish', options: self::DISHES, placeholder: 'Pear Tart', condition: fn(): bool => TRUE, children: [
-          'send' => Prompty::confirm('Send order?'),
-        ]),
-      ],
+      static fn(PromptyFlow $flow): PromptyFlow => $flow
+        ->suggest('dish', 'Dish', options: self::DISHES, placeholder: 'Pear Tart')
+          ->when(fn(): bool => TRUE)
+          ->children()
+            ->confirm('send', 'Send order?')
+          ->end(),
       self::KEY_ENTER . self::KEY_ENTER,
       ['dish' => 'Pear Tart', 'send' => TRUE],
     ];

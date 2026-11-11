@@ -185,9 +185,9 @@ final class PromptyMultiselectOrderTest extends PromptyTestCase {
 
     $result = NULL;
     $this->captureOutput(function () use (&$result, $order): void {
-      $result = Prompty::flow(fn(): array => [
-        'extras' => Prompty::multiselect('Extras', options: self::EXTRAS, default: ['herbs', 'bread'], order: $order),
-      ], unicode: FALSE);
+      $result = Prompty::flow()
+        ->multiselect('extras', 'Extras', options: self::EXTRAS, default: ['herbs', 'bread'], order: $order)
+        ->run(unicode: FALSE);
     });
 
     $this->assertSame(['extras' => $expected], $result);
@@ -279,9 +279,9 @@ final class PromptyMultiselectOrderTest extends PromptyTestCase {
       \InvalidArgumentException::class,
       'Order "random" for "Extras" is not valid. Use "options", "default" or "selection".',
       function (): void {
-        Prompty::flow(fn(): array => [
-          'extras' => Prompty::multiselect('Extras', options: self::EXTRAS, order: 'random', discovered: ['bread']),
-        ], unicode: FALSE);
+        Prompty::flow()
+          ->multiselect('extras', 'Extras', options: self::EXTRAS, order: 'random', discovered: ['bread'])
+          ->run(unicode: FALSE);
       },
     );
   }

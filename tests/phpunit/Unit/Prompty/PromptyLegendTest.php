@@ -175,7 +175,7 @@ final class PromptyLegendTest extends PromptyTestCase {
     $this->promptyInput('pear tart' . self::KEY_ENTER . self::KEY_ESCAPE);
 
     $flow = $this->captureOutput(function (): void {
-      Prompty::flow(fn(): array => ['dish' => Prompty::text('Dish name')], legend: TRUE);
+      Prompty::flow()->text('dish', 'Dish name')->run(legend: TRUE);
     });
 
     $after = $this->captureOutput(function (): void {

@@ -111,13 +111,13 @@ final class PromptyOutputTest extends PromptyTestCase {
     ];
 
     yield 'flow banners and steps' => [
-      fn(): mixed => Prompty::flow(fn(): array => ['dish' => Prompty::text('Dish name')], intro: 'Kitchen order', outro: 'Order sent to the kitchen!'),
+      fn(): mixed => Prompty::flow()->text('dish', 'Dish name')->run(intro: 'Kitchen order', outro: 'Order sent to the kitchen!'),
       'Onion Soup' . self::KEY_ENTER,
       'Onion Soup',
     ];
 
     yield 'flow cancellation' => [
-      fn(): mixed => Prompty::flow(fn(): array => ['dish' => Prompty::text('Dish name')], cancelled: 'Order cancelled.'),
+      fn(): mixed => Prompty::flow()->text('dish', 'Dish name')->run(cancelled: 'Order cancelled.'),
       self::KEY_CTRL_C,
       'Order cancelled.',
     ];
@@ -331,7 +331,7 @@ final class PromptyOutputTest extends PromptyTestCase {
 
     $written = '';
     $buffer = $this->captureOutput(function () use (&$written): void {
-      Prompty::flow(fn(): array => ['dish' => Prompty::text('Dish name')], output: function (string $chunk) use (&$written): void {
+      Prompty::flow()->text('dish', 'Dish name')->run(output: function (string $chunk) use (&$written): void {
         $written .= $chunk;
       });
     });
@@ -352,7 +352,7 @@ final class PromptyOutputTest extends PromptyTestCase {
       $global .= $chunk;
     });
 
-    Prompty::flow(fn(): array => ['dish' => Prompty::text('Dish name')], output: function (string $chunk) use (&$scoped): void {
+    Prompty::flow()->text('dish', 'Dish name')->run(output: function (string $chunk) use (&$scoped): void {
       $scoped .= $chunk;
     });
     Prompty::outro('Order sent to the kitchen!');
@@ -369,11 +369,11 @@ final class PromptyOutputTest extends PromptyTestCase {
     $thrown = NULL;
 
     try {
-      Prompty::flow(function (): array {
+      Prompty::flow()->text('dish', function (): string {
         Prompty::output(['Table 4']);
 
         throw new \RuntimeException('Kitchen closed.');
-      }, output: function (string $chunk) use (&$written): void {
+      })->run(output: function (string $chunk) use (&$written): void {
         $written .= $chunk;
       });
     }
@@ -390,7 +390,7 @@ final class PromptyOutputTest extends PromptyTestCase {
     $this->createAndSetInstance();
 
     $output = $this->captureOutputThrows(\InvalidArgumentException::class, 'Output target of type "int" for "output" is not valid. Provide a writable stream or a callable that receives each chunk.', function (): void {
-      Prompty::flow(fn(): array => ['dish' => Prompty::text('Dish name')], intro: 'Kitchen order', output: 2);
+      Prompty::flow()->text('dish', 'Dish name')->run(intro: 'Kitchen order', output: 2);
     });
 
     $this->assertSame('', $output);

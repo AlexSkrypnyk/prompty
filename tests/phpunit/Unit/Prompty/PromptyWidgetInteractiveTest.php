@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace AlexSkrypnyk\Prompty\Tests\Unit\Prompty;
 
 use AlexSkrypnyk\Prompty\Prompty;
+use AlexSkrypnyk\Prompty\PromptyFlow;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Group;
@@ -505,24 +506,19 @@ final class PromptyWidgetInteractiveTest extends PromptyTestCase {
     yield 'confirm submits no' => [static fn(self $test): array => $test->runConfirmWidget(self::KEY_ENTER, default: FALSE), FALSE, ['No']];
   }
 
-  #[DataProvider('dataProviderDefaultThreadsThroughFlowClosure')]
-  public function testDefaultThreadsThroughFlowClosure(\Closure $widget, mixed $expected): void {
-    $r = $this->promptyRun(function () use ($widget): mixed {
-      $closure = $widget();
-      $this->assertInstanceOf(\Closure::class, $closure);
+  #[DataProvider('dataProviderDefaultThreadsThroughFlowBuilder')]
+  public function testDefaultThreadsThroughFlowBuilder(\Closure $build, mixed $expected): void {
+    $r = $this->promptyRun(fn(): mixed => $build(Prompty::flow())->run(), self::KEY_ENTER);
 
-      return $closure($this->defaultCtx());
-    }, self::KEY_ENTER);
-
-    $this->assertSame($expected, $r['result']);
+    $this->assertSame(['step' => $expected], $r['result']);
   }
 
-  public static function dataProviderDefaultThreadsThroughFlowClosure(): \Iterator {
-    yield 'text' => [static fn(): mixed => Prompty::text('Name', default: 'from-closure', placeholder: 'ph'), 'from-closure'];
-    yield 'select' => [static fn(): mixed => Prompty::select('Framework', options: ['react' => 'React', 'vue' => 'Vue'], default: 'vue'), 'vue'];
+  public static function dataProviderDefaultThreadsThroughFlowBuilder(): \Iterator {
+    yield 'text' => [static fn(PromptyFlow $flow): PromptyFlow => $flow->text('step', 'Dish name', default: 'pear tart', placeholder: 'onion soup'), 'pear tart'];
+    yield 'select' => [static fn(PromptyFlow $flow): PromptyFlow => $flow->select('step', 'Course', options: ['main' => 'Main', 'dessert' => 'Dessert'], default: 'dessert'), 'dessert'];
     yield 'multiselect' => [
-      static fn(): mixed => Prompty::multiselect('Features', options: ['ts' => 'TypeScript', 'eslint' => 'ESLint'], default: ['ts']),
-      ['ts'],
+      static fn(PromptyFlow $flow): PromptyFlow => $flow->multiselect('step', 'Extras', options: ['bread' => 'Bread', 'olives' => 'Olives'], default: ['bread']),
+      ['bread'],
     ];
   }
 
@@ -737,23 +733,18 @@ EXPECTED,
     yield 'confirm cancelled' => ['confirm', self::KEY_CTRL_C, '(cancelled)'];
   }
 
-  #[DataProvider('dataProviderHelpThreadsThroughFlowClosure')]
-  public function testHelpThreadsThroughFlowClosure(\Closure $widget, string $help): void {
-    $r = $this->promptyRun(function () use ($widget): mixed {
-      $closure = $widget();
-      $this->assertInstanceOf(\Closure::class, $closure);
-
-      return $closure($this->ctx());
-    }, self::KEY_ENTER);
+  #[DataProvider('dataProviderHelpThreadsThroughFlowBuilder')]
+  public function testHelpThreadsThroughFlowBuilder(\Closure $build, string $help): void {
+    $r = $this->promptyRun(fn(): mixed => $build(Prompty::flow())->run(), self::KEY_ENTER);
 
     $this->assertStringContainsString($help, $r['output']);
   }
 
-  public static function dataProviderHelpThreadsThroughFlowClosure(): \Iterator {
-    yield 'text' => [static fn(): mixed => Prompty::text('Dish name', help: self::HELP['text']), self::HELP['text']];
-    yield 'select' => [static fn(): mixed => Prompty::select('Course', options: ['main' => 'Main'], help: self::HELP['select']), self::HELP['select']];
-    yield 'multiselect' => [static fn(): mixed => Prompty::multiselect('Extras', options: ['bread' => 'Bread'], help: self::HELP['multiselect']), self::HELP['multiselect']];
-    yield 'confirm' => [static fn(): mixed => Prompty::confirm('Send order?', help: self::HELP['confirm']), self::HELP['confirm']];
+  public static function dataProviderHelpThreadsThroughFlowBuilder(): \Iterator {
+    yield 'text' => [static fn(PromptyFlow $flow): PromptyFlow => $flow->text('step', 'Dish name', help: self::HELP['text']), self::HELP['text']];
+    yield 'select' => [static fn(PromptyFlow $flow): PromptyFlow => $flow->select('step', 'Course', options: ['main' => 'Main'], help: self::HELP['select']), self::HELP['select']];
+    yield 'multiselect' => [static fn(PromptyFlow $flow): PromptyFlow => $flow->multiselect('step', 'Extras', options: ['bread' => 'Bread'], help: self::HELP['multiselect']), self::HELP['multiselect']];
+    yield 'confirm' => [static fn(PromptyFlow $flow): PromptyFlow => $flow->confirm('step', 'Send order?', help: self::HELP['confirm']), self::HELP['confirm']];
   }
 
   // PromptyTestTrait usage example.
@@ -765,9 +756,12 @@ EXPECTED,
    * to keep it executable.
    */
   public function testDocumentedExample(): void {
-    $r = $this->promptyRun(fn(): mixed => Prompty::flow(fn(): array => [
-      'course' => Prompty::select('Course', options: ['starter' => 'Starter', 'main' => 'Main']),
-    ]), self::KEY_DOWN . self::KEY_ENTER);
+    $r = $this->promptyRun(fn(): mixed => Prompty::flow()
+      ->select('course', 'Course', options: [
+        'starter' => 'Starter',
+        'main' => 'Main',
+      ])
+      ->run(), self::KEY_DOWN . self::KEY_ENTER);
 
     $this->assertIsArray($r['result']);
     $this->assertSame('main', $r['result']['course']);

@@ -138,12 +138,12 @@ final class PromptyNonInteractiveTest extends PromptyTestCase {
   }
 
   public function testFlowAnswersEveryStep(): void {
-    $r = $this->runNonInteractive(fn(): mixed => Prompty::flow(fn(): array => [
-      'dish' => Prompty::text('Dish name', placeholder: 'pear tart'),
-      'course' => Prompty::select('Course', options: self::COURSES, default: 'main'),
-      'extras' => Prompty::multiselect('Extras', options: self::EXTRAS, default: ['bread']),
-      'send' => Prompty::confirm('Send order?'),
-    ], intro: 'Compose an order', outro: 'Order sent!', cancelled: 'Order cancelled.'));
+    $r = $this->runNonInteractive(fn(): mixed => Prompty::flow()
+      ->text('dish', 'Dish name', placeholder: 'pear tart')
+      ->select('course', 'Course', options: self::COURSES, default: 'main')
+      ->multiselect('extras', 'Extras', options: self::EXTRAS, default: ['bread'])
+      ->confirm('send', 'Send order?')
+      ->run(intro: 'Compose an order', outro: 'Order sent!', cancelled: 'Order cancelled.'));
 
     $this->assertSame(['dish' => '', 'course' => 'main', 'extras' => ['bread'], 'send' => TRUE], $r['result']);
     $this->assertStringContainsString('Compose an order', $r['output']);
@@ -154,24 +154,27 @@ final class PromptyNonInteractiveTest extends PromptyTestCase {
   public function testFlowEnvironmentWinsOverDefault(): void {
     $this->setEnvVars(['dish' => 'onion soup', 'course' => 'dessert', 'send' => 'no']);
 
-    $r = $this->runNonInteractive(fn(): mixed => Prompty::flow(fn(): array => [
-      'dish' => Prompty::text('Dish name', default: 'pear tart'),
-      'course' => Prompty::select('Course', options: self::COURSES, default: 'main'),
-      'send' => Prompty::confirm('Send order?', discovered: 'yes'),
-    ]));
+    $r = $this->runNonInteractive(fn(): mixed => Prompty::flow()
+      ->text('dish', 'Dish name', default: 'pear tart')
+      ->select('course', 'Course', options: self::COURSES, default: 'main')
+      ->confirm('send', 'Send order?', discovered: 'yes')
+      ->run());
 
     $this->assertSame(['dish' => 'onion soup', 'course' => 'dessert', 'send' => TRUE], $r['result']);
   }
 
   public function testNestedFlowFollowsConditions(): void {
-    $r = $this->runNonInteractive(fn(): mixed => Prompty::flow(fn(): array => [
-      'course' => Prompty::select('Course', options: ['main' => 'Main', 'dessert' => 'Dessert'], children: [
-        'method' => Prompty::select('Method', options: ['baked' => 'Baked', 'poached' => 'Poached'], default: 'poached', condition: fn(array $r): bool => $r['course'] === 'main'),
-        'finishes' => Prompty::multiselect('Finishes', options: ['glazed' => 'Glazed', 'dusted' => 'Dusted'], condition: fn(array $r): bool => $r['course'] === 'dessert'),
-      ]),
-    ]));
+    $r = $this->runNonInteractive(fn(): mixed => Prompty::flow()
+      ->select('course', 'Course', options: ['main' => 'Main', 'dessert' => 'Dessert'])
+        ->children()
+          ->select('method', 'Method', options: ['baked' => 'Baked', 'poached' => 'Poached'], default: 'poached')
+            ->when(fn(array $r): bool => $r['course'] === 'main')
+          ->multiselect('finishes', 'Finishes', options: ['glazed' => 'Glazed', 'dusted' => 'Dusted'])
+            ->when(fn(array $r): bool => $r['course'] === 'dessert')
+        ->end()
+      ->run());
 
-    $this->assertSame(['course' => 'main', 'method' => 'poached'], $r['result']);
+    $this->assertSame(['course' => 'main', 'method' => 'poached', 'finishes' => NULL], $r['result']);
     $this->assertStringContainsString('Poached', $r['output']);
     $this->assertStringNotContainsString('Finishes', $r['output']);
   }
@@ -183,9 +186,7 @@ final class PromptyNonInteractiveTest extends PromptyTestCase {
 
     $result = NULL;
     $this->captureOutput(function () use ($is_flow_interactive, &$result): void {
-      $result = Prompty::flow(fn(): array => [
-        'course' => Prompty::select('Course', options: self::COURSES),
-      ], interactive: $is_flow_interactive);
+      $result = Prompty::flow()->select('course', 'Course', options: self::COURSES)->run(interactive: $is_flow_interactive);
     });
 
     $this->assertSame($expected, $result);
@@ -202,9 +203,9 @@ final class PromptyNonInteractiveTest extends PromptyTestCase {
 
   public function testStandaloneWidgetsBetweenFlowsFollowTheGlobalSetting(): void {
     $r = $this->runNonInteractive(function (): array {
-      $first = Prompty::flow(fn(): array => ['dish' => Prompty::text('Dish name', default: 'pear tart')]);
+      $first = Prompty::flow()->text('dish', 'Dish name', default: 'pear tart')->run();
       $note = Prompty::text('Kitchen note', default: 'no nuts');
-      $second = Prompty::flow(fn(): array => ['send' => Prompty::confirm('Send order?', default: FALSE)]);
+      $second = Prompty::flow()->confirm('send', 'Send order?', default: FALSE)->run();
 
       return [$first, $note, $second];
     });

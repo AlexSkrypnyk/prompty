@@ -16,9 +16,9 @@ use AlexSkrypnyk\Prompty\Prompty;
 $opts = getopt('', ['back-key:']);
 $back_key = isset($opts['back-key']) && is_string($opts['back-key']) ? $opts['back-key'] : NULL;
 
-$results = Prompty::flow(fn(): array => [
-  'course' => Prompty::select('Course', options: ['starter' => 'Starter', 'main' => 'Main', 'dessert' => 'Dessert']),
-  'table' => Prompty::select('Table', options: ['4' => 'Table 4', '7' => 'Table 7']),
-], back_key: $back_key);
+$results = Prompty::flow()
+  ->select('course', 'Course', options: ['starter' => 'Starter', 'main' => 'Main', 'dessert' => 'Dessert'])
+  ->select('table', 'Table', options: ['4' => 'Table 4', '7' => 'Table 7'])
+  ->run(back_key: $back_key);
 
 echo 'Answer: ' . var_export($results, TRUE) . PHP_EOL;

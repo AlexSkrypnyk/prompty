@@ -42,9 +42,14 @@
         <exclude-pattern>starter.php</exclude-pattern>
     </rule>
 
-    <!-- A flow steps array holds keyed steps and keyless sections. -->
-    <rule ref="Squiz.Arrays.ArrayDeclaration">
-        <exclude name="Squiz.Arrays.ArrayDeclaration.KeySpecified"/>
-        <exclude name="Squiz.Arrays.ArrayDeclaration.NoKeySpecified"/>
+    <!-- A flow chain indents the steps inside children() under their parent. -->
+    <rule ref="Drupal.WhiteSpace.ObjectOperatorIndent">
+        <exclude-pattern>*</exclude-pattern>
+    </rule>
+
+    <!-- Allow a flow chain inside a data provider array to indent as its tree. -->
+    <rule ref="Drupal.Arrays.Array.ArrayIndentation">
+        <exclude-pattern>*.Test\.php</exclude-pattern>
+        <exclude-pattern>*.TestCase\.php</exclude-pattern>
     </rule>
 </ruleset>

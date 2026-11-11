@@ -236,11 +236,12 @@ final class PromptyWidgetRequiredTest extends PromptyTestCase {
   }
 
   public function testRequiredInFlow(): void {
-    $r = $this->promptyRun(fn(): ?array => Prompty::flow(fn(): array => [
-      'guest' => Prompty::text('Guest name', required: TRUE),
-      'extras' => Prompty::multiselect('Extras', options: self::EXTRAS, required: TRUE),
-      'special' => Prompty::suggest('Dish', options: self::DISHES, required: TRUE, condition: fn(array $r): bool => TRUE),
-    ], unicode: FALSE), self::KEY_ENTER . 'Jane Doe' . self::KEY_ENTER . self::KEY_ENTER . self::KEY_SPACE . self::KEY_ENTER . self::KEY_ENTER . 'soup' . self::KEY_ENTER);
+    $r = $this->promptyRun(fn(): ?array => Prompty::flow()
+      ->text('guest', 'Guest name', required: TRUE)
+      ->multiselect('extras', 'Extras', options: self::EXTRAS, required: TRUE)
+      ->suggest('special', 'Dish', options: self::DISHES, required: TRUE)
+        ->when(fn(array $r): bool => TRUE)
+      ->run(unicode: FALSE), self::KEY_ENTER . 'Jane Doe' . self::KEY_ENTER . self::KEY_ENTER . self::KEY_SPACE . self::KEY_ENTER . self::KEY_ENTER . 'soup' . self::KEY_ENTER);
 
     $this->assertSame(['guest' => 'Jane Doe', 'extras' => ['bread'], 'special' => 'soup'], $r['result']);
     $this->assertSame(3, substr_count($r['output'], '! Required.'));
@@ -250,9 +251,9 @@ final class PromptyWidgetRequiredTest extends PromptyTestCase {
     $this->setEnvVars(['guest' => ' ']);
 
     $this->captureOutputThrows(\InvalidArgumentException::class, 'Discovered value "" for "Guest name" is not valid. ' . self::MESSAGE, function (): void {
-      Prompty::flow(fn(): array => [
-        'guest' => Prompty::text('Guest name', required: self::MESSAGE),
-      ], unicode: FALSE);
+      Prompty::flow()
+        ->text('guest', 'Guest name', required: self::MESSAGE)
+        ->run(unicode: FALSE);
     });
   }
 

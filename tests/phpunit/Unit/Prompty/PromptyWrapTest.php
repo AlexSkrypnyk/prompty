@@ -552,12 +552,13 @@ EXPECTED,
   }
 
   public function testNestedFlowWraps(): void {
-    $r = $this->promptyRun(fn(): mixed => Prompty::flow(fn(): array => [
-      'extras' => Prompty::confirm('Extras', children: [
-        'note' => Prompty::text('Note about the extras for table 12'),
-        'bread' => Prompty::confirm('Bread'),
-      ]),
-    ], intro: 'Kitchen order for table 12 at the window', outro: 'The order is on the pass and the kitchen has started.', interactive: FALSE), '', ['width' => 30]);
+    $r = $this->promptyRun(fn(): mixed => Prompty::flow()
+      ->confirm('extras', 'Extras')
+        ->children()
+          ->text('note', 'Note about the extras for table 12')
+          ->confirm('bread', 'Bread')
+        ->end()
+      ->run(intro: 'Kitchen order for table 12 at the window', outro: 'The order is on the pass and the kitchen has started.', interactive: FALSE), '', ['width' => 30]);
 
     $this->assertSame(<<<'EXPECTED'
 

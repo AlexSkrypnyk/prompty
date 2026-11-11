@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace AlexSkrypnyk\Prompty\Tests\Unit\Prompty;
 
 use AlexSkrypnyk\Prompty\Prompty;
+use AlexSkrypnyk\Prompty\PromptyFlow;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Group;
@@ -19,20 +20,20 @@ final class PromptyFlowTotalTest extends PromptyTestCase {
   /**
    * Tests the numbered labels a flow draws with the step total.
    *
-   * @param \Closure $steps
-   *   The steps callable passed to flow().
+   * @param \Closure $build
+   *   Adds the steps to the flow builder it receives.
    * @param array<string, string> $env
    *   Answers supplied through environment variables.
    * @param array<string, string>|null $labels
-   *   Label overrides passed to flow().
+   *   Label overrides passed to run().
    * @param list<string> $expected
    *   The completed labels, in the order they are drawn.
    */
   #[DataProvider('dataProviderTotal')]
-  public function testTotal(\Closure $steps, array $env, ?array $labels, array $expected): void {
+  public function testTotal(\Closure $build, array $env, ?array $labels, array $expected): void {
     $this->setEnvVars($env);
 
-    $output = $this->captureOutput(fn(): ?array => Prompty::flow($steps, numbering: 'total', labels: $labels, unicode: FALSE, interactive: FALSE));
+    $output = $this->captureOutput(fn(): ?array => $build(Prompty::flow())->run(numbering: 'total', labels: $labels, unicode: FALSE, interactive: FALSE));
 
     preg_match_all('/\+  (.+)$/m', $output, $matches);
     $this->assertSame($expected, $matches[1]);
@@ -41,19 +42,18 @@ final class PromptyFlowTotalTest extends PromptyTestCase {
   }
 
   public static function dataProviderTotal(): \Iterator {
-    $order = fn(): array => [
-      'dish' => Prompty::text('Dish name', default: 'pear tart'),
-      'course' => Prompty::select('Course', options: ['starter' => 'Starter', 'main' => 'Main', 'dessert' => 'Dessert'], default: 'main'),
-      'finishes' => Prompty::multiselect('Finishes', options: ['glazed' => 'Glazed'], default: ['glazed'], condition: fn(array $r): bool => $r['course'] === 'dessert'),
-      'extras' => Prompty::multiselect('Extras', options: ['bread' => 'Bread'], default: ['bread']),
-    ];
+    $order = static fn(PromptyFlow $flow): PromptyFlow => $flow
+      ->text('dish', 'Dish name', default: 'pear tart')
+      ->select('course', 'Course', options: ['starter' => 'Starter', 'main' => 'Main', 'dessert' => 'Dessert'], default: 'main')
+      ->multiselect('finishes', 'Finishes', options: ['glazed' => 'Glazed'], default: ['glazed'])
+        ->when(fn(array $r): bool => $r['course'] === 'dessert')
+      ->multiselect('extras', 'Extras', options: ['bread' => 'Bread'], default: ['bread']);
 
     yield 'no conditions' => [
-      fn(): array => [
-        'dish' => Prompty::text('Dish name', default: 'pear tart'),
-        'course' => Prompty::select('Course', options: ['main' => 'Main'], default: 'main'),
-        'send' => Prompty::confirm('Send order?'),
-      ],
+      static fn(PromptyFlow $flow): PromptyFlow => $flow
+        ->text('dish', 'Dish name', default: 'pear tart')
+        ->select('course', 'Course', options: ['main' => 'Main'], default: 'main')
+        ->confirm('send', 'Send order?'),
       [],
       NULL,
       ['Dish name (1/3)', 'Course (2/3)', 'Send order? (3/3)'],
@@ -64,50 +64,50 @@ final class PromptyFlowTotalTest extends PromptyTestCase {
     yield 'answer adds a step and earlier steps keep their total' => [$order, ['course' => 'dessert'], NULL, ['Dish name (1/3)', 'Course (2/3)', 'Finishes (3/4)', 'Extras (4/4)']];
 
     yield 'answer removes a step' => [
-      fn(): array => [
-        'dish' => Prompty::text('Dish name', default: 'pear tart'),
-        'course' => Prompty::select('Course', options: ['starter' => 'Starter', 'main' => 'Main'], default: 'starter'),
-        'finishes' => Prompty::multiselect('Finishes', options: ['glazed' => 'Glazed'], default: ['glazed'], condition: fn(array $r): bool => ($r['course'] ?? '') !== 'starter'),
-        'extras' => Prompty::multiselect('Extras', options: ['bread' => 'Bread'], default: ['bread']),
-      ],
+      static fn(PromptyFlow $flow): PromptyFlow => $flow
+        ->text('dish', 'Dish name', default: 'pear tart')
+        ->select('course', 'Course', options: ['starter' => 'Starter', 'main' => 'Main'], default: 'starter')
+        ->multiselect('finishes', 'Finishes', options: ['glazed' => 'Glazed'], default: ['glazed'])
+          ->when(fn(array $r): bool => ($r['course'] ?? '') !== 'starter')
+        ->multiselect('extras', 'Extras', options: ['bread' => 'Bread'], default: ['bread']),
       [],
       NULL,
       ['Dish name (1/4)', 'Course (2/4)', 'Extras (3/3)'],
     ];
 
     yield 'condition that throws while counting' => [
-      fn(): array => [
-        'extras' => Prompty::multiselect('Extras', options: ['bread' => 'Bread', 'olives' => 'Olives'], default: ['bread']),
-        'toast' => Prompty::confirm('Toast the bread?', condition: fn(array $r): bool => in_array('bread', $r['extras'], TRUE)),
-      ],
+      static fn(PromptyFlow $flow): PromptyFlow => $flow
+        ->multiselect('extras', 'Extras', options: ['bread' => 'Bread', 'olives' => 'Olives'], default: ['bread'])
+        ->confirm('toast', 'Toast the bread?')
+          ->when(fn(array $r): bool => in_array('bread', $r['extras'], TRUE)),
       [],
       NULL,
       ['Extras (1/1)', 'Toast the bread? (2/2)'],
     ];
 
     yield 'children count under their parent' => [
-      fn(): array => [
-        'course' => Prompty::select('Course', options: ['main' => 'Main'], default: 'main', children: [
-          'method' => Prompty::select('Method', options: ['baked' => 'Baked'], children: [
-            'temperature' => Prompty::select('Temperature', options: ['low' => 'Low']),
-          ]),
-          'rest' => Prompty::confirm('Rest before serving?'),
-        ]),
-        'table' => Prompty::select('Table', options: ['4' => 'Table 4'], default: '4'),
-      ],
+      static fn(PromptyFlow $flow): PromptyFlow => $flow
+        ->select('course', 'Course', options: ['main' => 'Main'], default: 'main')
+          ->children()
+            ->select('method', 'Method', options: ['baked' => 'Baked'])
+              ->children()
+                ->select('temperature', 'Temperature', options: ['low' => 'Low'])
+              ->end()
+            ->confirm('rest', 'Rest before serving?')
+          ->end()
+        ->select('table', 'Table', options: ['4' => 'Table 4'], default: '4'),
       [],
       NULL,
       ['Course (1/2)', 'Method (1.1)', 'Temperature (1.1.1)', 'Rest before serving? (1.2)', 'Table (2/2)'],
     ];
 
     yield 'sections are not counted' => [
-      fn(): array => [
-        Prompty::section('The dish'),
-        'dish' => Prompty::text('Dish name', default: 'pear tart'),
-        Prompty::section('Service'),
-        'table' => Prompty::select('Table', options: ['4' => 'Table 4'], default: '4'),
-        'send' => Prompty::confirm('Send order?'),
-      ],
+      static fn(PromptyFlow $flow): PromptyFlow => $flow
+        ->section('The dish')
+        ->text('dish', 'Dish name', default: 'pear tart')
+        ->section('Service')
+        ->select('table', 'Table', options: ['4' => 'Table 4'], default: '4')
+        ->confirm('send', 'Send order?'),
       [],
       NULL,
       ['Dish name (1/3)', 'Table (2/3)', 'Send order? (3/3)'],
@@ -127,10 +127,11 @@ final class PromptyFlowTotalTest extends PromptyTestCase {
     });
 
     try {
-      $this->captureOutput(fn(): ?array => Prompty::flow(fn(): array => [
-        'course' => Prompty::select('Course', options: ['main' => 'Main'], default: 'main'),
-        'finishes' => Prompty::multiselect('Finishes', options: ['glazed' => 'Glazed'], condition: fn(array $r): bool => $r['course'] === 'dessert'),
-      ], numbering: 'total', unicode: FALSE, interactive: FALSE));
+      $this->captureOutput(fn(): ?array => Prompty::flow()
+        ->select('course', 'Course', options: ['main' => 'Main'], default: 'main')
+        ->multiselect('finishes', 'Finishes', options: ['glazed' => 'Glazed'])
+          ->when(fn(array $r): bool => $r['course'] === 'dessert')
+        ->run(numbering: 'total', unicode: FALSE, interactive: FALSE));
 
       trigger_error('Oven ready', E_USER_NOTICE);
     }
@@ -142,17 +143,13 @@ final class PromptyFlowTotalTest extends PromptyTestCase {
   }
 
   public function testNumberingTrueHasNoTotal(): void {
-    $output = $this->captureOutput(fn(): ?array => Prompty::flow(fn(): array => [
-      'dish' => Prompty::text('Dish name', default: 'pear tart'),
-    ], numbering: TRUE, unicode: FALSE, interactive: FALSE));
+    $output = $this->captureOutput(fn(): ?array => Prompty::flow()->text('dish', 'Dish name', default: 'pear tart')->run(numbering: TRUE, unicode: FALSE, interactive: FALSE));
 
     $this->assertStringContainsString('+  Dish name (1)', $output);
   }
 
   public function testNumberingInvalid(): void {
-    $output = $this->captureOutputThrows(\InvalidArgumentException::class, 'Numbering "totals" for "numbering" is not valid. Use TRUE to number steps, "total" to number them with the total, or FALSE for no numbers.', fn(): ?array => Prompty::flow(fn(): array => [
-      'dish' => Prompty::text('Dish name', default: 'pear tart'),
-    ], numbering: 'totals', labels: ['step_total' => '[%d of %d]'], interactive: FALSE));
+    $output = $this->captureOutputThrows(\InvalidArgumentException::class, 'Numbering "totals" for "numbering" is not valid. Use TRUE to number steps, "total" to number them with the total, or FALSE for no numbers.', fn(): ?array => Prompty::flow()->text('dish', 'Dish name', default: 'pear tart')->run(numbering: 'totals', labels: ['step_total' => '[%d of %d]'], interactive: FALSE));
 
     $this->assertSame('', $output);
     $this->assertStepTotalLabel('(%d/%d)');
@@ -182,9 +179,7 @@ final class PromptyFlowTotalTest extends PromptyTestCase {
   }
 
   public function testStepTotalFormatWithoutPlaceholders(): void {
-    $output = $this->captureOutput(fn(): ?array => Prompty::flow(fn(): array => [
-      'dish' => Prompty::text('Dish name', default: 'pear tart'),
-    ], numbering: 'total', labels: ['step_total' => '(next)'], unicode: FALSE, interactive: FALSE));
+    $output = $this->captureOutput(fn(): ?array => Prompty::flow()->text('dish', 'Dish name', default: 'pear tart')->run(numbering: 'total', labels: ['step_total' => '(next)'], unicode: FALSE, interactive: FALSE));
 
     $this->assertStringContainsString('+  Dish name (next)', $output);
   }
