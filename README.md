@@ -1273,6 +1273,8 @@ The stream captures output that reaches PHP's output layer:
 
 Output written straight to a file descriptor reaches the terminal unstyled. That covers `fwrite(STDOUT, ...)` and a process started with `proc_open()` that inherits the terminal.
 
+A streamed task draws on the output target it started on, even when its action calls `Prompty::configure(output: ...)`. Everything the action writes after that call stays in the stream, including Prompty's own output. The new target takes over after the task.
+
 A streamed action can run other tasks, streamed or behind a spinner, at any depth. Each nested task prints its label, output and result line once, indented under the task that runs it. After a nested task returns, the outer action keeps streaming. On a live terminal, the nested lines scroll through the outer window:
 
 ```php
