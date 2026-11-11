@@ -510,11 +510,12 @@ class Prompty {
    * The running streamed tasks, outermost first.
    *
    * Each holds the lines its action has written, the text after the last
-   * newline, whether it draws a live window, and the closure that draws it
-   * after new output. A live window is redrawn with no argument; otherwise
-   * each complete line is passed in to be printed.
+   * newline, whether it draws a live window, the closure that draws it after
+   * new output, and the output target it started on. A live window is redrawn
+   * with no argument; otherwise each complete line is passed in to be
+   * printed.
    *
-   * @var list<array{lines: list<string>, partial: string, is_live: bool, draw: \Closure}>
+   * @var list<array{lines: list<string>, partial: string, is_live: bool, draw: \Closure, output: resource|\Closure|null}>
    */
   protected array $streams = [];
 
@@ -2272,6 +2273,8 @@ class Prompty {
       ];
     };
 
+    $output = $p->cfgOutput;
+
     if ($is_live && $is_standalone) {
       $p->hideCursor();
     }
@@ -2298,7 +2301,7 @@ class Prompty {
       }
 
       if ($is_live && $is_standalone) {
-        $p->showCursor();
+        $p->drawTo($output, $p->showCursor(...));
       }
     }
   }
@@ -3696,6 +3699,7 @@ class Prompty {
    *   The action's return value.
    */
   protected function runSpinner(string $label, callable $action, \Closure $outcome, int $depth, array $open, bool $is_live): mixed {
+    $output = $this->cfgOutput;
     $frames = preg_split('//u', $this->cfgSymbols['spinner'], -1, PREG_SPLIT_NO_EMPTY) ?: [$this->cfgSymbols['spinner']];
     $frame = fn(int $index): array => $this->renderMarkedLabel($label, $this->color($frames[$index % count($frames)], 'cyan'), $depth, $open);
 
@@ -3711,7 +3715,7 @@ class Prompty {
       $this->stopAnimation($spinner);
 
       if ($is_live) {
-        $this->clearRows($rows);
+        $this->drawTo($output, fn() => $this->clearRows($rows));
       }
 
       throw $throwable;
@@ -3720,14 +3724,8 @@ class Prompty {
     $this->stopAnimation($spinner);
 
     $result = $this->renderTaskResult($resolved['ok'], $resolved['hint'], $resolved['details'], $resolved['message'], '', $depth, $resolved['open']);
-
-    if (!$is_live) {
-      $this->printLines($result);
-
-      return $value;
-    }
-
-    $this->redraw($rows, [...$this->renderTaskLabel($label, $resolved['ok'], $depth, $resolved['open']), ...$result]);
+    $drawn = $is_live ? [...$this->renderTaskLabel($label, $resolved['ok'], $depth, $resolved['open']), ...$result] : $result;
+    $this->drawTo($output, fn(): int => $is_live ? $this->redraw($rows, $drawn) : $this->printLines($drawn));
 
     return $value;
   }
@@ -3753,6 +3751,7 @@ class Prompty {
    *   The action's return value.
    */
   protected function runStreamed(string $label, callable $action, \Closure $outcome, int $depth, array $open, bool $is_live): mixed {
+    $output = $this->cfgOutput;
     // Printed before the stream starts, so an enclosing stream captures it.
     $rows = $this->printLines($this->renderLabel($label, 'active', 'cyan', $depth, $open));
     $index = count($this->streams);
@@ -3764,7 +3763,7 @@ class Prompty {
       $this->printLines($this->renderTaskLine($line, $depth, $open));
     };
 
-    $this->streams[] = ['lines' => [], 'partial' => '', 'is_live' => $is_live, 'draw' => $draw];
+    $this->streams[] = ['lines' => [], 'partial' => '', 'is_live' => $is_live, 'draw' => $draw, 'output' => $output];
 
     $level = ob_get_level();
     // Chunk size 1 hands every write to the handler as it is made. The handler
@@ -3787,7 +3786,8 @@ class Prompty {
     }
     catch (\Throwable $throwable) {
       if ($is_live) {
-        $this->redraw($rows, array_merge($this->renderLabel($label, 'active', 'red', $depth, $open), $this->renderTaskLines($lines, $depth, $open)));
+        $failed = array_merge($this->renderLabel($label, 'active', 'red', $depth, $open), $this->renderTaskLines($lines, $depth, $open));
+        $this->drawTo($output, fn(): int => $this->redraw($rows, $failed));
       }
 
       throw $throwable;
@@ -3803,14 +3803,15 @@ class Prompty {
     $result = $this->renderTaskResult($has_succeeded, $resolved['hint'], $resolved['details'], $resolved['message'], $note, $depth, $settled);
 
     if (!$is_live) {
-      $this->printLines(array_merge($gap, $result));
+      $this->drawTo($output, fn(): int => $this->printLines(array_merge($gap, $result)));
 
       return $value;
     }
 
     // A failure keeps every line, since the cause is among them.
     $body = $has_succeeded ? $result : array_merge($this->renderTaskLines($lines, $depth, $settled), $gap, $result);
-    $this->redraw($rows, array_merge($this->renderTaskLabel($label, $has_succeeded, $depth, $settled), $body));
+    $drawn = array_merge($this->renderTaskLabel($label, $has_succeeded, $depth, $settled), $body);
+    $this->drawTo($output, fn(): int => $this->redraw($rows, $drawn));
 
     return $value;
   }
@@ -4003,11 +4004,16 @@ class Prompty {
   /**
    * Writes a chunk of rendered output to the configured target.
    *
+   * While a streamed task runs, the target is the one the outermost stream
+   * started on, since every stream draws into it.
+   *
    * @param string $chunk
    *   The bytes to write, escape sequences included.
    */
   protected function write(string $chunk): void {
-    if ($this->streamBuffer !== NULL && $this->cfgOutput === NULL) {
+    $target = $this->streams === [] ? $this->cfgOutput : $this->streams[0]['output'];
+
+    if ($this->streamBuffer !== NULL && $target === NULL) {
       $this->streamBuffer .= $chunk;
 
       return;
@@ -4017,25 +4023,48 @@ class Prompty {
     // a stream or callable target are streamed here.
     $capturing = $this->capturingStream();
 
-    if ($capturing !== NULL && $this->cfgOutput !== NULL) {
+    if ($capturing !== NULL && $target !== NULL) {
       $this->feedStream($capturing, $chunk);
 
       return;
     }
 
-    if ($this->cfgOutput instanceof \Closure) {
-      ($this->cfgOutput)($chunk);
+    if ($target instanceof \Closure) {
+      $target($chunk);
 
       return;
     }
 
-    if ($this->cfgOutput !== NULL) {
-      fwrite($this->cfgOutput, $chunk);
+    if ($target !== NULL) {
+      fwrite($target, $chunk);
 
       return;
     }
 
     echo $chunk;
+  }
+
+  /**
+   * Runs a draw against an output target and restores the configured one.
+   *
+   * A task draws its result on the target it started on, even when its action
+   * configured another.
+   *
+   * @param resource|\Closure|null $target
+   *   The output target to draw on (NULL = echo).
+   * @param \Closure $draw
+   *   Draws the output.
+   */
+  protected function drawTo($target, \Closure $draw): void {
+    $configured = $this->cfgOutput;
+    $this->cfgOutput = $target;
+
+    try {
+      $draw();
+    }
+    finally {
+      $this->cfgOutput = $configured;
+    }
   }
 
   /**
