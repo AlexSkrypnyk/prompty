@@ -218,7 +218,7 @@ final class PromptyWrapTest extends PromptyTestCase {
     $this->assertSame(50, $this->callProtected($p, 'columns'));
   }
 
-  public function testColumnsAreMeasuredAgainAfterRefreshWindow(): void {
+  public function testColumnsAreFixedUntilFrameIsPrinted(): void {
     $this->setRawEnv('COLUMNS', '50');
     $p = $this->createInstance(['width' => 0]);
     $this->setProperty($p, 'cfgOutput', static fn(string $chunk): null => NULL);
@@ -227,10 +227,46 @@ final class PromptyWrapTest extends PromptyTestCase {
 
     $this->setRawEnv('COLUMNS', '70');
     $this->setProperty($p, 'columnsMeasuredAt', microtime(TRUE) - 2);
-    $this->assertSame(50, $this->callProtected($p, 'columns'), 'An expired width is kept until the frame ends.');
+    $this->assertSame(50, $this->callProtected($p, 'columns'), 'An expired width is kept until the frame is printed.');
 
     $this->callProtected($p, 'printLines', ['Plum compote']);
     $this->assertSame(70, $this->callProtected($p, 'columns'));
+  }
+
+  public function testColumnsAreMeasuredAgainWhenFrameStartsAfterRefreshWindow(): void {
+    $this->setRawEnv('COLUMNS', '50');
+    $p = $this->createInstance(['width' => 0]);
+    $this->setProperty($p, 'cfgOutput', static fn(string $chunk): null => NULL);
+
+    $this->callProtected($p, 'columns');
+    $this->callProtected($p, 'printLines', ['Plum compote']);
+
+    $this->setRawEnv('COLUMNS', '70');
+    $this->setProperty($p, 'columnsMeasuredAt', microtime(TRUE) - 2);
+
+    $this->assertSame(70, $this->callProtected($p, 'columns'));
+  }
+
+  public function testTerminalWidthLeavesFrameWidthUnfixed(): void {
+    $this->setRawEnv('COLUMNS', '50');
+    $p = $this->createAndSetInstance(['width' => 0]);
+
+    $this->assertSame(50, Prompty::terminalWidth());
+    $this->assertNull($this->getProperty($p, 'columns'));
+  }
+
+  public function testTerminalWidthMeasuresAgainAfterRefreshWindow(): void {
+    $this->setRawEnv('COLUMNS', '50');
+    $p = $this->createAndSetInstance(['width' => 0]);
+
+    $this->assertSame(50, $this->callProtected($p, 'columns'));
+
+    $this->setRawEnv('COLUMNS', '70');
+    $this->assertSame(50, Prompty::terminalWidth());
+
+    $this->setProperty($p, 'columnsMeasuredAt', microtime(TRUE) - 2);
+    $this->assertSame(70, Prompty::terminalWidth());
+    $this->assertSame(50, $this->callProtected($p, 'columns'), 'The frame keeps its width.');
   }
 
   public function testColumnsRecordMeasurementTime(): void {
@@ -252,10 +288,11 @@ final class PromptyWrapTest extends PromptyTestCase {
     $this->callProtected($p, 'columns');
 
     $this->assertNull($this->getProperty($p, 'columns'));
+    $this->assertNull($this->getProperty($p, 'detectedColumns'));
     $this->assertSame(0.0, $this->getProperty($p, 'columnsMeasuredAt'));
   }
 
-  public function testDetectColumnsFallsBackWithoutTerminal(): void {
+  public function testMeasureColumnsFallsBackWithoutTerminal(): void {
     if (stream_isatty(STDIN)) {
       $this->markTestSkipped('Standard input is a terminal.');
     }
@@ -263,7 +300,7 @@ final class PromptyWrapTest extends PromptyTestCase {
     $this->setRawEnv('COLUMNS', '');
     $p = $this->createInstance(['width' => 0]);
 
-    $this->assertSame(80, $this->callProtected($p, 'detectColumns'));
+    $this->assertSame(80, $this->callProtected($p, 'measureColumns'));
   }
 
   /**
