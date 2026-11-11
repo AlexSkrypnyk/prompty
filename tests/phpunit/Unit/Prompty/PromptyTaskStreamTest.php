@@ -596,7 +596,7 @@ final class PromptyTaskStreamTest extends PromptyTestCase {
     ];
   }
 
-  #[DataProvider('dataProviderStreamToTarget')]
+  #[DataProvider('dataProviderStreamNestedToTarget')]
   public function testStreamNestedToTarget(bool $is_callable): void {
     $p = $this->createAndSetInstance(['interactive' => FALSE]);
     $stream = fopen('php://memory', 'w+');
@@ -627,6 +627,11 @@ final class PromptyTaskStreamTest extends PromptyTestCase {
     $this->assertSame('', $echoed);
     $this->assertSame("o  Baking the tart\n|    Oven at 180°C\n|    o  Making the pastry\n|    |    Butter rubbed in\n|    |    Rolled thin\n|    |\n|    |  + Pastry made\n|    |\n|    Tart in the oven\n|\n|  + Done\n|\n", $this->promptyNormalizeOutput($written));
     $this->assertSame([], $this->getProperty($p, 'streams'));
+  }
+
+  public static function dataProviderStreamNestedToTarget(): \Iterator {
+    yield 'stream' => [FALSE];
+    yield 'callable' => [TRUE];
   }
 
   public function testStreamNestedException(): void {
