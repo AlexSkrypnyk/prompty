@@ -215,7 +215,9 @@ final class PromptyWrapTest extends PromptyTestCase {
 
     $this->callProtected($p, 'printLines', ['Plum compote']);
     $this->callProtected($p, 'printLines', ['Lemon tart']);
-    $this->assertSame(50, $this->callProtected($p, 'columns'));
+
+    $columns = $this->callProtected($p, 'columns');
+    $this->assertSame(50, $columns);
   }
 
   public function testColumnsAreFixedUntilFrameIsPrinted(): void {
