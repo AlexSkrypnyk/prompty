@@ -59,7 +59,7 @@ final class PromptyTaskOutputTest extends PromptyTestCase {
     $this->assertSame('', $this->configured);
 
     // The configured target stays in force after the task.
-    $echoed = $this->captureOutput(fn() => Prompty::output(['Oven off']));
+    $echoed = $this->captureOutput(fn(): int => Prompty::output(['Oven off']));
     rewind($stream);
 
     $this->assertSame("Oven off\n", $this->promptyNormalizeOutput($echoed . stream_get_contents($stream) . $this->configured));
