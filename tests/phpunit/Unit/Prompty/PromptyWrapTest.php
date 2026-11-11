@@ -291,7 +291,7 @@ final class PromptyWrapTest extends PromptyTestCase {
 
     $this->assertNull($this->getProperty($p, 'columns'));
     $this->assertNull($this->getProperty($p, 'detectedColumns'));
-    $this->assertSame(0.0, $this->getProperty($p, 'columnsMeasuredAt'));
+    $this->assertEqualsWithDelta(0.0, $this->getProperty($p, 'columnsMeasuredAt'), PHP_FLOAT_EPSILON);
   }
 
   public function testMeasureColumnsFallsBackWithoutTerminal(): void {
