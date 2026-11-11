@@ -32,9 +32,9 @@ $opts = getopt('', ['no-unicode', 'no-ansi']);
 $unicode = !isset($opts['no-unicode']);
 $ansi = !isset($opts['no-ansi']);
 
-$results = Prompty::flow(fn(): array => [
-  'dish' => Prompty::text('Dish name', placeholder: 'pear tart', description: "Written on the order ticket and under\n\"Specials\" on the board."),
-  'course' => Prompty::select('Course',
+$results = Prompty::flow()
+  ->text('dish', 'Dish name', placeholder: 'pear tart', description: "Written on the order ticket and under\n\"Specials\" on the board.")
+  ->select('course', 'Course',
     options: ['starter' => 'Starter', 'main' => 'Main', 'dessert' => 'Dessert'],
     description: 'Where the dish sits in the meal.',
     hints: [
@@ -42,8 +42,8 @@ $results = Prompty::flow(fn(): array => [
       'main' => 'The centre of the meal.',
       'dessert' => 'Sweet, served last.',
     ],
-  ),
-  'extras' => Prompty::multiselect('Extras',
+  )
+  ->multiselect('extras', 'Extras',
     options: ['bread' => 'Bread', 'olives' => 'Olives', 'herbs' => 'Herbs', 'lemon' => 'Lemon', 'honey' => 'Honey'],
     description: "Anything served alongside.\nSpace to toggle, enter to confirm.",
     hints: [
@@ -53,17 +53,17 @@ $results = Prompty::flow(fn(): array => [
       'lemon' => 'Sharpens rich dishes.',
       'honey' => 'Runny, spooned over to finish.',
     ],
-  ),
-  'send' => Prompty::confirm('Send order?', description: 'Passes the order to the kitchen.'),
-],
-  intro: 'Compose an order',
-  outro: 'Order sent!',
-  cancelled: 'Order cancelled.',
-  numbering: TRUE,
-  unicode: $unicode,
-  ansi: $ansi,
-  env_prefix: 'PROMPTY_',
-);
+  )
+  ->confirm('send', 'Send order?', description: 'Passes the order to the kitchen.')
+  ->run(
+    intro: 'Compose an order',
+    outro: 'Order sent!',
+    cancelled: 'Order cancelled.',
+    numbering: TRUE,
+    unicode: $unicode,
+    ansi: $ansi,
+    env_prefix: 'PROMPTY_',
+  );
 
 if ($results === NULL) {
   exit(0);

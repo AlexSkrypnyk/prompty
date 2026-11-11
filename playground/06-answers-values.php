@@ -41,20 +41,20 @@ $extras = ['bread' => 'Bread', 'olives' => 'Olives', 'herbs' => 'Herbs'];
 /**
  * Prints a text result on 1 line.
  *
- * @param \Closure|array<string, mixed>|string|null $result
+ * @param string|null $result
  *   What the widget returned.
  */
-function show_text(\Closure|array|string|null $result): void {
+function show_text(?string $result): void {
   echo '  Result: ' . (is_string($result) ? var_export($result, TRUE) : 'cancelled') . "\n";
 }
 
 /**
  * Prints a multiselect result on 1 line.
  *
- * @param \Closure|array<string, mixed>|list<string>|null $result
+ * @param array<mixed>|null $result
  *   What the widget returned.
  */
-function show_selection(\Closure|array|null $result): void {
+function show_selection(?array $result): void {
   $selection = is_array($result) ? array_filter($result, is_string(...)) : NULL;
   echo '  Result: ' . ($selection === NULL ? 'cancelled' : ($selection === [] ? 'none' : implode(', ', $selection))) . "\n";
 }
@@ -96,9 +96,9 @@ show_selection(Prompty::multiselect('Extras', options: $extras, discovered: $fla
 echo "\n--- Multiselect: answered by an environment variable ---\n";
 $env = getenv('PROMPTY_EXTRAS');
 echo '  Source: ' . ($env === FALSE ? 'PROMPTY_EXTRAS unset, so the widget asks' : 'PROMPTY_EXTRAS=' . $env) . "\n";
-$results = Prompty::flow(fn(): array => [
-  'extras' => Prompty::multiselect('Extras', options: $extras),
-]);
+$results = Prompty::flow()
+  ->multiselect('extras', 'Extras', options: $extras)
+  ->run();
 show_selection(is_array($results['extras'] ?? NULL) ? $results['extras'] : NULL);
 
 echo "\n--- Multiselect: answered from a config file ---\n";
@@ -136,9 +136,9 @@ echo "\n--- Text: an empty answer prefers a seeded default ---\n";
 show_text(Prompty::text('Dish name', default: 'plum compote', placeholder: 'pear tart', discovered: ''));
 
 echo "\n--- Text: a placeholder that is only an example stays out of the answer ---\n";
-$results = Prompty::flow(fn(): array => [
-  'dish' => Prompty::text('Dish name', placeholder: 'e.g. pear tart', discovered: ''),
-], placeholder_fallback: FALSE);
+$results = Prompty::flow()
+  ->text('dish', 'Dish name', placeholder: 'e.g. pear tart', discovered: '')
+  ->run(placeholder_fallback: FALSE);
 show_text(is_array($results) && is_string($results['dish'] ?? NULL) ? $results['dish'] : NULL);
 
 echo "\n--- Text: an answer is trimmed ---\n";
@@ -147,7 +147,7 @@ show_text(Prompty::text('Dish name', placeholder: 'pear tart', discovered: '  on
 echo "\n--- Text: an empty environment variable is an empty answer ---\n";
 $env = getenv('PROMPTY_DISH');
 echo '  Source: ' . ($env === FALSE ? 'PROMPTY_DISH unset, so the widget asks' : 'PROMPTY_DISH=' . var_export($env, TRUE)) . "\n";
-$results = Prompty::flow(fn(): array => [
-  'dish' => Prompty::text('Dish name', placeholder: 'pear tart'),
-]);
+$results = Prompty::flow()
+  ->text('dish', 'Dish name', placeholder: 'pear tart')
+  ->run();
 show_text(is_array($results) && is_string($results['dish'] ?? NULL) ? $results['dish'] : NULL);

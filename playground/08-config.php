@@ -120,16 +120,16 @@ echo PHP_EOL . '--- A flow merges its own arguments on top ---' . PHP_EOL;
 // the labels the flow passes.
 Prompty::configure(env_prefix: 'ORDER_');
 
-$results = Prompty::flow(fn(): array => [
-  'dish' => Prompty::text('Dish name', placeholder: 'pear tart'),
-  'course' => Prompty::select('Course', options: ['starter' => 'Starter', 'main' => 'Main', 'dessert' => 'Dessert']),
-  'send' => Prompty::confirm('Send order?'),
-],
-  intro: 'Order setup',
-  outro: 'All done!',
-  cancelled: 'Order setup cancelled.',
-  labels: ['yes' => 'Yep', 'no' => 'Nope'],
-);
+$results = Prompty::flow()
+  ->text('dish', 'Dish name', placeholder: 'pear tart')
+  ->select('course', 'Course', options: ['starter' => 'Starter', 'main' => 'Main', 'dessert' => 'Dessert'])
+  ->confirm('send', 'Send order?')
+  ->run(
+    intro: 'Order setup',
+    outro: 'All done!',
+    cancelled: 'Order setup cancelled.',
+    labels: ['yes' => 'Yep', 'no' => 'Nope'],
+  );
 
 if ($results === NULL) {
   exit(0);

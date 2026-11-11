@@ -4,10 +4,10 @@
  * @file
  * Playground - several flows, and how long a flow's own configuration lasts.
  *
- * The shared instance is reused across flows. Each flow() call resets the
- * collected results but keeps the instance, so anything configure() set is
- * still in force for the next flow, and a standalone widget can run between
- * flows. A flow's own configuration arguments are scoped to that call, the
+ * The shared instance is reused across flows. Each run() resets the collected
+ * results but keeps the instance, so anything configure() set is still in
+ * force for the next flow, and a standalone widget can run between flows. The
+ * configuration arguments a flow passes to run() are scoped to that run, the
  * way intro, outro and numbering are: they are not a shorthand for
  * configure().
  *
@@ -56,16 +56,16 @@ function report(string $when): void {
 report('Before any flow ran:');
 
 // While this flow runs, answers come from KITCHEN_DISH, not PROMPTY_DISH.
-$first = Prompty::flow(fn(): array => [
-  'dish' => Prompty::text('Dish name', placeholder: 'pear tart'),
-],
-  intro: 'A flow with its own configuration',
-  outro: 'Dish noted.',
-  cancelled: 'Cancelled.',
-  spacing: ['indent' => '....'],
-  labels: ['yes' => 'Aye', 'no' => 'Nay'],
-  env_prefix: 'KITCHEN_',
-);
+$first = Prompty::flow()
+  ->text('dish', 'Dish name', placeholder: 'pear tart')
+  ->run(
+    intro: 'A flow with its own configuration',
+    outro: 'Dish noted.',
+    cancelled: 'Cancelled.',
+    spacing: ['indent' => '....'],
+    labels: ['yes' => 'Aye', 'no' => 'Nay'],
+    env_prefix: 'KITCHEN_',
+  );
 
 if ($first === NULL) {
   exit(0);
@@ -79,13 +79,9 @@ echo 'Note: ' . (is_string($r) ? $r : 'cancelled') . PHP_EOL;
 
 // This flow passes no configuration, so it renders with the configuration
 // in force before the first flow, not the one that flow set.
-$second = Prompty::flow(fn(): array => [
-  'course' => Prompty::select('Course', options: ['starter' => 'Starter', 'main' => 'Main', 'dessert' => 'Dessert']),
-],
-  intro: 'A flow that asks for nothing',
-  outro: 'Course noted.',
-  cancelled: 'Cancelled.',
-);
+$second = Prompty::flow()
+  ->select('course', 'Course', options: ['starter' => 'Starter', 'main' => 'Main', 'dessert' => 'Dessert'])
+  ->run(intro: 'A flow that asks for nothing', outro: 'Course noted.', cancelled: 'Cancelled.');
 
 if ($second === NULL) {
   exit(0);
@@ -102,14 +98,10 @@ Prompty::configure(labels: ['yes' => 'Aye', 'no' => 'Nay']);
 
 report('After configure(), the change stays:');
 
-$third = Prompty::flow(fn(): array => [
-  'extras' => Prompty::multiselect('Extras', options: ['bread' => 'Bread', 'olives' => 'Olives', 'herbs' => 'Herbs']),
-  'send' => Prompty::confirm('Send order?'),
-],
-  intro: 'A flow after configure()',
-  outro: 'Order sent!',
-  cancelled: 'Cancelled.',
-);
+$third = Prompty::flow()
+  ->multiselect('extras', 'Extras', options: ['bread' => 'Bread', 'olives' => 'Olives', 'herbs' => 'Herbs'])
+  ->confirm('send', 'Send order?')
+  ->run(intro: 'A flow after configure()', outro: 'Order sent!', cancelled: 'Cancelled.');
 
 if ($third === NULL) {
   exit(0);
