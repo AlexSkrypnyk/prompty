@@ -69,6 +69,11 @@ class Prompty {
   protected const DEFAULT_COLUMNS = 80;
 
   /**
+   * Seconds a detected terminal width is reused before it is measured again.
+   */
+  protected const COLUMNS_REFRESH = 1;
+
+  /**
    * Microseconds between the frames of a task's spinner.
    */
   protected const int SPINNER_INTERVAL = 80000;
@@ -460,11 +465,21 @@ class Prompty {
   protected string $cfgBackKey = 'ctrl-u';
 
   /**
-   * Terminal columns measured for the frame being rendered.
+   * Terminal columns fixed for the frame being rendered.
    *
-   * Cleared by printLines(), so the next frame measures again.
+   * Cleared by printLines(), so the next frame takes the detected width again.
    */
   protected ?int $columns = NULL;
+
+  /**
+   * Terminal columns last detected, reused for COLUMNS_REFRESH seconds.
+   */
+  protected ?int $detectedColumns = NULL;
+
+  /**
+   * The time $detectedColumns was detected, in seconds.
+   */
+  protected float $columnsMeasuredAt = 0.0;
 
   /**
    * Whether the output target is a terminal (NULL = detect).
@@ -2987,7 +3002,10 @@ class Prompty {
    *   width 'stty size' reports, or 80, in that order.
    */
   public static function terminalWidth(): int {
-    return static::instance()->columns();
+    $p = static::instance();
+
+    // Reading the frame width would fix it until the next frame is printed.
+    return $p->cfgWidth > 0 ? $p->cfgWidth : $p->detectedColumns();
   }
 
   /**
@@ -4675,31 +4693,51 @@ class Prompty {
       return $this->cfgWidth;
     }
 
-    if ($this->columns !== NULL) {
-      return $this->columns;
+    return $this->columns ??= $this->detectedColumns();
+  }
+
+  /**
+   * Returns the detected terminal width, measuring it again once it expires.
+   *
+   * @return int
+   *   The width measureColumns() returned within the last COLUMNS_REFRESH
+   *   seconds.
+   */
+  protected function detectedColumns(): int {
+    if ($this->detectedColumns === NULL || microtime(TRUE) - $this->columnsMeasuredAt >= static::COLUMNS_REFRESH) {
+      $this->detectedColumns = $this->measureColumns();
+      $this->columnsMeasuredAt = microtime(TRUE);
     }
 
+    return $this->detectedColumns;
+  }
+
+  /**
+   * Measures the terminal width from the environment or the terminal.
+   *
+   * @return int
+   *   A positive COLUMNS environment variable, then the width 'stty size'
+   *   reports, then DEFAULT_COLUMNS.
+   */
+  protected function measureColumns(): int {
     $env = trim((string) getenv('COLUMNS'));
 
     if (preg_match('/^[1-9]\d*$/', $env) === 1) {
-      return $this->columns = (int) $env;
+      return (int) $env;
     }
 
-    $columns = static::DEFAULT_COLUMNS;
-
-    if (PHP_OS_FAMILY !== 'Windows') {
-      // @codeCoverageIgnoreStart
-      // 'stty size' reads the terminal on stdin and prints "<rows> <columns>".
-      // A pseudo-terminal that was never sized reports 0 columns.
-      $size = trim((string) shell_exec('stty size 2>' . static::NULL_DEVICE));
-
-      if (preg_match('/^\d+ ([1-9]\d*)$/', $size, $matches) === 1) {
-        $columns = (int) $matches[1];
-      }
-      // @codeCoverageIgnoreEnd
+    // 'stty size' reads the terminal on stdin, so it fails without one.
+    if (PHP_OS_FAMILY === 'Windows' || !stream_isatty(STDIN)) {
+      return static::DEFAULT_COLUMNS;
     }
 
-    return $this->columns = $columns;
+    // @codeCoverageIgnoreStart
+    // 'stty size' prints "<rows> <columns>". A pseudo-terminal that was never
+    // sized reports 0 columns.
+    $size = trim((string) shell_exec('stty size 2>' . static::NULL_DEVICE));
+
+    return preg_match('/^\d+ ([1-9]\d*)$/', $size, $matches) === 1 ? (int) $matches[1] : static::DEFAULT_COLUMNS;
+    // @codeCoverageIgnoreEnd
   }
 
   /**

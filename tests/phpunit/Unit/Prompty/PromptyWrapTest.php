@@ -203,7 +203,7 @@ final class PromptyWrapTest extends PromptyTestCase {
     yield 'fraction' => ['80.5'];
   }
 
-  public function testColumnsAreMeasuredAgainAfterEachFrame(): void {
+  public function testColumnsAreKeptWithinRefreshWindow(): void {
     $this->setRawEnv('COLUMNS', '50');
     $p = $this->createInstance(['width' => 0]);
     $this->setProperty($p, 'cfgOutput', static fn(string $chunk): null => NULL);
@@ -214,7 +214,95 @@ final class PromptyWrapTest extends PromptyTestCase {
     $this->assertSame(50, $this->callProtected($p, 'columns'));
 
     $this->callProtected($p, 'printLines', ['Plum compote']);
+    $this->callProtected($p, 'printLines', ['Lemon tart']);
+
+    $columns = $this->callProtected($p, 'columns');
+    $this->assertSame(50, $columns);
+  }
+
+  public function testColumnsAreFixedUntilFrameIsPrinted(): void {
+    $this->setRawEnv('COLUMNS', '50');
+    $p = $this->createInstance(['width' => 0]);
+    $this->setProperty($p, 'cfgOutput', static fn(string $chunk): null => NULL);
+
+    $this->assertSame(50, $this->callProtected($p, 'columns'));
+
+    $this->setRawEnv('COLUMNS', '70');
+    $this->setProperty($p, 'columnsMeasuredAt', microtime(TRUE) - 2);
+    $this->assertSame(50, $this->callProtected($p, 'columns'), 'An expired width is kept until the frame is printed.');
+
+    $this->callProtected($p, 'printLines', ['Plum compote']);
     $this->assertSame(70, $this->callProtected($p, 'columns'));
+  }
+
+  public function testColumnsAreMeasuredAgainWhenFrameStartsAfterRefreshWindow(): void {
+    $this->setRawEnv('COLUMNS', '50');
+    $p = $this->createInstance(['width' => 0]);
+    $this->setProperty($p, 'cfgOutput', static fn(string $chunk): null => NULL);
+
+    $this->callProtected($p, 'columns');
+    $this->callProtected($p, 'printLines', ['Plum compote']);
+
+    $this->setRawEnv('COLUMNS', '70');
+    $this->setProperty($p, 'columnsMeasuredAt', microtime(TRUE) - 2);
+
+    $this->assertSame(70, $this->callProtected($p, 'columns'));
+  }
+
+  public function testTerminalWidthLeavesFrameWidthUnfixed(): void {
+    $this->setRawEnv('COLUMNS', '50');
+    $p = $this->createAndSetInstance(['width' => 0]);
+
+    $this->assertSame(50, Prompty::terminalWidth());
+    $this->assertNull($this->getProperty($p, 'columns'));
+  }
+
+  public function testTerminalWidthMeasuresAgainAfterRefreshWindow(): void {
+    $this->setRawEnv('COLUMNS', '50');
+    $p = $this->createAndSetInstance(['width' => 0]);
+
+    $this->assertSame(50, $this->callProtected($p, 'columns'));
+
+    $this->setRawEnv('COLUMNS', '70');
+    $this->assertSame(50, Prompty::terminalWidth());
+
+    $this->setProperty($p, 'columnsMeasuredAt', microtime(TRUE) - 2);
+    $this->assertSame(70, Prompty::terminalWidth());
+    $this->assertSame(50, $this->callProtected($p, 'columns'), 'The frame keeps its width.');
+  }
+
+  public function testColumnsRecordMeasurementTime(): void {
+    $this->setRawEnv('COLUMNS', '50');
+    $p = $this->createInstance(['width' => 0]);
+
+    $before = microtime(TRUE);
+    $this->callProtected($p, 'columns');
+
+    $measured_at = $this->getProperty($p, 'columnsMeasuredAt');
+    $this->assertIsFloat($measured_at);
+    $this->assertGreaterThanOrEqual($before, $measured_at);
+    $this->assertLessThanOrEqual(microtime(TRUE), $measured_at);
+  }
+
+  public function testColumnsSkipMeasurementWithConfiguredWidth(): void {
+    $p = $this->createInstance(['width' => 42]);
+
+    $this->callProtected($p, 'columns');
+
+    $this->assertNull($this->getProperty($p, 'columns'));
+    $this->assertNull($this->getProperty($p, 'detectedColumns'));
+    $this->assertEqualsWithDelta(0.0, $this->getProperty($p, 'columnsMeasuredAt'), PHP_FLOAT_EPSILON);
+  }
+
+  public function testMeasureColumnsFallsBackWithoutTerminal(): void {
+    if (stream_isatty(STDIN)) {
+      $this->markTestSkipped('Standard input is a terminal.');
+    }
+
+    $this->setRawEnv('COLUMNS', '');
+    $p = $this->createInstance(['width' => 0]);
+
+    $this->assertSame(80, $this->callProtected($p, 'measureColumns'));
   }
 
   /**

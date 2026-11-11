@@ -2095,7 +2095,7 @@ Prompty wraps every line that's wider than the terminal. Labels, descriptions, o
 │
 ```
 
-Prompty measures the terminal before it draws each frame. It reads a positive `COLUMNS` environment variable first, then the width `stty size` reports, and falls back to 80 columns. Wide characters such as emoji count as 2 columns.
+Prompty measures the terminal width at most once a second, so frames draw at the new width within 1 second of a resize. It reads a positive `COLUMNS` environment variable first, then the width `stty size` reports when standard input is a terminal, and falls back to 80 columns. Wide characters such as emoji count as 2 columns.
 
 To wrap at a fixed width, pass `width` to [`Prompty::configure()`](#configuration). To set it for 1 flow, pass it to `Prompty::flow()`. A `width` of `0` detects the terminal width again, and a negative `width` throws an `InvalidArgumentException`:
 
