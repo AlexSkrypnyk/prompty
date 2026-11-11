@@ -316,6 +316,14 @@ Work a demo runs with `Prompty::task()`, between its questions:
 - `Baking the tart` - streamed. Writes `Oven at 180°C`, `Tray 1 of 2 in the top rack`, a `Rising 20%` to `Rising 100%` progress meter, `Crust golden at the edges`, `Tray 2 of 2 in the top rack`, `Fan cycling, temperature held` and `Both trays out, resting on the rack`. Success `Tart baked`.
 - `Poaching the pears` - streamed. Writes `Syrup at a low simmer`, `Pears in, lid half on` and `Checked at 20 minutes: still firm`, then fails with `Pears are not soft yet`.
 
+Nested tasks run inside a streamed task's action, 1 inside the next. `04-tasks-nested.php` adds them a level at a time:
+
+- `Preparing the order` - streamed, the outermost task at 3 levels. Writes `Order for table 7` and `Tart plated with cream on the side`. Success `Order ready`.
+- `Baking the tart` - streamed. Writes `Oven at 180°C`, runs its nested tasks, then writes `Tart in the top rack`. Success `Tart baked`. At 3 levels it runs `Preheating the oven` first.
+- `Making the pastry` - streamed, nested in `Baking the tart`. Writes `Flour and butter rubbed together`, then `Dough wrapped and chilled` or its own nested task, then `Lined into the tin`. Success `Pastry made`.
+- `Resting the dough` - streamed, nested in `Making the pastry`. Writes `Chilled for 20 minutes` and `Rolled thin`. Success `Dough rested`.
+- `Checking the pears` - streamed, nested in `Poaching the pears`. Writes `Checked at 20 minutes: still firm`, then fails with `Pears are not soft yet`. `Poaching the pears` then fails with `Pears not ready to serve`.
+
 ### Tables and boxes
 
 Content printed with `Prompty::table()` and `Prompty::box()`:
