@@ -507,34 +507,23 @@ class Prompty {
   protected ?bool $isTerminal = NULL;
 
   /**
-   * Lines the streaming task's action has written, or NULL when none streams.
+   * The running streamed tasks, outermost first.
    *
-   * @var list<string>|null
-   */
-  protected ?array $streamed = NULL;
-
-  /**
-   * Streamed text after the last newline.
-   */
-  protected string $streamPartial = '';
-
-  /**
-   * Whether the streaming task draws a live window.
-   */
-  protected bool $isStreamLive = FALSE;
-
-  /**
-   * Draws the streaming task after new output, or NULL when none streams.
+   * Each holds the lines its action has written, the text after the last
+   * newline, whether it draws a live window, and the closure that draws it
+   * after new output. A live window is redrawn with no argument; otherwise
+   * each complete line is passed in to be printed.
    *
-   * A live window is redrawn with no argument; otherwise each complete line
-   * is passed in to be printed.
+   * @var list<array{lines: list<string>, partial: string, is_live: bool, draw: \Closure}>
    */
-  protected ?\Closure $streamDraw = NULL;
+  protected array $streams = [];
 
   /**
-   * Whether the streaming task is drawing, so write() does not stream it.
+   * The index of the stream drawing its output, or NULL when none draws.
+   *
+   * Output written while a stream draws is captured by the stream below it.
    */
-  protected bool $isStreamDrawing = FALSE;
+  protected ?int $streamDrawing = NULL;
 
   /**
    * Output drawn while the stream's buffer handler runs, or NULL outside it.
@@ -2266,7 +2255,9 @@ class Prompty {
     /** @var array<int, bool> $open */
     $open = $ctx['open'] ?? [];
     $label = $p->numberLabel($label, $ctx);
-    $is_live = $p->isLive();
+    // A task inside a streamed task's action prints its lines into that
+    // stream, which cannot hold cursor movement.
+    $is_live = $p->isLive() && !$p->isCapturedByStream();
 
     $outcome = function (mixed $value) use ($p, $plain_label, $hint, $success, $failure, $open): array {
       $has_succeeded = $value !== FALSE;
@@ -3762,33 +3753,33 @@ class Prompty {
    *   The action's return value.
    */
   protected function runStreamed(string $label, callable $action, \Closure $outcome, int $depth, array $open, bool $is_live): mixed {
-    $this->streamed = [];
-    $this->streamPartial = '';
-    $this->isStreamLive = $is_live;
+    // Printed before the stream starts, so an enclosing stream captures it.
     $rows = $this->printLines($this->renderLabel($label, 'active', 'cyan', $depth, $open));
+    $index = count($this->streams);
 
     // A live stream redraws the window; otherwise each line is printed once.
-    if ($is_live) {
-      $this->streamDraw = function () use ($label, $depth, $open, &$rows): void {
-        $rows = $this->redraw($rows, array_merge($this->renderLabel($label, 'active', 'cyan', $depth, $open), $this->renderTaskWindow($depth, $open)));
-      };
-    }
-    else {
-      $this->streamDraw = function (string $line) use ($depth, $open): void {
-        $this->printLines($this->renderTaskLine($line, $depth, $open));
-      };
-    }
+    $draw = $is_live ? function () use ($index, $label, $depth, $open, &$rows): void {
+      $rows = $this->redraw($rows, array_merge($this->renderLabel($label, 'active', 'cyan', $depth, $open), $this->renderTaskWindow($this->streams[$index], $depth, $open)));
+    } : function (string $line) use ($depth, $open): void {
+      $this->printLines($this->renderTaskLine($line, $depth, $open));
+    };
+
+    $this->streams[] = ['lines' => [], 'partial' => '', 'is_live' => $is_live, 'draw' => $draw];
 
     $level = ob_get_level();
-    // Chunk size 1 hands every write to the handler as it is made.
-    ob_start($this->captureStream(...), 1);
+    // Chunk size 1 hands every write to the handler as it is made. The handler
+    // is bound to its stream, because PHP passes an inner stream's drawn
+    // output on to the handler of the stream below it.
+    ob_start(fn(string $buffer): string => $this->captureStream($index, $buffer), 1);
+
+    $lines = [];
 
     try {
       try {
         $value = $action();
       }
       finally {
-        $this->endStream($level);
+        $lines = $this->endStream($index, $level);
       }
 
       /** @var array{ok: bool, hint: string, details: list<string>, message: string, open: array<int, bool>} $resolved */
@@ -3796,14 +3787,10 @@ class Prompty {
     }
     catch (\Throwable $throwable) {
       if ($is_live) {
-        $this->redraw($rows, array_merge($this->renderLabel($label, 'active', 'red', $depth, $open), $this->renderTaskLines($this->streamedLines(), $depth, $open)));
+        $this->redraw($rows, array_merge($this->renderLabel($label, 'active', 'red', $depth, $open), $this->renderTaskLines($lines, $depth, $open)));
       }
 
       throw $throwable;
-    }
-    finally {
-      $lines = $this->streamedLines();
-      $this->streamed = NULL;
     }
 
     $has_succeeded = $resolved['ok'];
@@ -3829,30 +3816,22 @@ class Prompty {
   }
 
   /**
-   * Returns the lines the streaming task's action has written.
-   *
-   * @return list<string>
-   *   The lines, or none when no task streams.
-   */
-  protected function streamedLines(): array {
-    return $this->streamed ?? [];
-  }
-
-  /**
    * Turns a chunk of buffered action output into drawn lines.
    *
    * An output handler cannot echo, so write() collects what is drawn while
    * the handler runs, and the handler returns it in place of the chunk.
    *
+   * @param int $index
+   *   The index of the stream the buffer belongs to.
    * @param string $buffer
    *   The bytes written since the last call.
    *
    * @return string
    *   The drawn output.
    */
-  protected function captureStream(string $buffer): string {
+  protected function captureStream(int $index, string $buffer): string {
     $this->streamBuffer = '';
-    $this->feedStream($buffer);
+    $this->feedStream($index, $buffer);
     $drawn = $this->streamBuffer ?? '';
     $this->streamBuffer = NULL;
 
@@ -3862,44 +3841,54 @@ class Prompty {
   /**
    * Splits streamed output into lines and draws each complete one.
    *
+   * @param int $index
+   *   The index of the stream that receives the output.
    * @param string $chunk
    *   The bytes the action wrote.
    */
-  protected function feedStream(string $chunk): void {
-    if (!$this->streamDraw instanceof \Closure || $this->streamed === NULL || $chunk === '') {
+  protected function feedStream(int $index, string $chunk): void {
+    if (!isset($this->streams[$index]) || $chunk === '') {
       return;
     }
 
-    $this->isStreamDrawing = TRUE;
+    // Restored afterwards, since drawing a stream can feed the one below it.
+    $drawing = $this->streamDrawing;
+    $this->streamDrawing = $index;
+    $stream = $this->streams[$index];
 
-    $lines = explode("\n", $this->streamPartial . $chunk);
-    $this->streamPartial = array_pop($lines);
+    $lines = explode("\n", $stream['partial'] . $chunk);
+    $this->streams[$index]['partial'] = array_pop($lines);
 
     foreach ($lines as $line) {
       $line = $this->lastFrame($line);
-      $this->streamed[] = $line;
+      $this->streams[$index]['lines'][] = $line;
 
-      if (!$this->isStreamLive) {
-        ($this->streamDraw)($line);
+      if (!$stream['is_live']) {
+        ($stream['draw'])($line);
       }
     }
 
     // A live window also shows the line being written, such as a progress
     // meter that has not printed its newline yet.
-    if ($this->isStreamLive) {
-      ($this->streamDraw)();
+    if ($stream['is_live']) {
+      ($stream['draw'])();
     }
 
-    $this->isStreamDrawing = FALSE;
+    $this->streamDrawing = $drawing;
   }
 
   /**
-   * Closes the stream's output buffer and draws the last unfinished line.
+   * Closes a stream's output buffer, draws its last line and removes it.
    *
+   * @param int $index
+   *   The index of the stream.
    * @param int $level
    *   The output buffering level before the stream's buffer was started.
+   *
+   * @return list<string>
+   *   The lines the stream's action wrote.
    */
-  protected function endStream(int $level): void {
+  protected function endStream(int $index, int $level): array {
     // Buffers the action left open are flushed into the stream's buffer, and
     // a stream buffer the action already closed is not closed again.
     while (ob_get_level() > $level + 1) {
@@ -3910,11 +3899,14 @@ class Prompty {
       ob_end_flush();
     }
 
-    if ($this->streamPartial !== '') {
-      $this->feedStream("\n");
+    if ($this->streams[$index]['partial'] !== '') {
+      $this->feedStream($index, "\n");
     }
 
-    $this->streamDraw = NULL;
+    $lines = $this->streams[$index]['lines'];
+    $this->streams = array_slice($this->streams, 0, $index);
+
+    return $lines;
   }
 
   /**
@@ -4012,8 +4004,10 @@ class Prompty {
 
     // Echoed output reaches the stream through its buffer, so only writes to
     // a stream or callable target are streamed here.
-    if ($this->isCapturedByStream() && $this->cfgOutput !== NULL) {
-      $this->feedStream($chunk);
+    $capturing = $this->capturingStream();
+
+    if ($capturing !== NULL && $this->cfgOutput !== NULL) {
+      $this->feedStream($capturing, $chunk);
 
       return;
     }
@@ -4073,10 +4067,24 @@ class Prompty {
    * A streaming task draws its action's output, and counts the rows, itself.
    *
    * @return bool
-   *   TRUE while a streaming task's action runs, outside its own drawing.
+   *   TRUE while a streaming task's action runs, outside the drawing of the
+   *   outermost stream.
    */
   protected function isCapturedByStream(): bool {
-    return $this->streamDraw instanceof \Closure && !$this->isStreamDrawing;
+    return $this->capturingStream() !== NULL;
+  }
+
+  /**
+   * Returns the index of the stream that captures output written now.
+   *
+   * @return int|null
+   *   The stream below the one drawing, or the innermost stream when none
+   *   draws. NULL when output reaches the target.
+   */
+  protected function capturingStream(): ?int {
+    $index = ($this->streamDrawing ?? count($this->streams)) - 1;
+
+    return $index >= 0 ? $index : NULL;
   }
 
   /**
@@ -5299,6 +5307,8 @@ class Prompty {
    * The line still being written is drawn last. Each line is cut to 1 row,
    * so the window keeps its height as lines arrive.
    *
+   * @param array{lines: list<string>, partial: string} $stream
+   *   The stream's lines and the text after its last newline.
    * @param int $depth
    *   The current nesting depth.
    * @param array<int, bool> $open
@@ -5307,11 +5317,11 @@ class Prompty {
    * @return array<int, string>
    *   The rendered rows: the count while lines are hidden, then the window.
    */
-  protected function renderTaskWindow(int $depth = 0, array $open = []): array {
-    $lines = $this->streamed ?? [];
+  protected function renderTaskWindow(array $stream, int $depth = 0, array $open = []): array {
+    $lines = $stream['lines'];
 
-    if ($this->streamPartial !== '') {
-      $lines[] = $this->lastFrame($this->streamPartial);
+    if ($stream['partial'] !== '') {
+      $lines[] = $this->lastFrame($stream['partial']);
     }
 
     $hidden = max(0, count($lines) - static::STREAM_WINDOW);

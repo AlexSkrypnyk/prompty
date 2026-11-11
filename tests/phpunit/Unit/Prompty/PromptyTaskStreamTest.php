@@ -236,8 +236,7 @@ final class PromptyTaskStreamTest extends PromptyTestCase {
     }, stream: TRUE));
 
     $this->assertSame("o  Baking the tart\n|    Oven at 180°C\n|    Door\n", $output);
-    $this->assertNull($this->getProperty($p, 'streamed'));
-    $this->assertNull($this->getProperty($p, 'streamDraw'));
+    $this->assertSame([], $this->getProperty($p, 'streams'));
   }
 
   #[DataProvider('dataProviderStreamBufferLevel')]
@@ -458,7 +457,7 @@ final class PromptyTaskStreamTest extends PromptyTestCase {
     }, success: fn(): int => 1, stream: TRUE));
 
     $this->assertSame("o  Baking the tart\n\ro  Baking the tart\n|    Oven at 180°C\n\ro  Baking the tart\n|    Oven at 180°C\n", $output);
-    $this->assertNull($this->getProperty($p, 'streamed'));
+    $this->assertSame([], $this->getProperty($p, 'streams'));
   }
 
   public function testStreamStateClearedAfterTask(): void {
@@ -470,10 +469,9 @@ final class PromptyTaskStreamTest extends PromptyTestCase {
       return TRUE;
     }, stream: TRUE));
 
-    $this->assertNull($this->getProperty($p, 'streamed'));
-    $this->assertNull($this->getProperty($p, 'streamDraw'));
+    $this->assertSame([], $this->getProperty($p, 'streams'));
+    $this->assertNull($this->getProperty($p, 'streamDrawing'));
     $this->assertNull($this->getProperty($p, 'streamBuffer'));
-    $this->assertSame('', $this->getProperty($p, 'streamPartial'));
   }
 
   public function testOutputAfterStreamIsNotStreamed(): void {
@@ -489,12 +487,214 @@ final class PromptyTaskStreamTest extends PromptyTestCase {
     $this->assertSame("o  Baking the tart\n|  + Done\n|\nOven off\n", $this->promptyNormalizeOutput((string) stream_get_contents($stream)));
   }
 
+  #[DataProvider('dataProviderStreamNested')]
+  public function testStreamNested(\Closure $action, string $expected): void {
+    $p = $this->createAndSetInstance(['interactive' => FALSE]);
+
+    $output = $this->captureOutput(fn(): mixed => Prompty::task('Baking the tart', action: $action, success: 'Tart baked', stream: TRUE));
+
+    $this->assertSame($expected, $output);
+    $this->assertSame([], $this->getProperty($p, 'streams'));
+    $this->assertNull($this->getProperty($p, 'streamDrawing'));
+    $this->assertSame(substr_count($output, "\n"), $this->getProperty($p, 'rows'));
+  }
+
+  public static function dataProviderStreamNested(): \Iterator {
+    yield '2 levels' => [
+      function (): bool {
+        echo "Oven at 180°C\n";
+        Prompty::task('Making the pastry', action: function (): bool {
+          echo "Butter rubbed in\n";
+
+          return TRUE;
+        }, success: 'Pastry made', stream: TRUE);
+        echo "Tart in the oven\n";
+
+        return TRUE;
+      },
+      "o  Baking the tart\n|    Oven at 180°C\n|    o  Making the pastry\n|    |    Butter rubbed in\n|    |\n|    |  + Pastry made\n|    |\n|    Tart in the oven\n|\n|  + Tart baked\n|\n",
+    ];
+
+    yield '3 levels' => [
+      function (): bool {
+        echo "Oven at 180°C\n";
+        Prompty::task('Making the pastry', action: function (): bool {
+          echo "Butter rubbed in\n";
+          Prompty::task('Resting the dough', action: function (): bool {
+            echo "Wrapped and chilled\n";
+
+            return TRUE;
+          }, success: 'Dough rested', stream: TRUE);
+          echo "Rolled thin\n";
+
+          return TRUE;
+        }, success: 'Pastry made', stream: TRUE);
+        echo "Tart in the oven\n";
+
+        return TRUE;
+      },
+      "o  Baking the tart\n|    Oven at 180°C\n|    o  Making the pastry\n|    |    Butter rubbed in\n|    |    o  Resting the dough\n|    |    |    Wrapped and chilled\n|    |    |\n|    |    |  + Dough rested\n|    |    |\n|    |    Rolled thin\n|    |\n|    |  + Pastry made\n|    |\n|    Tart in the oven\n|\n|  + Tart baked\n|\n",
+    ];
+
+    yield 'siblings' => [
+      function (): bool {
+        Prompty::task('Making the pastry', action: function (): bool {
+          echo "Butter rubbed in\n";
+
+          return TRUE;
+        }, success: 'Pastry made', stream: TRUE);
+        Prompty::task('Slicing the pears', action: function (): bool {
+          echo "Pears fanned\n";
+
+          return TRUE;
+        }, success: 'Pears sliced', stream: TRUE);
+
+        return TRUE;
+      },
+      "o  Baking the tart\n|    o  Making the pastry\n|    |    Butter rubbed in\n|    |\n|    |  + Pastry made\n|    |\n|    o  Slicing the pears\n|    |    Pears fanned\n|    |\n|    |  + Pears sliced\n|    |\n|\n|  + Tart baked\n|\n",
+    ];
+
+    yield 'inner failure' => [
+      function (): bool {
+        Prompty::task('Making the pastry', action: function (): bool {
+          echo "Butter too warm\n";
+
+          return FALSE;
+        }, failure: 'Pastry cracked', stream: TRUE);
+        echo "Tart in the oven\n";
+
+        return TRUE;
+      },
+      "o  Baking the tart\n|    o  Making the pastry\n|    |    Butter too warm\n|    |\n|    |  ! Pastry cracked\n|    |\n|    Tart in the oven\n|\n|  + Tart baked\n|\n",
+    ];
+
+    yield 'inner last line without a newline' => [
+      function (): bool {
+        Prompty::task('Making the pastry', action: function (): bool {
+          echo 'Butter rubbed in';
+
+          return TRUE;
+        }, success: 'Pastry made', stream: TRUE);
+        echo "Tart in the oven\n";
+
+        return TRUE;
+      },
+      "o  Baking the tart\n|    o  Making the pastry\n|    |    Butter rubbed in\n|    |\n|    |  + Pastry made\n|    |\n|    Tart in the oven\n|\n|  + Tart baked\n|\n",
+    ];
+
+    yield 'spinner inside a nested stream' => [
+      function (): bool {
+        Prompty::task('Making the pastry', action: function (): bool {
+          Prompty::task('Weighing the flour', action: fn(): bool => TRUE, success: 'Flour weighed');
+
+          return TRUE;
+        }, success: 'Pastry made', stream: TRUE);
+
+        return TRUE;
+      },
+      "o  Baking the tart\n|    o  Making the pastry\n|    |    o  Weighing the flour\n|    |    |  + Flour weighed\n|    |    |\n|    |\n|    |  + Pastry made\n|    |\n|\n|  + Tart baked\n|\n",
+    ];
+  }
+
+  #[DataProvider('dataProviderStreamToTarget')]
+  public function testStreamNestedToTarget(bool $is_callable): void {
+    $p = $this->createAndSetInstance(['interactive' => FALSE]);
+    $stream = fopen('php://memory', 'w+');
+    $this->assertIsResource($stream);
+    $written = '';
+    $this->setProperty($p, 'cfgOutput', $is_callable ? function (string $chunk) use (&$written): void {
+      $written .= $chunk;
+    } : $stream);
+
+    $echoed = $this->captureOutput(fn(): mixed => Prompty::task('Baking the tart', action: function (): bool {
+      Prompty::output(['Oven at 180°C']);
+      Prompty::task('Making the pastry', action: function (): bool {
+        Prompty::output(['Butter rubbed in']);
+        echo "Rolled thin\n";
+
+        return TRUE;
+      }, success: 'Pastry made', stream: TRUE);
+      echo "Tart in the oven\n";
+
+      return TRUE;
+    }, stream: TRUE));
+
+    if (!$is_callable) {
+      rewind($stream);
+      $written = (string) stream_get_contents($stream);
+    }
+
+    $this->assertSame('', $echoed);
+    $this->assertSame("o  Baking the tart\n|    Oven at 180°C\n|    o  Making the pastry\n|    |    Butter rubbed in\n|    |    Rolled thin\n|    |\n|    |  + Pastry made\n|    |\n|    Tart in the oven\n|\n|  + Done\n|\n", $this->promptyNormalizeOutput($written));
+    $this->assertSame([], $this->getProperty($p, 'streams'));
+  }
+
+  public function testStreamNestedException(): void {
+    $p = $this->createAndSetInstance(['interactive' => FALSE]);
+
+    $output = $this->captureOutput(fn(): mixed => Prompty::task('Baking the tart', action: function (): bool {
+      try {
+        Prompty::task('Making the pastry', action: function (): never {
+          echo "Butter too warm\n";
+
+          throw new \RuntimeException('The butter melted.');
+        }, stream: TRUE);
+      }
+      catch (\RuntimeException) {
+        echo "Pastry made again\n";
+      }
+
+      return TRUE;
+    }, success: 'Tart baked', stream: TRUE));
+
+    $this->assertSame("o  Baking the tart\n|    o  Making the pastry\n|    |    Butter too warm\n|    Pastry made again\n|\n|  + Tart baked\n|\n", $output);
+    $this->assertSame([], $this->getProperty($p, 'streams'));
+  }
+
+  #[DataProvider('dataProviderStreamNestedLive')]
+  public function testStreamNestedLive(bool $has_succeeded, string $last_frame): void {
+    $p = $this->createAndSetInstance();
+    $this->setProperty($p, 'isTerminal', TRUE);
+
+    $output = $this->captureRaw(fn(): mixed => Prompty::task('Baking the tart', action: function () use ($has_succeeded): bool {
+      Prompty::task('Making the pastry', action: function (): bool {
+        echo "Butter rubbed in\n";
+        Prompty::task('Weighing the flour', action: fn(): bool => TRUE, success: 'Flour weighed');
+
+        return TRUE;
+      }, success: 'Pastry made', stream: TRUE);
+
+      return $has_succeeded;
+    }, success: 'Tart baked', failure: 'Tart burnt', stream: TRUE));
+
+    // Only the outer window is redrawn: the nested tasks print each line once
+    // into it, with no cursor movement of their own.
+    $frames = [
+      "o  Baking the tart\n",
+      "\033[1A\r\033[Jo  Baking the tart\n|    o  Making the pastry\n",
+      "\033[2A\r\033[Jo  Baking the tart\n|    o  Making the pastry\n|    |    Butter rubbed in\n",
+      "\033[3A\r\033[Jo  Baking the tart\n|    o  Making the pastry\n|    |    Butter rubbed in\n|    |    o  Weighing the flour\n",
+      "\033[4A\r\033[Jo  Baking the tart\n|    o  Making the pastry\n|    |    Butter rubbed in\n|    |    o  Weighing the flour\n|    |    |  + Flour weighed\n|    |    |\n",
+      "\033[6A\r\033[Jo  Baking the tart\n|  ^ 3 more\n|    |    |  + Flour weighed\n|    |    |\n|    |\n|    |  + Pastry made\n|    |\n",
+      $last_frame,
+    ];
+
+    $this->assertSame("\033[?25l" . implode('', $frames) . "\033[?25h", str_replace(PHP_EOL, "\n", $this->stripColors($output)));
+    $this->assertSame([], $this->getProperty($p, 'streams'));
+  }
+
+  public static function dataProviderStreamNestedLive(): \Iterator {
+    yield 'success collapses' => [TRUE, "\033[7A\r\033[J+  Baking the tart\n|  + Tart baked (8 lines)\n|\n"];
+    yield 'failure expands' => [FALSE, "\033[7A\r\033[Jo  Baking the tart\n|    o  Making the pastry\n|    |    Butter rubbed in\n|    |    o  Weighing the flour\n|    |    |  + Flour weighed\n|    |    |\n|    |\n|    |  + Pastry made\n|    |\n|\n|  ! Tart burnt\n|\n"];
+  }
+
   public function testFeedStreamWithoutStream(): void {
     $p = $this->createAndSetInstance();
 
-    $this->callProtected($p, 'feedStream', "Oven at 180°C\n");
+    $this->callProtected($p, 'feedStream', 0, "Oven at 180°C\n");
 
-    $this->assertNull($this->getProperty($p, 'streamed'));
+    $this->assertSame([], $this->getProperty($p, 'streams'));
+    $this->assertNull($this->getProperty($p, 'streamDrawing'));
   }
 
   #[DataProvider('dataProviderFitRow')]
