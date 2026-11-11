@@ -3892,24 +3892,32 @@ class Prompty {
    *   The lines the stream's action wrote.
    */
   protected function endStream(int $index, int $level): array {
-    // Buffers the action left open are flushed into the stream's buffer, and
-    // a stream buffer the action already closed is not closed again.
-    while (ob_get_level() > $level + 1) {
-      ob_end_flush();
+    try {
+      // Buffers the action left open are flushed into the stream's buffer,
+      // and a stream buffer the action already closed is not closed again.
+      while (ob_get_level() > $level + 1) {
+        ob_end_flush();
+      }
+
+      if (ob_get_level() === $level + 1) {
+        ob_end_flush();
+      }
+
+      if ($this->streams[$index]['partial'] !== '') {
+        $this->feedStream($index, "\n");
+      }
+
+      return $this->streams[$index]['lines'];
     }
+    finally {
+      $this->streams = array_slice($this->streams, 0, $index);
 
-    if (ob_get_level() === $level + 1) {
-      ob_end_flush();
+      // A flush that threw leaves the buffers below it open. The stream is
+      // already removed, so its handler draws nothing.
+      while (ob_get_level() > $level) {
+        ob_end_clean();
+      }
     }
-
-    if ($this->streams[$index]['partial'] !== '') {
-      $this->feedStream($index, "\n");
-    }
-
-    $lines = $this->streams[$index]['lines'];
-    $this->streams = array_slice($this->streams, 0, $index);
-
-    return $lines;
   }
 
   /**

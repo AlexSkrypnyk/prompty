@@ -690,6 +690,59 @@ final class PromptyTaskStreamTest extends PromptyTestCase {
     $this->assertNull($this->getProperty($p, 'streamDrawing'));
   }
 
+  #[DataProvider('dataProviderStreamEndException')]
+  public function testStreamEndException(\Closure $action): void {
+    $p = $this->createAndSetInstance(['interactive' => FALSE]);
+    $written = '';
+    $this->setProperty($p, 'cfgOutput', function (string $chunk) use (&$written): void {
+      if (str_contains($chunk, 'Butter too warm')) {
+        throw new \RuntimeException('The ticket printer jammed.');
+      }
+
+      $written .= $chunk;
+    });
+
+    // PHP passes a chunk through unprocessed when its handler throws.
+    ob_start();
+    $before = ob_get_level();
+
+    try {
+      Prompty::task('Baking the tart', action: $action, stream: TRUE);
+      $this->fail('The exception was not rethrown.');
+    }
+    catch (\RuntimeException $runtime_exception) {
+      $this->assertSame('The ticket printer jammed.', $runtime_exception->getMessage());
+    }
+
+    $after = ob_get_level();
+    ob_end_clean();
+
+    Prompty::output(['Oven off']);
+
+    $this->assertSame($before, $after);
+    $this->assertSame([], $this->getProperty($p, 'streams'));
+    $this->assertSame("o  Baking the tart\nOven off\n", $this->promptyNormalizeOutput($written));
+  }
+
+  public static function dataProviderStreamEndException(): \Iterator {
+    yield 'last line drawn at the end' => [
+      function (): bool {
+        echo 'Butter too warm';
+
+        return TRUE;
+      },
+    ];
+
+    yield 'buffer left open' => [
+      function (): bool {
+        ob_start();
+        echo "Butter too warm\n";
+
+        return TRUE;
+      },
+    ];
+  }
+
   #[DataProvider('dataProviderStreamNestedLive')]
   public function testStreamNestedLive(bool $has_succeeded, string $last_frame): void {
     $p = $this->createAndSetInstance();
