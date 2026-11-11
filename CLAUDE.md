@@ -3,15 +3,16 @@
 ## Project Overview
 
 Prompty is a zero-dependency, single-file PHP CLI prompt library.
-Namespace: `AlexSkrypnyk\Prompty`. Key files: `Prompty.php` (library),
-`PromptyTestTrait.php` (test helper).
+Namespace: `AlexSkrypnyk\Prompty`. Key files: `Prompty.php` (library: the
+`Prompty` class, the `PromptyStepInterface` interface and the `PromptyFlow`
+builder), `PromptyTestTrait.php` (test helper).
 
 ## Architecture
 
 - **Singleton** - `static::$instance`, never `new Prompty()`.
-- **Dual-mode widgets** - `text`, `select`, `multiselect`, `suggest`,
-  `confirm`, `pause` and `task` return closures (step arrays when given a
-  condition or children) while a flow is being defined, and values otherwise.
+- **Widgets** - `text`, `select`, `multiselect`, `suggest`, `confirm`,
+  `pause` and `task` always run and return their answer. A flow passes them
+  `ctx`.
 - **Tasks** - `task()` redraws only when `isLive()`; tests set the `isTerminal`
   property to force it. A flow stores a task's outcome as a bool. The spinner
   runs in a `pcntl_fork()` child. `stream: TRUE` captures output with
@@ -20,18 +21,25 @@ Namespace: `AlexSkrypnyk\Prompty`. Key files: `Prompty.php` (library),
 - **Typed config properties** - `cfgUseUnicode`, `cfgSymbols`, `cfgColors`,
   `cfgSpacing`, `cfgLabels`, `cfgEnvPrefix`, `cfgTruthy`, `cfgFalsy`, etc.
   Configured via `Prompty::configure(...)` named arguments.
-- **Flow definition** - `flow()` takes a callable (not array) so `$isInFlow`
-  is set before widget evaluation.
-- **Built steps** - `step()` returns a step array whose `__call` runs a
-  builder with the answers so far and then the widget closure it returns.
-  `condition` and `children` live on `step()`, so they are known up front.
-- **Sections** - `section()` returns a keyless step array carrying
-  `__section`. `walkFlow()` draws it only when a step in its group (the steps
-  up to the next section) renders, and stores no result. Top level only.
-- **Notes** - `note()` returns a keyless step array carrying `__note` only
-  while `$isDefining` is set, which `flow()` sets only around the steps
-  callable; at any other time, including while the flow walks, it prints.
-  `drawNote()` draws it at its depth and stores no result.
+- **Flow builder** - `Prompty::flow()` returns a `PromptyFlow`. Its widget
+  methods take the step key first, then the static widget's arguments; a
+  `\Closure` given for a value argument runs with the answers when the step
+  is reached. `when()`, `children()` and `end()` shape the tree, and `run()`
+  takes the per-flow options. The builder can't reach `Prompty`'s protected
+  members, so `flow()` hands it a closure that calls `runFlow()`.
+- **Step arrays** - the builder compiles to lists of step arrays:
+  `__key`/`__call`/`__children`/`__condition` for a step, `__section` and
+  `__note` for the keyless kinds. `walkFlow()` walks them.
+- **Skipped steps** - a step skipped by its condition answers `NULL`, and so
+  does every step under it (`skipSteps()`). Step back keeps `NULL`s out of
+  `$previous`, so a replay never mistakes one for a cancellation.
+- **Step providers** - `PromptyFlow::add()` takes a `PromptyStepInterface`;
+  its `widget()` and `arguments()` are asked when the step is reached.
+- **Sections** - `walkFlow()` draws a section only when a step in its group
+  (the steps up to the next section) renders, and stores no result. Top
+  level only.
+- **Notes** - the static `note()` prints. A flow note is a `PromptyFlow::note()`
+  entry that `drawNote()` draws at its depth; it stores no result.
 - **Tree rendering** - nested children use bar connectors; `open` array
   tracks continuing siblings.
 - **Widget signatures** - all 5 widgets share one parameter order, and any
@@ -39,21 +47,20 @@ Namespace: `AlexSkrypnyk\Prompty`. Key files: `Prompty.php` (library),
 
   ```
   label, [options], default, [placeholder], description, [hints], [scroll],
-  [order], help, discovered, transform, required, validate, condition,
-  children, ctx
+  [order], help, discovered, transform, required, validate, ctx
   ```
 
   Bracketed parameters appear only where they apply: `options` and `scroll`
   on `select`/`multiselect`/`suggest`, `hints` on `select`/`multiselect`,
   `placeholder` on `text`/`suggest`, `order` on `multiselect`. `help`,
-  `discovered`, `transform`, `required`, `validate`, `condition`, `children`
-  and `ctx` are common to every widget.
+  `discovered`, `transform`, `required`, `validate` and `ctx` are common to
+  every widget.
   `required` sits between `transform` and `validate` because it runs between
   them. `pause` has no answer to resolve, so it takes only `label`,
-  `description`, `help`, its own `enter_only` and `erase`, then `condition`,
-  `children` and `ctx`. Callers pass `label` positionally and
-  everything else by name, so the order matters to the signature, not to call
-  sites.
+  `description`, `help`, its own `enter_only` and `erase`, then `ctx`.
+  Callers pass `label` positionally and everything else by name, so the order
+  matters to the signature, not to call sites. Each `PromptyFlow` widget
+  method takes `key` first, then the same parameters without `ctx`.
 
 ### Playground
 

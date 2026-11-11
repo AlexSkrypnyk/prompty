@@ -101,7 +101,7 @@ The [`playground/`](playground) directory holds runnable demos. Each filename st
 | `04-tasks.php`                 | Tasks behind a spinner, and tasks streaming a child process's output.                      |
 | `05-flows.php`                 | A linear flow with descriptions, hints and help.                                           |
 | `05-flows-nested.php`          | A nested flow with conditionals, 3 levels deep.                                            |
-| `05-flows-steps.php`           | Steps that follow earlier answers, then section headings and the step total.               |
+| `05-flows-steps.php`           | Arguments built from earlier answers, section headings and a step provider.                |
 | `05-flows-step-keys.php`       | What a step key becomes, and which are turned down.                                        |
 | `05-flows-scope.php`           | Several flows, and how long a flow's own configuration lasts.                              |
 | `05-flows-embed.php`           | The flow the embedder is tested against.                                                   |
