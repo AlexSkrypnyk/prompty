@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace AlexSkrypnyk\Prompty\Tests\Unit\Prompty;
 
 use AlexSkrypnyk\Prompty\Prompty;
+use AlexSkrypnyk\Prompty\PromptyFlow;
+use AlexSkrypnyk\Prompty\PromptyStepInterface;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Group;
@@ -26,8 +28,8 @@ final class PromptyFlowStepBackTest extends PromptyTestCase {
   /**
    * Run a flow over keystrokes and capture what it writes.
    *
-   * @param \Closure $steps
-   *   The flow's steps callable.
+   * @param \Closure $build
+   *   Receives an empty flow and returns it with the steps added.
    * @param string $keystrokes
    *   Raw keystroke bytes to feed.
    * @param string|null $back_key
@@ -37,14 +39,14 @@ final class PromptyFlowStepBackTest extends PromptyTestCase {
    *   The flow's return value, the screen left after every erase, the raw
    *   bytes written and the keystrokes left unread.
    */
-  protected function runFlow(\Closure $steps, string $keystrokes, ?string $back_key = NULL): array {
+  protected function runFlow(\Closure $build, string $keystrokes, ?string $back_key = NULL): array {
     $stream = $this->installKeystrokes($keystrokes, FALSE);
     $raw = '';
     Prompty::configure(output: function (string $chunk) use (&$raw): void {
       $raw .= $chunk;
     });
 
-    $result = Prompty::flow($steps, intro: 'Kitchen order', unicode: FALSE, back_key: $back_key);
+    $result = $build(Prompty::flow())->run(intro: 'Kitchen order', unicode: FALSE, back_key: $back_key);
     $unread = (string) stream_get_contents($stream);
     fclose($stream);
 
@@ -87,17 +89,16 @@ final class PromptyFlowStepBackTest extends PromptyTestCase {
    * A flow of 3 text steps.
    */
   protected static function textSteps(): \Closure {
-    return fn(): array => [
-      'guest' => Prompty::text('Guest name'),
-      'table' => Prompty::text('Table'),
-      'note' => Prompty::text('Note for the kitchen'),
-    ];
+    return static fn(PromptyFlow $flow): PromptyFlow => $flow
+      ->text('guest', 'Guest name')
+      ->text('table', 'Table')
+      ->text('note', 'Note for the kitchen');
   }
 
   #[DataProvider('dataProviderStepBack')]
-  public function testStepBack(\Closure $steps, string $keystrokes, string $straight_through, ?array $expected): void {
-    $r = $this->runFlow($steps, $keystrokes);
-    $direct = $this->runFlow($steps, $straight_through);
+  public function testStepBack(\Closure $build, string $keystrokes, string $straight_through, ?array $expected): void {
+    $r = $this->runFlow($build, $keystrokes);
+    $direct = $this->runFlow($build, $straight_through);
 
     $this->assertSame($expected, $r['result']);
     $this->assertSame($direct['result'], $r['result']);
@@ -145,160 +146,151 @@ final class PromptyFlowStepBackTest extends PromptyTestCase {
     ];
 
     yield 'discovered step is skipped' => [
-      fn(): array => [
-        'guest' => Prompty::text('Guest name'),
-        'table' => Prompty::text('Table', discovered: '12'),
-        'note' => Prompty::text('Note for the kitchen'),
-      ],
+      static fn(PromptyFlow $flow): PromptyFlow => $flow
+        ->text('guest', 'Guest name')
+        ->text('table', 'Table', discovered: '12')
+        ->text('note', 'Note for the kitchen'),
       'Ann' . $enter . $u . 'e' . $enter . 'Hot' . $enter,
       'Anne' . $enter . 'Hot' . $enter,
       ['guest' => 'Anne', 'table' => '12', 'note' => 'Hot'],
     ];
 
     yield 'nothing asked before a discovered first step' => [
-      fn(): array => [
-        'table' => Prompty::text('Table', discovered: '12'),
-        'guest' => Prompty::text('Guest name'),
-      ],
+      static fn(PromptyFlow $flow): PromptyFlow => $flow
+        ->text('table', 'Table', discovered: '12')
+        ->text('guest', 'Guest name'),
       $u . 'Ann' . $enter,
       'Ann' . $enter,
       ['table' => '12', 'guest' => 'Ann'],
     ];
 
     yield 'first child reopens the parent' => [
-      fn(): array => [
-        'course' => Prompty::select('Course', options: self::COURSES, children: [
-          'dish' => Prompty::text('Dish name'),
-        ]),
-      ],
+      static fn(PromptyFlow $flow): PromptyFlow => $flow
+        ->select('course', 'Course', options: self::COURSES)
+          ->children()
+            ->text('dish', 'Dish name')
+          ->end(),
       self::KEY_DOWN . $enter . 'Stew' . $u . self::KEY_DOWN . $enter . 'Tart' . $enter,
       self::KEY_DOWN . self::KEY_DOWN . $enter . 'Tart' . $enter,
       ['course' => 'dessert', 'dish' => 'Tart'],
     ];
 
     yield 'sibling after children reopens the parent, not a child' => [
-      fn(): array => [
-        'course' => Prompty::select('Course', options: self::COURSES, children: [
-          'dish' => Prompty::text('Dish name'),
-        ]),
-        'guest' => Prompty::text('Guest name'),
-      ],
+      static fn(PromptyFlow $flow): PromptyFlow => $flow
+        ->select('course', 'Course', options: self::COURSES)
+          ->children()
+            ->text('dish', 'Dish name')
+          ->end()
+        ->text('guest', 'Guest name'),
       $enter . 'Soup' . $enter . $u . self::KEY_DOWN . $enter . $enter . 'Ann' . $enter,
       self::KEY_DOWN . $enter . 'Soup' . $enter . 'Ann' . $enter,
       ['course' => 'main', 'dish' => 'Soup', 'guest' => 'Ann'],
     ];
 
     yield 'second child reopens the first child' => [
-      fn(): array => [
-        'course' => Prompty::select('Course', options: self::COURSES, children: [
-          'dish' => Prompty::text('Dish name'),
-          'note' => Prompty::text('Note for the kitchen'),
-        ]),
-      ],
+      static fn(PromptyFlow $flow): PromptyFlow => $flow
+        ->select('course', 'Course', options: self::COURSES)
+          ->children()
+            ->text('dish', 'Dish name')
+            ->text('note', 'Note for the kitchen')
+          ->end(),
       $enter . 'Soup' . $enter . $u . 's' . $enter . 'Hot' . $enter,
       $enter . 'Soups' . $enter . 'Hot' . $enter,
       ['course' => 'starter', 'dish' => 'Soups', 'note' => 'Hot'],
     ];
 
     yield 'changed answer hides a later step' => [
-      fn(): array => [
-        'course' => Prompty::select('Course', options: self::COURSES),
-        'extras' => Prompty::multiselect('Extras', options: self::EXTRAS, condition: fn(array $r): bool => $r['course'] === 'main'),
-        'send' => Prompty::confirm('Send to the kitchen?'),
-      ],
+      static fn(PromptyFlow $flow): PromptyFlow => $flow
+        ->select('course', 'Course', options: self::COURSES)
+        ->multiselect('extras', 'Extras', options: self::EXTRAS)
+          ->when(fn(array $r): bool => $r['course'] === 'main')
+        ->confirm('send', 'Send to the kitchen?'),
       self::KEY_DOWN . $enter . self::KEY_SPACE . $enter . $u . $u . self::KEY_UP . $enter . $enter,
       $enter . $enter,
-      ['course' => 'starter', 'send' => TRUE],
+      ['course' => 'starter', 'extras' => NULL, 'send' => TRUE],
     ];
 
     yield 'builder with new options ignores a previous answer it lacks' => [
-      fn(): array => [
-        'course' => Prompty::select('Course', options: self::COURSES),
-        'dish' => Prompty::step(fn(array $r): mixed => Prompty::select('Dish', options: $r['course'] === 'main' ? ['stew' => 'Stew', 'pie' => 'Pie'] : ['soup' => 'Soup', 'salad' => 'Salad'])),
-        'guest' => Prompty::text('Guest name'),
-      ],
+      static fn(PromptyFlow $flow): PromptyFlow => $flow
+        ->select('course', 'Course', options: self::COURSES)
+        ->select('dish', 'Dish', options: fn(array $r): array => $r['course'] === 'main' ? ['stew' => 'Stew', 'pie' => 'Pie'] : ['soup' => 'Soup', 'salad' => 'Salad'])
+        ->text('guest', 'Guest name'),
       $enter . self::KEY_DOWN . $enter . $u . $u . self::KEY_DOWN . $enter . $enter . 'Ann' . $enter,
       self::KEY_DOWN . $enter . $enter . 'Ann' . $enter,
       ['course' => 'main', 'dish' => 'stew', 'guest' => 'Ann'],
     ];
 
     yield 'section heading stays drawn once' => [
-      fn(): array => [
-        'guest' => Prompty::text('Guest name'),
-        Prompty::section('Kitchen'),
-        'note' => Prompty::text('Note for the kitchen'),
-      ],
+      static fn(PromptyFlow $flow): PromptyFlow => $flow
+        ->text('guest', 'Guest name')
+        ->section('Kitchen')
+        ->text('note', 'Note for the kitchen'),
       'Ann' . $enter . 'Ho' . $u . 'e' . $enter . 'Hot' . $enter,
       'Anne' . $enter . 'Hot' . $enter,
       ['guest' => 'Anne', 'note' => 'Hot'],
     ];
 
     yield 'section heading over the reopened step' => [
-      fn(): array => [
-        Prompty::section('Guest'),
-        'guest' => Prompty::text('Guest name'),
-        'note' => Prompty::text('Note for the kitchen'),
-      ],
+      static fn(PromptyFlow $flow): PromptyFlow => $flow
+        ->section('Guest')
+        ->text('guest', 'Guest name')
+        ->text('note', 'Note for the kitchen'),
       'Ann' . $enter . $u . $enter . 'Hot' . $enter,
       'Ann' . $enter . 'Hot' . $enter,
       ['guest' => 'Ann', 'note' => 'Hot'],
     ];
 
     yield 'children of a parent that asked nothing' => [
-      fn(): array => [
-        'course' => Prompty::select('Course', options: self::COURSES, discovered: 'main', children: [
-          'dish' => Prompty::text('Dish name'),
-        ]),
-        'guest' => Prompty::text('Guest name'),
-      ],
+      static fn(PromptyFlow $flow): PromptyFlow => $flow
+        ->select('course', 'Course', options: self::COURSES, discovered: 'main')
+          ->children()
+            ->text('dish', 'Dish name')
+          ->end()
+        ->text('guest', 'Guest name'),
       'Stew' . $enter . 'An' . $u . 's' . $enter . 'Ann' . $enter,
       'Stews' . $enter . 'Ann' . $enter,
       ['course' => 'main', 'dish' => 'Stews', 'guest' => 'Ann'],
     ];
 
     yield 'streamed task output is counted once' => [
-      fn(): array => [
-        'guest' => Prompty::text('Guest name'),
-        'ticket' => Prompty::task('Print the ticket', function (): bool {
+      static fn(PromptyFlow $flow): PromptyFlow => $flow
+        ->text('guest', 'Guest name')
+        ->task('ticket', 'Print the ticket', action: function (): bool {
           Prompty::output(['Printing']);
           echo "Done\n";
 
           return TRUE;
-        }, stream: TRUE),
-        'note' => Prompty::text('Note for the kitchen'),
-      ],
+        }, stream: TRUE)
+        ->text('note', 'Note for the kitchen'),
       'Ann' . $enter . 'Ho' . $u . 'e' . $enter . 'Hot' . $enter,
       'Anne' . $enter . 'Hot' . $enter,
       ['guest' => 'Anne', 'ticket' => TRUE, 'note' => 'Hot'],
     ];
 
     yield 'pause is passed over' => [
-      fn(): array => [
-        'guest' => Prompty::text('Guest name'),
-        'ready' => Prompty::pause('Press any key to continue'),
-        'note' => Prompty::text('Note for the kitchen'),
-      ],
+      static fn(PromptyFlow $flow): PromptyFlow => $flow
+        ->text('guest', 'Guest name')
+        ->pause('ready', 'Press any key to continue')
+        ->text('note', 'Note for the kitchen'),
       'Ann' . $enter . 'xHo' . $u . 'e' . $enter . 'xHot' . $enter,
       'Anne' . $enter . 'xHot' . $enter,
       ['guest' => 'Anne', 'ready' => TRUE, 'note' => 'Hot'],
     ];
 
     yield 'back key at a pause steps back' => [
-      fn(): array => [
-        'guest' => Prompty::text('Guest name'),
-        'ready' => Prompty::pause('Press any key to continue'),
-        'note' => Prompty::text('Note for the kitchen'),
-      ],
+      static fn(PromptyFlow $flow): PromptyFlow => $flow
+        ->text('guest', 'Guest name')
+        ->pause('ready', 'Press any key to continue')
+        ->text('note', 'Note for the kitchen'),
       'Ann' . $enter . $u . 'e' . $enter . 'xHot' . $enter,
       'Anne' . $enter . 'xHot' . $enter,
       ['guest' => 'Anne', 'ready' => TRUE, 'note' => 'Hot'],
     ];
 
     yield 'back key at a first-step pause continues' => [
-      fn(): array => [
-        'ready' => Prompty::pause('Press any key to continue'),
-        'guest' => Prompty::text('Guest name'),
-      ],
+      static fn(PromptyFlow $flow): PromptyFlow => $flow
+        ->pause('ready', 'Press any key to continue')
+        ->text('guest', 'Guest name'),
       $u . 'Ann' . $enter,
       'xAnn' . $enter,
       ['ready' => TRUE, 'guest' => 'Ann'],
@@ -314,115 +306,142 @@ final class PromptyFlowStepBackTest extends PromptyTestCase {
 
   #[DataProvider('dataProviderWidgetReopensWithItsAnswer')]
   public function testWidgetReopensWithItsAnswer(\Closure $widget, string $answer, mixed $expected): void {
-    $steps = fn(): array => [
-      'first' => $widget(),
-      'note' => Prompty::text('Note for the kitchen'),
-    ];
+    $build = static fn(PromptyFlow $flow): PromptyFlow => $widget($flow)->text('note', 'Note for the kitchen');
 
-    $r = $this->runFlow($steps, $answer . self::KEY_ENTER . self::KEY_CTRL_U . self::KEY_ENTER . 'Hot' . self::KEY_ENTER);
+    $r = $this->runFlow($build, $answer . self::KEY_ENTER . self::KEY_CTRL_U . self::KEY_ENTER . 'Hot' . self::KEY_ENTER);
 
     $this->assertSame(['first' => $expected, 'note' => 'Hot'], $r['result']);
   }
 
   public static function dataProviderWidgetReopensWithItsAnswer(): \Iterator {
-    yield 'text' => [static fn(): mixed => Prompty::text('Guest name', default: 'Bob'), self::KEY_BACKSPACE . self::KEY_BACKSPACE . self::KEY_BACKSPACE . 'Ann', 'Ann'];
-    yield 'select' => [static fn(): mixed => Prompty::select('Course', options: self::COURSES), self::KEY_DOWN . self::KEY_DOWN, 'dessert'];
-    yield 'select with numeric keys' => [static fn(): mixed => Prompty::select('Table', options: [4 => 'Table 4', 7 => 'Table 7', 12 => 'Table 12']), self::KEY_DOWN, '7'];
-    yield 'multiselect' => [static fn(): mixed => Prompty::multiselect('Extras', options: self::EXTRAS, default: ['bread']), self::KEY_SPACE . self::KEY_DOWN . self::KEY_DOWN . self::KEY_SPACE, ['herbs']];
-    yield 'suggest' => [static fn(): mixed => Prompty::suggest('Dish', options: ['Pear tart', 'Plum compote']), 'Onion soup', 'Onion soup'];
-    yield 'confirm' => [static fn(): mixed => Prompty::confirm('Send to the kitchen?'), self::KEY_RIGHT, FALSE];
+    yield 'text' => [static fn(PromptyFlow $flow): PromptyFlow => $flow->text('first', 'Guest name', default: 'Bob'), self::KEY_BACKSPACE . self::KEY_BACKSPACE . self::KEY_BACKSPACE . 'Ann', 'Ann'];
+    yield 'select' => [static fn(PromptyFlow $flow): PromptyFlow => $flow->select('first', 'Course', options: self::COURSES), self::KEY_DOWN . self::KEY_DOWN, 'dessert'];
+    yield 'select with numeric keys' => [static fn(PromptyFlow $flow): PromptyFlow => $flow->select('first', 'Table', options: [4 => 'Table 4', 7 => 'Table 7', 12 => 'Table 12']), self::KEY_DOWN, '7'];
+    yield 'multiselect' => [static fn(PromptyFlow $flow): PromptyFlow => $flow->multiselect('first', 'Extras', options: self::EXTRAS, default: ['bread']), self::KEY_SPACE . self::KEY_DOWN . self::KEY_DOWN . self::KEY_SPACE, ['herbs']];
+    yield 'suggest' => [static fn(PromptyFlow $flow): PromptyFlow => $flow->suggest('first', 'Dish', options: ['Pear tart', 'Plum compote']), 'Onion soup', 'Onion soup'];
+    yield 'confirm' => [static fn(PromptyFlow $flow): PromptyFlow => $flow->confirm('first', 'Send to the kitchen?'), self::KEY_RIGHT, FALSE];
 
     // A reopened step starts from the input it was accepted with, so its
     // transform runs once on the way forward.
-    yield 'text with a transform' => [static fn(): mixed => Prompty::text('Table', transform: fn(string $value): string => 'Table ' . $value), '4', 'Table 4'];
-    yield 'suggest with a transform' => [static fn(): mixed => Prompty::suggest('Dish', options: ['Pear tart'], transform: fn(string $value): string => 'Fresh ' . $value), 'Onion soup', 'Fresh Onion soup'];
-    yield 'select with a transform' => [static fn(): mixed => Prompty::select('Course', options: self::COURSES, transform: strtoupper(...)), self::KEY_DOWN, 'MAIN'];
-    yield 'multiselect with a transform' => [static fn(): mixed => Prompty::multiselect('Extras', options: self::EXTRAS, transform: fn(array $keys): array => array_map(ucfirst(...), $keys)), self::KEY_DOWN . self::KEY_DOWN . self::KEY_SPACE, ['Herbs']];
-    yield 'confirm with a transform' => [static fn(): mixed => Prompty::confirm('Send to the kitchen?', transform: fn(bool $answer): bool => !$answer), self::KEY_RIGHT, TRUE];
+    yield 'text with a transform' => [static fn(PromptyFlow $flow): PromptyFlow => $flow->text('first', 'Table', transform: fn(string $value): string => 'Table ' . $value), '4', 'Table 4'];
+    yield 'suggest with a transform' => [static fn(PromptyFlow $flow): PromptyFlow => $flow->suggest('first', 'Dish', options: ['Pear tart'], transform: fn(string $value): string => 'Fresh ' . $value), 'Onion soup', 'Fresh Onion soup'];
+    yield 'select with a transform' => [static fn(PromptyFlow $flow): PromptyFlow => $flow->select('first', 'Course', options: self::COURSES, transform: strtoupper(...)), self::KEY_DOWN, 'MAIN'];
+    yield 'multiselect with a transform' => [static fn(PromptyFlow $flow): PromptyFlow => $flow->multiselect('first', 'Extras', options: self::EXTRAS, transform: fn(array $keys): array => array_map(ucfirst(...), $keys)), self::KEY_DOWN . self::KEY_DOWN . self::KEY_SPACE, ['Herbs']];
+    yield 'confirm with a transform' => [static fn(PromptyFlow $flow): PromptyFlow => $flow->confirm('first', 'Send to the kitchen?', transform: fn(bool $answer): bool => !$answer), self::KEY_RIGHT, TRUE];
   }
 
   #[DataProvider('dataProviderWidgetStepsBack')]
   public function testWidgetStepsBack(\Closure $widget, string $answer, mixed $expected): void {
-    $steps = fn(): array => [
-      'guest' => Prompty::text('Guest name'),
-      'second' => $widget(),
-    ];
+    $build = static fn(PromptyFlow $flow): PromptyFlow => $widget($flow->text('guest', 'Guest name'));
 
-    $r = $this->runFlow($steps, 'Ann' . self::KEY_ENTER . self::KEY_CTRL_U . 'e' . self::KEY_ENTER . $answer . self::KEY_ENTER);
+    $r = $this->runFlow($build, 'Ann' . self::KEY_ENTER . self::KEY_CTRL_U . 'e' . self::KEY_ENTER . $answer . self::KEY_ENTER);
 
     $this->assertSame(['guest' => 'Anne', 'second' => $expected], $r['result']);
   }
 
   public static function dataProviderWidgetStepsBack(): \Iterator {
-    yield 'text' => [static fn(): mixed => Prompty::text('Table'), '4', '4'];
-    yield 'select' => [static fn(): mixed => Prompty::select('Course', options: self::COURSES), self::KEY_DOWN, 'main'];
-    yield 'multiselect' => [static fn(): mixed => Prompty::multiselect('Extras', options: self::EXTRAS), self::KEY_SPACE, ['bread']];
-    yield 'suggest' => [static fn(): mixed => Prompty::suggest('Dish', options: ['Pear tart', 'Plum compote']), 'Onion soup', 'Onion soup'];
-    yield 'confirm' => [static fn(): mixed => Prompty::confirm('Send to the kitchen?'), self::KEY_RIGHT, FALSE];
+    yield 'text' => [static fn(PromptyFlow $flow): PromptyFlow => $flow->text('second', 'Table'), '4', '4'];
+    yield 'select' => [static fn(PromptyFlow $flow): PromptyFlow => $flow->select('second', 'Course', options: self::COURSES), self::KEY_DOWN, 'main'];
+    yield 'multiselect' => [static fn(PromptyFlow $flow): PromptyFlow => $flow->multiselect('second', 'Extras', options: self::EXTRAS), self::KEY_SPACE, ['bread']];
+    yield 'suggest' => [static fn(PromptyFlow $flow): PromptyFlow => $flow->suggest('second', 'Dish', options: ['Pear tart', 'Plum compote']), 'Onion soup', 'Onion soup'];
+    yield 'confirm' => [static fn(PromptyFlow $flow): PromptyFlow => $flow->confirm('second', 'Send to the kitchen?'), self::KEY_RIGHT, FALSE];
   }
 
   #[DataProvider('dataProviderPreviousAnswerThatNoLongerFits')]
   public function testPreviousAnswerThatNoLongerFits(\Closure $widget, mixed $expected): void {
-    $answers = 0;
-    $steps = function () use ($widget, &$answers): array {
-      return [
-        'first' => Prompty::step(function () use ($widget, &$answers): mixed {
-          return $widget($answers++);
-        }),
-        'note' => Prompty::text('Note for the kitchen'),
-      ];
+    // The provider is asked for its widget each time the step is reached, so
+    // the second build can change the options or the widget itself.
+    $step = new class($widget) implements PromptyStepInterface {
+
+      /**
+       * The number of times the step was built.
+       */
+      protected int $builds = 0;
+
+      /**
+       * The widget and arguments of the latest build.
+       *
+       * @var array{0: string, 1: array<string, mixed>}
+       */
+      protected array $built = ['', []];
+
+      public function __construct(protected \Closure $widget) {}
+
+      public function key(): string {
+        return 'first';
+      }
+
+      public function widget(): string {
+        /** @var array{0: string, 1: array<string, mixed>} $built */
+        $built = ($this->widget)($this->builds++);
+        $this->built = $built;
+
+        return $this->built[0];
+      }
+
+      public function arguments(array $results): array {
+        return $this->built[1];
+      }
+
+      public function condition(array $results): bool {
+        return TRUE;
+      }
+
     };
 
-    $r = $this->runFlow($steps, self::KEY_ENTER . self::KEY_CTRL_U . self::KEY_ENTER . 'Hot' . self::KEY_ENTER);
+    $build = static fn(PromptyFlow $flow): PromptyFlow => $flow->add($step)->text('note', 'Note for the kitchen');
+
+    $r = $this->runFlow($build, self::KEY_ENTER . self::KEY_CTRL_U . self::KEY_ENTER . 'Hot' . self::KEY_ENTER);
 
     $this->assertSame(['first' => $expected, 'note' => 'Hot'], $r['result']);
   }
 
   public static function dataProviderPreviousAnswerThatNoLongerFits(): \Iterator {
     yield 'select whose option is gone' => [
-      static fn(int $build): mixed => Prompty::select('Course', options: $build === 0 ? ['starter' => 'Starter'] : ['main' => 'Main']),
+      static fn(int $build): array => ['select', ['label' => 'Course', 'options' => $build === 0 ? ['starter' => 'Starter'] : ['main' => 'Main']]],
       'main',
     ];
 
     yield 'multiselect whose option is gone' => [
-      static fn(int $build): mixed => Prompty::multiselect('Extras', options: $build === 0 ? self::EXTRAS : ['olives' => 'Olives'], default: $build === 0 ? ['bread'] : ['olives']),
+      static fn(int $build): array => ['multiselect', ['label' => 'Extras', 'options' => $build === 0 ? self::EXTRAS : ['olives' => 'Olives'], 'default' => $build === 0 ? ['bread'] : ['olives']]],
       ['olives'],
     ];
 
     yield 'confirm now built as a text' => [
-      static fn(int $build): mixed => $build === 0 ? Prompty::confirm('Send to the kitchen?') : Prompty::text('Note', default: 'Hot'),
+      static fn(int $build): array => $build === 0 ? ['confirm', ['label' => 'Send to the kitchen?']] : ['text', ['label' => 'Note', 'default' => 'Hot']],
       'Hot',
     ];
   }
 
   public function testLaterStepWithTransformKeepsItsInput(): void {
-    $steps = fn(): array => [
-      'guest' => Prompty::text('Guest name'),
-      'table' => Prompty::text('Table', transform: fn(string $value): string => 'Table ' . $value),
-      'note' => Prompty::text('Note for the kitchen'),
-    ];
+    $build = static fn(PromptyFlow $flow): PromptyFlow => $flow
+      ->text('guest', 'Guest name')
+      ->text('table', 'Table', transform: fn(string $value): string => 'Table ' . $value)
+      ->text('note', 'Note for the kitchen');
 
-    $r = $this->runFlow($steps, 'Ann' . self::KEY_ENTER . '4' . self::KEY_ENTER . self::KEY_CTRL_U . self::KEY_CTRL_U . 'e' . self::KEY_ENTER . self::KEY_ENTER . 'Hot' . self::KEY_ENTER);
+    $r = $this->runFlow($build, 'Ann' . self::KEY_ENTER . '4' . self::KEY_ENTER . self::KEY_CTRL_U . self::KEY_CTRL_U . 'e' . self::KEY_ENTER . self::KEY_ENTER . 'Hot' . self::KEY_ENTER);
 
     $this->assertSame(['guest' => 'Anne', 'table' => 'Table 4', 'note' => 'Hot'], $r['result']);
   }
 
   public function testReplayEndsAtStepWithoutPreviousAnswer(): void {
     $should_show = FALSE;
-    $steps = fn(): array => [
-      'guest' => Prompty::text('Guest name'),
-      'table' => Prompty::text('Table', condition: function () use (&$should_show): bool {
-        return $should_show;
-      }),
-      'note' => Prompty::text('Note for the kitchen', validate: function () use (&$should_show): ?string {
-        $should_show = TRUE;
+    $build = static function (PromptyFlow $flow) use (&$should_show): PromptyFlow {
+      return $flow
+        ->text('guest', 'Guest name')
+        ->text('table', 'Table')
+          ->when(function () use (&$should_show): bool {
+            return $should_show;
+          })
+        ->text('note', 'Note for the kitchen', validate: function () use (&$should_show): ?string {
+          $should_show = TRUE;
 
-        return NULL;
-      }),
-      'extra' => Prompty::text('Extra'),
-    ];
+          return NULL;
+        })
+        ->text('extra', 'Extra');
+    };
 
-    $r = $this->runFlow($steps, 'Ann' . self::KEY_ENTER . 'Hot' . self::KEY_ENTER . self::KEY_CTRL_U . '4' . self::KEY_ENTER . self::KEY_ENTER . 'Bread' . self::KEY_ENTER);
+    $r = $this->runFlow($build, 'Ann' . self::KEY_ENTER . 'Hot' . self::KEY_ENTER . self::KEY_CTRL_U . '4' . self::KEY_ENTER . self::KEY_ENTER . 'Bread' . self::KEY_ENTER);
 
     // Answering the note shows the table step, which the first walk skipped.
     // It has no previous answer, so the replay ends there, before the note.
@@ -430,21 +449,39 @@ final class PromptyFlowStepBackTest extends PromptyTestCase {
     $this->assertSame('', $r['unread']);
   }
 
+  public function testSkippedStepShownAgainKeepsItsFirstAnswer(): void {
+    $build = static fn(PromptyFlow $flow): PromptyFlow => $flow
+      ->select('course', 'Course', options: self::COURSES)
+      ->text('dish', 'Dish name')
+        ->when(fn(array $r): bool => $r['course'] === 'main')
+      ->text('guest', 'Guest name');
+
+    // Main, then Stew. Back twice to the course and pick Starter, which skips
+    // the dish. Back again, pick Main and accept the dish default.
+    $keystrokes = self::KEY_DOWN . self::KEY_ENTER . 'Stew' . self::KEY_ENTER
+      . self::KEY_CTRL_U . self::KEY_CTRL_U . self::KEY_UP . self::KEY_ENTER
+      . self::KEY_CTRL_U . self::KEY_DOWN . self::KEY_ENTER . self::KEY_ENTER . 'Ann' . self::KEY_ENTER;
+
+    $r = $this->runFlow($build, $keystrokes);
+
+    $this->assertSame(['course' => 'main', 'dish' => 'Stew', 'guest' => 'Ann'], $r['result']);
+    $this->assertSame('', $r['unread']);
+  }
+
   public function testTaskAfterReopenedStepRunsAgain(): void {
     $runs = [];
-    $steps = function () use (&$runs): array {
-      return [
-        'guest' => Prompty::text('Guest name'),
-        'ticket' => Prompty::task('Print the ticket', function () use (&$runs): bool {
+    $build = static function (PromptyFlow $flow) use (&$runs): PromptyFlow {
+      return $flow
+        ->text('guest', 'Guest name')
+        ->task('ticket', 'Print the ticket', action: function () use (&$runs): bool {
           $runs[] = Prompty::results()['guest'] ?? NULL;
 
           return TRUE;
-        }),
-        'note' => Prompty::text('Note for the kitchen'),
-      ];
+        })
+        ->text('note', 'Note for the kitchen');
     };
 
-    $r = $this->runFlow($steps, 'Ann' . self::KEY_ENTER . self::KEY_CTRL_U . 'e' . self::KEY_ENTER . 'Hot' . self::KEY_ENTER);
+    $r = $this->runFlow($build, 'Ann' . self::KEY_ENTER . self::KEY_CTRL_U . 'e' . self::KEY_ENTER . 'Hot' . self::KEY_ENTER);
 
     // The task asks nothing, so the key skips it and reopens the guest step.
     $this->assertSame(['guest' => 'Anne', 'ticket' => TRUE, 'note' => 'Hot'], $r['result']);
@@ -453,19 +490,18 @@ final class PromptyFlowStepBackTest extends PromptyTestCase {
 
   public function testTaskBeforeReopenedStepIsNotRunAgain(): void {
     $runs = 0;
-    $steps = function () use (&$runs): array {
-      return [
-        'ticket' => Prompty::task('Print the ticket', function () use (&$runs): bool {
+    $build = static function (PromptyFlow $flow) use (&$runs): PromptyFlow {
+      return $flow
+        ->task('ticket', 'Print the ticket', action: function () use (&$runs): bool {
           $runs++;
 
           return TRUE;
-        }),
-        'guest' => Prompty::text('Guest name'),
-        'note' => Prompty::text('Note for the kitchen'),
-      ];
+        })
+        ->text('guest', 'Guest name')
+        ->text('note', 'Note for the kitchen');
     };
 
-    $r = $this->runFlow($steps, 'Ann' . self::KEY_ENTER . self::KEY_CTRL_U . 'e' . self::KEY_ENTER . 'Hot' . self::KEY_ENTER);
+    $r = $this->runFlow($build, 'Ann' . self::KEY_ENTER . self::KEY_CTRL_U . 'e' . self::KEY_ENTER . 'Hot' . self::KEY_ENTER);
 
     $this->assertSame(['ticket' => TRUE, 'guest' => 'Anne', 'note' => 'Hot'], $r['result']);
     $this->assertSame(1, $runs);
@@ -486,10 +522,10 @@ final class PromptyFlowStepBackTest extends PromptyTestCase {
       $raw .= $chunk;
     }, legend: TRUE);
 
-    Prompty::flow(fn(): array => [
-      'guest' => Prompty::text('Guest name'),
-      'note' => Prompty::text('Note for the kitchen'),
-    ], unicode: FALSE);
+    Prompty::flow()
+      ->text('guest', 'Guest name')
+      ->text('note', 'Note for the kitchen')
+      ->run(unicode: FALSE);
     fclose($stream);
 
     $output = $this->stripAnsi($raw);
@@ -530,10 +566,7 @@ final class PromptyFlowStepBackTest extends PromptyTestCase {
 
   #[DataProvider('dataProviderBackKeySetting')]
   public function testBackKeySetting(?string $back_key, string $keystrokes, array $expected): void {
-    $r = $this->runFlow(fn(): array => [
-      'guest' => Prompty::text('Guest name'),
-      'table' => Prompty::text('Table'),
-    ], $keystrokes, $back_key);
+    $r = $this->runFlow(static fn(PromptyFlow $flow): PromptyFlow => $flow->text('guest', 'Guest name')->text('table', 'Table'), $keystrokes, $back_key);
 
     $this->assertSame($expected, $r['result']);
   }
@@ -550,11 +583,13 @@ final class PromptyFlowStepBackTest extends PromptyTestCase {
   public function testBackKeyInFlowIsScopedToThatFlow(): void {
     $during = NULL;
 
-    $this->runFlow(function () use (&$during): array {
+    $label = static function () use (&$during): string {
       $during = Prompty::config()['back_key'];
 
-      return ['guest' => Prompty::text('Guest name', discovered: 'Ann')];
-    }, '', 'ctrl-b');
+      return 'Guest name';
+    };
+
+    $this->runFlow(static fn(PromptyFlow $flow): PromptyFlow => $flow->text('guest', $label, discovered: 'Ann'), '', 'ctrl-b');
 
     $this->assertSame('ctrl-b', $during);
     $this->assertSame('ctrl-u', Prompty::config()['back_key']);

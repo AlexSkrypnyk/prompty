@@ -169,54 +169,35 @@ final class PromptyWidgetPauseTest extends PromptyTestCase {
     $this->assertSame("o  Press Enter to send the order\n|\n\r+  Press Enter to send the order\n|\n", $output);
   }
 
-  public function testPauseInFlowReturnsClosure(): void {
-    $this->createAndSetInstance([], TRUE);
-
-    $this->assertInstanceOf(\Closure::class, Prompty::pause('Press any key to start the order...'));
-  }
-
-  public function testPauseInFlowWithConditionReturnsStepArray(): void {
-    $this->createAndSetInstance([], TRUE);
-
-    $condition = fn(array $r): bool => TRUE;
-    $children = ['send' => Prompty::confirm('Send order?')];
-
-    $step = Prompty::pause('Press any key to start the order...', condition: $condition, children: $children);
-
-    $this->assertIsArray($step);
-    $this->assertInstanceOf(\Closure::class, $step['__call']);
-    $this->assertSame($condition, $step['__condition']);
-    $this->assertSame($children, $step['__children']);
-  }
-
   public function testPauseInFlow(): void {
-    $r = $this->promptyRun(fn(): mixed => Prompty::flow(fn(): array => [
-      'welcome' => Prompty::pause('Press any key to start the order...'),
-      'dish' => Prompty::text('Dish name', placeholder: 'pear tart'),
-      'ready' => Prompty::pause('Press Enter to send the order', enter_only: TRUE, erase: TRUE),
-    ], intro: 'Compose an order'), 'x' . self::KEY_ENTER . 'y' . self::KEY_ENTER);
+    $r = $this->promptyRun(fn(): mixed => Prompty::flow()
+      ->pause('welcome', 'Press any key to start the order...')
+      ->text('dish', 'Dish name', placeholder: 'pear tart')
+      ->pause('ready', 'Press Enter to send the order', enter_only: TRUE, erase: TRUE)
+      ->run(intro: 'Compose an order'), 'x' . self::KEY_ENTER . 'y' . self::KEY_ENTER);
 
     $this->assertSame(['welcome' => TRUE, 'dish' => 'pear tart', 'ready' => TRUE], $r['result']);
     $this->assertStringContainsString("+  Press any key to start the order...\n|\n", $r['output']);
   }
 
   public function testPauseInFlowCancels(): void {
-    $r = $this->promptyRun(fn(): mixed => Prompty::flow(fn(): array => [
-      'welcome' => Prompty::pause('Press any key to start the order...'),
-      'dish' => Prompty::text('Dish name', placeholder: 'pear tart'),
-    ], cancelled: 'Order cancelled.'), self::KEY_ESCAPE);
+    $r = $this->promptyRun(fn(): mixed => Prompty::flow()
+      ->pause('welcome', 'Press any key to start the order...')
+      ->text('dish', 'Dish name', placeholder: 'pear tart')
+      ->run(cancelled: 'Order cancelled.'), self::KEY_ESCAPE);
 
     $this->assertNull($r['result']);
     $this->assertStringEndsWith("#  Order cancelled.\n\n", $r['output']);
   }
 
   public function testPauseInFlowNestedAndNumbered(): void {
-    $r = $this->promptyRun(fn(): mixed => Prompty::flow(fn(): array => [
-      'course' => Prompty::select('Course', options: ['main' => 'Main', 'dessert' => 'Dessert'], children: [
-        'welcome' => Prompty::pause('Press any key to fire the mains...', description: 'The kitchen starts at once.'),
-        'warm' => Prompty::confirm('Serve warm?'),
-      ]),
-    ], numbering: TRUE), self::KEY_ENTER . 'x' . self::KEY_ENTER);
+    $r = $this->promptyRun(fn(): mixed => Prompty::flow()
+      ->select('course', 'Course', options: ['main' => 'Main', 'dessert' => 'Dessert'])
+        ->children()
+          ->pause('welcome', 'Press any key to fire the mains...', description: 'The kitchen starts at once.')
+          ->confirm('warm', 'Serve warm?')
+        ->end()
+      ->run(numbering: TRUE), self::KEY_ENTER . 'x' . self::KEY_ENTER);
 
     $this->assertSame(['course' => 'main', 'welcome' => TRUE, 'warm' => TRUE], $r['result']);
     $this->assertStringContainsString("|  +  Press any key to fire the mains... (1.1)\n|  |  \n", $r['output']);

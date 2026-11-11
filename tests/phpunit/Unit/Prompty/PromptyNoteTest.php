@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace AlexSkrypnyk\Prompty\Tests\Unit\Prompty;
 
 use AlexSkrypnyk\Prompty\Prompty;
+use AlexSkrypnyk\Prompty\PromptyFlow;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Group;
@@ -20,7 +21,9 @@ final class PromptyNoteTest extends PromptyTestCase {
   public function testNotePrinted(string $message, string $type, bool $unicode, string $expected): void {
     $this->createAndSetInstance(['unicode' => $unicode, 'ansi' => FALSE]);
 
-    $output = $this->captureOutput(fn(): mixed => Prompty::note($message, $type));
+    $output = $this->captureOutput(function () use ($message, $type): void {
+      Prompty::note($message, $type);
+    });
 
     $this->assertSame($expected, $output);
   }
@@ -49,7 +52,9 @@ final class PromptyNoteTest extends PromptyTestCase {
   public function testNoteColors(string $type, string $color): void {
     $this->createAndSetInstance(['ansi' => TRUE]);
 
-    $output = $this->captureRaw(fn(): mixed => Prompty::note("The kitchen opens at 5pm.\nTables are set.", $type));
+    $output = $this->captureRaw(function () use ($type): void {
+      Prompty::note("The kitchen opens at 5pm.\nTables are set.", $type);
+    });
 
     $this->assertSame($color, substr($output, 0, strlen($color)));
     $this->assertStringContainsString('  ' . $color . 'The kitchen opens at 5pm.' . "\033[0m", $output);
@@ -66,7 +71,9 @@ final class PromptyNoteTest extends PromptyTestCase {
   public function testNoteKeepsSgr(): void {
     $this->createAndSetInstance(['ansi' => TRUE]);
 
-    $output = $this->captureRaw(fn(): mixed => Prompty::note("Send the \033[1mpear tart\033[22m now.", 'warning'));
+    $output = $this->captureRaw(function (): void {
+      Prompty::note("Send the \033[1mpear tart\033[22m now.", 'warning');
+    });
 
     $this->assertStringContainsString("\033[33mSend the \033[1mpear tart\033[22m\033[33m now.\033[0m", $output);
   }
@@ -74,16 +81,18 @@ final class PromptyNoteTest extends PromptyTestCase {
   public function testNoteAnsiOff(): void {
     $this->createAndSetInstance(['ansi' => FALSE]);
 
-    $output = $this->captureRaw(fn(): mixed => Prompty::note("Send the \033[1mpear tart\033[22m now.", 'warning'));
+    $output = $this->captureRaw(function (): void {
+      Prompty::note("Send the \033[1mpear tart\033[22m now.", 'warning');
+    });
 
     $this->assertSame('!  Send the pear tart now.' . PHP_EOL . '|' . PHP_EOL, $output);
   }
 
   public function testNoteCustomSymbolAndColor(): void {
     $output = $this->captureRaw(function (): void {
-      Prompty::flow(fn(): array => [
-        Prompty::note('The kitchen opens at 5pm.'),
-      ], symbols_ascii: ['note_info' => 'i'], colors: ['note_info' => "\033[35m"], unicode: FALSE, ansi: TRUE, interactive: FALSE);
+      Prompty::flow()
+        ->note('The kitchen opens at 5pm.')
+        ->run(symbols_ascii: ['note_info' => 'i'], colors: ['note_info' => "\033[35m"], unicode: FALSE, ansi: TRUE, interactive: FALSE);
     });
 
     $this->assertStringStartsWith("\033[35mi\033[0m  \033[35mThe kitchen opens at 5pm.\033[0m", $output);
@@ -96,7 +105,9 @@ final class PromptyNoteTest extends PromptyTestCase {
       $written .= $chunk;
     });
 
-    $echoed = $this->captureOutput(fn(): mixed => Prompty::note('The kitchen opens at 5pm.'));
+    $echoed = $this->captureOutput(function (): void {
+      Prompty::note('The kitchen opens at 5pm.');
+    });
 
     $this->assertSame('', $echoed);
     $this->assertSame("*  The kitchen opens at 5pm.\n|\n", $this->promptyNormalizeOutput($written));
@@ -105,20 +116,11 @@ final class PromptyNoteTest extends PromptyTestCase {
   public function testNotePrintsInNonInteractiveMode(): void {
     $this->createAndSetInstance(['ansi' => FALSE, 'interactive' => FALSE]);
 
-    $output = $this->captureOutput(fn(): mixed => Prompty::note('The kitchen opens at 5pm.'));
-
-    $this->assertSame("*  The kitchen opens at 5pm.\n|\n", $output);
-  }
-
-  public function testNoteReturnsNullOutsideFlow(): void {
-    $this->createAndSetInstance();
-
-    $result = 'unset';
-    $this->captureOutput(function () use (&$result): void {
-      $result = Prompty::note('The kitchen opens at 5pm.');
+    $output = $this->captureOutput(function (): void {
+      Prompty::note('The kitchen opens at 5pm.');
     });
 
-    $this->assertNull($result);
+    $this->assertSame("*  The kitchen opens at 5pm.\n|\n", $output);
   }
 
   public function testNoteInvalidTypeThrows(): void {
@@ -130,32 +132,23 @@ final class PromptyNoteTest extends PromptyTestCase {
     Prompty::note('The kitchen opens at 5pm.', 'notice');
   }
 
-  public function testNoteConditionOutsideFlowThrows(): void {
-    $this->createAndSetInstance();
+  public function testNoteInFlowInvalidTypeThrowsOnRun(): void {
+    $flow = Prompty::flow()
+      ->text('dish', 'Dish name', default: 'pear tart')
+      ->note('The kitchen opens at 5pm.', 'notice');
 
-    $this->expectException(\LogicException::class);
-    $this->expectExceptionMessage('A note condition tests the answers collected so far, so it can only be given to a note declared inside the callable passed to Prompty::flow().');
+    $output = $this->captureOutputThrows(\InvalidArgumentException::class, 'Note type "notice" is not valid. Use 1 of: info, success, warning, error.', function () use ($flow): void {
+      $flow->run(unicode: FALSE, interactive: FALSE);
+    });
 
-    Prompty::note('The kitchen opens at 5pm.', condition: fn(array $r): bool => TRUE);
-  }
-
-  public function testNoteReturnsStepArrayWhileDefining(): void {
-    $this->createAndSetInstance();
-    $this->setStaticProperty('isDefining', TRUE);
-
-    $condition = fn(array $r): bool => TRUE;
-    $step = Prompty::note('The kitchen opens at 5pm.', 'warning', $condition);
-
-    $this->setStaticProperty('isDefining', FALSE);
-
-    $this->assertSame(['__note' => 'The kitchen opens at 5pm.', '__type' => 'warning', '__condition' => $condition], $step);
+    $this->assertSame('', $output);
   }
 
   #[DataProvider('dataProviderNoteInFlow')]
-  public function testNoteInFlow(\Closure $steps, string $expected, array $expected_results): void {
+  public function testNoteInFlow(\Closure $build, string $expected, array $expected_results): void {
     $result = NULL;
-    $output = $this->captureOutput(function () use ($steps, &$result): void {
-      $result = Prompty::flow($steps, numbering: TRUE, unicode: FALSE, ansi: FALSE, interactive: FALSE);
+    $output = $this->captureOutput(function () use ($build, &$result): void {
+      $result = $build(Prompty::flow())->run(numbering: TRUE, unicode: FALSE, ansi: FALSE, interactive: FALSE);
     });
 
     $this->assertSame($expected_results, $result);
@@ -164,62 +157,60 @@ final class PromptyNoteTest extends PromptyTestCase {
 
   public static function dataProviderNoteInFlow(): \Iterator {
     yield 'between steps' => [
-      fn(): array => [
-        Prompty::note('The kitchen opens at 5pm.'),
-        'dish' => Prompty::text('Dish name', default: 'pear tart'),
-        Prompty::note('Order sent to the kitchen.', type: 'success'),
-      ],
+      static fn(PromptyFlow $flow): PromptyFlow => $flow
+        ->note('The kitchen opens at 5pm.')
+        ->text('dish', 'Dish name', default: 'pear tart')
+        ->note('Order sent to the kitchen.', type: 'success'),
       "*  The kitchen opens at 5pm.\n|\n+  Dish name (1)\n|  pear tart\n|\n+  Order sent to the kitchen.\n|\n",
       ['dish' => 'pear tart'],
     ];
 
     yield 'condition hides the note' => [
-      fn(): array => [
-        'dish' => Prompty::text('Dish name', default: 'pear tart'),
-        Prompty::note('Plums are out of season.', type: 'warning', condition: fn(array $r): bool => $r['dish'] === 'plum compote'),
-        Prompty::note('Pears are in season.', condition: fn(array $r): bool => $r['dish'] === 'pear tart'),
-      ],
+      static fn(PromptyFlow $flow): PromptyFlow => $flow
+        ->text('dish', 'Dish name', default: 'pear tart')
+        ->note('Plums are out of season.', type: 'warning')
+          ->when(fn(array $r): bool => $r['dish'] === 'plum compote')
+        ->note('Pears are in season.')
+          ->when(fn(array $r): bool => $r['dish'] === 'pear tart'),
       "+  Dish name (1)\n|  pear tart\n|\n*  Pears are in season.\n|\n",
       ['dish' => 'pear tart'],
     ];
 
     yield 'notes take no step number' => [
-      fn(): array => [
-        'dish' => Prompty::text('Dish name', default: 'pear tart'),
-        Prompty::note('The pear tart is running low.', type: 'warning'),
-        'send' => Prompty::confirm('Send order?'),
-      ],
+      static fn(PromptyFlow $flow): PromptyFlow => $flow
+        ->text('dish', 'Dish name', default: 'pear tart')
+        ->note('The pear tart is running low.', type: 'warning')
+        ->confirm('send', 'Send order?'),
       "+  Dish name (1)\n|  pear tart\n|\n!  The pear tart is running low.\n|\n+  Send order? (2)\n|  Yes\n|\n",
       ['dish' => 'pear tart', 'send' => TRUE],
     ];
 
     yield 'among children' => [
-      fn(): array => [
-        'course' => Prompty::select('Course', options: ['main' => 'Main', 'dessert' => 'Dessert'], default: 'dessert', children: [
-          Prompty::note('Desserts are plated by the pastry section.'),
-          'warm' => Prompty::confirm('Serve warm?'),
-        ]),
-      ],
+      static fn(PromptyFlow $flow): PromptyFlow => $flow
+        ->select('course', 'Course', options: ['main' => 'Main', 'dessert' => 'Dessert'], default: 'dessert')
+          ->children()
+            ->note('Desserts are plated by the pastry section.')
+            ->confirm('warm', 'Serve warm?')
+          ->end(),
       "+  Course (1)\n|  Dessert\n|\n|  |\n|  *  Desserts are plated by the pastry section.\n|  |  \n|  +  Serve warm? (1.1)\n|     Yes\n|     \n",
       ['course' => 'dessert', 'warm' => TRUE],
     ];
 
     yield 'last among children' => [
-      fn(): array => [
-        'course' => Prompty::select('Course', options: ['main' => 'Main', 'dessert' => 'Dessert'], default: 'dessert', children: [
-          'warm' => Prompty::confirm('Serve warm?'),
-          Prompty::note('The pear tart is running low.', type: 'warning'),
-        ]),
-      ],
+      static fn(PromptyFlow $flow): PromptyFlow => $flow
+        ->select('course', 'Course', options: ['main' => 'Main', 'dessert' => 'Dessert'], default: 'dessert')
+          ->children()
+            ->confirm('warm', 'Serve warm?')
+            ->note('The pear tart is running low.', type: 'warning')
+          ->end(),
       "+  Course (1)\n|  Dessert\n|\n|  |\n|  +  Serve warm? (1.1)\n|  |  Yes\n|  |  \n|  !  The pear tart is running low.\n|     \n",
       ['course' => 'dessert', 'warm' => TRUE],
     ];
 
     yield 'only a note in a section group' => [
-      fn(): array => [
-        Prompty::section('Service'),
-        Prompty::note('The pass is ready.'),
-      ],
+      static fn(PromptyFlow $flow): PromptyFlow => $flow
+        ->section('Service')
+        ->note('The pass is ready.'),
       "\n#  Service\n|\n*  The pass is ready.\n|\n",
       [],
     ];
@@ -227,58 +218,32 @@ final class PromptyNoteTest extends PromptyTestCase {
 
   public function testNotesLeaveTheStepTotal(): void {
     $output = $this->captureOutput(function (): void {
-      Prompty::flow(fn(): array => [
-        Prompty::note('The kitchen opens at 5pm.'),
-        'dish' => Prompty::text('Dish name', default: 'pear tart'),
-        Prompty::note('The pear tart is running low.', type: 'warning'),
-        'send' => Prompty::confirm('Send order?'),
-      ], numbering: 'total', unicode: FALSE, ansi: FALSE, interactive: FALSE);
+      Prompty::flow()
+        ->note('The kitchen opens at 5pm.')
+        ->text('dish', 'Dish name', default: 'pear tart')
+        ->note('The pear tart is running low.', type: 'warning')
+        ->confirm('send', 'Send order?')
+        ->run(numbering: 'total', unicode: FALSE, ansi: FALSE, interactive: FALSE);
     });
 
     $this->assertStringContainsString('+  Dish name (1/2)', $output);
     $this->assertStringContainsString('+  Send order? (2/2)', $output);
   }
 
-  public function testNoteInFlowWithKeyThrows(): void {
-    $this->expectException(\InvalidArgumentException::class);
-    $this->expectExceptionMessage('Note "The kitchen opens at 5pm." has the key "opening". A note adds no answer to the results, so it takes no key.');
-
-    $this->captureOutput(function (): void {
-      Prompty::flow(fn(): array => [
-        'opening' => Prompty::note('The kitchen opens at 5pm.'),
-      ], interactive: FALSE);
-    });
-  }
-
   public function testNotePrintsWhileFlowRuns(): void {
     $output = $this->captureOutput(function (): void {
-      Prompty::flow(fn(): array => [
-        'oven' => Prompty::task('Preheating the oven', action: function (): bool {
+      Prompty::flow()
+        ->task('oven', 'Preheating the oven', action: function (): bool {
           Prompty::note('Fan oven, 180°C.');
 
           return TRUE;
-        }),
-      ], outro: function (): void {
-        Prompty::note('Order sent to the kitchen.', type: 'success');
-      }, unicode: FALSE, ansi: FALSE, interactive: FALSE);
+        })
+        ->run(outro: function (): void {
+          Prompty::note('Order sent to the kitchen.', type: 'success');
+        }, unicode: FALSE, ansi: FALSE, interactive: FALSE);
     });
 
     $this->assertSame("o  Preheating the oven\n*  Fan oven, 180°C.\n|\n|  + Done\n|\n+  Order sent to the kitchen.\n|\n", $output);
-  }
-
-  public function testDefiningResetsWhenStepsThrow(): void {
-    try {
-      $this->captureOutput(function (): void {
-        Prompty::flow(function (): array {
-          throw new \RuntimeException('The menu is missing.');
-        }, interactive: FALSE);
-      });
-    }
-    catch (\RuntimeException) {
-      // Asserted below.
-    }
-
-    $this->assertFalse($this->getStaticProperty('isDefining'));
   }
 
   /**

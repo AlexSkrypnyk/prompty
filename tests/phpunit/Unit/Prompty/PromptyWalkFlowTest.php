@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace AlexSkrypnyk\Prompty\Tests\Unit\Prompty;
 
 use AlexSkrypnyk\Prompty\Prompty;
+use AlexSkrypnyk\Prompty\PromptyFlow;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Group;
@@ -45,7 +46,7 @@ final class PromptyWalkFlowTest extends PromptyTestCase {
   #[DataProvider('dataProviderRejectsKey')]
   public function testRejectsKey(string $key): void {
     $output = $this->captureOutputThrows(\InvalidArgumentException::class, $this->rejection($key), function () use ($key): void {
-      Prompty::flow(fn(): array => [$key => Prompty::text('Dish name', discovered: 'plum compote')], unicode: FALSE);
+      Prompty::flow()->text($key, 'Dish name', discovered: 'plum compote')->run(unicode: FALSE);
     });
 
     $this->assertSame('', $output);
@@ -60,63 +61,69 @@ final class PromptyWalkFlowTest extends PromptyTestCase {
 
   public function testRejectsEmptyKey(): void {
     $this->captureOutputThrows(\InvalidArgumentException::class, 'A step must have a key: it names the answer in the results and the variable the answer can come from.', function (): void {
-      Prompty::flow(fn(): array => ['' => Prompty::text('Dish name', discovered: 'plum compote')], unicode: FALSE);
+      Prompty::flow()->text('', 'Dish name', discovered: 'plum compote')->run(unicode: FALSE);
     });
   }
 
   public function testRejectsChildKey(): void {
     $this->captureOutputThrows(\InvalidArgumentException::class, $this->rejection('with-dash'), function (): void {
-      Prompty::flow(fn(): array => [
-        'course' => Prompty::confirm('Send order?', discovered: TRUE, children: [
-          'with-dash' => Prompty::text('Dish name', discovered: 'plum compote'),
-        ]),
-      ], unicode: FALSE);
+      Prompty::flow()
+        ->confirm('course', 'Send order?', discovered: TRUE)
+          ->children()
+            ->text('with-dash', 'Dish name', discovered: 'plum compote')
+          ->end()
+        ->run(unicode: FALSE);
     });
   }
 
   #[DataProvider('dataProviderRejectsDuplicateKey')]
-  public function testRejectsDuplicateKey(string $key, \Closure $steps): void {
+  public function testRejectsDuplicateKey(string $key, \Closure $build): void {
     $message = sprintf('Step "%s" appears more than once in the flow. Each answer is stored under its step key, so a later step would overwrite the earlier answer in the results.', $key);
 
-    $output = $this->captureOutputThrows(\InvalidArgumentException::class, $message, function () use ($steps): void {
-      Prompty::flow($steps, unicode: FALSE);
+    $output = $this->captureOutputThrows(\InvalidArgumentException::class, $message, function () use ($build): void {
+      $build(Prompty::flow())->run(unicode: FALSE);
     });
 
     $this->assertSame('', $output);
   }
 
   public static function dataProviderRejectsDuplicateKey(): \Iterator {
-    yield 'top-level step and nested child' => ['dish', fn(): array => [
-      'dish' => Prompty::text('Dish name', discovered: 'plum compote'),
-      'course' => Prompty::confirm('Add dessert?', discovered: TRUE, children: [
-        'dish' => Prompty::text('Dessert', discovered: 'pear tart'),
-      ]),
-    ]];
-    yield 'children of different parents' => ['dessert', fn(): array => [
-      'course' => Prompty::confirm('Add dessert?', discovered: TRUE, children: [
-        'dessert' => Prompty::text('Dessert', discovered: 'pear tart'),
-      ]),
-      'extras' => Prompty::confirm('Add extras?', discovered: TRUE, children: [
-        'dessert' => Prompty::text('Second dessert', discovered: 'plum compote'),
-      ]),
-    ]];
-    yield 'child and later sibling of its parent' => ['garnish', fn(): array => [
-      'course' => Prompty::confirm('Add dessert?', discovered: TRUE, children: [
-        'garnish' => Prompty::text('Garnish', discovered: 'mint'),
-      ]),
-      'garnish' => Prompty::text('Garnish', discovered: 'basil'),
-    ]];
+    yield 'top-level step and nested child' => ['dish', static fn(PromptyFlow $flow): PromptyFlow => $flow
+      ->text('dish', 'Dish name', discovered: 'plum compote')
+      ->confirm('course', 'Add dessert?', discovered: TRUE)
+        ->children()
+          ->text('dish', 'Dessert', discovered: 'pear tart')
+        ->end(),
+    ];
+    yield 'children of different parents' => ['dessert', static fn(PromptyFlow $flow): PromptyFlow => $flow
+      ->confirm('course', 'Add dessert?', discovered: TRUE)
+        ->children()
+          ->text('dessert', 'Dessert', discovered: 'pear tart')
+        ->end()
+      ->confirm('extras', 'Add extras?', discovered: TRUE)
+        ->children()
+          ->text('dessert', 'Second dessert', discovered: 'plum compote')
+        ->end(),
+    ];
+    yield 'child and later sibling of its parent' => ['garnish', static fn(PromptyFlow $flow): PromptyFlow => $flow
+      ->confirm('course', 'Add dessert?', discovered: TRUE)
+        ->children()
+          ->text('garnish', 'Garnish', discovered: 'mint')
+        ->end()
+      ->text('garnish', 'Garnish', discovered: 'basil'),
+    ];
   }
 
   public function testAcceptsDistinctKeysAcrossNesting(): void {
     $result = NULL;
     $this->captureOutput(function () use (&$result): void {
-      $result = Prompty::flow(fn(): array => [
-        'dish' => Prompty::text('Dish name', discovered: 'plum compote'),
-        'course' => Prompty::confirm('Add dessert?', discovered: TRUE, children: [
-          'dessert' => Prompty::text('Dessert', discovered: 'pear tart'),
-        ]),
-      ], unicode: FALSE);
+      $result = Prompty::flow()
+        ->text('dish', 'Dish name', discovered: 'plum compote')
+        ->confirm('course', 'Add dessert?', discovered: TRUE)
+          ->children()
+            ->text('dessert', 'Dessert', discovered: 'pear tart')
+          ->end()
+        ->run(unicode: FALSE);
     });
 
     $this->assertSame(['dish' => 'plum compote', 'course' => TRUE, 'dessert' => 'pear tart'], $result);
@@ -128,7 +135,7 @@ final class PromptyWalkFlowTest extends PromptyTestCase {
 
     $result = NULL;
     $this->captureOutput(function () use ($key, &$result): void {
-      $result = Prompty::flow(fn(): array => [$key => Prompty::text('Dish name')], unicode: FALSE);
+      $result = Prompty::flow()->text($key, 'Dish name')->run(unicode: FALSE);
     });
 
     $this->assertSame([$key => 'plum compote'], $result);
@@ -145,7 +152,7 @@ final class PromptyWalkFlowTest extends PromptyTestCase {
   #[DataProvider('dataProviderRejectsKeyUnderPrefix')]
   public function testRejectsKeyUnderPrefix(string $key, string $prefix): void {
     $this->captureOutputThrows(\InvalidArgumentException::class, $this->rejection($key, $prefix), function () use ($key, $prefix): void {
-      Prompty::flow(fn(): array => [$key => Prompty::text('Dish name', discovered: 'plum compote')], unicode: FALSE, env_prefix: $prefix);
+      Prompty::flow()->text($key, 'Dish name', discovered: 'plum compote')->run(unicode: FALSE, env_prefix: $prefix);
     });
   }
 
@@ -171,18 +178,20 @@ final class PromptyWalkFlowTest extends PromptyTestCase {
    *   The collected answers.
    */
   protected function runSiblingFlow(?callable $spy = NULL): ?array {
-    return Prompty::flow(fn(): array => [
-      'course' => Prompty::confirm('Send order?', children: [
-        'childa' => Prompty::text('Dish name'),
-        'childb' => Prompty::text('Garnish', condition: function (array $results) use ($spy): bool {
-          if ($spy !== NULL) {
-            $spy($results);
-          }
+    return Prompty::flow()
+      ->confirm('course', 'Send order?')
+        ->children()
+          ->text('childa', 'Dish name')
+          ->text('childb', 'Garnish')
+            ->when(function (array $results) use ($spy): bool {
+              if ($spy !== NULL) {
+                $spy($results);
+              }
 
-          return $results['childa'] === 'x';
-        }),
-      ]),
-    ], unicode: FALSE);
+              return $results['childa'] === 'x';
+            })
+        ->end()
+      ->run(unicode: FALSE);
   }
 
   public function testConditionNeverSeesMissingEarlierAnswer(): void {
@@ -228,11 +237,10 @@ final class PromptyWalkFlowTest extends PromptyTestCase {
   #[DataProvider('dataProviderTreeReflectsConditionalSiblingVisibility')]
   public function testTreeReflectsConditionalSiblingVisibility(string $childa, ?string $childb, array $contains, array $not_contains): void {
     $env = ['course' => 'yes', 'childa' => $childa];
-    $expected = ['course' => TRUE, 'childa' => $childa];
+    $expected = ['course' => TRUE, 'childa' => $childa, 'childb' => $childb];
 
     if ($childb !== NULL) {
       $env['childb'] = $childb;
-      $expected['childb'] = $childb;
     }
 
     $this->setEnvVars($env);
@@ -267,22 +275,29 @@ final class PromptyWalkFlowTest extends PromptyTestCase {
     // A step may be any callable, so the value the flow stores is not always
     // the one the widget inside it returned.
     $steps = [
-      'childa' => [
+      [
+        '__key' => 'childa',
         '__call' => function (array $ctx): string {
           $value = Prompty::text('Dish name', ctx: $ctx);
 
           return strtoupper(is_string($value) ? $value : '');
         },
         '__children' => [
-          'grandchild' => function (array $ctx): string {
-            $value = Prompty::text('Garnish', ctx: $ctx);
+          [
+            '__key' => 'grandchild',
+            '__call' => function (array $ctx): string {
+              $value = Prompty::text('Garnish', ctx: $ctx);
 
-            return is_string($value) ? $value : '';
-          },
+              return is_string($value) ? $value : '';
+            },
+            '__children' => [],
+            '__condition' => NULL,
+          ],
         ],
         '__condition' => NULL,
       ],
-      'childb' => [
+      [
+        '__key' => 'childb',
         '__call' => fn(array $ctx): string => 'y',
         '__children' => [],
         '__condition' => fn(array $results): bool => $results['childa'] === 'X',
@@ -310,16 +325,19 @@ final class PromptyWalkFlowTest extends PromptyTestCase {
 
     $result = NULL;
     $this->captureOutput(function () use (&$result): void {
-      $result = Prompty::flow(fn(): array => [
-        'course' => Prompty::confirm('Send order?', children: [
-          'childa' => Prompty::text('Dish name'),
-          'childb' => Prompty::text('Garnish', condition: fn(array $results): bool => $results['childa'] === 'x'),
-          'childc' => Prompty::text('Note', condition: fn(array $results): bool => ($results['childb'] ?? '') === ''),
-        ]),
-      ], unicode: FALSE);
+      $result = Prompty::flow()
+        ->confirm('course', 'Send order?')
+          ->children()
+            ->text('childa', 'Dish name')
+            ->text('childb', 'Garnish')
+              ->when(fn(array $results): bool => $results['childa'] === 'x')
+            ->text('childc', 'Note')
+              ->when(fn(array $results): bool => ($results['childb'] ?? '') === '')
+          ->end()
+        ->run(unicode: FALSE);
     });
 
-    $this->assertSame(['course' => TRUE, 'childa' => 'z', 'childc' => 'c'], $result);
+    $this->assertSame(['course' => TRUE, 'childa' => 'z', 'childb' => NULL, 'childc' => 'c'], $result);
   }
 
   // Tree walking and connectors.
@@ -357,16 +375,17 @@ final class PromptyWalkFlowTest extends PromptyTestCase {
   /**
    * Expand a declarative spec into the steps walkFlow() consumes.
    *
-   * A string leaf becomes a bare resolved step and a NULL leaf a bare
-   * cancelled step. An array node maps its 'value', 'children' and
-   * 'condition' onto the '__call', '__children' and '__condition' step form.
+   * Each spec key becomes the step's '__key'. A string leaf becomes a
+   * resolved step and a NULL leaf a cancelled step, both with no children or
+   * condition. An array node maps its 'value', 'children' and 'condition'
+   * onto '__call', '__children' and '__condition'.
    */
   protected function buildSteps(array $spec): array {
     $steps = [];
 
     foreach ($spec as $key => $node) {
       if (!is_array($node)) {
-        $steps[$key] = is_string($node) ? $this->resolvedStep($node) : $this->cancelledStep();
+        $steps[] = ['__key' => $key, '__call' => is_string($node) ? $this->resolvedStep($node) : $this->cancelledStep(), '__children' => [], '__condition' => NULL];
 
         continue;
       }
@@ -374,7 +393,8 @@ final class PromptyWalkFlowTest extends PromptyTestCase {
       $children = isset($node['children']) && is_array($node['children']) ? $node['children'] : [];
       $value = $node['value'] ?? NULL;
 
-      $steps[$key] = [
+      $steps[] = [
+        '__key' => $key,
         '__call' => is_string($value) ? $this->resolvedStep($value) : $this->cancelledStep(),
         '__children' => $this->buildSteps($children),
         '__condition' => $node['condition'] ?? NULL,
@@ -414,7 +434,8 @@ final class PromptyWalkFlowTest extends PromptyTestCase {
     $results = $this->getProperty($p, 'results');
 
     foreach ($expected_values as $key => $value) {
-      $this->assertSame($value, $results[$key] ?? NULL);
+      $this->assertArrayHasKey($key, $results);
+      $this->assertSame($value, $results[$key]);
     }
 
     foreach ($absent_keys as $absent_key) {
@@ -431,8 +452,8 @@ final class PromptyWalkFlowTest extends PromptyTestCase {
       [],
       0,
       'done',
-      ['name' => 'my-app'],
-      ['conditional'],
+      ['name' => 'my-app', 'conditional' => NULL],
+      [],
       NULL,
     ];
 
@@ -470,8 +491,8 @@ final class PromptyWalkFlowTest extends PromptyTestCase {
       [],
       0,
       'done',
-      ['visible_child' => 'visible'],
-      ['hidden_child'],
+      ['visible_child' => 'visible', 'hidden_child' => NULL],
+      [],
       "|  |\n",
     ];
 
@@ -481,8 +502,8 @@ final class PromptyWalkFlowTest extends PromptyTestCase {
       [],
       0,
       'done',
-      ['parent' => 'parent-val'],
-      ['child'],
+      ['parent' => 'parent-val', 'child' => NULL],
+      [],
       '',
     ];
 
@@ -511,8 +532,8 @@ final class PromptyWalkFlowTest extends PromptyTestCase {
       [],
       1,
       'done',
-      ['child1' => 'val1', 'child2' => 'val2'],
-      ['child3'],
+      ['child1' => 'val1', 'child2' => 'val2', 'child3' => NULL],
+      [],
       NULL,
     ];
 
@@ -536,11 +557,13 @@ final class PromptyWalkFlowTest extends PromptyTestCase {
 
     for ($i = 1; $i <= max($step_index, 3); $i++) {
       $resolved = $this->resolvedStep('val' . $i);
-      $steps['step' . $i] = function (array $ctx) use (&$numbers, $resolved): string {
+      $call = function (array $ctx) use (&$numbers, $resolved): string {
         $numbers[] = $ctx['number'];
 
         return $resolved($ctx);
       };
+
+      $steps[] = ['__key' => 'step' . $i, '__call' => $call, '__children' => [], '__condition' => NULL];
     }
 
     $this->captureOutput(function () use ($p, $steps, $number_prefix): void {

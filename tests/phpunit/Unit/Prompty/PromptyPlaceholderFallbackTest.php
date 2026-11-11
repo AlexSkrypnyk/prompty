@@ -89,7 +89,7 @@ final class PromptyPlaceholderFallbackTest extends PromptyTestCase {
 
     $result = NULL;
     $this->captureOutput(function () use (&$result, $use_fallback): void {
-      $result = Prompty::flow(fn(): array => ['dish' => Prompty::text('Dish name', placeholder: 'pear tart')], placeholder_fallback: $use_fallback);
+      $result = Prompty::flow()->text('dish', 'Dish name', placeholder: 'pear tart')->run(placeholder_fallback: $use_fallback);
     });
 
     $this->assertSame(['dish' => $expected], $result);

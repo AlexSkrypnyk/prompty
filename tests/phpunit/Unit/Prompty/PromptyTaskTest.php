@@ -315,58 +315,47 @@ final class PromptyTaskTest extends PromptyTestCase {
     $this->assertStringContainsString('|  + strtoupper', $output);
   }
 
-  public function testTaskInFlowReturnsClosure(): void {
-    $this->createAndSetInstance([], TRUE);
-
-    $has_run = FALSE;
-    $step = Prompty::task('Preheating the oven', action: function () use (&$has_run): bool {
-      $has_run = TRUE;
+  public function testTaskInFlowRunsActionWhenReached(): void {
+    $runs = new \ArrayObject();
+    $flow = Prompty::flow()->task('oven', 'Preheating the oven', action: function () use ($runs): bool {
+      $runs->append('oven');
 
       return TRUE;
     });
 
-    $this->assertInstanceOf(\Closure::class, $step);
-    $this->assertFalse($has_run);
-  }
+    $this->assertCount(0, $runs);
 
-  public function testTaskInFlowWithConditionReturnsStepArray(): void {
-    $this->createAndSetInstance([], TRUE);
+    $this->captureOutput(fn(): mixed => $flow->run(interactive: FALSE));
 
-    $condition = fn(array $r): bool => TRUE;
-    $children = ['warm' => Prompty::confirm('Serve warm?')];
-
-    $step = Prompty::task('Preheating the oven', action: fn(): bool => TRUE, condition: $condition, children: $children);
-
-    $this->assertIsArray($step);
-    $this->assertInstanceOf(\Closure::class, $step['__call']);
-    $this->assertSame($condition, $step['__condition']);
-    $this->assertSame($children, $step['__children']);
+    $this->assertCount(1, $runs);
   }
 
   public function testTaskInFlow(): void {
     $result = NULL;
     $output = $this->captureOutput(function () use (&$result): void {
-      $result = Prompty::flow(fn(): array => [
-        'dish' => Prompty::text('Dish name', default: 'pear tart'),
-        'oven' => Prompty::task('Preheating the oven', action: fn(): string => '180', success: 'Oven ready'),
-        'proof' => Prompty::task('Proving the dough', action: fn(): bool => FALSE, failure: 'Dough did not rise'),
-        'unused' => Prompty::task('Lighting the grill', action: fn(): bool => TRUE, condition: fn(array $r): bool => $r['proof'] === TRUE),
-        'send' => Prompty::confirm('Send order?'),
-      ], intro: 'Compose an order', unicode: TRUE, interactive: FALSE);
+      $result = Prompty::flow()
+        ->text('dish', 'Dish name', default: 'pear tart')
+        ->task('oven', 'Preheating the oven', action: fn(): string => '180', success: 'Oven ready')
+        ->task('proof', 'Proving the dough', action: fn(): bool => FALSE, failure: 'Dough did not rise')
+        ->task('unused', 'Lighting the grill', action: fn(): bool => TRUE)
+          ->when(fn(array $r): bool => $r['proof'] === TRUE)
+        ->confirm('send', 'Send order?')
+        ->run(intro: 'Compose an order', unicode: TRUE, interactive: FALSE);
     });
 
-    $this->assertSame(['dish' => 'pear tart', 'oven' => TRUE, 'proof' => FALSE, 'send' => TRUE], $result);
+    $this->assertSame(['dish' => 'pear tart', 'oven' => TRUE, 'proof' => FALSE, 'unused' => NULL, 'send' => TRUE], $result);
     $this->assertSame("\n┌  Compose an order\n│\n◆  Dish name\n│  pear tart\n│\n◇  Preheating the oven\n│  ✓ Oven ready\n│\n◇  Proving the dough\n│  ▲ Dough did not rise\n│\n◆  Send order?\n│  Yes\n│\n", $output);
   }
 
   public function testTaskInFlowNestedAndNumbered(): void {
     $output = $this->captureOutput(function (): void {
-      Prompty::flow(fn(): array => [
-        'course' => Prompty::select('Course', options: ['main' => 'Main', 'dessert' => 'Dessert'], default: 'main', children: [
-          'oven' => Prompty::task('Preheating the oven', action: fn(): array => ['Fan on'], hint: 'Fan oven, 180°C', success: 'Oven ready'),
-          'rest' => Prompty::confirm('Rest before serving?'),
-        ]),
-      ], numbering: TRUE, unicode: TRUE, interactive: FALSE);
+      Prompty::flow()
+        ->select('course', 'Course', options: ['main' => 'Main', 'dessert' => 'Dessert'], default: 'main')
+          ->children()
+            ->task('oven', 'Preheating the oven', action: fn(): array => ['Fan on'], hint: 'Fan oven, 180°C', success: 'Oven ready')
+            ->confirm('rest', 'Rest before serving?')
+          ->end()
+        ->run(numbering: TRUE, unicode: TRUE, interactive: FALSE);
     });
 
     $this->assertSame("◆  Course (1)\n│  Main\n│\n│  │\n│  ◇  Preheating the oven (1.1)\n│  │  Fan oven, 180°C\n│  │    Fan on\n│  │  ✓ Oven ready\n│  │  \n│  ◆  Rest before serving? (1.2)\n│     Yes\n│     \n", $output);
@@ -375,11 +364,12 @@ final class PromptyTaskTest extends PromptyTestCase {
   public function testTaskInFlowChildrenRun(): void {
     $result = NULL;
     $this->captureOutput(function () use (&$result): void {
-      $result = Prompty::flow(fn(): array => [
-        'oven' => Prompty::task('Preheating the oven', action: fn(): bool => TRUE, children: [
-          'warm' => Prompty::confirm('Serve warm?'),
-        ]),
-      ], interactive: FALSE);
+      $result = Prompty::flow()
+        ->task('oven', 'Preheating the oven', action: fn(): bool => TRUE)
+          ->children()
+            ->confirm('warm', 'Serve warm?')
+          ->end()
+        ->run(interactive: FALSE);
     });
 
     $this->assertSame(['oven' => TRUE, 'warm' => TRUE], $result);

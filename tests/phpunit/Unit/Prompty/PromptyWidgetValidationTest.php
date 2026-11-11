@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace AlexSkrypnyk\Prompty\Tests\Unit\Prompty;
 
 use AlexSkrypnyk\Prompty\Prompty;
+use AlexSkrypnyk\Prompty\PromptyFlow;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Group;
@@ -125,28 +126,29 @@ final class PromptyWidgetValidationTest extends PromptyTestCase {
   }
 
   #[DataProvider('dataProviderFlowRejectsEmptyOptions')]
-  public function testFlowRejectsEmptyOptions(\Closure $steps, string $message): void {
-    $output = $this->captureOutputThrows(\InvalidArgumentException::class, $message, fn(): mixed => Prompty::flow($steps, unicode: FALSE));
+  public function testFlowRejectsEmptyOptions(\Closure $build, string $message): void {
+    $output = $this->captureOutputThrows(\InvalidArgumentException::class, $message, fn(): mixed => $build(Prompty::flow())->run(unicode: FALSE));
 
     $this->assertSame('', $output);
     $this->assertFalse($this->getStaticProperty('isInFlow'));
   }
 
   public static function dataProviderFlowRejectsEmptyOptions(): \Iterator {
-    yield 'select' => [static fn(): array => ['course' => Prompty::select('Course', options: [])], self::MESSAGE_SELECT];
-    yield 'multiselect' => [static fn(): array => ['extras' => Prompty::multiselect('Extras', options: [])], self::MESSAGE_MULTISELECT];
+    yield 'select' => [static fn(PromptyFlow $flow): PromptyFlow => $flow->select('course', 'Course', options: []), self::MESSAGE_SELECT];
+    yield 'multiselect' => [static fn(PromptyFlow $flow): PromptyFlow => $flow->multiselect('extras', 'Extras', options: []), self::MESSAGE_MULTISELECT];
   }
 
   public function testFlowStepSkippedByConditionSkipsOptionsValidation(): void {
     $result = NULL;
 
     $output = $this->captureOutput(function () use (&$result): void {
-      $result = Prompty::flow(fn(): array => [
-        'extras' => Prompty::multiselect('Extras', options: [], condition: fn(): bool => FALSE),
-      ], unicode: FALSE);
+      $result = Prompty::flow()
+        ->multiselect('extras', 'Extras', options: [])
+          ->when(fn(): bool => FALSE)
+        ->run(unicode: FALSE);
     });
 
-    $this->assertSame([], $result);
+    $this->assertSame(['extras' => NULL], $result);
     $this->assertSame('', $output);
   }
 
@@ -246,9 +248,9 @@ final class PromptyWidgetValidationTest extends PromptyTestCase {
   public function testFlowRejectsDefaultOutsideOptions(): void {
     $this->installKeystrokes(self::KEY_ENTER, FALSE);
 
-    $output = $this->captureOutputThrows(\InvalidArgumentException::class, 'Default value "pudding" for "Course" is not a valid option. Available options: starter, main, dessert.', fn(): mixed => Prompty::flow(fn(): array => [
-      'course' => Prompty::select('Course', options: self::COURSES, default: 'pudding'),
-    ], unicode: FALSE));
+    $output = $this->captureOutputThrows(\InvalidArgumentException::class, 'Default value "pudding" for "Course" is not a valid option. Available options: starter, main, dessert.', fn(): mixed => Prompty::flow()
+      ->select('course', 'Course', options: self::COURSES, default: 'pudding')
+      ->run(unicode: FALSE));
 
     $this->assertSame('', $output);
     $this->assertFalse($this->getStaticProperty('isInFlow'));
@@ -259,12 +261,13 @@ final class PromptyWidgetValidationTest extends PromptyTestCase {
     $result = NULL;
 
     $output = $this->captureOutput(function () use (&$result): void {
-      $result = Prompty::flow(fn(): array => [
-        'extras' => Prompty::multiselect('Extras', options: self::EXTRAS, default: ['pickles'], condition: fn(): bool => FALSE),
-      ], unicode: FALSE);
+      $result = Prompty::flow()
+        ->multiselect('extras', 'Extras', options: self::EXTRAS, default: ['pickles'])
+          ->when(fn(): bool => FALSE)
+        ->run(unicode: FALSE);
     });
 
-    $this->assertSame([], $result);
+    $this->assertSame(['extras' => NULL], $result);
     $this->assertSame('', $output);
   }
 

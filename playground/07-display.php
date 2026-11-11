@@ -90,7 +90,7 @@ echo "\n--- Legend: pause ---\n";
 show(Prompty::pause('Press any key to start the order...'));
 
 echo "\n--- Legend: a flow rewording it, with 1 key removed ---\n";
-show(Prompty::flow(fn(): array => [
-  'dish' => Prompty::suggest('Dish', options: $dishes),
-  'send' => Prompty::confirm('Send order?'),
-], labels: ['legend_enter' => 'enter to send', 'legend_type' => '']));
+show(Prompty::flow()
+  ->suggest('dish', 'Dish', options: $dishes)
+  ->confirm('send', 'Send order?')
+  ->run(labels: ['legend_enter' => 'enter to send', 'legend_type' => '']));

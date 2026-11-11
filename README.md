@@ -31,9 +31,10 @@ Prompty asks questions in the terminal for PHP command-line scripts, from a sing
 - 🧩 [**Widgets**](#widgets) - `text`, `select`, `multiselect`, `suggest`, `confirm` and `pause`
 - 📣 [**Notes**](#notes) - info, success, warning and error messages in the tree
 - ⏳ [**Tasks**](#tasks) - run work behind a spinner, or stream its output under the label
-- 🔀 [**Flows**](#flows) - group prompts into a wizard with an intro, an outro, numbering and cancellation
-- 🌳 [**Nested flows**](#nested-flows-with-conditions) - conditional children drawn as a tree
+- 🔀 [**Flows**](#flows) - declare a wizard as 1 chain, with an intro, an outro, numbering and cancellation
+- 🌳 [**Nested flows**](#nested-flows-with-conditions) - conditional children drawn as a tree, with `null` for each skipped step
 - 🧱 [**Steps built from earlier answers**](#steps-built-from-earlier-answers) - a step's label, options or default taken from the answers before it
+- 🧩 [**Step providers**](#step-providers) - add your own step objects to a flow
 - 🔖 [**Section headings**](#section-headings) - group a long flow's steps under headings in the tree
 - ⚡ [**Standalone mode**](#standalone-mode) - use any widget on its own, outside a flow
 - 🌍 [**Environment variable discovery**](#environment-variable-discovery) - fill answers from environment variables
@@ -72,6 +73,7 @@ Prompty asks questions in the terminal for PHP command-line scripts, from a sing
   - [Step numbering](#step-numbering)
   - [Nested flows with conditions](#nested-flows-with-conditions)
   - [Steps built from earlier answers](#steps-built-from-earlier-answers)
+  - [Step providers](#step-providers)
   - [Section headings](#section-headings)
   - [Step back to an earlier step](#step-back-to-an-earlier-step)
 - [Configuration](#configuration)
@@ -540,10 +542,10 @@ php embed.php --source /path/to/new/Prompty.php my-script.php
 The following excerpt shows the pattern:
 
 ```php
-$results = Prompty::flow(fn(): array => [
-  'dish' => Prompty::text('Dish name', placeholder: 'pear tart'),
+$results = Prompty::flow()
+  ->text('dish', 'Dish name', placeholder: 'pear tart')
   // ...
-], intro: 'Compose an order');
+  ->run(intro: 'Compose an order');
 
 if ($results === NULL) {
   return; // Cancelled, so there is nothing to act on.
@@ -592,13 +594,13 @@ class MyFlowTest extends TestCase {
       self::KEY_DOWN, self::KEY_ENTER,  // select second option
     );
 
-    $run = $this->promptyRun(fn(): mixed => Prompty::flow(fn(): array => [
-      'dish' => Prompty::text('Dish name'),
-      'course' => Prompty::select('Course', options: [
+    $run = $this->promptyRun(fn(): mixed => Prompty::flow()
+      ->text('dish', 'Dish name')
+      ->select('course', 'Course', options: [
         'starter' => 'Starter',
         'main' => 'Main',
-      ]),
-    ]), $keystrokes);
+      ])
+      ->run(), $keystrokes);
 
     $this->assertSame('plum compote', $run['result']['dish']);
     $this->assertSame('main', $run['result']['course']);
@@ -789,7 +791,7 @@ Prompty::text('Dish name', placeholder: 'pear tart', discovered: '  ');
 
 In a flow with a `dish` step, an empty `PROMPTY_DISH=` takes the fallback without prompting. An unset `PROMPTY_DISH` opens the prompt, where submitting without typing gives the same fallback.
 
-A placeholder such as `e.g. pear tart` is an example, so it makes a poor answer. To keep it out of the results, pass `placeholder_fallback: FALSE` to [`Prompty::configure()`](#configuration). To set it for 1 flow, pass it to `Prompty::flow()`. An empty submit then returns `''`, and so does a blank discovered value when no `default` is set:
+A placeholder such as `e.g. pear tart` is an example, so it makes a poor answer. To keep it out of the results, pass `placeholder_fallback: FALSE` to [`Prompty::configure()`](#configuration). To set it for 1 flow, pass it to the flow's `run()`. An empty submit then returns `''`, and so does a blank discovered value when no `default` is set:
 
 ```php
 Prompty::configure(placeholder_fallback: FALSE);
@@ -1131,18 +1133,19 @@ Prompty::note("The oven did not reach temperature.\nCheck the fan and try again.
 
 The type defaults to `info`. A newline starts another line, and a long line wraps with the bar and indent kept. Each type has a `note_<type>` symbol and a `note_<type>` color that you can [configure](#configuration). A note waits for no answer, so it also prints in [non-interactive mode](#non-interactive-mode).
 
-Inside a [flow](#flows), a note is a step without a key. It sits in the tree where you declare it, among top-level steps or children, and adds nothing to the results. Pass `condition` to show it only for some answers:
+Inside a [flow](#flows), `->note()` adds a note without a key. It sits in the tree where you declare it, among top-level steps or children, and adds nothing to the results. Follow it with `->when()` to show it only for some answers:
 
 ```php
-$results = Prompty::flow(fn(): array => [
-  Prompty::note('The kitchen opens at 5pm.'),
-  'course' => Prompty::select('Course', options: ['main' => 'Main', 'dessert' => 'Dessert']),
-  Prompty::note('The pear tart is running low.', type: 'warning', condition: fn(array $r): bool => $r['course'] === 'dessert'),
-  'send' => Prompty::confirm('Send order?'),
-]);
+$results = Prompty::flow()
+  ->note('The kitchen opens at 5pm.')
+  ->select('course', 'Course', options: ['main' => 'Main', 'dessert' => 'Dessert'])
+  ->note('The pear tart is running low.', type: 'warning')
+    ->when(fn(array $r): bool => $r['course'] === 'dessert')
+  ->confirm('send', 'Send order?')
+  ->run();
 ```
 
-A note called while the flow runs, such as from a task's action or the `outro` callable, prints straight away.
+`Prompty::note()` called while the flow runs, such as from a task's action or the `outro` callable, prints straight away.
 
 </details>
 
@@ -1204,14 +1207,15 @@ The spinner animates in a forked child process, which needs the `pcntl` and `pos
 
 A task redraws only on a live terminal: interactive, with ANSI on and output going to a terminal. Otherwise, the label is printed before the action runs and the result after it.
 
-Inside a [flow](#flows), a task is a keyed step that takes `condition` and `children`. The flow stores `true` when the action succeeded and `false` when it failed:
+Inside a [flow](#flows), `->task()` adds a keyed step that takes `->when()` and `->children()` like any other. The flow stores `true` when the action succeeded and `false` when it failed:
 
 ```php
-$results = Prompty::flow(fn(): array => [
-  'dish' => Prompty::text('Dish name', placeholder: 'pear tart'),
-  'oven' => Prompty::task('Preheating the oven', action: fn(): bool => $oven->preheat(180)),
-  'send' => Prompty::confirm('Send order?', condition: fn(array $r): bool => $r['oven']),
-]);
+$results = Prompty::flow()
+  ->text('dish', 'Dish name', placeholder: 'pear tart')
+  ->task('oven', 'Preheating the oven', action: fn(): bool => $oven->preheat(180))
+  ->confirm('send', 'Send order?')
+    ->when(fn(array $r): bool => $r['oven'])
+  ->run();
 ```
 
 </details>
@@ -1450,14 +1454,14 @@ On a widget with a [`transform`](#transform-answers), `validate` receives the tr
 Inside a flow, the second argument holds the answers collected so far, so a rule can depend on an earlier step. Outside a flow, it's an empty array:
 
 ```php
-$results = Prompty::flow(fn(): array => [
-  'course' => Prompty::select('Course', options: $courses),
-  'extras' => Prompty::multiselect('Extras', options: $extras,
+$results = Prompty::flow()
+  ->select('course', 'Course', options: $courses)
+  ->multiselect('extras', 'Extras', options: $extras,
     validate: fn(array $extras, array $r): ?string =>
       $r['course'] === 'dessert' && in_array('olives', $extras, TRUE)
         ? 'Olives are not served with dessert.' : NULL,
-  ),
-]);
+  )
+  ->run();
 ```
 
 An empty message counts as valid, like `null`. Any other return type throws an `UnexpectedValueException`, so a callback written to return a boolean fails at the first answer:
@@ -1502,44 +1506,52 @@ Discovered value "" for "Guest name" is not valid. Enter a name for the ticket.
 
 ## Flows
 
-`flow()` groups widgets into a step-by-step wizard. Each array key names a step.
+`Prompty::flow()` starts a step-by-step wizard. You add each step to 1 chain under its own key. `run()` then asks the steps in order.
 
 <details>
 <summary>Details: Flows</summary>
 
+Each widget method takes the step key first, then the same arguments as the [widget](#widgets) on its own:
+
 ```php
-$results = Prompty::flow(fn(): array => [
-  'dish' => Prompty::text('Dish name', placeholder: 'pear tart'),
-  'course' => Prompty::select('Course', options: [
+$results = Prompty::flow()
+  ->text('dish', 'Dish name', placeholder: 'pear tart')
+  ->select('course', 'Course', options: [
     'starter' => 'Starter',
     'main' => 'Main',
     'dessert' => 'Dessert',
-  ]),
-  'extras' => Prompty::multiselect('Extras', options: [
+  ])
+  ->multiselect('extras', 'Extras', options: [
     'bread' => 'Bread',
     'olives' => 'Olives',
     'herbs' => 'Herbs',
-  ]),
-  'send' => Prompty::confirm('Send order?'),
-], intro: 'Compose an order', outro: 'Order sent!');
+  ])
+  ->confirm('send', 'Send order?')
+  ->run(intro: 'Compose an order', outro: 'Order sent!');
 ```
 
-`flow()` returns the answers keyed by step, or `null` when the user cancels any step.
+The chain has a method for each widget: `->text()`, `->select()`, `->multiselect()`, `->suggest()`, `->confirm()`, `->pause()` and `->task()`. `->note()` and `->section()` add a [note](#notes) and a [heading](#section-headings), and take no key. Each key can appear once in the flow, so a reused key throws an `InvalidArgumentException` where you add it.
+
+`run()` returns the answers keyed by step, or `null` when the user cancels any step.
 
 An input stream with nothing left to read counts as a cancellation. A flow run from a pipe, from `/dev/null` or in CI without a terminal returns `null` at the first prompt it can't read. To answer every step from its default instead, use [non-interactive mode](#non-interactive-mode).
 
-`intro`, `outro` and `cancelled` each take a string or a callable. A callable receives the answers collected so far:
+`run()` takes the flow's options as named arguments. `intro`, `outro` and `cancelled` each take a string or a callable. A callable receives the answers collected so far:
 
 ```php
-$results = Prompty::flow(fn(): array => [ /* ... */ ],
-  intro: 'Compose an order',
-  outro: function (array $results): void {
-    echo 'Dish: ' . $results['dish'] . "\n";
-  },
-  cancelled: 'Order cancelled.',
-  numbering: TRUE, // Renders (1), (2), nested as (1.1), (1.2), etc.
-);
+$results = Prompty::flow()
+  // ...
+  ->run(
+    intro: 'Compose an order',
+    outro: function (array $results): void {
+      echo 'Dish: ' . $results['dish'] . "\n";
+    },
+    cancelled: 'Order cancelled.',
+    numbering: TRUE, // Renders (1), (2), nested as (1.1), (1.2), etc.
+  );
 ```
+
+`->intro('Compose an order')` sets the intro inside the chain instead. An `intro` passed to `run()` replaces it.
 
 </details>
 
@@ -1567,9 +1579,9 @@ A script can mix standalone widgets and flows:
 
 ```php
 // Standalone widgets can sit between flows.
-$dish = Prompty::flow(fn(): array => [/* step 1 */], intro: 'Step 1: The dish');
+$dish = Prompty::flow()->text('dish', 'Dish name')->run(intro: 'Step 1: The dish');
 $note = Prompty::text('Kitchen note');
-$extras = Prompty::flow(fn(): array => [/* step 2 */], intro: 'Step 2: Extras');
+$extras = Prompty::flow()->multiselect('extras', 'Extras', options: $extras)->run(intro: 'Step 2: Extras');
 ```
 
 </details>
@@ -1589,7 +1601,9 @@ To change the prefix for 1 flow, pass `env_prefix`. To change it for every flow,
 
 ```php
 // Reads KITCHEN_DISH, KITCHEN_COURSE, etc.
-$results = Prompty::flow(fn(): array => [/* ... */], env_prefix: 'KITCHEN_');
+$results = Prompty::flow()
+  // ...
+  ->run(env_prefix: 'KITCHEN_');
 ```
 
 A multiselect reads its variable as a comma-separated list, so `PROMPTY_EXTRAS=bread,olives` selects both options. The result is deduplicated and follows the widget's [`order`](#multiselect). With the default `'options'`, `PROMPTY_EXTRAS=olives,bread,olives` also gives `['bread', 'olives']`. A trailing comma is ignored.
@@ -1609,7 +1623,7 @@ The list form takes each entry as is. Use it to select an option key that contai
 
 A confirm matches its value against the `truthy` and `falsy` lists, after trimming and ignoring case. The defaults are `1`, `true` and `yes` for yes, and `0`, `false` and `no` for no, so `YES` and `True` both count as yes. A boolean `discovered:` value is taken as is.
 
-A step key of `dish_name` reads `PROMPTY_DISH_NAME`. A name a shell can export holds only letters, digits and underscores. It doesn't start with a digit. Only a parent process can set a name such as `PROMPTY_DISH-NAME`, as in `env 'PROMPTY_DISH-NAME=x' php your-script.php`. `export` rejects it in bash, zsh and sh. Most `.env` parsers reject it too. `flow()` throws an `InvalidArgumentException` for such a step before the first prompt:
+A step key of `dish_name` reads `PROMPTY_DISH_NAME`. A name a shell can export holds only letters, digits and underscores. It doesn't start with a digit. Only a parent process can set a name such as `PROMPTY_DISH-NAME`, as in `env 'PROMPTY_DISH-NAME=x' php your-script.php`. `export` rejects it in bash, zsh and sh. Most `.env` parsers reject it too. `run()` throws an `InvalidArgumentException` for such a step before the first prompt:
 
 ```text
 Step "dish-name" is looked up as the environment variable "PROMPTY_DISH-NAME", which cannot be exported. A variable name may hold only letters, digits and underscores, and may not start with a digit.
@@ -1617,7 +1631,7 @@ Step "dish-name" is looked up as the environment variable "PROMPTY_DISH-NAME", w
 
 Prompty checks the full variable name, so an `env_prefix` that can't be exported fails the same way. With an empty prefix, a key that starts with a digit fails too.
 
-Each key must also be unique across the whole flow, children included. `flow()` stores every answer in 1 flat array keyed by step, so a reused key would overwrite an earlier answer. `flow()` rejects a reused key before the first prompt:
+Each key must also be unique across the whole flow, children included. A flow stores every answer in 1 flat array keyed by step, so a reused key would overwrite an earlier answer. The chain rejects a reused key where you add it:
 
 ```text
 Step "dish" appears more than once in the flow. Each answer is stored under its step key, so a later step would overwrite the earlier answer in the results.
@@ -1686,7 +1700,9 @@ $opts = getopt('', ['no-interaction']);
 Prompty::configure(interactive: !isset($opts['no-interaction']));
 
 // For 1 flow.
-$results = Prompty::flow(fn(): array => [/* ... */], interactive: FALSE);
+$results = Prompty::flow()
+  // ...
+  ->run(interactive: FALSE);
 ```
 
 Each widget takes the first answer it finds, in this order:
@@ -1723,7 +1739,9 @@ Input is on by default, so a flow without a terminal still cancels at its first 
 <summary>Details: Step numbering</summary>
 
 ```php
-$results = Prompty::flow(fn(): array => [ /* ... */ ], numbering: 'total');
+$results = Prompty::flow()
+  // ...
+  ->run(numbering: 'total');
 ```
 
 ```text
@@ -1744,7 +1762,9 @@ Prompty tests each remaining condition before the answers it reads exist. While 
 To change the format, set the `step_total` label. It's a `sprintf()` format that receives the step number and then the total, `(%d/%d)` by default:
 
 ```php
-Prompty::flow(fn(): array => [ /* ... */ ], numbering: 'total', labels: ['step_total' => '[%d of %d]']);
+Prompty::flow()
+  // ...
+  ->run(numbering: 'total', labels: ['step_total' => '[%d of %d]']);
 ```
 
 A `step_total` format that needs more than 2 values, or holds an unknown conversion, throws an `InvalidArgumentException`. So does a `numbering` string other than `'total'`.
@@ -1753,114 +1773,175 @@ A `step_total` format that needs more than 2 values, or holds an unknown convers
 
 ### Nested flows with conditions
 
-Prompty draws a widget's `children` as an indented tree under it, joined by vertical bars. Any step can take a `condition`, which receives the answers collected so far. When the condition returns `false`, the flow skips the step.
+`->children()` opens a scope under the step added before it, and `->end()` closes it. Prompty draws the steps in between as an indented tree under that step, joined by vertical bars. `->when()` gives the step, note or section added before it a condition, which receives the answers collected so far. When the condition returns `false`, the flow skips the step and its children.
 
 <details>
 <summary>Details: Nested flows with conditions</summary>
 
+Indent the chain the way the tree draws: the steps inside `->children()` 1 level under their parent, and each `->when()` under the step it applies to:
+
 ```php
-$results = Prompty::flow(fn(): array => [
-  'course' => Prompty::select('Course',
-    options: ['main' => 'Main', 'dessert' => 'Dessert'],
-    children: [
-      'method' => Prompty::select('Method',
-        options: [
-          'baked' => 'Baked',
-          'poached' => 'Poached',
-          'grilled' => 'Grilled',
-        ],
-        condition: fn($r): bool => ($r['course'] ?? '') === 'main',
-      ),
-      'finishes' => Prompty::multiselect('Finishes',
-        options: [
-          'glazed' => 'Glazed',
-          'dusted' => 'Dusted',
-          'piped' => 'Piped',
-        ],
-        condition: fn($r): bool => ($r['course'] ?? '') === 'dessert',
-      ),
-    ],
-  ),
-]);
+$results = Prompty::flow()
+  ->select('course', 'Course', options: ['main' => 'Main', 'dessert' => 'Dessert'])
+    ->children()
+      ->select('method', 'Method', options: [
+        'baked' => 'Baked',
+        'poached' => 'Poached',
+        'grilled' => 'Grilled',
+      ])
+        ->when(fn(array $r): bool => $r['course'] === 'main')
+        ->children()
+          ->confirm('rest', 'Rest before serving?')
+        ->end()
+      ->multiselect('finishes', 'Finishes', options: [
+        'glazed' => 'Glazed',
+        'dusted' => 'Dusted',
+        'piped' => 'Piped',
+      ])
+        ->when(fn(array $r): bool => $r['course'] === 'dessert')
+    ->end()
+  ->run();
 ```
+
+Scopes nest to any depth. An `->end()` with no open scope throws a `LogicException` that names the step before it. So does `run()` while a scope is still open, naming the step whose children are open.
+
+Every step the flow declares gets an answer. A skipped step answers `null`, and so does every step under it, in the answers each condition receives and in the array `run()` returns. Picking Dessert and then Glazed in the example gives:
+
+```php
+['course' => 'dessert', 'method' => NULL, 'rest' => NULL, 'finishes' => ['glazed']]
+```
+
+A step the flow hasn't reached yet has no key in the answers, so `null` always means the step was skipped. A later condition can read a skipped step's key without a `??` guard.
 
 </details>
 
 ### Steps built from earlier answers
 
-`flow()` reads every widget's arguments when it builds the steps array, before the first prompt. To take a step's label, options, default or description from an earlier answer, wrap the widget in `Prompty::step()`. Its builder receives the answers collected so far and returns the widget call.
+A widget argument can be a closure that receives the answers collected so far. The flow calls it when it reaches the step, so a step's label, options, default or description can come from an earlier answer.
 
 <details>
 <summary>Details: Steps built from earlier answers</summary>
 
 ```php
-$results = Prompty::flow(fn(): array => [
-  'dish' => Prompty::text('Dish name', placeholder: 'pear tart'),
-  'course' => Prompty::select('Course', options: [
+$results = Prompty::flow()
+  ->text('dish', 'Dish name', placeholder: 'pear tart')
+  ->select('course', 'Course', options: [
     'main' => 'Main',
     'dessert' => 'Dessert',
-  ]),
-  'method' => Prompty::step(
-    fn(array $r) => Prompty::select('Method',
-      options: $r['course'] === 'main'
-        ? ['grilled' => 'Grilled', 'poached' => 'Poached']
-        : ['baked' => 'Baked', 'poached' => 'Poached'],
-      description: 'How the ' . $r['dish'] . ' is cooked.',
-    ),
-    children: [
-      'rest' => Prompty::confirm('Rest before serving?'),
-    ],
-  ),
-  'note' => Prompty::step(
-    fn(array $r) => Prompty::text('Kitchen note',
-      default: $r['dish'] . ', ' . $r['method'],
-    ),
-    condition: fn(array $r): bool => $r['course'] === 'dessert',
-  ),
-]);
+  ])
+  ->select('method', 'Method',
+    options: fn(array $r): array => $r['course'] === 'main'
+      ? ['grilled' => 'Grilled', 'poached' => 'Poached']
+      : ['baked' => 'Baked', 'poached' => 'Poached'],
+    description: fn(array $r): string => 'How the ' . $r['dish'] . ' is cooked.',
+  )
+    ->children()
+      ->confirm('rest', 'Rest before serving?')
+    ->end()
+  ->text('note', 'Kitchen note', default: fn(array $r): string => $r['dish'] . ', ' . $r['method'])
+    ->when(fn(array $r): bool => $r['course'] === 'dessert')
+  ->run();
 ```
 
-The builder runs when the flow reaches the step. A step that its `condition` skips never calls its builder. A built step is numbered, drawn in the tree and filled from its [environment variable](#environment-variable-discovery) like any other step.
+A skipped step never calls its closures. A step built this way is numbered, drawn in the tree and filled from its [environment variable](#environment-variable-discovery) like any other step.
 
-Pass `condition` and `children` to `step()`, because `flow()` reads them before the builder runs. `step()` throws an exception in 2 cases:
+Any argument that takes a value can take a closure instead, including `label`, `default`, `options`, `placeholder`, `description`, `help`, `hints`, `scroll`, `required` and `discovered`. Arguments that already take a callable keep their meaning:
 
-- A builder returns a widget call with its own `condition` or `children`, or returns something other than a widget call. The flow throws an `UnexpectedValueException` when it reaches the step.
-- `step()` runs outside the callable passed to `flow()`. It throws a `LogicException`.
+- `transform` and `validate` receive the answer, as on the widget.
+- A `suggest`'s `options` closure receives the typed text and returns the suggestions.
+- A `multiselect`'s `order` closure compares 2 option keys.
+- A task's `action` runs the work, and its `hint`, `success` and `failure` closures receive the action's return value.
+
+</details>
+
+### Step providers
+
+An app that already describes its questions as objects can pass them into the chain with `->add()`. Each object implements `PromptyStepInterface`, which names the step's key, its widget and the widget's arguments, and decides whether the flow asks the step.
+
+<details>
+<summary>Details: Step providers</summary>
+
+`PromptyStepInterface` has 4 methods:
+
+| Method                          | Returns                                                                 |
+|---------------------------------|-------------------------------------------------------------------------|
+| `key(): string`                 | The step key the answer is stored under.                                |
+| `widget(): string`              | `'text'`, `'select'`, `'multiselect'`, `'suggest'` or `'confirm'`.      |
+| `arguments(array $results): array` | The widget's named arguments for the answers so far, including `label`. |
+| `condition(array $results): bool`  | `false` to skip the step and its children.                           |
+
+To ask for the dessert of an order, implement the interface:
+
+```php
+use AlexSkrypnyk\Prompty\Prompty;
+use AlexSkrypnyk\Prompty\PromptyStepInterface;
+
+class DessertStep implements PromptyStepInterface {
+
+  public function key(): string {
+    return 'dessert';
+  }
+
+  public function widget(): string {
+    return 'select';
+  }
+
+  public function arguments(array $results): array {
+    return [
+      'label' => 'Dessert after the ' . $results['dish'],
+      'options' => ['tart' => 'Tart', 'compote' => 'Compote'],
+    ];
+  }
+
+  public function condition(array $results): bool {
+    return $results['course'] === 'main';
+  }
+
+}
+```
+
+Then add an instance to the chain. Providers and widget methods mix freely, and `->children()` and `->end()` work after `->add()` as after any step:
+
+```php
+$results = Prompty::flow()
+  ->text('dish', 'Dish name')
+  ->select('course', 'Course', options: ['main' => 'Main', 'dessert' => 'Dessert'])
+  ->add(new DessertStep())
+    ->children()
+      ->confirm('cream', 'Cream on the side?')
+    ->end()
+  ->run();
+```
+
+The flow calls `key()` when you add the step, and the other 3 methods when it reaches the step. A `->when()` after `->add()` replaces the provider's `condition()`. A `widget()` outside the 5 names, or `arguments()` holding a `ctx` key, throws an `UnexpectedValueException` when the flow reaches the step.
 
 </details>
 
 ### Section headings
 
-A long flow can group its steps under headings. Add `Prompty::section()` to the steps array without a key. The flow draws its title in bold, with an optional dim description under it.
+A long flow can group its steps under headings. Add `->section()` between top-level steps. The flow draws its title in bold, with an optional dim description under it.
 
 <details>
 <summary>Details: Section headings</summary>
 
 ```php
-$results = Prompty::flow(fn(): array => [
-  Prompty::section('The dish',
-    description: 'Name the dish and place it in the meal.',
-  ),
-  'dish' => Prompty::text('Dish name', placeholder: 'pear tart'),
-  'course' => Prompty::select('Course', options: [
+$results = Prompty::flow()
+  ->section('The dish', description: 'Name the dish and place it in the meal.')
+  ->text('dish', 'Dish name', placeholder: 'pear tart')
+  ->select('course', 'Course', options: [
     'main' => 'Main',
     'dessert' => 'Dessert',
-  ]),
-
-  Prompty::section('Service'),
-  'table' => Prompty::select('Table', options: [
+  ])
+  ->section('Service')
+  ->select('table', 'Table', options: [
     '4' => 'Table 4',
     '7' => 'Table 7',
     '12' => 'Table 12',
-  ]),
-  'extras' => Prompty::step(
-    fn(array $r) => Prompty::multiselect('Extras',
-      options: $r['course'] === 'dessert'
-        ? ['honey' => 'Honey', 'almonds' => 'Almonds']
-        : ['bread' => 'Bread', 'olives' => 'Olives'],
-    ),
-  ),
-], intro: 'Compose an order');
+  ])
+  ->multiselect('extras', 'Extras', options: fn(array $r): array => $r['course'] === 'dessert'
+    ? ['honey' => 'Honey', 'almonds' => 'Almonds']
+    : ['bread' => 'Bread', 'olives' => 'Olives'])
+  ->run(intro: 'Compose an order');
 ```
 
 The headings sit in the tree among the steps:
@@ -1882,15 +1963,14 @@ The headings sit in the tree among the steps:
 ◇  Table
 ```
 
-A section adds nothing to the results. Every step after it still receives every earlier answer in `condition` and `step()`, and numbering continues across sections. A newline in the title or the description starts a new line.
+A section adds nothing to the results. Every step after it still receives every earlier answer in its conditions and closures, and numbering continues across sections. A newline in the title or the description starts a new line.
 
-A section's group is the steps up to the next section. The flow draws a heading only when at least 1 step in its group renders. In a flow with no `intro`, the first heading opens the tree with `┌`. To hide a heading by itself, pass `condition`. The steps under it keep their own conditions.
+A section's group is the steps up to the next section. The flow draws a heading only when at least 1 step in its group renders. In a flow with no `intro`, the first heading opens the tree with `┌`. To hide a heading by itself, follow it with `->when()`. The steps under it keep their own conditions.
 
-`section()` throws an exception in 3 cases:
+`->section()` throws an exception in 2 cases:
 
-- It runs outside the callable passed to `flow()`. It throws a `LogicException`.
 - Its title is blank. It throws an `InvalidArgumentException`.
-- It has a string key or sits among a step's `children`. The flow throws an `InvalidArgumentException` before the first prompt.
+- It sits inside a `->children()` scope. It throws a `LogicException`.
 
 </details>
 
@@ -1903,12 +1983,12 @@ In a flow, press <kbd>Ctrl+U</kbd> to go back. The widget you're on disappears, 
 
 Answers you gave after the reopened step become those steps' defaults, so you only press <kbd>Enter</kbd> to move forward again. A step starts from its declared `default` instead in 2 cases:
 
-- The new answer makes the step's `condition` false. The flow skips it, and its answer leaves the results.
-- A `step()` builder returns a widget the old answer doesn't fit, such as a `select` whose options no longer include it.
+- The new answer makes the step's condition false. The flow skips it, and it answers `null`. When a later change shows the step again, it starts from the answer it had before it was skipped.
+- A [closure argument](#steps-built-from-earlier-answers) builds a widget the old answer doesn't fit, such as `options` that no longer include it.
 
 Steps answered from a [discovered](#environment-variable-discovery) value or an environment variable asked nothing, so the key skips them. [`task()`](#tasks) and [`pause()`](#pause) steps ask nothing either. A task after the reopened step runs its action again when you move forward, and a task before it keeps its outcome. At a pause, the back key steps back instead of continuing. On the first asked step, and outside a flow, the key does nothing.
 
-To use another key, pass `back_key` to [`Prompty::configure()`](#configuration) or `Prompty::flow()`, from `ctrl-a` to `ctrl-z`. `ctrl-c`, `ctrl-h`, `ctrl-i`, `ctrl-j` and `ctrl-m` already mean cancel, backspace, tab and enter, so they throw an `InvalidArgumentException`. To turn the key off, pass `''`:
+To use another key, pass `back_key` to [`Prompty::configure()`](#configuration) or to the flow's `run()`, from `ctrl-a` to `ctrl-z`. `ctrl-c`, `ctrl-h`, `ctrl-i`, `ctrl-j` and `ctrl-m` already mean cancel, backspace, tab and enter, so they throw an `InvalidArgumentException`. To turn the key off, pass `''`:
 
 ```php
 Prompty::configure(back_key: 'ctrl-b');
@@ -1920,7 +2000,7 @@ The flow erases the rows it drew since the reopened step. Rows that scrolled off
 
 ## Configuration
 
-`Prompty::configure()` sets options for the rest of the process. `Prompty::flow()` takes the same options as named arguments and merges them over the global ones for that flow. Every option is optional, so pass only what you change.
+`Prompty::configure()` sets options for the rest of the process. A flow's `run()` takes the same options as named arguments and merges them over the global ones for that flow. Every option is optional, so pass only what you change.
 
 <details>
 <summary>Details: Configuration</summary>
@@ -1938,11 +2018,13 @@ Prompty::configure(
 );
 
 // Per-flow (merges on top).
-$results = Prompty::flow(fn(): array => [/* ... */],
-  env_prefix: 'ORDER_',
-  truthy: ['1', 'true', 'yes', 'on'],
-  falsy: ['0', 'false', 'no', 'off'],
-);
+$results = Prompty::flow()
+  // ...
+  ->run(
+    env_prefix: 'ORDER_',
+    truthy: ['1', 'true', 'yes', 'on'],
+    falsy: ['0', 'false', 'no', 'off'],
+  );
 ```
 
 </details>
@@ -2024,7 +2106,9 @@ Prompty::configure(unicode: TRUE);  // Always Unicode
 To force it for 1 flow:
 
 ```php
-$results = Prompty::flow(fn(): array => [/* ... */], unicode: FALSE);
+$results = Prompty::flow()
+  // ...
+  ->run(unicode: FALSE);
 ```
 
 </details>
@@ -2044,7 +2128,9 @@ Prompty::configure(ansi: TRUE);  // Force ANSI colors
 To force them for 1 flow:
 
 ```php
-$results = Prompty::flow(fn(): array => [/* ... */], ansi: FALSE);
+$results = Prompty::flow()
+  // ...
+  ->run(ansi: FALSE);
 ```
 
 </details>
@@ -2094,7 +2180,7 @@ A `scroll` of `0`, or one at or above the number of options, draws every option.
 Scroll size -1 for "Menu" is not valid. Use 0 to show every option, or the number of options to show at once.
 ```
 
-To set the size for every `select`, `multiselect` and `suggest`, pass `scroll` to [`Prompty::configure()`](#configuration). To set it for 1 flow, pass it to `Prompty::flow()`. A widget's own `scroll` takes precedence over both:
+To set the size for every `select`, `multiselect` and `suggest`, pass `scroll` to [`Prompty::configure()`](#configuration). To set it for 1 flow, pass it to the flow's `run()`. A widget's own `scroll` takes precedence over both:
 
 ```php
 Prompty::configure(scroll: 10);
@@ -2116,7 +2202,7 @@ Prompty wraps every line that's wider than the terminal. Labels, descriptions, o
 
 Prompty measures the terminal width at most once a second, so frames draw at the new width within 1 second of a resize. It reads a positive `COLUMNS` environment variable first, then the width `stty size` reports when standard input is a terminal, and falls back to 80 columns. Wide characters such as emoji count as 2 columns.
 
-To wrap at a fixed width, pass `width` to [`Prompty::configure()`](#configuration). To set it for 1 flow, pass it to `Prompty::flow()`. A `width` of `0` detects the terminal width again, and a negative `width` throws an `InvalidArgumentException`:
+To wrap at a fixed width, pass `width` to [`Prompty::configure()`](#configuration). To set it for 1 flow, pass it to the flow's `run()`. A `width` of `0` detects the terminal width again, and a negative `width` throws an `InvalidArgumentException`:
 
 ```php
 Prompty::configure(width: 100);
@@ -2129,7 +2215,7 @@ Lines you print with `Prompty::output()` keep your layout, so Prompty doesn't wr
 <details>
 <summary><a name="key-legend"></a>Key legend: list the keys each widget accepts under it</summary>
 
-To show the keys each widget accepts, pass `legend: TRUE` to [`Prompty::configure()`](#configuration). To show them for 1 flow, pass it to `Prompty::flow()`. Each widget then draws a dim legend after its `help`, so `help` can hold tips about the answer itself:
+To show the keys each widget accepts, pass `legend: TRUE` to [`Prompty::configure()`](#configuration). To show them for 1 flow, pass it to the flow's `run()`. Each widget then draws a dim legend after its `help`, so `help` can hold tips about the answer itself:
 
 ```text
 ◇  Extras
@@ -2258,13 +2344,15 @@ Besides the 5 widgets, `flow()` and `configure()`, the class has these methods:
 The following example reads the answers 2 ways and prints a banner:
 
 ```php
-// flow() returns the collected answers.
-$results = Prompty::flow(fn(): array => [/* ... */]);
+// run() returns the collected answers.
+$results = Prompty::flow()
+  // ...
+  ->run();
 
 // Or read them later.
 $results = Prompty::results();
 
-// Print a banner yourself. Passing a callable as flow()'s outro suppresses
+// Print a banner yourself. Passing a callable as run()'s outro suppresses
 // the built-in one, so call this from inside it to keep the banner.
 Prompty::outro('Order sent to the kitchen!');
 ```

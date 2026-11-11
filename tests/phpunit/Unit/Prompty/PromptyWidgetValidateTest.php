@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace AlexSkrypnyk\Prompty\Tests\Unit\Prompty;
 
 use AlexSkrypnyk\Prompty\Prompty;
+use AlexSkrypnyk\Prompty\PromptyFlow;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Group;
@@ -330,10 +331,10 @@ final class PromptyWidgetValidateTest extends PromptyTestCase {
       return $results['course'] === 'main' && $extras === [] ? 'A main needs at least one extra.' : NULL;
     };
 
-    $r = $this->promptyRun(fn(): mixed => Prompty::flow(fn(): array => [
-      'course' => Prompty::select('Course', options: self::COURSES),
-      'extras' => Prompty::multiselect('Extras', options: self::EXTRAS, validate: $validate),
-    ]), self::KEY_DOWN . self::KEY_ENTER . self::KEY_ENTER . self::KEY_SPACE . self::KEY_ENTER);
+    $r = $this->promptyRun(fn(): mixed => Prompty::flow()
+      ->select('course', 'Course', options: self::COURSES)
+      ->multiselect('extras', 'Extras', options: self::EXTRAS, validate: $validate)
+      ->run(), self::KEY_DOWN . self::KEY_ENTER . self::KEY_ENTER . self::KEY_SPACE . self::KEY_ENTER);
 
     $this->assertSame(['course' => 'main', 'extras' => ['bread']], $r['result']);
     $this->assertSame([['course' => 'main'], ['course' => 'main']], $received);
@@ -348,10 +349,10 @@ final class PromptyWidgetValidateTest extends PromptyTestCase {
       return $results['course'] === 'dessert' && $dish === 'Onion Soup' ? 'Onion Soup is not a dessert.' : NULL;
     };
 
-    $r = $this->promptyRun(fn(): mixed => Prompty::flow(fn(): array => [
-      'course' => Prompty::select('Course', options: self::COURSES),
-      'dish' => Prompty::suggest('Dish', options: self::DISHES, validate: $validate),
-    ]), self::KEY_UP . self::KEY_ENTER . 'soup' . self::KEY_DOWN . self::KEY_ENTER . self::KEY_UP . self::KEY_ENTER);
+    $r = $this->promptyRun(fn(): mixed => Prompty::flow()
+      ->select('course', 'Course', options: self::COURSES)
+      ->suggest('dish', 'Dish', options: self::DISHES, validate: $validate)
+      ->run(), self::KEY_UP . self::KEY_ENTER . 'soup' . self::KEY_DOWN . self::KEY_ENTER . self::KEY_UP . self::KEY_ENTER);
 
     $this->assertSame(['course' => 'dessert', 'dish' => 'soup'], $r['result']);
     $this->assertSame([['course' => 'dessert'], ['course' => 'dessert']], $received);
@@ -362,32 +363,32 @@ final class PromptyWidgetValidateTest extends PromptyTestCase {
     $this->setEnvVars(['dish' => 'Lentil Stew']);
     $stream = $this->installKeystrokes(self::KEY_ENTER, FALSE);
 
-    $output = $this->captureOutputThrows(\InvalidArgumentException::class, 'Discovered value "Lentil Stew" for "Dish" is not valid. Pick a dish from the menu.', fn(): mixed => Prompty::flow(fn(): array => [
-      'dish' => Prompty::suggest('Dish', options: self::DISHES, validate: fn(string $dish): ?string => in_array($dish, self::DISHES, TRUE) ? NULL : 'Pick a dish from the menu.'),
-    ], unicode: FALSE));
+    $output = $this->captureOutputThrows(\InvalidArgumentException::class, 'Discovered value "Lentil Stew" for "Dish" is not valid. Pick a dish from the menu.', fn(): mixed => Prompty::flow()
+      ->suggest('dish', 'Dish', options: self::DISHES, validate: fn(string $dish): ?string => in_array($dish, self::DISHES, TRUE) ? NULL : 'Pick a dish from the menu.')
+      ->run(unicode: FALSE));
 
     $this->assertSame('', $output);
     $this->assertSame(0, ftell($stream));
     $this->assertFalse($this->getStaticProperty('isInFlow'));
   }
 
-  #[DataProvider('dataProviderValidateThreadsThroughFlowDefinition')]
-  public function testValidateThreadsThroughFlowDefinition(\Closure $step): void {
-    $r = $this->promptyRun(fn(): mixed => Prompty::flow(fn(): array => ['step' => $step()]), self::KEY_ENTER . self::KEY_ESCAPE);
+  #[DataProvider('dataProviderValidateThreadsThroughFlowBuilder')]
+  public function testValidateThreadsThroughFlowBuilder(\Closure $build): void {
+    $r = $this->promptyRun(fn(): mixed => $build(Prompty::flow())->run(), self::KEY_ENTER . self::KEY_ESCAPE);
 
     $this->assertNull($r['result']);
     $this->assertStringContainsString('! ' . self::MESSAGE, $r['output']);
   }
 
-  public static function dataProviderValidateThreadsThroughFlowDefinition(): \Iterator {
+  public static function dataProviderValidateThreadsThroughFlowBuilder(): \Iterator {
     $reject = static fn(): string => self::MESSAGE;
 
-    yield 'text' => [static fn(): mixed => Prompty::text('Dish name', validate: $reject)];
-    yield 'select' => [static fn(): mixed => Prompty::select('Course', options: self::COURSES, validate: $reject)];
-    yield 'multiselect' => [static fn(): mixed => Prompty::multiselect('Extras', options: self::EXTRAS, validate: $reject)];
-    yield 'suggest' => [static fn(): mixed => Prompty::suggest('Dish', options: self::DISHES, validate: $reject)];
-    yield 'confirm' => [static fn(): mixed => Prompty::confirm('Send order?', validate: $reject)];
-    yield 'step with a condition' => [static fn(): mixed => Prompty::text('Dish name', validate: $reject, condition: static fn(): bool => TRUE)];
+    yield 'text' => [static fn(PromptyFlow $flow): PromptyFlow => $flow->text('step', 'Dish name', validate: $reject)];
+    yield 'select' => [static fn(PromptyFlow $flow): PromptyFlow => $flow->select('step', 'Course', options: self::COURSES, validate: $reject)];
+    yield 'multiselect' => [static fn(PromptyFlow $flow): PromptyFlow => $flow->multiselect('step', 'Extras', options: self::EXTRAS, validate: $reject)];
+    yield 'suggest' => [static fn(PromptyFlow $flow): PromptyFlow => $flow->suggest('step', 'Dish', options: self::DISHES, validate: $reject)];
+    yield 'confirm' => [static fn(PromptyFlow $flow): PromptyFlow => $flow->confirm('step', 'Send order?', validate: $reject)];
+    yield 'step with a condition' => [static fn(PromptyFlow $flow): PromptyFlow => $flow->text('step', 'Dish name', validate: $reject)->when(static fn(): bool => TRUE)];
   }
 
   public function testConditionSkippedStepDoesNotValidate(): void {
@@ -398,11 +399,12 @@ final class PromptyWidgetValidateTest extends PromptyTestCase {
       return self::MESSAGE;
     };
 
-    $r = $this->promptyRun(fn(): mixed => Prompty::flow(fn(): array => [
-      'dish' => Prompty::text('Dish name', validate: $validate, condition: fn(): bool => FALSE),
-    ]));
+    $r = $this->promptyRun(fn(): mixed => Prompty::flow()
+      ->text('dish', 'Dish name', validate: $validate)
+        ->when(fn(): bool => FALSE)
+      ->run());
 
-    $this->assertSame([], $r['result']);
+    $this->assertSame(['dish' => NULL], $r['result']);
     $this->assertSame(0, $calls);
   }
 
@@ -471,9 +473,9 @@ final class PromptyWidgetValidateTest extends PromptyTestCase {
   public function testFlowRestoresStateWhenValidatorThrows(): void {
     $this->installKeystrokes(self::KEY_ENTER, FALSE);
 
-    $this->captureOutputThrows(\UnexpectedValueException::class, 'Validator for "Dish name" returned bool. A validator returns NULL for a valid answer or an error message string.', fn(): mixed => Prompty::flow(fn(): array => [
-      'dish' => Prompty::text('Dish name', validate: fn(): bool => FALSE),
-    ], unicode: FALSE));
+    $this->captureOutputThrows(\UnexpectedValueException::class, 'Validator for "Dish name" returned bool. A validator returns NULL for a valid answer or an error message string.', fn(): mixed => Prompty::flow()
+      ->text('dish', 'Dish name', validate: fn(): bool => FALSE)
+      ->run(unicode: FALSE));
 
     $this->assertFalse($this->getStaticProperty('isInFlow'));
   }
@@ -674,9 +676,9 @@ final class PromptyWidgetValidateTest extends PromptyTestCase {
     $this->setEnvVars(['dish' => 'pear']);
     $stream = $this->installKeystrokes(self::KEY_ENTER, FALSE);
 
-    $output = $this->captureOutputThrows(\InvalidArgumentException::class, 'Discovered value "pear" for "Dish name" is not valid. Name the whole dish.', fn(): mixed => Prompty::flow(fn(): array => [
-      'dish' => Prompty::text('Dish name', validate: fn(string $dish): ?string => str_contains($dish, ' ') ? NULL : 'Name the whole dish.'),
-    ], unicode: FALSE));
+    $output = $this->captureOutputThrows(\InvalidArgumentException::class, 'Discovered value "pear" for "Dish name" is not valid. Name the whole dish.', fn(): mixed => Prompty::flow()
+      ->text('dish', 'Dish name', validate: fn(string $dish): ?string => str_contains($dish, ' ') ? NULL : 'Name the whole dish.')
+      ->run(unicode: FALSE));
 
     $this->assertSame('', $output);
     $this->assertSame(0, ftell($stream));

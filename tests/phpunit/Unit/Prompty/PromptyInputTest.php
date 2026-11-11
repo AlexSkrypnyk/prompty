@@ -219,10 +219,10 @@ final class PromptyInputTest extends PromptyTestCase {
   public function testFlowCancelsWhenInputRunsOut(): void {
     $this->clearEnvVars(['dish', 'course']);
 
-    $r = $this->promptyRun(fn(): mixed => Prompty::flow(fn(): array => [
-      'dish' => Prompty::text('Dish name', placeholder: 'pear tart'),
-      'course' => Prompty::select('Course', options: self::COURSES),
-    ], cancelled: 'Order cancelled.', unicode: FALSE), 'plum compote' . self::KEY_ENTER);
+    $r = $this->promptyRun(fn(): mixed => Prompty::flow()
+      ->text('dish', 'Dish name', placeholder: 'pear tart')
+      ->select('course', 'Course', options: self::COURSES)
+      ->run(cancelled: 'Order cancelled.', unicode: FALSE), 'plum compote' . self::KEY_ENTER);
 
     $this->assertNull($r['result']);
     $this->assertStringContainsString('plum compote', $r['output']);

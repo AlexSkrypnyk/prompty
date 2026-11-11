@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace AlexSkrypnyk\Prompty\Tests\Unit\Prompty;
 
 use AlexSkrypnyk\Prompty\Prompty;
+use AlexSkrypnyk\Prompty\PromptyFlow;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Group;
@@ -25,10 +26,11 @@ final class PromptyFlowConfigScopeTest extends PromptyTestCase {
    * The steps every flow in this test runs.
    *
    * @return \Closure
-   *   A callable returning 1 text step that resolves from the environment.
+   *   A callable returning a flow of 1 text step that resolves from the
+   *   environment.
    */
   protected static function steps(): \Closure {
-    return fn(): array => ['dish' => Prompty::text('Dish name')];
+    return static fn(): PromptyFlow => Prompty::flow()->text('dish', 'Dish name');
   }
 
   #[DataProvider('dataProviderConfigIsRestored')]
@@ -46,105 +48,105 @@ final class PromptyFlowConfigScopeTest extends PromptyTestCase {
 
     yield 'unicode' => [
       static function () use ($steps): void {
-        Prompty::flow($steps, unicode: FALSE);
+        $steps()->run(unicode: FALSE);
       },
       'unicode',
     ];
 
     yield 'ansi' => [
       static function () use ($steps): void {
-        Prompty::flow($steps, ansi: FALSE);
+        $steps()->run(ansi: FALSE);
       },
       'ansi',
     ];
 
     yield 'env prefix' => [
       static function () use ($steps): void {
-        Prompty::flow($steps, env_prefix: 'OTHER_');
+        $steps()->run(env_prefix: 'OTHER_');
       },
       'env_prefix',
     ];
 
     yield 'labels' => [
       static function () use ($steps): void {
-        Prompty::flow($steps, labels: ['yes' => 'Aye']);
+        $steps()->run(labels: ['yes' => 'Aye']);
       },
       'labels',
     ];
 
     yield 'truthy' => [
       static function () use ($steps): void {
-        Prompty::flow($steps, truthy: ['aye']);
+        $steps()->run(truthy: ['aye']);
       },
       'truthy',
     ];
 
     yield 'falsy' => [
       static function () use ($steps): void {
-        Prompty::flow($steps, falsy: ['nay']);
+        $steps()->run(falsy: ['nay']);
       },
       'falsy',
     ];
 
     yield 'spacing' => [
       static function () use ($steps): void {
-        Prompty::flow($steps, spacing: ['indent' => '....']);
+        $steps()->run(spacing: ['indent' => '....']);
       },
       'spacing',
     ];
 
     yield 'unicode symbols' => [
       static function () use ($steps): void {
-        Prompty::flow($steps, symbols_unicode: ['bar' => '!']);
+        $steps()->run(symbols_unicode: ['bar' => '!']);
       },
       'symbols_unicode',
     ];
 
     yield 'ascii symbols' => [
       static function () use ($steps): void {
-        Prompty::flow($steps, symbols_ascii: ['bar' => '!']);
+        $steps()->run(symbols_ascii: ['bar' => '!']);
       },
       'symbols_ascii',
     ];
 
     yield 'colors' => [
       static function () use ($steps): void {
-        Prompty::flow($steps, colors: ['cyan' => '']);
+        $steps()->run(colors: ['cyan' => '']);
       },
       'colors',
     ];
 
     yield 'interactive' => [
       static function () use ($steps): void {
-        Prompty::flow($steps, interactive: FALSE);
+        $steps()->run(interactive: FALSE);
       },
       'interactive',
     ];
 
     yield 'scroll' => [
       static function () use ($steps): void {
-        Prompty::flow($steps, scroll: 5);
+        $steps()->run(scroll: 5);
       },
       'scroll',
     ];
 
     yield 'placeholder fallback' => [
       static function () use ($steps): void {
-        Prompty::flow($steps, placeholder_fallback: FALSE);
+        $steps()->run(placeholder_fallback: FALSE);
       },
       'placeholder_fallback',
     ];
 
     yield 'width' => [
       static function () use ($steps): void {
-        Prompty::flow($steps, width: 40);
+        $steps()->run(width: 40);
       },
       'width',
     ];
 
     yield 'legend' => [
       static function () use ($steps): void {
-        Prompty::flow($steps, legend: TRUE);
+        $steps()->run(legend: TRUE);
       },
       'legend',
     ];
@@ -155,11 +157,11 @@ final class PromptyFlowConfigScopeTest extends PromptyTestCase {
     $steps = self::steps();
 
     $first = $this->captureOutput(function () use ($steps): void {
-      Prompty::flow($steps, spacing: ['indent' => '....'], unicode: FALSE);
+      $steps()->run(spacing: ['indent' => '....'], unicode: FALSE);
     });
 
     $second = $this->captureOutput(function () use ($steps): void {
-      Prompty::flow($steps);
+      $steps()->run();
     });
 
     $this->assertStringContainsString('....', $first);
@@ -172,7 +174,7 @@ final class PromptyFlowConfigScopeTest extends PromptyTestCase {
     $before = Prompty::config();
     $steps = self::steps();
 
-    $r = $this->promptyRun(fn(): mixed => Prompty::flow($steps, unicode: FALSE, env_prefix: 'OTHER_'), self::KEY_CTRL_C);
+    $r = $this->promptyRun(fn(): mixed => $steps()->run(unicode: FALSE, env_prefix: 'OTHER_'), self::KEY_CTRL_C);
 
     $this->assertNull($r['result']);
     $this->assertSame($before['env_prefix'], Prompty::config()['env_prefix']);
@@ -185,9 +187,11 @@ final class PromptyFlowConfigScopeTest extends PromptyTestCase {
 
     try {
       $this->captureOutput(function (): void {
-        Prompty::flow(function (): array {
-          throw new \RuntimeException('Kitchen closed.');
-        }, unicode: FALSE, env_prefix: 'OTHER_');
+        Prompty::flow()
+          ->text('dish', static function (): string {
+            throw new \RuntimeException('Kitchen closed.');
+          })
+          ->run(unicode: FALSE, env_prefix: 'OTHER_');
       });
     }
     catch (\RuntimeException $exception) {
@@ -206,7 +210,7 @@ final class PromptyFlowConfigScopeTest extends PromptyTestCase {
 
     try {
       $this->captureOutput(function (): void {
-        Prompty::flow(self::steps(), env_prefix: 'OTHER_', truthy: []);
+        self::steps()()->run(env_prefix: 'OTHER_', truthy: []);
       });
     }
     catch (\InvalidArgumentException $exception) {
@@ -225,7 +229,7 @@ final class PromptyFlowConfigScopeTest extends PromptyTestCase {
 
     $result = NULL;
     $this->captureOutput(function () use (&$result): void {
-      $result = Prompty::flow(self::steps(), unicode: FALSE);
+      $result = self::steps()()->run(unicode: FALSE);
     });
 
     $this->assertSame(['dish' => 'plum compote'], $result);

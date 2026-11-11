@@ -56,18 +56,29 @@ $r = Prompty::multiselect('Seats', options: $seats, required: 'Pick at least one
 echo '  Result: ' . (is_array($r) ? implode(', ', array_filter($r, is_string(...))) : 'cancelled') . "\n";
 
 echo "\n--- Flow: a rule that depends on earlier answers ---\n";
-$results = Prompty::flow(fn(): array => [
-  'course' => Prompty::select('Course', options: $courses, default: 'dessert'),
-  'extras' => Prompty::multiselect('Extras', options: $extras, default: ['olives'], validate: fn(array $picked, array $r): ?string => $r['course'] === 'dessert' && in_array('olives', $picked, TRUE) ? 'Olives are not served with dessert.' : NULL),
-  'seats' => Prompty::multiselect('Seats', options: $seats),
-  'send' => Prompty::confirm('Send order?', validate: fn(bool $should_send, array $r): ?string => $should_send && $r['seats'] === [] ? 'Pick a seat before sending the order.' : NULL),
-], cancelled: 'Order cancelled.');
+$results = Prompty::flow()
+  ->select('course', 'Course', options: $courses, default: 'dessert')
+  ->multiselect('extras', 'Extras',
+    options: $extras,
+    default: ['olives'],
+    validate: fn(array $picked, array $r): ?string => $r['course'] === 'dessert' && in_array('olives', $picked, TRUE) ? 'Olives are not served with dessert.' : NULL,
+  )
+  ->multiselect('seats', 'Seats', options: $seats)
+  ->confirm('send', 'Send order?',
+    validate: fn(bool $should_send, array $r): ?string => $should_send && $r['seats'] === [] ? 'Pick a seat before sending the order.' : NULL,
+  )
+  ->run(cancelled: 'Order cancelled.');
 
 if (is_array($results)) {
   echo PHP_EOL . 'Collected answers:' . PHP_EOL;
 
   foreach ($results as $key => $value) {
-    $display = is_array($value) ? (count($value) > 0 ? implode(', ', array_filter($value, is_string(...))) : 'none') : (is_bool($value) ? ($value ? 'yes' : 'no') : $value);
+    $display = match (TRUE) {
+      $value === NULL => 'skipped',
+      is_array($value) => count($value) > 0 ? implode(', ', array_filter($value, is_string(...))) : 'none',
+      is_bool($value) => $value ? 'yes' : 'no',
+      default => $value,
+    };
     echo sprintf('  %s: %s%s', $key, $display, PHP_EOL);
   }
 }

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace AlexSkrypnyk\Prompty\Tests\Unit\Prompty;
 
 use AlexSkrypnyk\Prompty\Prompty;
+use AlexSkrypnyk\Prompty\PromptyFlow;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Group;
@@ -206,13 +207,13 @@ final class PromptyWidgetTransformTest extends PromptyTestCase {
   }
 
   #[DataProvider('dataProviderEnvironmentValueIsTransformed')]
-  public function testEnvironmentValueIsTransformed(\Closure $step): void {
+  public function testEnvironmentValueIsTransformed(\Closure $build): void {
     $this->createAndSetInstance(['unicode' => FALSE]);
     $this->setEnvVars(['dish' => '  ONION SOUP  ']);
 
     $result = NULL;
-    $output = $this->captureOutput(function () use ($step, &$result): void {
-      $result = Prompty::flow(fn(): array => ['dish' => $step(fn(string $value): string => ucwords(strtolower($value)))]);
+    $output = $this->captureOutput(function () use ($build, &$result): void {
+      $result = $build(Prompty::flow(), fn(string $value): string => ucwords(strtolower($value)))->run();
     });
 
     $this->assertSame(['dish' => 'Onion Soup'], $result);
@@ -221,9 +222,9 @@ final class PromptyWidgetTransformTest extends PromptyTestCase {
   }
 
   public static function dataProviderEnvironmentValueIsTransformed(): \Iterator {
-    yield 'text' => [fn(\Closure $transform): mixed => Prompty::text('Dish name', transform: $transform)];
+    yield 'text' => [fn(PromptyFlow $flow, \Closure $transform): PromptyFlow => $flow->text('dish', 'Dish name', transform: $transform)];
 
-    yield 'suggest' => [fn(\Closure $transform): mixed => Prompty::suggest('Dish', options: self::DISHES, transform: $transform)];
+    yield 'suggest' => [fn(PromptyFlow $flow, \Closure $transform): PromptyFlow => $flow->suggest('dish', 'Dish', options: self::DISHES, transform: $transform)];
   }
 
   /**
@@ -263,10 +264,11 @@ final class PromptyWidgetTransformTest extends PromptyTestCase {
   }
 
   public function testSiblingConditionSeesTransformedAnswer(): void {
-    $r = $this->promptyRun(fn(): mixed => Prompty::flow(fn(): array => [
-      'course' => Prompty::select('Course', options: self::COURSES, transform: fn(string $key): string => $key === 'starter' ? 'dessert' : $key),
-      'accompaniment' => Prompty::select('Accompaniment', options: ['cream' => 'Cream', 'custard' => 'Custard'], condition: fn(array $results): bool => $results['course'] === 'dessert'),
-    ]), self::KEY_ENTER . self::KEY_ENTER);
+    $r = $this->promptyRun(fn(): mixed => Prompty::flow()
+      ->select('course', 'Course', options: self::COURSES, transform: fn(string $key): string => $key === 'starter' ? 'dessert' : $key)
+      ->select('accompaniment', 'Accompaniment', options: ['cream' => 'Cream', 'custard' => 'Custard'])
+        ->when(fn(array $results): bool => $results['course'] === 'dessert')
+      ->run(), self::KEY_ENTER . self::KEY_ENTER);
 
     $this->assertSame(['course' => 'dessert', 'accompaniment' => 'cream'], $r['result']);
   }
@@ -404,7 +406,7 @@ final class PromptyWidgetTransformTest extends PromptyTestCase {
     $this->setEnvVars(['dish' => 'pear']);
 
     $this->captureOutputThrows(\UnexpectedValueException::class, 'Transform for "Dish name" returned null. A transform returns a string, the type the widget answers with.', function (): void {
-      Prompty::flow(fn(): array => ['dish' => Prompty::text('Dish name', transform: fn(): mixed => NULL)], numbering: TRUE);
+      Prompty::flow()->text('dish', 'Dish name', transform: fn(): mixed => NULL)->run(numbering: TRUE);
     });
   }
 

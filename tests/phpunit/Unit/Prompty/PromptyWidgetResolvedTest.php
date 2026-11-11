@@ -699,10 +699,10 @@ final class PromptyWidgetResolvedTest extends PromptyTestCase {
 
     $result = NULL;
     $this->captureOutput(function () use (&$result): void {
-      $result = Prompty::flow(fn(): array => [
-        'dish' => Prompty::text('Dish name', placeholder: 'pear tart'),
-        'extras' => Prompty::multiselect('Extras', options: self::EXTRAS_PAIR),
-      ], unicode: FALSE);
+      $result = Prompty::flow()
+        ->text('dish', 'Dish name', placeholder: 'pear tart')
+        ->multiselect('extras', 'Extras', options: self::EXTRAS_PAIR)
+        ->run(unicode: FALSE);
     });
 
     $this->assertSame(['dish' => 'pear tart', 'extras' => []], $result);
@@ -715,7 +715,7 @@ final class PromptyWidgetResolvedTest extends PromptyTestCase {
       \InvalidArgumentException::class,
       'Discovered value "" for "Course" is not a valid option. Available options: starter, main.',
       function (): void {
-        Prompty::flow(fn(): array => ['course' => Prompty::select('Course', options: self::COURSES)], unicode: FALSE);
+        Prompty::flow()->select('course', 'Course', options: self::COURSES)->run(unicode: FALSE);
       },
     );
   }
@@ -723,9 +723,9 @@ final class PromptyWidgetResolvedTest extends PromptyTestCase {
   public function testUnsetEnvValueIsNotAnAnswerAtAll(): void {
     $this->clearEnvVars(['course']);
 
-    $r = $this->promptyRun(fn(): mixed => Prompty::flow(fn(): array => [
-      'course' => Prompty::select('Course', options: self::COURSES),
-    ], unicode: FALSE), self::KEY_ENTER);
+    $r = $this->promptyRun(fn(): mixed => Prompty::flow()
+      ->select('course', 'Course', options: self::COURSES)
+      ->run(unicode: FALSE), self::KEY_ENTER);
 
     $this->assertSame(['course' => 'starter'], $r['result']);
   }
@@ -798,9 +798,9 @@ final class PromptyWidgetResolvedTest extends PromptyTestCase {
     $result = NULL;
 
     $this->captureOutput(function () use (&$result): void {
-      $result = Prompty::flow(fn(): array => [
-        'extras' => Prompty::multiselect('Extras', options: self::EXTRAS_TRIO),
-      ], unicode: FALSE);
+      $result = Prompty::flow()
+        ->multiselect('extras', 'Extras', options: self::EXTRAS_TRIO)
+        ->run(unicode: FALSE);
     });
 
     $this->assertNotNull($result);

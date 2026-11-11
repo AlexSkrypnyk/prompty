@@ -283,7 +283,7 @@ Use these exact labels, keys, values, hints and help lines. Keys are lowercase s
 
 ### Section headings
 
-Headings that group a flow's steps with `Prompty::section()`:
+Headings that group a flow's steps with `->section()`:
 
 - `The dish` - `Name the dish and place it in the meal.` Groups Dish name and Course.
 - `Finishing` - `Applied just before serving.` and `Only asked for desserts.` on 2 lines. Groups Finishes, which shows only for dessert.
@@ -364,7 +364,7 @@ These are conventions, not vocabulary, and they hold in every demo:
 
 - Booleans render as `yes` and `no`, never `true`/`false`.
 - The flow summary heading is `Collected answers:`.
-- A cancelled or unanswered value renders as `cancelled`, never `skipped`.
+- A cancelled or unanswered value renders as `cancelled`. A flow step skipped by its condition answers `NULL` and renders as `skipped` in the `Collected answers:` summary.
 - Every flow supplies a `cancelled:` message. The wording stays specific to its demo (`Order cancelled.`, `Kitchen order cancelled.`) rather than being flattened to one string.
 - Widget demo section headers read `--- Widget: variant ---`.
 - Result lines read `  Result: <value>`, indented two spaces.
@@ -374,20 +374,12 @@ These are conventions, not vocabulary, and they hold in every demo:
 The shape used by `starter.php` and the linear demos:
 
 ```php
-$results = Prompty::flow(fn(): array => [
-  'dish' => Prompty::text('Dish name', placeholder: 'pear tart'),
-  'course' => Prompty::select('Course', options: [
-    'starter' => 'Starter',
-    'main' => 'Main',
-    'dessert' => 'Dessert',
-  ]),
-  'extras' => Prompty::multiselect('Extras', options: [
-    'bread' => 'Bread',
-    'olives' => 'Olives',
-    'herbs' => 'Herbs',
-  ]),
-  'send' => Prompty::confirm('Send order?'),
-], intro: 'Compose an order', outro: 'Order sent!');
+$results = Prompty::flow()
+  ->text('dish', 'Dish name', placeholder: 'pear tart')
+  ->select('course', 'Course', options: ['starter' => 'Starter', 'main' => 'Main', 'dessert' => 'Dessert'])
+  ->multiselect('extras', 'Extras', options: ['bread' => 'Bread', 'olives' => 'Olives', 'herbs' => 'Herbs'])
+  ->confirm('send', 'Send order?')
+  ->run(intro: 'Compose an order', outro: 'Order sent!', cancelled: 'Order cancelled.');
 ```
 
 `05-flows.php` extends this shape with `table` and `seats` between `extras` and `send`, so the linear demo covers numeric option keys.

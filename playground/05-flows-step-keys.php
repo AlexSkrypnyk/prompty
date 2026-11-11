@@ -41,9 +41,9 @@ echo '--- A key a shell cannot export ---' . PHP_EOL;
 echo 'Trying a flow with a step keyed "dish-name".' . PHP_EOL;
 
 try {
-  Prompty::flow(fn(): array => [
-    'dish-name' => Prompty::text('Dish name'),
-  ]);
+  Prompty::flow()
+    ->text('dish-name', 'Dish name')
+    ->run();
   echo 'Accepted.' . PHP_EOL;
 }
 catch (\InvalidArgumentException $exception) {
@@ -53,11 +53,12 @@ catch (\InvalidArgumentException $exception) {
 echo PHP_EOL . '--- The same key inside children ---' . PHP_EOL;
 
 try {
-  Prompty::flow(fn(): array => [
-    'course' => Prompty::confirm('Send order?', discovered: TRUE, children: [
-      'side.dish' => Prompty::text('Side dish'),
-    ]),
-  ]);
+  Prompty::flow()
+    ->confirm('course', 'Send order?', discovered: TRUE)
+      ->children()
+        ->text('side.dish', 'Side dish')
+      ->end()
+    ->run();
   echo 'Accepted.' . PHP_EOL;
 }
 catch (\InvalidArgumentException $exception) {
@@ -67,12 +68,13 @@ catch (\InvalidArgumentException $exception) {
 echo PHP_EOL . '--- A top-level key reused inside children ---' . PHP_EOL;
 
 try {
-  Prompty::flow(fn(): array => [
-    'dish' => Prompty::text('Dish name'),
-    'course' => Prompty::confirm('Add dessert?', discovered: TRUE, children: [
-      'dish' => Prompty::text('Dessert'),
-    ]),
-  ]);
+  Prompty::flow()
+    ->text('dish', 'Dish name')
+    ->confirm('course', 'Add dessert?', discovered: TRUE)
+      ->children()
+        ->text('dish', 'Dessert')
+      ->end()
+    ->run();
   echo 'Accepted.' . PHP_EOL;
 }
 catch (\InvalidArgumentException $exception) {
@@ -84,15 +86,11 @@ echo 'dish_name reads PROMPTY_DISH_NAME, dishName reads PROMPTY_DISHNAME,' . PHP
 echo 'and course2 reads PROMPTY_COURSE2. Set those three to see them' . PHP_EOL;
 echo 'pre-filled; leave them unset and the flow asks instead.' . PHP_EOL . PHP_EOL;
 
-$results = Prompty::flow(fn(): array => [
-  'dish_name' => Prompty::text('Dish name', placeholder: 'pear tart'),
-  'dishName' => Prompty::text('Written as', placeholder: 'on the ticket'),
-  'course2' => Prompty::select('Second course', options: ['starter' => 'Starter', 'main' => 'Main']),
-],
-  intro: 'Keys that can be exported',
-  outro: 'Order noted.',
-  cancelled: 'Cancelled.',
-);
+$results = Prompty::flow()
+  ->text('dish_name', 'Dish name', placeholder: 'pear tart')
+  ->text('dishName', 'Written as', placeholder: 'on the ticket')
+  ->select('course2', 'Second course', options: ['starter' => 'Starter', 'main' => 'Main'])
+  ->run(intro: 'Keys that can be exported', outro: 'Order noted.', cancelled: 'Cancelled.');
 
 if ($results === NULL) {
   exit(0);

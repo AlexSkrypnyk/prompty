@@ -210,9 +210,9 @@ final class PromptyThrowOnInvalidTest extends PromptyTestCase {
 
     try {
       $this->promptyRunScript(function (): void {
-        Prompty::flow(fn(): array => [
-          'dish' => Prompty::text('Dish name', validate: self::reject()),
-        ]);
+        Prompty::flow()
+          ->text('dish', 'Dish name', validate: self::reject())
+          ->run();
       }, 'pear' . self::KEY_ENTER);
       $this->fail('A rejected answer did not throw.');
     }

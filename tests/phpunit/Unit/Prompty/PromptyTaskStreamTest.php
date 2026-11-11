@@ -281,16 +281,17 @@ final class PromptyTaskStreamTest extends PromptyTestCase {
   public function testStreamInFlow(): void {
     $result = NULL;
     $output = $this->captureOutput(function () use (&$result): void {
-      $result = Prompty::flow(fn(): array => [
-        'course' => Prompty::select('Course', options: ['main' => 'Main', 'dessert' => 'Dessert'], default: 'dessert', children: [
-          'bake' => Prompty::task('Baking the tart', action: function (): bool {
-            echo "Oven at 180°C\n";
+      $result = Prompty::flow()
+        ->select('course', 'Course', options: ['main' => 'Main', 'dessert' => 'Dessert'], default: 'dessert')
+          ->children()
+            ->task('bake', 'Baking the tart', action: function (): bool {
+              echo "Oven at 180°C\n";
 
-            return TRUE;
-          }, success: 'Tart baked', stream: TRUE),
-          'warm' => Prompty::confirm('Serve warm?'),
-        ]),
-      ], numbering: TRUE, unicode: TRUE, interactive: FALSE);
+              return TRUE;
+            }, success: 'Tart baked', stream: TRUE)
+            ->confirm('warm', 'Serve warm?')
+          ->end()
+        ->run(numbering: TRUE, unicode: TRUE, interactive: FALSE);
     });
 
     $this->assertSame(['course' => 'dessert', 'bake' => TRUE, 'warm' => TRUE], $result);

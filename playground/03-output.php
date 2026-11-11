@@ -21,20 +21,19 @@ Prompty::note('The pear tart is running low.', type: 'warning');
 Prompty::note("The oven did not reach temperature.\nCheck the fan and try again.", type: 'error');
 
 echo "\n--- Note: in a flow ---\n";
-Prompty::flow(fn(): array => [
-  Prompty::note('The kitchen opens at 5pm.'),
-  'course' => Prompty::select('Course',
-    options: ['starter' => 'Starter', 'main' => 'Main', 'dessert' => 'Dessert'],
-    default: 'dessert',
-    children: [
+Prompty::flow()
+  ->note('The kitchen opens at 5pm.')
+  ->select('course', 'Course', options: ['starter' => 'Starter', 'main' => 'Main', 'dessert' => 'Dessert'], default: 'dessert')
+    ->children()
       // A note among children sits in the tree at their depth.
-      Prompty::note('The pear tart is running low.', type: 'warning', condition: fn(array $r): bool => $r['course'] === 'dessert'),
-      'warm' => Prompty::confirm('Serve warm?', description: 'Straight from the oven.'),
-    ],
-  ),
-  'send' => Prompty::confirm('Send order?', description: 'Passes the order to the kitchen.'),
-  Prompty::note('Order sent to the kitchen.', type: 'success', condition: fn(array $r): bool => $r['send'] === TRUE),
-], intro: 'Compose an order', outro: 'Order sent!', cancelled: 'Order cancelled.');
+      ->note('The pear tart is running low.', type: 'warning')
+        ->when(fn(array $r): bool => $r['course'] === 'dessert')
+      ->confirm('warm', 'Serve warm?', description: 'Straight from the oven.')
+    ->end()
+  ->confirm('send', 'Send order?', description: 'Passes the order to the kitchen.')
+  ->note('Order sent to the kitchen.', type: 'success')
+    ->when(fn(array $r): bool => $r['send'] === TRUE)
+  ->run(intro: 'Compose an order', outro: 'Order sent!', cancelled: 'Order cancelled.');
 
 echo "\n--- Table: rows only ---\n";
 Prompty::intro('Order summary');

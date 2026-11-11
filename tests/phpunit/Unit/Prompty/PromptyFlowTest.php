@@ -5,16 +5,15 @@ declare(strict_types=1);
 namespace AlexSkrypnyk\Prompty\Tests\Unit\Prompty;
 
 use AlexSkrypnyk\Prompty\Prompty;
+use AlexSkrypnyk\Prompty\PromptyFlow;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Group;
 
 /**
- * Tests for Prompty::flow() and the flow-mode widget contract.
+ * Tests for running a flow built with Prompty::flow().
  *
- * Inside a flow a widget returns a deferred closure, or a step array when it
- * carries a condition or children. The whole-flow tests resolve answers from
- * the environment.
+ * The whole-flow tests resolve answers from the environment.
  *
  * Rendered output is captured, ANSI-stripped, and compared whole against a
  * heredoc, or against an escaped string where trailing whitespace is
@@ -22,95 +21,9 @@ use PHPUnit\Framework\Attributes\Group;
  * because their output carries redraw sequences.
  */
 #[CoversClass(Prompty::class)]
+#[CoversClass(PromptyFlow::class)]
 #[Group('unit')]
 final class PromptyFlowTest extends PromptyTestCase {
-
-  #[DataProvider('dataProviderWidgetFlowModeReturnsClosure')]
-  public function testWidgetFlowModeReturnsClosure(\Closure $call): void {
-    $this->createAndSetInstance([], TRUE);
-
-    $this->assertInstanceOf(\Closure::class, $call());
-  }
-
-  public static function dataProviderWidgetFlowModeReturnsClosure(): \Iterator {
-    yield 'text' => [fn(): mixed => Prompty::text('Project name', placeholder: 'my-app')];
-    yield 'select' => [fn(): mixed => Prompty::select('Framework', options: ['react' => 'React', 'vue' => 'Vue'])];
-    yield 'multiselect' => [fn(): mixed => Prompty::multiselect('Features', options: ['ts' => 'TypeScript', 'eslint' => 'ESLint'])];
-    yield 'confirm' => [fn(): mixed => Prompty::confirm('Install dependencies?')];
-  }
-
-  #[DataProvider('dataProviderWidgetFlowModeReturnsStepArray')]
-  public function testWidgetFlowModeReturnsStepArray(\Closure $call, ?\Closure $condition, int $expected_children): void {
-    $this->createAndSetInstance([], TRUE);
-
-    $result = $call();
-
-    $this->assertIsArray($result);
-    $this->assertArrayHasKey('__call', $result);
-    $this->assertArrayHasKey('__children', $result);
-    $this->assertArrayHasKey('__condition', $result);
-    $this->assertInstanceOf(\Closure::class, $result['__call']);
-
-    if (!$condition instanceof \Closure) {
-      $this->assertNull($result['__condition']);
-    }
-    else {
-      $this->assertSame($condition, $result['__condition']);
-    }
-
-    $this->assertIsArray($result['__children']);
-    $this->assertCount($expected_children, $result['__children']);
-  }
-
-  public static function dataProviderWidgetFlowModeReturnsStepArray(): \Iterator {
-    $condition_app = fn($r): bool => ($r['type'] ?? '') === 'app';
-    $condition_lib = fn($r): bool => ($r['type'] ?? '') === 'lib';
-
-    yield 'text with children' => [fn(): mixed => Prompty::text('Project name', children: ['child_key' => Prompty::text('Child question')]), NULL, 1];
-
-    yield 'text with condition' => [fn(): mixed => Prompty::text('App name', condition: $condition_app), $condition_app, 0];
-
-    yield 'select with condition' => [fn(): mixed => Prompty::select('Framework', options: ['react' => 'React'], condition: $condition_app), $condition_app, 0];
-
-    yield 'select with children' => [
-      fn(): mixed => Prompty::select('Framework', options: ['react' => 'React'], children: ['ssr' => Prompty::confirm('Use SSR?')]),
-      NULL,
-      1,
-    ];
-
-    yield 'multiselect with condition and children' => [
-      fn(): mixed => Prompty::multiselect('Formats',
-        options: ['esm' => 'ESM', 'cjs' => 'CJS'],
-        condition: $condition_lib,
-        children: ['bundler' => Prompty::select('Bundler', options: ['tsup' => 'tsup'])],
-      ),
-      $condition_lib,
-      1,
-    ];
-
-    yield 'confirm with children' => [
-      fn(): mixed => Prompty::confirm('Enable testing?', children: ['runner' => Prompty::select('Runner', options: ['jest' => 'Jest'])]),
-      NULL,
-      1,
-    ];
-  }
-
-  public function testFlowModeClosureAcceptsCtx(): void {
-    $this->createAndSetInstance([], TRUE);
-
-    $result = Prompty::text('Name', placeholder: 'default', discovered: 'pre-filled');
-
-    $this->assertInstanceOf(\Closure::class, $result);
-
-    $ctx = $this->defaultCtx();
-
-    $value = NULL;
-    $this->captureOutput(function () use ($result, $ctx, &$value): void {
-      $value = $result($ctx);
-    });
-
-    $this->assertSame('pre-filled', $value);
-  }
 
   #[DataProvider('dataProviderFlowResolvesFromEnv')]
   public function testFlowResolvesFromEnv(array $env, string $prefix, \Closure $run, array $expected): void {
@@ -128,81 +41,75 @@ final class PromptyFlowTest extends PromptyTestCase {
     yield 'linear steps' => [
       ['name' => 'my-app', 'framework' => 'vue', 'install' => 'yes'],
       'PROMPTY_',
-      fn(): mixed => Prompty::flow(fn(): array => [
-        'name' => Prompty::text('Project name', placeholder: 'my-app'),
-        'framework' => Prompty::select('Framework', options: ['react' => 'React', 'vue' => 'Vue']),
-        'install' => Prompty::confirm('Install?'),
-      ], unicode: FALSE),
+      fn(): mixed => Prompty::flow()
+        ->text('name', 'Project name', placeholder: 'my-app')
+        ->select('framework', 'Framework', options: ['react' => 'React', 'vue' => 'Vue'])
+        ->confirm('install', 'Install?')
+        ->run(unicode: FALSE),
       ['name' => 'my-app', 'framework' => 'vue', 'install' => TRUE],
     ];
 
     yield 'nested children with conditions' => [
       ['type' => 'app', 'app_framework' => 'next', 'api_routes' => 'yes'],
       'PROMPTY_',
-      fn(): mixed => Prompty::flow(fn(): array => [
-        'type' => Prompty::select('Type',
-          options: ['app' => 'App', 'lib' => 'Library'],
-          children: [
-            'app_framework' => Prompty::select('App framework',
-              options: ['next' => 'Next.js', 'nuxt' => 'Nuxt'],
-              condition: fn($r): bool => ($r['type'] ?? '') === 'app',
-            ),
-            'lib_format' => Prompty::select('Format',
-              options: ['esm' => 'ESM', 'cjs' => 'CJS'],
-              condition: fn($r): bool => ($r['type'] ?? '') === 'lib',
-            ),
-          ],
-        ),
-        'api_routes' => Prompty::confirm('API routes?'),
-      ], unicode: FALSE),
-      ['type' => 'app', 'app_framework' => 'next', 'api_routes' => TRUE],
+      fn(): mixed => Prompty::flow()
+        ->select('type', 'Type', options: ['app' => 'App', 'lib' => 'Library'])
+          ->children()
+            ->select('app_framework', 'App framework', options: ['next' => 'Next.js', 'nuxt' => 'Nuxt'])
+              ->when(fn($r): bool => ($r['type'] ?? '') === 'app')
+            ->select('lib_format', 'Format', options: ['esm' => 'ESM', 'cjs' => 'CJS'])
+              ->when(fn($r): bool => ($r['type'] ?? '') === 'lib')
+          ->end()
+        ->confirm('api_routes', 'API routes?')
+        ->run(unicode: FALSE),
+      ['type' => 'app', 'app_framework' => 'next', 'lib_format' => NULL, 'api_routes' => TRUE],
     ];
 
     yield 'custom env prefix' => [
       ['name' => 'configured'],
       'MYAPP_',
-      fn(): mixed => Prompty::flow(fn(): array => ['name' => Prompty::text('Name')], unicode: FALSE, env_prefix: 'MYAPP_'),
+      fn(): mixed => Prompty::flow()->text('name', 'Name')->run(unicode: FALSE, env_prefix: 'MYAPP_'),
       ['name' => 'configured'],
     ];
 
     yield 'multiselect from csv' => [
       ['features' => 'ts,eslint'],
       'PROMPTY_',
-      fn(): mixed => Prompty::flow(fn(): array => [
-        'features' => Prompty::multiselect('Features', options: ['ts' => 'TypeScript', 'eslint' => 'ESLint', 'prettier' => 'Prettier']),
-      ], unicode: FALSE),
+      fn(): mixed => Prompty::flow()
+        ->multiselect('features', 'Features', options: ['ts' => 'TypeScript', 'eslint' => 'ESLint', 'prettier' => 'Prettier'])
+        ->run(unicode: FALSE),
       ['features' => ['ts', 'eslint']],
     ];
 
     yield 'multiselect normalizes order and duplicates' => [
       ['features' => 'prettier, ts ,prettier'],
       'PROMPTY_',
-      fn(): mixed => Prompty::flow(fn(): array => [
-        'features' => Prompty::multiselect('Features', options: ['ts' => 'TypeScript', 'eslint' => 'ESLint', 'prettier' => 'Prettier']),
-      ], unicode: FALSE),
+      fn(): mixed => Prompty::flow()
+        ->multiselect('features', 'Features', options: ['ts' => 'TypeScript', 'eslint' => 'ESLint', 'prettier' => 'Prettier'])
+        ->run(unicode: FALSE),
       ['features' => ['ts', 'prettier']],
     ];
 
-    yield 'empty steps' => [[], 'PROMPTY_', fn(): mixed => Prompty::flow(fn(): array => [], unicode: FALSE), []];
+    yield 'empty steps' => [[], 'PROMPTY_', fn(): mixed => Prompty::flow()->run(unicode: FALSE), []];
 
     yield 'truthy override' => [
       ['install' => 'yep'],
       'PROMPTY_',
-      fn(): mixed => Prompty::flow(fn(): array => ['install' => Prompty::confirm('Install?')], unicode: FALSE, truthy: ['yep']),
+      fn(): mixed => Prompty::flow()->confirm('install', 'Install?')->run(unicode: FALSE, truthy: ['yep']),
       ['install' => TRUE],
     ];
 
     yield 'falsy override' => [
       ['install' => 'nah'],
       'PROMPTY_',
-      fn(): mixed => Prompty::flow(fn(): array => ['install' => Prompty::confirm('Install?')], unicode: FALSE, falsy: ['nah']),
+      fn(): mixed => Prompty::flow()->confirm('install', 'Install?')->run(unicode: FALSE, falsy: ['nah']),
       ['install' => FALSE],
     ];
 
     yield 'no config overrides' => [
       ['name' => 'test'],
       'PROMPTY_',
-      fn(): mixed => Prompty::flow(fn(): array => ['name' => Prompty::text('Name')], unicode: FALSE),
+      fn(): mixed => Prompty::flow()->text('name', 'Name')->run(unicode: FALSE),
       ['name' => 'test'],
     ];
   }
@@ -211,10 +118,10 @@ final class PromptyFlowTest extends PromptyTestCase {
     $this->setEnvVars(['name' => 'my-app', 'framework' => 'react']);
 
     $output = $this->captureOutput(function (): void {
-      Prompty::flow(fn(): array => [
-        'name' => Prompty::text('Project name'),
-        'framework' => Prompty::select('Framework', options: ['react' => 'React', 'vue' => 'Vue']),
-      ], unicode: FALSE);
+      Prompty::flow()
+        ->text('name', 'Project name')
+        ->select('framework', 'Framework', options: ['react' => 'React', 'vue' => 'Vue'])
+        ->run(unicode: FALSE);
     });
 
     $expected = <<<'EXPECTED'
@@ -233,7 +140,7 @@ final class PromptyFlowTest extends PromptyTestCase {
     $this->setEnvVars(['name' => 'test']);
 
     $output = $this->captureOutput(function (): void {
-      Prompty::flow(fn(): array => ['name' => Prompty::text('Name')], intro: 'Welcome', outro: 'Done!', unicode: FALSE);
+      Prompty::flow()->text('name', 'Name')->run(intro: 'Welcome', outro: 'Done!', unicode: FALSE);
     });
 
     $expected = <<<'EXPECTED'
@@ -258,19 +165,19 @@ final class PromptyFlowTest extends PromptyTestCase {
     $was_outro_called = FALSE;
 
     $output = $this->captureOutput(function () use (&$was_intro_called, &$was_outro_called): void {
-      Prompty::flow(fn(): array => [
-        'name' => Prompty::text('Name'),
-      ],
-        intro: function () use (&$was_intro_called): void {
-          $was_intro_called = TRUE;
-          echo "Custom intro\n";
-        },
-        outro: function (array $results) use (&$was_outro_called): void {
-          $was_outro_called = TRUE;
-          echo 'Custom outro: ' . $results['name'] . "\n";
-        },
-        unicode: FALSE,
-      );
+      Prompty::flow()
+        ->text('name', 'Name')
+        ->run(
+          intro: function () use (&$was_intro_called): void {
+            $was_intro_called = TRUE;
+            echo "Custom intro\n";
+          },
+          outro: function (array $results) use (&$was_outro_called): void {
+            $was_outro_called = TRUE;
+            echo 'Custom outro: ' . $results['name'] . "\n";
+          },
+          unicode: FALSE,
+        );
     });
 
     $this->assertTrue($was_intro_called);
@@ -290,10 +197,10 @@ final class PromptyFlowTest extends PromptyTestCase {
     $this->setEnvVars(['name' => 'test', 'send' => 'yes']);
 
     $this->captureOutput(function (): void {
-      Prompty::flow(fn(): array => [
-        'name' => Prompty::text('Name'),
-        'send' => Prompty::confirm('Send?'),
-      ], unicode: FALSE);
+      Prompty::flow()
+        ->text('name', 'Name')
+        ->confirm('send', 'Send?')
+        ->run(unicode: FALSE);
     });
 
     $this->assertSame(['name' => 'test', 'send' => TRUE], Prompty::results());
@@ -303,10 +210,10 @@ final class PromptyFlowTest extends PromptyTestCase {
     $this->setEnvVars(['name' => 'test', 'framework' => 'react']);
 
     $output = $this->captureOutput(function (): void {
-      Prompty::flow(fn(): array => [
-        'name' => Prompty::text('Name'),
-        'framework' => Prompty::select('Framework', options: ['react' => 'React']),
-      ], numbering: TRUE, unicode: FALSE);
+      Prompty::flow()
+        ->text('name', 'Name')
+        ->select('framework', 'Framework', options: ['react' => 'React'])
+        ->run(numbering: TRUE, unicode: FALSE);
     });
 
     $expected = <<<'EXPECTED'
@@ -325,14 +232,12 @@ final class PromptyFlowTest extends PromptyTestCase {
     $this->setEnvVars(['type' => 'app', 'child' => 'val']);
 
     $output = $this->captureOutput(function (): void {
-      Prompty::flow(fn(): array => [
-        'type' => Prompty::select('Type',
-          options: ['app' => 'App'],
-          children: [
-            'child' => Prompty::text('Child'),
-          ],
-        ),
-      ], numbering: TRUE, unicode: FALSE);
+      Prompty::flow()
+        ->select('type', 'Type', options: ['app' => 'App'])
+          ->children()
+            ->text('child', 'Child')
+          ->end()
+        ->run(numbering: TRUE, unicode: FALSE);
     });
 
     // Double-quoted because the final line carries significant trailing
@@ -346,7 +251,7 @@ final class PromptyFlowTest extends PromptyTestCase {
     $this->setEnvVars(['install' => 'yes']);
 
     $output = $this->captureOutput(function (): void {
-      Prompty::flow(fn(): array => ['install' => Prompty::confirm('Install?')], labels: ['yes' => 'Yep', 'no' => 'Nope'], unicode: FALSE);
+      Prompty::flow()->confirm('install', 'Install?')->run(labels: ['yes' => 'Yep', 'no' => 'Nope'], unicode: FALSE);
     });
 
     $expected = <<<'EXPECTED'
@@ -362,7 +267,7 @@ final class PromptyFlowTest extends PromptyTestCase {
     $this->setEnvVars(['name' => 'test']);
 
     $output = $this->captureOutput(function (): void {
-      Prompty::flow(fn(): array => ['name' => Prompty::text('Name')], symbols_ascii: ['completed' => '*'], unicode: FALSE);
+      Prompty::flow()->text('name', 'Name')->run(symbols_ascii: ['completed' => '*'], unicode: FALSE);
     });
 
     $expected = <<<'EXPECTED'
@@ -386,35 +291,30 @@ final class PromptyFlowTest extends PromptyTestCase {
   public static function dataProviderFlowRejectsOutOfDomainEnv(): \Iterator {
     yield 'select' => [
       ['framework' => 'angular'],
-      fn(): mixed => Prompty::flow(fn(): array => [
-        'framework' => Prompty::select('Framework', options: ['react' => 'React', 'vue' => 'Vue']),
-      ], unicode: FALSE),
+      fn(): mixed => Prompty::flow()->select('framework', 'Framework', options: ['react' => 'React', 'vue' => 'Vue'])->run(unicode: FALSE),
       'Discovered value "angular" for "Framework" is not a valid option. Available options: react, vue.',
     ];
 
     yield 'multiselect' => [
       ['features' => 'ts,webpack'],
-      fn(): mixed => Prompty::flow(fn(): array => [
-        'features' => Prompty::multiselect('Features', options: ['ts' => 'TypeScript', 'eslint' => 'ESLint']),
-      ], unicode: FALSE),
+      fn(): mixed => Prompty::flow()->multiselect('features', 'Features', options: ['ts' => 'TypeScript', 'eslint' => 'ESLint'])->run(unicode: FALSE),
       'Discovered value "webpack" for "Features" is not a valid option. Available options: ts, eslint.',
     ];
 
     yield 'confirm' => [
       ['install' => 'maybe'],
-      fn(): mixed => Prompty::flow(fn(): array => [
-        'install' => Prompty::confirm('Install?'),
-      ], unicode: FALSE),
+      fn(): mixed => Prompty::flow()->confirm('install', 'Install?')->run(unicode: FALSE),
       'Discovered value "maybe" for "Install?" is not a valid answer. Accepted values: 1, true, yes, 0, false, no.',
     ];
 
     yield 'nested child step' => [
       ['type' => 'app', 'app_framework' => 'svelte'],
-      fn(): mixed => Prompty::flow(fn(): array => [
-        'type' => Prompty::select('Type', options: ['app' => 'App'], children: [
-          'app_framework' => Prompty::select('App framework', options: ['next' => 'Next.js', 'nuxt' => 'Nuxt']),
-        ]),
-      ], unicode: FALSE),
+      fn(): mixed => Prompty::flow()
+        ->select('type', 'Type', options: ['app' => 'App'])
+          ->children()
+            ->select('app_framework', 'App framework', options: ['next' => 'Next.js', 'nuxt' => 'Nuxt'])
+          ->end()
+        ->run(unicode: FALSE),
       'Discovered value "svelte" for "App framework" is not a valid option. Available options: next, nuxt.',
     ];
   }
@@ -432,23 +332,23 @@ final class PromptyFlowTest extends PromptyTestCase {
 
   public static function dataProviderFlowCancelled(): \Iterator {
     yield 'string message' => [
-      fn(): mixed => Prompty::flow(fn(): array => ['name' => Prompty::text('Name')], cancelled: 'Cancelled!', unicode: FALSE),
+      fn(): mixed => Prompty::flow()->text('name', 'Name')->run(cancelled: 'Cancelled!', unicode: FALSE),
       'Cancelled!',
     ];
 
-    yield 'null default' => [fn(): mixed => Prompty::flow(fn(): array => ['name' => Prompty::text('Name')], unicode: FALSE), NULL];
+    yield 'null default' => [fn(): mixed => Prompty::flow()->text('name', 'Name')->run(unicode: FALSE), NULL];
   }
 
   public function testFlowCancelledWithCallable(): void {
     $was_called = FALSE;
 
     $r = $this->promptyRun(function () use (&$was_called): mixed {
-      return Prompty::flow(fn(): array => [
-        'name' => Prompty::text('Name'),
-      ], cancelled: function () use (&$was_called): void {
-        $was_called = TRUE;
-        echo "Custom cancel\n";
-      }, unicode: FALSE);
+      return Prompty::flow()
+        ->text('name', 'Name')
+        ->run(cancelled: function () use (&$was_called): void {
+          $was_called = TRUE;
+          echo "Custom cancel\n";
+        }, unicode: FALSE);
     }, self::KEY_ESCAPE);
 
     $this->assertNull($r['result']);
@@ -466,29 +366,33 @@ final class PromptyFlowTest extends PromptyTestCase {
   }
 
   public static function dataProviderFlowResetsStateWhenCallbackThrows(): \Iterator {
-    yield 'steps callable' => [
-      fn(): mixed => Prompty::flow(fn(): array => throw new \RuntimeException('boom'), unicode: FALSE),
+    yield 'argument closure' => [
+      fn(): mixed => Prompty::flow()->text('dish', fn(array $r): never => throw new \RuntimeException('boom'))->run(unicode: FALSE),
     ];
 
     yield 'intro callback' => [
-      fn(): mixed => Prompty::flow(fn(): array => ['dish' => Prompty::text('Dish name')], intro: fn(): never => throw new \RuntimeException('boom'), unicode: FALSE),
+      fn(): mixed => Prompty::flow()->text('dish', 'Dish name')->run(intro: fn(): never => throw new \RuntimeException('boom'), unicode: FALSE),
     ];
 
     yield 'widget condition' => [
-      fn(): mixed => Prompty::flow(fn(): array => ['dish' => Prompty::text('Dish name', condition: fn(): never => throw new \RuntimeException('boom'))], unicode: FALSE),
+      fn(): mixed => Prompty::flow()
+        ->text('dish', 'Dish name')
+          ->when(fn(): never => throw new \RuntimeException('boom'))
+        ->run(unicode: FALSE),
     ];
 
     yield 'outro callback' => [
-      fn(): mixed => Prompty::flow(fn(): array => ['dish' => Prompty::text('Dish name')], outro: fn(): never => throw new \RuntimeException('boom'), unicode: FALSE),
+      fn(): mixed => Prompty::flow()->text('dish', 'Dish name')->run(outro: fn(): never => throw new \RuntimeException('boom'), unicode: FALSE),
     ];
 
     // Throws from the recursive walkFlow() call, 1 level below the parent.
-    yield 'nested child callable' => [
-      fn(): mixed => Prompty::flow(fn(): array => [
-        'dish' => Prompty::text('Dish name', children: [
-          'method' => fn(array $ctx): never => throw new \RuntimeException('boom'),
-        ]),
-      ], unicode: FALSE),
+    yield 'nested child argument closure' => [
+      fn(): mixed => Prompty::flow()
+        ->text('dish', 'Dish name')
+          ->children()
+            ->text('method', fn(array $r): never => throw new \RuntimeException('boom'))
+          ->end()
+        ->run(unicode: FALSE),
     ];
   }
 
@@ -499,7 +403,7 @@ final class PromptyFlowTest extends PromptyTestCase {
 
     $this->captureOutput(function () use (&$value): void {
       try {
-        Prompty::flow(fn(): array => throw new \RuntimeException('boom'));
+        Prompty::flow()->text('dish', fn(array $r): never => throw new \RuntimeException('boom'))->run();
       }
       catch (\RuntimeException) {
         // The exception is swallowed, as a caller that catches it and

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace AlexSkrypnyk\Prompty\Tests\Unit\Prompty;
 
 use AlexSkrypnyk\Prompty\Prompty;
+use AlexSkrypnyk\Prompty\PromptyFlow;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Group;
@@ -387,17 +388,17 @@ final class PromptyWidgetScrollTest extends PromptyTestCase {
   }
 
   public function testFlowScrollAppliesToItsWidgets(): void {
-    $r = $this->promptyRun(fn(): mixed => Prompty::flow(fn(): array => [
-      'menu' => Prompty::select('Menu', options: self::MENU),
-    ], scroll: 2), self::KEY_ENTER);
+    $r = $this->promptyRun(fn(): mixed => Prompty::flow()
+      ->select('menu', 'Menu', options: self::MENU)
+      ->run(scroll: 2), self::KEY_ENTER);
 
     $this->assertSame(['menu' => 'tart'], $r['result']);
     $this->assertStringContainsString('|  v 6 more', $r['output']);
   }
 
   #[DataProvider('dataProviderScrollThreadsThroughFlowStep')]
-  public function testScrollThreadsThroughFlowStep(\Closure $steps, string $keystrokes, array $expected, string $expected_output): void {
-    $r = $this->promptyRun(fn(): mixed => Prompty::flow($steps), $keystrokes);
+  public function testScrollThreadsThroughFlowStep(\Closure $build, string $keystrokes, array $expected, string $expected_output): void {
+    $r = $this->promptyRun(fn(): mixed => $build(Prompty::flow())->run(), $keystrokes);
 
     $this->assertSame($expected, $r['result']);
     $this->assertStringContainsString($expected_output, $r['output']);
@@ -405,19 +406,19 @@ final class PromptyWidgetScrollTest extends PromptyTestCase {
 
   public static function dataProviderScrollThreadsThroughFlowStep(): \Iterator {
     yield 'select closure' => [
-      static fn(): array => ['menu' => Prompty::select('Menu', options: self::MENU, scroll: 2)],
+      static fn(PromptyFlow $flow): PromptyFlow => $flow->select('menu', 'Menu', options: self::MENU, scroll: 2),
       self::KEY_ENTER,
       ['menu' => 'tart'],
       '|  v 6 more',
     ];
     yield 'select step with a condition' => [
-      static fn(): array => ['menu' => Prompty::select('Menu', options: self::MENU, scroll: 2, condition: fn(): bool => TRUE)],
+      static fn(PromptyFlow $flow): PromptyFlow => $flow->select('menu', 'Menu', options: self::MENU, scroll: 2)->when(fn(): bool => TRUE),
       self::KEY_ENTER,
       ['menu' => 'tart'],
       '|  v 6 more',
     ];
     yield 'multiselect closure' => [
-      static fn(): array => ['pantry' => Prompty::multiselect('Pantry', options: self::MENU, scroll: 2)],
+      static fn(PromptyFlow $flow): PromptyFlow => $flow->multiselect('pantry', 'Pantry', options: self::MENU, scroll: 2),
       self::KEY_SPACE . self::KEY_ENTER,
       ['pantry' => ['tart']],
       '|  v 6 more',

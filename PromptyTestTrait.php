@@ -20,12 +20,12 @@ namespace AlexSkrypnyk\Prompty;
  *     use PromptyTestTrait;
  *
  *     public function testMyFlow(): void {
- *       $r = $this->promptyRun(fn(): mixed => Prompty::flow(fn(): array => [
- *         'course' => Prompty::select('Course', options: [
+ *       $r = $this->promptyRun(fn(): mixed => Prompty::flow()
+ *         ->select('course', 'Course', options: [
  *           'starter' => 'Starter',
  *           'main' => 'Main',
- *         ]),
- *       ]), self::KEY_DOWN . self::KEY_ENTER);
+ *         ])
+ *         ->run(), self::KEY_DOWN . self::KEY_ENTER);
  *
  *       $this->assertSame('main', $r['result']['course']);
  *     }
@@ -381,7 +381,6 @@ trait PromptyTestTrait {
     $this->promptyCloseInput();
     $this->promptySetStatic('instance', NULL);
     $this->promptySetStatic('isInFlow', FALSE);
-    $this->promptySetStatic('isDefining', FALSE);
     $this->promptySetStatic('onInvalid', NULL);
   }
 

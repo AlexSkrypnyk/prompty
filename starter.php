@@ -26,12 +26,12 @@ use AlexSkrypnyk\Prompty\Prompty;
 // @embed-end
 // phpcs:enable
 
-$results = Prompty::flow(fn(): array => [
-  'dish' => Prompty::text('Dish name', placeholder: 'pear tart'),
-  'course' => Prompty::select('Course', options: ['starter' => 'Starter', 'main' => 'Main', 'dessert' => 'Dessert']),
-  'extras' => Prompty::multiselect('Extras', options: ['bread' => 'Bread', 'olives' => 'Olives', 'herbs' => 'Herbs']),
-  'send' => Prompty::confirm('Send order?'),
-], intro: 'Compose an order', outro: 'Order sent!', cancelled: 'Order cancelled.');
+$results = Prompty::flow()
+  ->text('dish', 'Dish name', placeholder: 'pear tart')
+  ->select('course', 'Course', options: ['starter' => 'Starter', 'main' => 'Main', 'dessert' => 'Dessert'])
+  ->multiselect('extras', 'Extras', options: ['bread' => 'Bread', 'olives' => 'Olives', 'herbs' => 'Herbs'])
+  ->confirm('send', 'Send order?')
+  ->run(intro: 'Compose an order', outro: 'Order sent!', cancelled: 'Order cancelled.');
 
 if ($results === NULL) {
   return;

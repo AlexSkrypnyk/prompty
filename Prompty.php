@@ -43,6 +43,32 @@ namespace AlexSkrypnyk\Prompty;
  *   legend: bool,
  *   back_key: string,
  * }
+ *
+ * @phpstan-type PromptyAnswers array<string, string|bool|list<string>|null>
+ *
+ * @phpstan-type PromptyFlowOptions array{
+ *   intro: string|callable|null,
+ *   outro: string|callable|null,
+ *   cancelled: string|callable|null,
+ *   numbering: bool|string,
+ *   symbols_unicode: array<string, string>|null,
+ *   symbols_ascii: array<string, string>|null,
+ *   colors: array<string, string>|null,
+ *   spacing: array<string, string>|null,
+ *   labels: array<string, string>|null,
+ *   unicode: bool|null,
+ *   ansi: bool|null,
+ *   env_prefix: string|null,
+ *   truthy: list<string>|null,
+ *   falsy: list<string>|null,
+ *   output: mixed,
+ *   interactive: bool|null,
+ *   scroll: int|null,
+ *   placeholder_fallback: bool|null,
+ *   width: int|null,
+ *   legend: bool|null,
+ *   back_key: string|null,
+ * }
  */
 class Prompty {
 
@@ -125,17 +151,9 @@ class Prompty {
   protected static ?self $instance = NULL;
 
   /**
-   * Whether a flow is currently being defined/executed.
+   * Whether a flow is running, so widgets leave the terminal to it.
    */
   protected static bool $isInFlow = FALSE;
-
-  /**
-   * Whether the steps callable of a flow is running.
-   *
-   * A note declares a step only then; once the flow walks its steps, a note
-   * prints.
-   */
-  protected static bool $isDefining = FALSE;
 
   /**
    * Handler called for every answer a validator rejects.
@@ -154,7 +172,7 @@ class Prompty {
   /**
    * Collected answers.
    *
-   * @var array<string, string|bool|int|array<string,string>>
+   * @var PromptyAnswers
    */
   protected array $results = [];
 
@@ -169,9 +187,9 @@ class Prompty {
    * The step being rendered, and the data needed to settle its connector.
    *
    * @var array{
-   *   key: int|string,
+   *   key: string,
    *   depth: int,
-   *   rest: array<array-key, mixed>,
+   *   rest: list<array<string, mixed>>,
    * }|null
    */
   protected ?array $pending = NULL;
@@ -199,7 +217,7 @@ class Prompty {
   /**
    * Answers from before the user stepped back, which replayed steps take.
    *
-   * @var array<string, mixed>
+   * @var array<string, string|bool|list<string>>
    */
   protected array $previous = [];
 
@@ -849,8 +867,8 @@ class Prompty {
   /**
    * Get the collected results from the last flow.
    *
-   * @return array<string, mixed>
-   *   The collected results.
+   * @return PromptyAnswers
+   *   The collected results, with NULL for a skipped step.
    */
   public static function results(): array {
     return static::instance()->results;
@@ -871,286 +889,13 @@ class Prompty {
   }
 
   /**
-   * Run a flow.
+   * Starts a flow, returning the builder that declares and runs its steps.
    *
-   * Accepts a callable that returns the steps array. The callable is invoked
-   * after $isInFlow is set, so widgets inside it return closures for deferred
-   * execution instead of running immediately.
-   *
-   * Flow state and terminal state are restored on every exit path, including
-   * when a step, condition or callback throws.
-   *
-   * @param callable $steps
-   *   Callable that returns the associative steps array.
-   * @param string|callable|null $intro
-   *   Intro message or callable to render before the first step.
-   * @param string|callable|null $outro
-   *   Outro message or callable to render after the last step.
-   * @param string|callable|null $cancelled
-   *   Message or callable to render when the flow is cancelled.
-   * @param bool|string $numbering
-   *   TRUE numbers steps as (1), (2) and nested (2.1). 'total' also shows the
-   *   number of top-level steps due, through the 'step_total' label. FALSE
-   *   draws no numbers.
-   * @param array<string, string>|null $symbols_unicode
-   *   Partial unicode symbol overrides.
-   * @param array<string, string>|null $symbols_ascii
-   *   Partial ASCII symbol overrides.
-   * @param array<string, string>|null $colors
-   *   Partial ANSI color overrides.
-   * @param array<string, string>|null $spacing
-   *   Partial spacing overrides.
-   * @param array<string, string>|null $labels
-   *   Partial label overrides.
-   * @param bool|null $unicode
-   *   Force unicode (TRUE) or ASCII (FALSE). NULL keeps the current setting,
-   *   which is auto-detected until set.
-   * @param bool|null $ansi
-   *   Force ANSI colors (TRUE) or suppress them (FALSE). NULL keeps the
-   *   current setting, which is auto-detected until set.
-   * @param string|null $env_prefix
-   *   Environment variable prefix.
-   * @param list<string>|null $truthy
-   *   Values treated as TRUE.
-   * @param list<string>|null $falsy
-   *   Values treated as FALSE.
-   * @param mixed $output
-   *   Where rendered output is written: a writable stream resource, or a
-   *   callable that receives each chunk as a string. NULL keeps the current
-   *   target, which is echo until set.
-   * @param bool|null $interactive
-   *   Read input (TRUE), or answer every step without reading it (FALSE).
-   *   NULL keeps the current setting, which is TRUE until set.
-   * @param int|null $scroll
-   *   Options a select or multiselect draws at once. 0 draws every option.
-   * @param bool|null $placeholder_fallback
-   *   Answer an empty text or suggest with its placeholder (TRUE), or with ''
-   *   (FALSE). NULL keeps the current setting, which is TRUE until set.
-   * @param int|null $width
-   *   Terminal columns that rendered lines wrap to. 0 detects the width from
-   *   the terminal, falling back to 80.
-   * @param bool|null $legend
-   *   Draw the keys each widget accepts under it while it waits for input
-   *   (TRUE), or leave them out (FALSE). NULL keeps the current setting, which
-   *   is FALSE until set.
-   * @param string|null $back_key
-   *   The key that steps back to the previous step, from 'ctrl-a' to
-   *   'ctrl-z'. '' turns stepping back off.
-   *
-   * @return array<string, string|bool|int|array<string,string>>|null
-   *   Collected results or NULL if cancelled.
+   * @return \AlexSkrypnyk\Prompty\PromptyFlow
+   *   An empty flow.
    */
-  public static function flow(
-    callable $steps,
-    string|callable|null $intro = NULL,
-    string|callable|null $outro = NULL,
-    string|callable|null $cancelled = NULL,
-    bool|string $numbering = FALSE,
-    ?array $symbols_unicode = NULL,
-    ?array $symbols_ascii = NULL,
-    ?array $colors = NULL,
-    ?array $spacing = NULL,
-    ?array $labels = NULL,
-    ?bool $unicode = NULL,
-    ?bool $ansi = NULL,
-    ?string $env_prefix = NULL,
-    ?array $truthy = NULL,
-    ?array $falsy = NULL,
-    mixed $output = NULL,
-    ?bool $interactive = NULL,
-    ?int $scroll = NULL,
-    ?bool $placeholder_fallback = NULL,
-    ?int $width = NULL,
-    ?bool $legend = NULL,
-    ?string $back_key = NULL,
-  ): ?array {
-    $p = static::instance();
-    $snapshot = NULL;
-
-    if (is_string($numbering) && $numbering !== 'total') {
-      throw new \InvalidArgumentException(sprintf('Numbering "%s" for "numbering" is not valid. Use TRUE to number steps, "total" to number them with the total, or FALSE for no numbers.', $numbering));
-    }
-
-    if ($symbols_unicode !== NULL
-      || $symbols_ascii !== NULL
-      || $colors !== NULL
-      || $spacing !== NULL
-      || $labels !== NULL
-      || $unicode !== NULL
-      || $ansi !== NULL
-      || $env_prefix !== NULL
-      || $truthy !== NULL
-      || $falsy !== NULL
-      || $output !== NULL
-      || $interactive !== NULL
-      || $scroll !== NULL
-      || $placeholder_fallback !== NULL
-      || $width !== NULL
-      || $legend !== NULL
-      || $back_key !== NULL) {
-      $snapshot = $p->snapshotConfig();
-      static::configure($symbols_unicode, $symbols_ascii, $colors, $spacing, $labels, $unicode, $ansi, $env_prefix, $truthy, $falsy, $output, $interactive, $scroll, $placeholder_fallback, $width, $legend, $back_key);
-    }
-
-    $p->results = [];
-    $p->resetStepBack();
-    static::$isInFlow = TRUE;
-
-    try {
-      static::$isDefining = TRUE;
-
-      try {
-        $steps = $steps();
-      }
-      finally {
-        static::$isDefining = FALSE;
-      }
-
-      $p->assertStepKeys($steps);
-
-      $options = [
-        'numbering' => $numbering,
-      ];
-
-      if ($p->cfgIsInteractive) {
-        $p->setupTty();
-      }
-
-      if ($p->prevTty !== NULL) {
-        // @codeCoverageIgnoreStart
-        // Restore the terminal on a fatal error, which skips the finally
-        // below. teardownTty() clears prevTty, so this is a no-op once the
-        // finally has run.
-        register_shutdown_function(function () use ($p): void {
-          $p->teardownTty();
-        });
-        // @codeCoverageIgnoreEnd
-      }
-
-      if ($intro !== NULL) {
-        is_callable($intro) ? $intro($p->results) : $p->printLines($p->renderIntro($intro));
-      }
-
-      // Stepping back restarts the walk, which replays the steps before the
-      // reopened one from their answers without drawing them.
-      do {
-        $p->results = [];
-        $p->open = [];
-        $p->hasDrawn = $intro !== NULL;
-        $outcome = $p->walkFlow($steps, 0, $options, '');
-      } while ($outcome === 'back');
-
-      if ($outcome === 'cancelled') {
-        if ($cancelled !== NULL) {
-          is_callable($cancelled) ? $cancelled($p->results) : $p->printLines($p->renderOutro($cancelled));
-        }
-
-        return NULL;
-      }
-
-      if ($outro !== NULL) {
-        is_callable($outro) ? $outro($p->results) : $p->printLines($p->renderOutro($outro));
-      }
-
-      return $p->results;
-    }
-    finally {
-      $p->teardownTty();
-      $p->pending = NULL;
-      $p->hasDrawn = FALSE;
-      $p->resetStepBack();
-      static::$isInFlow = FALSE;
-
-      if ($snapshot !== NULL) {
-        $p->restoreConfig($snapshot);
-      }
-    }
-  }
-
-  /**
-   * Declares a flow step whose widget is built when the step is reached.
-   *
-   * The builder receives the answers collected so far and returns a widget
-   * call, so its label, options, default or description can depend on them.
-   * The condition and children are declared here rather than on the widget,
-   * so the flow knows them before the step runs.
-   *
-   * @param callable $builder
-   *   Receives the answers collected so far and returns a widget call, such as
-   *   Prompty::text(...), without a condition or children.
-   * @param callable|null $condition
-   *   Optional condition callback; skips the step when it returns FALSE. The
-   *   builder is not called for a skipped step.
-   * @param array<array-key, mixed> $children
-   *   Child steps to execute after this step.
-   *
-   * @return array<string, mixed>
-   *   The step array.
-   *
-   * @throws \LogicException
-   *   When called outside the steps callable of a flow.
-   * @throws \UnexpectedValueException
-   *   When the builder returns a step array or anything that is not callable.
-   */
-  public static function step(callable $builder, ?callable $condition = NULL, array $children = []): array {
-    if (!static::$isInFlow) {
-      throw new \LogicException('Prompty::step() declares a flow step, so it can only be called inside the callable passed to Prompty::flow().');
-    }
-
-    $call = function (array $ctx) use ($builder): mixed {
-      /** @var array<string, mixed> $results */
-      $results = $ctx['results'] ?? [];
-      $widget = $builder($results);
-      $key = static::instance()->pending['key'] ?? '';
-
-      if (is_array($widget) && array_key_exists('__call', $widget)) {
-        throw new \UnexpectedValueException(sprintf('The builder for step "%s" returned a step array. Pass condition and children to Prompty::step(), so the flow knows them before the step runs.', $key));
-      }
-
-      if (!is_callable($widget)) {
-        throw new \UnexpectedValueException(sprintf('The builder for step "%s" returned %s. A builder returns a widget call, such as Prompty::text(...).', $key, get_debug_type($widget)));
-      }
-
-      return $widget($ctx);
-    };
-
-    return ['__call' => $call, '__children' => $children, '__condition' => $condition];
-  }
-
-  /**
-   * Declares a heading over the flow steps that follow it.
-   *
-   * A section takes no key and adds nothing to the results. Its group is the
-   * steps up to the next section, and the heading is drawn only when at least
-   * 1 of them renders.
-   *
-   * @param string $title
-   *   The heading text, drawn bold. A newline starts another heading line.
-   * @param string $description
-   *   Optional description drawn dim below the title. A newline starts
-   *   another description line.
-   * @param callable|null $condition
-   *   Optional condition callback; hides the heading when it returns FALSE.
-   *   The steps in the group keep their own conditions.
-   *
-   * @return array<string, mixed>
-   *   The section step array.
-   *
-   * @throws \LogicException
-   *   When called outside the steps callable of a flow.
-   * @throws \InvalidArgumentException
-   *   When the title is blank.
-   */
-  public static function section(string $title, string $description = '', ?callable $condition = NULL): array {
-    if (!static::$isInFlow) {
-      throw new \LogicException('Prompty::section() declares a flow heading, so it can only be called inside the callable passed to Prompty::flow().');
-    }
-
-    if (trim($title) === '') {
-      throw new \InvalidArgumentException('A section must have a title: it is the heading drawn above its steps.');
-    }
-
-    return ['__section' => $title, '__description' => $description, '__condition' => $condition];
+  public static function flow(): PromptyFlow {
+    return new PromptyFlow(static::runFlow(...));
   }
 
   /**
@@ -1182,17 +927,11 @@ class Prompty {
    *   Optional validator. Receives the answer string and the flow results
    *   collected so far, and returns NULL when the answer is valid or an error
    *   message when it is not.
-   * @param callable|null $condition
-   *   Optional condition callback; skips the step when it returns FALSE.
-   * @param array<array-key, mixed> $children
-   *   Child steps to execute after this widget.
    * @param array<string, mixed>|null $ctx
    *   Flow context passed by the flow walker.
    *
-   * @return \Closure|array<string, mixed>|string|null
-   *   While a flow is being defined, a closure, or a step array when a
-   *   condition or children are set. Otherwise the entered string, or NULL
-   *   when the widget is cancelled.
+   * @return string|null
+   *   The entered string, or NULL when the widget is cancelled.
    *
    * @throws \InvalidArgumentException
    *   When a discovered value, or the default answered without input, is
@@ -1211,31 +950,8 @@ class Prompty {
     ?callable $transform = NULL,
     bool|string $required = FALSE,
     ?callable $validate = NULL,
-    ?callable $condition = NULL,
-    array $children = [],
     ?array $ctx = NULL,
-  ): \Closure|array|string|null {
-    if (static::$isInFlow && $ctx === NULL) {
-      $call = fn(array $ctx): \Closure|array|string|null => static::text(
-        $label,
-        default: $default,
-        placeholder: $placeholder,
-        description: $description,
-        help: $help,
-        discovered: $discovered,
-        transform: $transform,
-        required: $required,
-        validate: $validate,
-        ctx: $ctx,
-      );
-
-      if ($condition !== NULL || $children !== []) {
-        return ['__call' => $call, '__children' => $children, '__condition' => $condition];
-      }
-
-      return $call;
-    }
-
+  ): ?string {
     $p = static::instance();
     $ctx ??= [
       'depth' => 0,
@@ -1416,17 +1132,11 @@ class Prompty {
    *   Optional validator. Receives the selected option key and the flow
    *   results collected so far, and returns NULL when the answer is valid or
    *   an error message when it is not.
-   * @param callable|null $condition
-   *   Optional condition callback; skips the step when it returns FALSE.
-   * @param array<array-key, mixed> $children
-   *   Child steps to execute after this widget.
    * @param array<string, mixed>|null $ctx
    *   Flow context passed by the flow walker.
    *
-   * @return \Closure|array<string, mixed>|string|null
-   *   While a flow is being defined, a closure, or a step array when a
-   *   condition or children are set. Otherwise the selected option key, or
-   *   NULL when the widget is cancelled.
+   * @return string|null
+   *   The selected option key, or NULL when the widget is cancelled.
    *
    * @throws \InvalidArgumentException
    *   When $options is empty, a default or discovered value is not a key of
@@ -1448,33 +1158,8 @@ class Prompty {
     ?callable $transform = NULL,
     bool|string $required = FALSE,
     ?callable $validate = NULL,
-    ?callable $condition = NULL,
-    array $children = [],
     ?array $ctx = NULL,
-  ): \Closure|array|string|null {
-    if (static::$isInFlow && $ctx === NULL) {
-      $call = fn(array $ctx): \Closure|array|string|null => static::select(
-        $label,
-        options: $options,
-        default: $default,
-        description: $description,
-        hints: $hints,
-        scroll: $scroll,
-        help: $help,
-        discovered: $discovered,
-        transform: $transform,
-        required: $required,
-        validate: $validate,
-        ctx: $ctx,
-      );
-
-      if ($condition !== NULL || $children !== []) {
-        return ['__call' => $call, '__children' => $children, '__condition' => $condition];
-      }
-
-      return $call;
-    }
-
+  ): ?string {
     $p = static::instance();
     $ctx ??= [
       'depth' => 0,
@@ -1701,17 +1386,12 @@ class Prompty {
    *   Optional validator. Receives the list of selected option keys and the
    *   flow results collected so far, and returns NULL when the answer is valid
    *   or an error message when it is not.
-   * @param callable|null $condition
-   *   Optional condition callback; skips the step when it returns FALSE.
-   * @param array<array-key, mixed> $children
-   *   Child steps to execute after this widget.
    * @param array<string, mixed>|null $ctx
    *   Flow context passed by the flow walker.
    *
-   * @return \Closure|array<string, mixed>|list<string>|null
-   *   While a flow is being defined, a closure, or a step array when a
-   *   condition or children are set. Otherwise the selected option keys,
-   *   deduplicated and in $order, or NULL when the widget is cancelled.
+   * @return list<string>|null
+   *   The selected option keys, deduplicated and in $order, or NULL when the
+   *   widget is cancelled.
    *
    * @throws \InvalidArgumentException
    *   When $options is empty, a default or discovered entry is not a key of
@@ -1736,34 +1416,8 @@ class Prompty {
     ?callable $transform = NULL,
     bool|string $required = FALSE,
     ?callable $validate = NULL,
-    ?callable $condition = NULL,
-    array $children = [],
     ?array $ctx = NULL,
-  ): \Closure|array|null {
-    if (static::$isInFlow && $ctx === NULL) {
-      $call = fn(array $ctx): \Closure|array|null => static::multiselect(
-        $label,
-        options: $options,
-        default: $default,
-        description: $description,
-        hints: $hints,
-        scroll: $scroll,
-        order: $order,
-        help: $help,
-        discovered: $discovered,
-        transform: $transform,
-        required: $required,
-        validate: $validate,
-        ctx: $ctx,
-      );
-
-      if ($condition !== NULL || $children !== []) {
-        return ['__call' => $call, '__children' => $children, '__condition' => $condition];
-      }
-
-      return $call;
-    }
-
+  ): ?array {
     $p = static::instance();
     $ctx ??= [
       'depth' => 0,
@@ -2011,18 +1665,12 @@ class Prompty {
    *   Optional validator. Receives the answer string and the flow results
    *   collected so far, and returns NULL when the answer is valid or an error
    *   message when it is not.
-   * @param callable|null $condition
-   *   Optional condition callback; skips the step when it returns FALSE.
-   * @param array<array-key, mixed> $children
-   *   Child steps to execute after this widget.
    * @param array<string, mixed>|null $ctx
    *   Flow context passed by the flow walker.
    *
-   * @return \Closure|array<string, mixed>|string|null
-   *   While a flow is being defined, a closure, or a step array when a
-   *   condition or children are set. Otherwise the focused suggestion, or the
-   *   typed text when no suggestion is focused, or NULL when the widget is
-   *   cancelled.
+   * @return string|null
+   *   The focused suggestion, or the typed text when no suggestion is focused,
+   *   or NULL when the widget is cancelled.
    *
    * @throws \InvalidArgumentException
    *   When $options is an empty list, $scroll is negative, or the answer
@@ -2044,33 +1692,8 @@ class Prompty {
     ?callable $transform = NULL,
     bool|string $required = FALSE,
     ?callable $validate = NULL,
-    ?callable $condition = NULL,
-    array $children = [],
     ?array $ctx = NULL,
-  ): \Closure|array|string|null {
-    if (static::$isInFlow && $ctx === NULL) {
-      $call = fn(array $ctx): \Closure|array|string|null => static::suggest(
-        $label,
-        options: $options,
-        default: $default,
-        placeholder: $placeholder,
-        description: $description,
-        scroll: $scroll,
-        help: $help,
-        discovered: $discovered,
-        transform: $transform,
-        required: $required,
-        validate: $validate,
-        ctx: $ctx,
-      );
-
-      if ($condition !== NULL || $children !== []) {
-        return ['__call' => $call, '__children' => $children, '__condition' => $condition];
-      }
-
-      return $call;
-    }
-
+  ): ?string {
     $p = static::instance();
     $ctx ??= [
       'depth' => 0,
@@ -2283,17 +1906,11 @@ class Prompty {
    *   Optional validator. Receives the boolean answer and the flow results
    *   collected so far, and returns NULL when the answer is valid or an error
    *   message when it is not.
-   * @param callable|null $condition
-   *   Optional condition callback; skips the step when it returns FALSE.
-   * @param array<array-key, mixed> $children
-   *   Child steps to execute after this widget.
    * @param array<string, mixed>|null $ctx
    *   Flow context passed by the flow walker.
    *
-   * @return \Closure|array<string, mixed>|bool|null
-   *   While a flow is being defined, a closure, or a step array when a
-   *   condition or children are set. Otherwise TRUE for yes and FALSE for no,
-   *   or NULL when the widget is cancelled.
+   * @return bool|null
+   *   TRUE for yes and FALSE for no, or NULL when the widget is cancelled.
    *
    * @throws \InvalidArgumentException
    *   When a discovered value appears in neither the truthy nor falsy list,
@@ -2311,30 +1928,8 @@ class Prompty {
     ?callable $transform = NULL,
     bool|string $required = FALSE,
     ?callable $validate = NULL,
-    ?callable $condition = NULL,
-    array $children = [],
     ?array $ctx = NULL,
-  ): \Closure|array|bool|null {
-    if (static::$isInFlow && $ctx === NULL) {
-      $call = fn(array $ctx): \Closure|array|bool|null => static::confirm(
-        $label,
-        default: $default,
-        description: $description,
-        help: $help,
-        discovered: $discovered,
-        transform: $transform,
-        required: $required,
-        validate: $validate,
-        ctx: $ctx,
-      );
-
-      if ($condition !== NULL || $children !== []) {
-        return ['__call' => $call, '__children' => $children, '__condition' => $condition];
-      }
-
-      return $call;
-    }
-
+  ): ?bool {
     $p = static::instance();
     $ctx ??= [
       'depth' => 0,
@@ -2505,17 +2100,11 @@ class Prompty {
    * @param bool $erase
    *   Erase the message once a key continues, instead of replacing it with a
    *   completed line.
-   * @param callable|null $condition
-   *   Optional condition callback; skips the step when it returns FALSE.
-   * @param array<array-key, mixed> $children
-   *   Child steps to execute after this widget.
    * @param array<string, mixed>|null $ctx
    *   Flow context passed by the flow walker.
    *
-   * @return \Closure|array<string, mixed>|bool|null
-   *   While a flow is being defined, a closure, or a step array when a
-   *   condition or children are set. Otherwise TRUE once a key continues, or
-   *   NULL when the widget is cancelled.
+   * @return bool|null
+   *   TRUE once a key continues, or NULL when the widget is cancelled.
    */
   public static function pause(
     string $label,
@@ -2523,27 +2112,8 @@ class Prompty {
     string $help = '',
     bool $enter_only = FALSE,
     bool $erase = FALSE,
-    ?callable $condition = NULL,
-    array $children = [],
     ?array $ctx = NULL,
-  ): \Closure|array|bool|null {
-    if (static::$isInFlow && $ctx === NULL) {
-      $call = fn(array $ctx): \Closure|array|bool|null => static::pause(
-        $label,
-        description: $description,
-        help: $help,
-        enter_only: $enter_only,
-        erase: $erase,
-        ctx: $ctx,
-      );
-
-      if ($condition !== NULL || $children !== []) {
-        return ['__call' => $call, '__children' => $children, '__condition' => $condition];
-      }
-
-      return $call;
-    }
-
+  ): ?bool {
     $p = static::instance();
     $ctx ??= [
       'depth' => 0,
@@ -2663,18 +2233,11 @@ class Prompty {
    *   is configured. Each line is drawn dim and indented under the label. A
    *   live terminal shows the last lines in a window that collapses into the
    *   result on success and expands into the full output on failure.
-   * @param callable|null $condition
-   *   Optional condition callback; skips the step when it returns FALSE.
-   * @param array<array-key, mixed> $children
-   *   Child steps to execute after this task.
    * @param array<string, mixed>|null $ctx
    *   Flow context passed by the flow walker.
    *
    * @return mixed
-   *   While a flow is being defined, a closure, or a step array when a
-   *   condition or children are set. That closure answers the step with TRUE
-   *   when the action succeeded and FALSE when it failed. Otherwise the
-   *   action's return value.
+   *   The action's return value.
    *
    * @throws \UnexpectedValueException
    *   When a $hint, $success or $failure callable returns anything other than
@@ -2687,30 +2250,8 @@ class Prompty {
     string|callable $success = '',
     string|callable $failure = '',
     bool $stream = FALSE,
-    ?callable $condition = NULL,
-    array $children = [],
     ?array $ctx = NULL,
   ): mixed {
-    if (static::$isInFlow && $ctx === NULL) {
-      // A flow result keeps the outcome rather than the return value, which
-      // can be NULL, the value a cancelled step answers with.
-      $call = fn(array $ctx): bool => static::task(
-        $label,
-        action: $action,
-        hint: $hint,
-        success: $success,
-        failure: $failure,
-        stream: $stream,
-        ctx: $ctx,
-      ) !== FALSE;
-
-      if ($condition !== NULL || $children !== []) {
-        return ['__call' => $call, '__children' => $children, '__condition' => $condition];
-      }
-
-      return $call;
-    }
-
     $p = static::instance();
     $ctx ??= [
       'depth' => 0,
@@ -2775,43 +2316,20 @@ class Prompty {
    * Prints an informational, success, warning or error message.
    *
    * The type's symbol takes the place of the bar on the first line, and the
-   * message is drawn in the type's colour. Inside the steps callable of a
-   * flow it declares a keyless step instead, drawn in the tree where it sits.
-   * A note adds nothing to the results.
+   * message is drawn in the type's colour.
    *
    * @param string $message
    *   The message. A newline starts another line, and SGR styling is kept.
    * @param string $type
    *   One of 'info', 'success', 'warning' or 'error'.
-   * @param callable|null $condition
-   *   Optional condition callback; hides the note when it returns FALSE. Only
-   *   a note declared in a flow has answers to test.
-   *
-   * @return array<string, mixed>|null
-   *   The note step array while a flow is being defined, otherwise NULL.
    *
    * @throws \InvalidArgumentException
    *   When the type is not one of the 4 types.
-   * @throws \LogicException
-   *   When a condition is given outside the steps callable of a flow.
    */
-  public static function note(string $message, string $type = 'info', ?callable $condition = NULL): ?array {
-    if (!in_array($type, static::NOTE_TYPES, TRUE)) {
-      throw new \InvalidArgumentException(sprintf('Note type "%s" is not valid. Use 1 of: %s.', $type, implode(', ', static::NOTE_TYPES)));
-    }
-
-    if (static::$isDefining) {
-      return ['__note' => $message, '__type' => $type, '__condition' => $condition];
-    }
-
-    if ($condition !== NULL) {
-      throw new \LogicException('A note condition tests the answers collected so far, so it can only be given to a note declared inside the callable passed to Prompty::flow().');
-    }
-
+  public static function note(string $message, string $type = 'info'): void {
     $p = static::instance();
+    $p->assertNoteType($type);
     $p->printLines($p->renderNote($message, $type));
-
-    return NULL;
   }
 
   /**
@@ -3066,6 +2584,21 @@ class Prompty {
 
     if (preg_match('/^ctrl-[a-z]$/', $back_key) !== 1 || in_array($back_key, static::RESERVED_CTRL_KEYS, TRUE)) {
       throw new \InvalidArgumentException(sprintf('Back key "%s" for "back_key" is not valid. Use a Ctrl key from "ctrl-a" to "ctrl-z" other than "ctrl-c", "ctrl-h", "ctrl-i", "ctrl-j" and "ctrl-m", or "" to turn stepping back off.', $back_key));
+    }
+  }
+
+  /**
+   * Rejects a note type that has no symbol and colour.
+   *
+   * @param string $type
+   *   The note type to check.
+   *
+   * @throws \InvalidArgumentException
+   *   When the type is not one of NOTE_TYPES.
+   */
+  protected function assertNoteType(string $type): void {
+    if (!in_array($type, static::NOTE_TYPES, TRUE)) {
+      throw new \InvalidArgumentException(sprintf('Note type "%s" is not valid. Use 1 of: %s.', $type, implode(', ', static::NOTE_TYPES)));
     }
   }
 
@@ -3974,7 +3507,9 @@ class Prompty {
   protected function stepBackTo(int $target): void {
     $entry = $this->journal[$target];
 
-    $this->previous = array_replace($this->previous, $this->results);
+    // A skipped step's NULL would replay as a cancellation, and would hide the
+    // answer the step had before it was skipped.
+    $this->previous = array_replace($this->previous, array_filter($this->results, fn(mixed $value): bool => $value !== NULL));
     $this->clearRows($this->rows - $entry['rows']);
     $this->journal = array_slice($this->journal, 0, $target);
     $this->replay = $entry['key'];
@@ -6125,66 +5660,173 @@ class Prompty {
   }
 
   /**
-   * Rejects steps whose key is reused or cannot be exported.
+   * Runs the steps a flow builder declared.
    *
-   * A step is looked up as its key uppercased behind the prefix.
+   * Flow state and terminal state are restored on every exit path, including
+   * when a step, condition or callback throws.
+   *
+   * @param list<array<string, mixed>> $steps
+   *   The top-level steps, as PromptyFlow builds them.
+   * @param PromptyFlowOptions $options
+   *   The options PromptyFlow::run() documents.
+   *
+   * @return PromptyAnswers|null
+   *   The answers keyed by step key, NULL for a skipped step, or NULL when
+   *   the flow is cancelled.
+   */
+  protected static function runFlow(array $steps, array $options): ?array {
+    [
+      'intro' => $intro,
+      'outro' => $outro,
+      'cancelled' => $cancelled,
+      'numbering' => $numbering,
+      'symbols_unicode' => $symbols_unicode,
+      'symbols_ascii' => $symbols_ascii,
+      'colors' => $colors,
+      'spacing' => $spacing,
+      'labels' => $labels,
+      'unicode' => $unicode,
+      'ansi' => $ansi,
+      'env_prefix' => $env_prefix,
+      'truthy' => $truthy,
+      'falsy' => $falsy,
+      'output' => $output,
+      'interactive' => $interactive,
+      'scroll' => $scroll,
+      'placeholder_fallback' => $placeholder_fallback,
+      'width' => $width,
+      'legend' => $legend,
+      'back_key' => $back_key,
+    ] = $options;
+
+    $p = static::instance();
+    $snapshot = NULL;
+
+    if (is_string($numbering) && $numbering !== 'total') {
+      throw new \InvalidArgumentException(sprintf('Numbering "%s" for "numbering" is not valid. Use TRUE to number steps, "total" to number them with the total, or FALSE for no numbers.', $numbering));
+    }
+
+    if ($symbols_unicode !== NULL
+      || $symbols_ascii !== NULL
+      || $colors !== NULL
+      || $spacing !== NULL
+      || $labels !== NULL
+      || $unicode !== NULL
+      || $ansi !== NULL
+      || $env_prefix !== NULL
+      || $truthy !== NULL
+      || $falsy !== NULL
+      || $output !== NULL
+      || $interactive !== NULL
+      || $scroll !== NULL
+      || $placeholder_fallback !== NULL
+      || $width !== NULL
+      || $legend !== NULL
+      || $back_key !== NULL) {
+      $snapshot = $p->snapshotConfig();
+      static::configure($symbols_unicode, $symbols_ascii, $colors, $spacing, $labels, $unicode, $ansi, $env_prefix, $truthy, $falsy, $output, $interactive, $scroll, $placeholder_fallback, $width, $legend, $back_key);
+    }
+
+    $p->results = [];
+    $p->resetStepBack();
+    static::$isInFlow = TRUE;
+
+    try {
+      $p->assertSteps($steps);
+
+      $options = [
+        'numbering' => $numbering,
+      ];
+
+      if ($p->cfgIsInteractive) {
+        $p->setupTty();
+      }
+
+      if ($p->prevTty !== NULL) {
+        // @codeCoverageIgnoreStart
+        // Restore the terminal on a fatal error, which skips the finally
+        // below. teardownTty() clears prevTty, so this is a no-op once the
+        // finally has run.
+        register_shutdown_function(function () use ($p): void {
+          $p->teardownTty();
+        });
+        // @codeCoverageIgnoreEnd
+      }
+
+      if ($intro !== NULL) {
+        is_callable($intro) ? $intro($p->results) : $p->printLines($p->renderIntro($intro));
+      }
+
+      // Stepping back restarts the walk, which replays the steps before the
+      // reopened one from their answers without drawing them.
+      do {
+        $p->results = [];
+        $p->open = [];
+        $p->hasDrawn = $intro !== NULL;
+        $outcome = $p->walkFlow($steps, 0, $options, '');
+      } while ($outcome === 'back');
+
+      if ($outcome === 'cancelled') {
+        if ($cancelled !== NULL) {
+          is_callable($cancelled) ? $cancelled($p->results) : $p->printLines($p->renderOutro($cancelled));
+        }
+
+        return NULL;
+      }
+
+      if ($outro !== NULL) {
+        is_callable($outro) ? $outro($p->results) : $p->printLines($p->renderOutro($outro));
+      }
+
+      return $p->results;
+    }
+    finally {
+      $p->teardownTty();
+      $p->pending = NULL;
+      $p->hasDrawn = FALSE;
+      $p->resetStepBack();
+      static::$isInFlow = FALSE;
+
+      if ($snapshot !== NULL) {
+        $p->restoreConfig($snapshot);
+      }
+    }
+  }
+
+  /**
+   * Rejects steps that cannot run with the flow's configuration.
+   *
+   * A step is looked up as its key uppercased behind the prefix, and the
+   * prefix is a run option, so the name is checked when the flow starts.
    *
    * A parent process can set a name that is not a shell identifier, but a
    * shell cannot export it and most .env files cannot hold it. Such a step
    * could never be filled through either.
    *
-   * The results are flat, so a key reused anywhere in the tree would let a
-   * later answer overwrite an earlier one.
-   *
-   * A section stores no answer, so it is checked for a key it would ignore
-   * rather than for a reusable one.
-   *
-   * @param array<array-key, mixed> $steps
-   *   Flow steps, keyed by step name.
-   * @param array<string, true> $seen
-   *   Keys already validated elsewhere in the tree.
-   * @param bool $is_nested
-   *   Whether $steps are the children of a step.
+   * @param list<array<string, mixed>> $steps
+   *   Flow steps, as PromptyFlow builds them.
    *
    * @throws \InvalidArgumentException
-   *   When a key is reused, the name a step resolves through is not a valid
-   *   variable name, or a section has a key or is nested.
+   *   When the name a step resolves through is not a valid variable name, or
+   *   a note has a type that is not one of NOTE_TYPES.
    */
-  protected function assertStepKeys(array $steps, array &$seen = [], bool $is_nested = FALSE): void {
-    foreach ($steps as $key => $step) {
+  protected function assertSteps(array $steps): void {
+    foreach ($steps as $step) {
       if ($this->isSection($step)) {
-        /** @var array{__section: string} $step */
-        if (is_string($key)) {
-          throw new \InvalidArgumentException(sprintf('Section "%s" has the key "%s". A section adds no answer to the results, so it takes no key.', $step['__section'], $key));
-        }
-
-        if ($is_nested) {
-          throw new \InvalidArgumentException(sprintf('Section "%s" is among the children of a step. A section heads top-level steps, so it can only appear in the steps array of the flow itself.', $step['__section']));
-        }
-
         continue;
       }
 
       if ($this->isNote($step)) {
-        /** @var array{__note: string} $step */
-        if (is_string($key)) {
-          throw new \InvalidArgumentException(sprintf('Note "%s" has the key "%s". A note adds no answer to the results, so it takes no key.', $step['__note'], $key));
-        }
+        /** @var string $type */
+        $type = $step['__type'];
+        $this->assertNoteType($type);
 
         continue;
       }
 
-      if ((string) $key === '') {
-        throw new \InvalidArgumentException('A step must have a key: it names the answer in the results and the variable the answer can come from.');
-      }
-
-      if (isset($seen[(string) $key])) {
-        throw new \InvalidArgumentException(sprintf('Step "%s" appears more than once in the flow. Each answer is stored under its step key, so a later step would overwrite the earlier answer in the results.', $key));
-      }
-
-      $seen[(string) $key] = TRUE;
-
-      $name = $this->cfgEnvPrefix . strtoupper((string) $key);
+      /** @var string $key */
+      $key = $step['__key'];
+      $name = $this->cfgEnvPrefix . strtoupper($key);
 
       // The name is checked rather than the key, so a prefix that cannot be
       // exported is caught as well as a key that cannot.
@@ -6192,28 +5834,22 @@ class Prompty {
         throw new \InvalidArgumentException(sprintf('Step "%s" is looked up as the environment variable "%s", which cannot be exported. A variable name may hold only letters, digits and underscores, and may not start with a digit.', $key, $name));
       }
 
-      $children = is_array($step) ? $step['__children'] ?? NULL : NULL;
-
-      if (is_array($children)) {
-        $this->assertStepKeys($children, $seen, TRUE);
-      }
+      /** @var list<array<string, mixed>> $children */
+      $children = $step['__children'];
+      $this->assertSteps($children);
     }
   }
 
   /**
    * Extracts the condition callback a flow step was declared with.
    *
-   * @param mixed $step
-   *   A flow step: a closure, or a step array carrying '__condition'.
+   * @param array<string, mixed> $step
+   *   A flow step array.
    *
    * @return callable|null
    *   The condition callback, or NULL when the step is unconditional.
    */
-  protected function stepCondition(mixed $step): ?callable {
-    if (is_callable($step) || !is_array($step)) {
-      return NULL;
-    }
-
+  protected function stepCondition(array $step): ?callable {
     $condition = $step['__condition'] ?? NULL;
 
     return is_callable($condition) ? $condition : NULL;
@@ -6222,33 +5858,33 @@ class Prompty {
   /**
    * Checks whether a flow step is a section heading.
    *
-   * @param mixed $step
-   *   A flow step.
+   * @param array<string, mixed> $step
+   *   A flow step array.
    *
    * @return bool
-   *   TRUE when the step was declared with Prompty::section().
+   *   TRUE when the step was declared with PromptyFlow::section().
    */
-  protected function isSection(mixed $step): bool {
-    return is_array($step) && array_key_exists('__section', $step);
+  protected function isSection(array $step): bool {
+    return array_key_exists('__section', $step);
   }
 
   /**
    * Checks whether a flow step is a note.
    *
-   * @param mixed $step
-   *   A flow step.
+   * @param array<string, mixed> $step
+   *   A flow step array.
    *
    * @return bool
-   *   TRUE when the step was declared with Prompty::note().
+   *   TRUE when the step was declared with PromptyFlow::note().
    */
-  protected function isNote(mixed $step): bool {
-    return is_array($step) && array_key_exists('__note', $step);
+  protected function isNote(array $step): bool {
+    return array_key_exists('__note', $step);
   }
 
   /**
    * Checks whether any of the given steps would render against the results.
    *
-   * @param array<array-key, mixed> $steps
+   * @param list<array<string, mixed>> $steps
    *   Flow steps to test.
    * @param array<string, mixed> $results
    *   The answers each condition is tested against.
@@ -6271,7 +5907,7 @@ class Prompty {
   /**
    * Counts the steps that are due against the current results.
    *
-   * @param array<array-key, mixed> $steps
+   * @param list<array<string, mixed>> $steps
    *   Flow steps still to come at 1 depth.
    *
    * @return int
@@ -6390,7 +6026,7 @@ class Prompty {
    *
    * @param array<string, mixed> $section
    *   The section step array.
-   * @param array<array-key, mixed> $rest
+   * @param list<array<string, mixed>> $rest
    *   The steps after the section.
    */
   protected function drawSection(array $section, array $rest): void {
@@ -6402,12 +6038,12 @@ class Prompty {
 
     $group = [];
 
-    foreach ($rest as $key => $step) {
+    foreach ($rest as $step) {
       if ($this->isSection($step)) {
         break;
       }
 
-      $group[$key] = $step;
+      $group[] = $step;
     }
 
     if (!$this->isAnyStepVisible($group, $this->results)) {
@@ -6427,7 +6063,7 @@ class Prompty {
    *
    * @param array<string, mixed> $note
    *   The note step array.
-   * @param array<array-key, mixed> $rest
+   * @param list<array<string, mixed>> $rest
    *   The steps after the note at the same depth.
    * @param int $depth
    *   The nesting depth of the note.
@@ -6451,10 +6087,32 @@ class Prompty {
   }
 
   /**
+   * Answers NULL for skipped steps and for every step under them.
+   *
+   * @param list<array<string, mixed>> $steps
+   *   The skipped steps. Sections and notes among them store nothing.
+   */
+  protected function skipSteps(array $steps): void {
+    foreach ($steps as $step) {
+      if ($this->isSection($step) || $this->isNote($step)) {
+        continue;
+      }
+
+      /** @var string $key */
+      $key = $step['__key'];
+      $this->results[$key] = NULL;
+
+      /** @var list<array<string, mixed>> $children */
+      $children = $step['__children'];
+      $this->skipSteps($children);
+    }
+  }
+
+  /**
    * Recursively walks flow steps, executing each widget and collecting results.
    *
-   * @param array<string, mixed> $steps
-   *   Flow steps (closures or step arrays).
+   * @param list<array<string, mixed>> $steps
+   *   Flow steps, as PromptyFlow builds them.
    * @param int $depth
    *   The current nesting depth.
    * @param array<string, mixed> $options
@@ -6470,37 +6128,33 @@ class Prompty {
     $step_number = 0;
     $index = 0;
 
-    foreach ($steps as $key => $step) {
+    foreach ($steps as $step) {
       $index++;
 
       if ($this->isSection($step)) {
-        /** @var array<string, mixed> $step */
         $this->drawSection($step, array_slice($steps, $index));
 
         continue;
       }
 
       if ($this->isNote($step)) {
-        /** @var array<string, mixed> $step */
         $this->drawNote($step, array_slice($steps, $index), $depth);
 
         continue;
       }
 
-      if (is_callable($step)) {
-        $call = $step;
-        $children = [];
-      }
-      else {
-        /** @var array<string, mixed> $step */
-        $call = $step['__call'];
-        /** @var array<string, mixed> $children */
-        $children = is_array($step['__children'] ?? NULL) ? $step['__children'] : [];
-      }
+      /** @var string $key */
+      $key = $step['__key'];
+      /** @var callable(array<string, mixed>): (string|bool|list<string>|null) $call */
+      $call = $step['__call'];
+      /** @var list<array<string, mixed>> $children */
+      $children = $step['__children'];
 
       $condition = $this->stepCondition($step);
 
       if ($condition !== NULL && !$condition($this->results)) {
+        $this->skipSteps([$step]);
+
         continue;
       }
 
@@ -6516,7 +6170,7 @@ class Prompty {
 
       $number = $number_prefix !== '' ? $number_prefix . '.' . $step_number : (string) $step_number;
       $total = $depth === 0 && ($options['numbering'] ?? FALSE) === 'total' ? $step_number + $this->dueStepCount($rest) : NULL;
-      $env_value = getenv($this->cfgEnvPrefix . strtoupper((string) $key));
+      $env_value = getenv($this->cfgEnvPrefix . strtoupper($key));
 
       $ctx = [
         'depth' => $depth,
@@ -6537,14 +6191,13 @@ class Prompty {
       // A step before the reopened one takes its previous answer without
       // being drawn or built again. A step with no previous answer, which a
       // condition that changes on its own can produce, ends the replay.
-      $is_replayed = $this->replay !== NULL && $this->replay !== (string) $key && array_key_exists($key, $this->previous);
+      $is_replayed = $this->replay !== NULL && $this->replay !== $key && array_key_exists($key, $this->previous);
 
       if (!$is_replayed) {
         $this->replay = NULL;
-        $this->journal[] = ['key' => (string) $key, 'depth' => $depth, 'rows' => $this->rows, 'asked' => FALSE];
+        $this->journal[] = ['key' => $key, 'depth' => $depth, 'rows' => $this->rows, 'asked' => FALSE];
       }
 
-      /** @var callable $call */
       $value = $is_replayed ? $this->previous[$key] : $call($ctx);
 
       if ($value === NULL) {
@@ -6567,20 +6220,957 @@ class Prompty {
       $this->settleOpen($value, $this->open);
       $this->pending = NULL;
 
-      if ($this->isAnyStepVisible($children, $this->results)) {
-        $child_depth = $depth + 1;
-        $sep = $this->bar() . $this->labelPrefix($child_depth, $this->open) . $this->bar();
-        $this->printLines([$sep]);
+      if (!$this->isAnyStepVisible($children, $this->results)) {
+        $this->skipSteps($children);
 
-        $outcome = $this->walkFlow($children, $child_depth, $options, $number);
+        continue;
+      }
 
-        if ($outcome !== 'done') {
-          return $outcome;
-        }
+      $child_depth = $depth + 1;
+      $sep = $this->bar() . $this->labelPrefix($child_depth, $this->open) . $this->bar();
+      $this->printLines([$sep]);
+
+      $outcome = $this->walkFlow($children, $child_depth, $options, $number);
+
+      if ($outcome !== 'done') {
+        return $outcome;
       }
     }
 
     return 'done';
+  }
+
+}
+
+/**
+ * A flow step an application describes as an object.
+ *
+ * PromptyFlow::add() asks widget() with arguments() when the flow reaches the
+ * step, and skips the step when condition() returns FALSE.
+ */
+// It ships in this file so the library stays 1 file to copy or embed.
+// phpcs:ignore Squiz.Classes.ClassFileName.NoMatch
+interface PromptyStepInterface {
+
+  /**
+   * Returns the step key the answer is stored under.
+   *
+   * @return string
+   *   The step key.
+   */
+  public function key(): string;
+
+  /**
+   * Returns the widget that asks the step.
+   *
+   * @return string
+   *   'text', 'select', 'multiselect', 'suggest' or 'confirm'.
+   */
+  public function widget(): string;
+
+  /**
+   * Returns the widget's named arguments for the answers collected so far.
+   *
+   * @param array<string, mixed> $results
+   *   The answers collected so far, with NULL for a skipped step.
+   *
+   * @return array<string, mixed>
+   *   The arguments keyed by parameter name, including 'label'.
+   */
+  public function arguments(array $results): array;
+
+  /**
+   * Returns whether the step is asked, for the answers collected so far.
+   *
+   * @param array<string, mixed> $results
+   *   The answers collected so far, with NULL for a skipped step.
+   *
+   * @return bool
+   *   TRUE to ask the step, FALSE to skip it and its children.
+   */
+  public function condition(array $results): bool;
+
+}
+
+/**
+ * Declares the steps of a flow as 1 chain, then runs them.
+ *
+ * Each widget method adds a step under a key. children() opens a scope under
+ * the step added last and end() closes it, so the chain nests the way the
+ * tree draws.
+ *
+ * A widget argument given as a closure receives the answers collected so far
+ * when the step is reached, and its return value is the argument. Arguments
+ * that take a callable on the widget itself keep their meaning: transform,
+ * validate, order, a suggest's options and a task's action, hint, success
+ * and failure.
+ *
+ * @phpstan-import-type PromptyAnswers from Prompty
+ * @phpstan-import-type PromptyFlowOptions from Prompty
+ */
+// It ships in this file so the library stays 1 file to copy or embed.
+// phpcs:ignore Squiz.Classes.ClassFileName.NoMatch
+class PromptyFlow {
+
+  /**
+   * Open scopes, outermost first, each holding the steps added to it.
+   *
+   * @var list<list<array<string, mixed>>>
+   */
+  protected array $scopes = [[]];
+
+  /**
+   * Keys of the steps whose child scopes are open, outermost first.
+   *
+   * @var list<string>
+   */
+  protected array $parents = [];
+
+  /**
+   * Every step key added, so a reused key is rejected where it is added.
+   *
+   * @var array<string, true>
+   */
+  protected array $keys = [];
+
+  /**
+   * The key of the step added last, or NULL before the first step.
+   */
+  protected ?string $last = NULL;
+
+  /**
+   * The intro message or callable set with intro().
+   *
+   * @var string|callable|null
+   */
+  protected $intro;
+
+  /**
+   * Receives the top-level steps and the run options, and runs the flow.
+   *
+   * @var \Closure(list<array<string, mixed>>, PromptyFlowOptions): (PromptyAnswers|null)
+   */
+  protected \Closure $runner;
+
+  /**
+   * Constructs a flow builder.
+   *
+   * @param \Closure(list<array<string, mixed>>, PromptyFlowOptions): (PromptyAnswers|null) $runner
+   *   Receives the top-level steps and the run options, and runs the flow.
+   */
+  public function __construct(\Closure $runner) {
+    $this->runner = $runner;
+  }
+
+  /**
+   * Sets the message drawn before the first step.
+   *
+   * @param string|callable $message
+   *   The intro message, or a callable that draws its own intro. A message
+   *   passed to run() replaces it.
+   *
+   * @return static
+   *   The flow.
+   */
+  public function intro(string|callable $message): static {
+    $this->intro = $message;
+
+    return $this;
+  }
+
+  /**
+   * Adds a heading over the top-level steps that follow it.
+   *
+   * The heading is drawn only when a step before the next section renders.
+   *
+   * @param string $title
+   *   The heading text, drawn bold. A newline starts another heading line.
+   * @param string $description
+   *   Optional description drawn dim below the title.
+   *
+   * @return static
+   *   The flow.
+   *
+   * @throws \LogicException
+   *   When a child scope is open.
+   * @throws \InvalidArgumentException
+   *   When the title is blank.
+   */
+  public function section(string $title, string $description = ''): static {
+    if ($this->parents !== []) {
+      throw new \LogicException(sprintf('Section "%s" is among the children of step "%s". A section heads top-level steps, so close the children with end() first.', $title, $this->parents[count($this->parents) - 1]));
+    }
+
+    if (trim($title) === '') {
+      throw new \InvalidArgumentException('A section must have a title: it is the heading drawn above its steps.');
+    }
+
+    return $this->addEntry(['__section' => $title, '__description' => $description, '__condition' => NULL]);
+  }
+
+  /**
+   * Adds a note drawn in the tree where it sits.
+   *
+   * @param string $message
+   *   The message. A newline starts another line, and SGR styling is kept.
+   * @param string $type
+   *   One of 'info', 'success', 'warning' or 'error'. run() rejects any other.
+   *
+   * @return static
+   *   The flow.
+   */
+  public function note(string $message, string $type = 'info'): static {
+    return $this->addEntry(['__note' => $message, '__type' => $type, '__condition' => NULL]);
+  }
+
+  /**
+   * Adds a text input step.
+   *
+   * @param string $key
+   *   The step key the answer is stored under.
+   * @param string|\Closure $label
+   *   The widget label.
+   * @param string|\Closure $default
+   *   Pre-filled, editable initial value.
+   * @param string|\Closure $placeholder
+   *   Placeholder text shown while the input is empty.
+   * @param string|\Closure $description
+   *   Optional description rendered below the label.
+   * @param string|\Closure $help
+   *   Optional help rendered below the input.
+   * @param mixed $discovered
+   *   Pre-filled value that bypasses interactive input.
+   * @param callable|null $transform
+   *   Optional transform of the answer.
+   * @param bool|string|\Closure $required
+   *   TRUE or a message to reject a blank answer.
+   * @param callable|null $validate
+   *   Optional validator of the answer.
+   *
+   * @return static
+   *   The flow.
+   *
+   * @see \AlexSkrypnyk\Prompty\Prompty::text()
+   */
+  public function text(
+    string $key,
+    string|\Closure $label,
+    string|\Closure $default = '',
+    string|\Closure $placeholder = '',
+    string|\Closure $description = '',
+    string|\Closure $help = '',
+    mixed $discovered = NULL,
+    ?callable $transform = NULL,
+    bool|string|\Closure $required = FALSE,
+    ?callable $validate = NULL,
+  ): static {
+    $resolved = [
+      'label' => $label,
+      'default' => $default,
+      'placeholder' => $placeholder,
+      'description' => $description,
+      'help' => $help,
+      'discovered' => $discovered,
+      'required' => $required,
+    ];
+
+    $fixed = ['transform' => $transform, 'validate' => $validate];
+
+    return $this->addWidget($key, Prompty::text(...), $resolved, $fixed);
+  }
+
+  /**
+   * Adds a single-select step.
+   *
+   * @param string $key
+   *   The step key the answer is stored under.
+   * @param string|\Closure $label
+   *   The widget label.
+   * @param array<int|string, string>|\Closure $options
+   *   Map of option key to display label.
+   * @param string|\Closure $default
+   *   Option key to focus initially.
+   * @param string|\Closure $description
+   *   Optional description rendered below the label.
+   * @param array<int|string, string>|\Closure $hints
+   *   Map of option key to hint text.
+   * @param int|\Closure|null $scroll
+   *   Options drawn at once. NULL uses the configured value.
+   * @param string|\Closure $help
+   *   Optional help rendered below the options.
+   * @param mixed $discovered
+   *   Pre-filled value that bypasses interactive input.
+   * @param callable|null $transform
+   *   Optional transform of the answer.
+   * @param bool|string|\Closure $required
+   *   TRUE or a message to reject a blank answer.
+   * @param callable|null $validate
+   *   Optional validator of the answer.
+   *
+   * @return static
+   *   The flow.
+   *
+   * @see \AlexSkrypnyk\Prompty\Prompty::select()
+   */
+  public function select(
+    string $key,
+    string|\Closure $label,
+    array|\Closure $options = [],
+    string|\Closure $default = '',
+    string|\Closure $description = '',
+    array|\Closure $hints = [],
+    int|\Closure|null $scroll = NULL,
+    string|\Closure $help = '',
+    mixed $discovered = NULL,
+    ?callable $transform = NULL,
+    bool|string|\Closure $required = FALSE,
+    ?callable $validate = NULL,
+  ): static {
+    $resolved = [
+      'label' => $label,
+      'options' => $options,
+      'default' => $default,
+      'description' => $description,
+      'hints' => $hints,
+      'scroll' => $scroll,
+      'help' => $help,
+      'discovered' => $discovered,
+      'required' => $required,
+    ];
+
+    $fixed = ['transform' => $transform, 'validate' => $validate];
+
+    return $this->addWidget($key, Prompty::select(...), $resolved, $fixed);
+  }
+
+  /**
+   * Adds a multi-select step.
+   *
+   * @param string $key
+   *   The step key the answer is stored under.
+   * @param string|\Closure $label
+   *   The widget label.
+   * @param array<int|string, string>|\Closure $options
+   *   Map of option key to display label.
+   * @param list<int|string>|\Closure $default
+   *   Option keys to pre-check.
+   * @param string|\Closure $description
+   *   Optional description rendered below the label.
+   * @param array<int|string, string>|\Closure $hints
+   *   Map of option key to hint text.
+   * @param int|\Closure|null $scroll
+   *   Options drawn at once. NULL uses the configured value.
+   * @param string|\Closure $order
+   *   The order of the answer's keys, or a comparator.
+   * @param string|\Closure $help
+   *   Optional help rendered below the options.
+   * @param mixed $discovered
+   *   Pre-filled value that bypasses interactive input.
+   * @param callable|null $transform
+   *   Optional transform of the answer.
+   * @param bool|string|\Closure $required
+   *   TRUE or a message to reject an empty answer.
+   * @param callable|null $validate
+   *   Optional validator of the answer.
+   *
+   * @return static
+   *   The flow.
+   *
+   * @see \AlexSkrypnyk\Prompty\Prompty::multiselect()
+   */
+  public function multiselect(
+    string $key,
+    string|\Closure $label,
+    array|\Closure $options = [],
+    array|\Closure $default = [],
+    string|\Closure $description = '',
+    array|\Closure $hints = [],
+    int|\Closure|null $scroll = NULL,
+    string|\Closure $order = 'options',
+    string|\Closure $help = '',
+    mixed $discovered = NULL,
+    ?callable $transform = NULL,
+    bool|string|\Closure $required = FALSE,
+    ?callable $validate = NULL,
+  ): static {
+    $resolved = [
+      'label' => $label,
+      'options' => $options,
+      'default' => $default,
+      'description' => $description,
+      'hints' => $hints,
+      'scroll' => $scroll,
+      'help' => $help,
+      'discovered' => $discovered,
+      'required' => $required,
+    ];
+
+    $fixed = ['order' => $order, 'transform' => $transform, 'validate' => $validate];
+
+    return $this->addWidget($key, Prompty::multiselect(...), $resolved, $fixed);
+  }
+
+  /**
+   * Adds a text input step that suggests matching options.
+   *
+   * @param string $key
+   *   The step key the answer is stored under.
+   * @param string|\Closure $label
+   *   The widget label.
+   * @param array<int|string, string>|\Closure $options
+   *   The suggestions, or a closure that receives the typed text and returns
+   *   them. This closure does not receive the answers.
+   * @param string|\Closure $default
+   *   Pre-filled, editable initial value.
+   * @param string|\Closure $placeholder
+   *   Placeholder text shown while the input is empty.
+   * @param string|\Closure $description
+   *   Optional description rendered below the label.
+   * @param int|\Closure|null $scroll
+   *   Suggestions drawn at once. NULL uses the configured value.
+   * @param string|\Closure $help
+   *   Optional help rendered below the suggestions.
+   * @param mixed $discovered
+   *   Pre-filled value that bypasses interactive input.
+   * @param callable|null $transform
+   *   Optional transform of the answer.
+   * @param bool|string|\Closure $required
+   *   TRUE or a message to reject a blank answer.
+   * @param callable|null $validate
+   *   Optional validator of the answer.
+   *
+   * @return static
+   *   The flow.
+   *
+   * @see \AlexSkrypnyk\Prompty\Prompty::suggest()
+   */
+  public function suggest(
+    string $key,
+    string|\Closure $label,
+    array|\Closure $options = [],
+    string|\Closure $default = '',
+    string|\Closure $placeholder = '',
+    string|\Closure $description = '',
+    int|\Closure|null $scroll = NULL,
+    string|\Closure $help = '',
+    mixed $discovered = NULL,
+    ?callable $transform = NULL,
+    bool|string|\Closure $required = FALSE,
+    ?callable $validate = NULL,
+  ): static {
+    $resolved = [
+      'label' => $label,
+      'default' => $default,
+      'placeholder' => $placeholder,
+      'description' => $description,
+      'scroll' => $scroll,
+      'help' => $help,
+      'discovered' => $discovered,
+      'required' => $required,
+    ];
+
+    $fixed = ['options' => $options, 'transform' => $transform, 'validate' => $validate];
+
+    return $this->addWidget($key, Prompty::suggest(...), $resolved, $fixed);
+  }
+
+  /**
+   * Adds a yes/no step.
+   *
+   * @param string $key
+   *   The step key the answer is stored under.
+   * @param string|\Closure $label
+   *   The widget label.
+   * @param bool|\Closure $default
+   *   The answer focused initially.
+   * @param string|\Closure $description
+   *   Optional description rendered below the label.
+   * @param string|\Closure $help
+   *   Optional help rendered below the answers.
+   * @param mixed $discovered
+   *   Pre-filled value that bypasses interactive input.
+   * @param callable|null $transform
+   *   Optional transform of the answer.
+   * @param bool|string|\Closure $required
+   *   Accepted so every widget shares 1 signature.
+   * @param callable|null $validate
+   *   Optional validator of the answer.
+   *
+   * @return static
+   *   The flow.
+   *
+   * @see \AlexSkrypnyk\Prompty\Prompty::confirm()
+   */
+  public function confirm(
+    string $key,
+    string|\Closure $label,
+    bool|\Closure $default = TRUE,
+    string|\Closure $description = '',
+    string|\Closure $help = '',
+    mixed $discovered = NULL,
+    ?callable $transform = NULL,
+    bool|string|\Closure $required = FALSE,
+    ?callable $validate = NULL,
+  ): static {
+    $resolved = [
+      'label' => $label,
+      'default' => $default,
+      'description' => $description,
+      'help' => $help,
+      'discovered' => $discovered,
+      'required' => $required,
+    ];
+
+    $fixed = ['transform' => $transform, 'validate' => $validate];
+
+    return $this->addWidget($key, Prompty::confirm(...), $resolved, $fixed);
+  }
+
+  /**
+   * Adds a step that waits for a key before the flow continues.
+   *
+   * @param string $key
+   *   The step key the answer is stored under.
+   * @param string|\Closure $label
+   *   The widget label.
+   * @param string|\Closure $description
+   *   Optional description rendered below the label.
+   * @param string|\Closure $help
+   *   Optional help rendered below the label.
+   * @param bool|\Closure $enter_only
+   *   Continue only on Enter.
+   * @param bool|\Closure $erase
+   *   Remove the pause from the screen once it continues.
+   *
+   * @return static
+   *   The flow.
+   *
+   * @see \AlexSkrypnyk\Prompty\Prompty::pause()
+   */
+  public function pause(
+    string $key,
+    string|\Closure $label,
+    string|\Closure $description = '',
+    string|\Closure $help = '',
+    bool|\Closure $enter_only = FALSE,
+    bool|\Closure $erase = FALSE,
+  ): static {
+    $resolved = [
+      'label' => $label,
+      'description' => $description,
+      'help' => $help,
+      'enter_only' => $enter_only,
+      'erase' => $erase,
+    ];
+
+    return $this->addWidget($key, Prompty::pause(...), $resolved);
+  }
+
+  /**
+   * Adds a step that runs an action under a spinner.
+   *
+   * The flow stores TRUE when the action succeeded and FALSE when it failed.
+   *
+   * @param string $key
+   *   The step key the outcome is stored under.
+   * @param string|\Closure $label
+   *   The task label.
+   * @param callable $action
+   *   The work to run. It returns FALSE on failure.
+   * @param string|callable $hint
+   *   Optional dim line under the label, or a callable that receives the
+   *   action's return value.
+   * @param string|callable $success
+   *   The result line on success, or a callable that receives the action's
+   *   return value.
+   * @param string|callable $failure
+   *   The result line on failure, or a callable that receives the action's
+   *   return value.
+   * @param bool|\Closure $stream
+   *   Draw what the action writes instead of a spinner.
+   *
+   * @return static
+   *   The flow.
+   *
+   * @see \AlexSkrypnyk\Prompty\Prompty::task()
+   */
+  public function task(
+    string $key,
+    string|\Closure $label,
+    callable $action,
+    string|callable $hint = '',
+    string|callable $success = '',
+    string|callable $failure = '',
+    bool|\Closure $stream = FALSE,
+  ): static {
+    $resolved = ['label' => $label, 'stream' => $stream];
+    $fixed = ['action' => $action, 'hint' => $hint, 'success' => $success, 'failure' => $failure];
+
+    // A flow stores the outcome rather than the return value, which can be
+    // NULL, the value a cancelled step answers with.
+    return $this->addWidget($key, Prompty::task(...), $resolved, $fixed, static fn(mixed $value): bool => $value !== FALSE);
+  }
+
+  /**
+   * Adds a step an application describes as an object.
+   *
+   * @param \AlexSkrypnyk\Prompty\PromptyStepInterface $step
+   *   The step. A when() after it replaces its condition().
+   *
+   * @return static
+   *   The flow.
+   */
+  public function add(PromptyStepInterface $step): static {
+    $key = $step->key();
+
+    $call = static function (array $ctx) use ($step, $key): mixed {
+      $widgets = [
+        'text' => Prompty::text(...),
+        'select' => Prompty::select(...),
+        'multiselect' => Prompty::multiselect(...),
+        'suggest' => Prompty::suggest(...),
+        'confirm' => Prompty::confirm(...),
+      ];
+
+      $widget = $step->widget();
+
+      if (!isset($widgets[$widget])) {
+        throw new \UnexpectedValueException(sprintf('Step "%s" names the widget "%s". A step provider names 1 of: %s.', $key, $widget, implode(', ', array_keys($widgets))));
+      }
+
+      /** @var array<string, mixed> $results */
+      $results = $ctx['results'];
+      $arguments = $step->arguments($results);
+
+      if (array_key_exists('ctx', $arguments)) {
+        throw new \UnexpectedValueException(sprintf('The arguments of step "%s" include "ctx". The flow passes the context to the widget itself.', $key));
+      }
+
+      if (!is_string($arguments['label'] ?? NULL)) {
+        throw new \UnexpectedValueException(sprintf('The arguments of step "%s" have no string "label". A step provider returns named arguments, such as [\'label\' => \'Dessert\'].', $key));
+      }
+
+      return static::callWidget($widgets[$widget], $arguments, $ctx);
+    };
+
+    return $this->addStep($key, $call, $step->condition(...));
+  }
+
+  /**
+   * Sets the condition of the step, section or note added last.
+   *
+   * @param callable $condition
+   *   Receives the answers collected so far, with NULL for a skipped step,
+   *   and returns FALSE to skip the step and its children.
+   *
+   * @return static
+   *   The flow.
+   *
+   * @throws \LogicException
+   *   When the current scope has nothing to apply the condition to.
+   */
+  public function when(callable $condition): static {
+    $scope = count($this->scopes) - 1;
+    $entry = array_key_last($this->scopes[$scope]);
+
+    if ($entry === NULL) {
+      throw new \LogicException($this->emptyScopeMessage('when() sets the condition of the step added before it'));
+    }
+
+    $this->scopes[$scope][$entry]['__condition'] = $condition;
+
+    return $this;
+  }
+
+  /**
+   * Opens a scope for the children of the step added last.
+   *
+   * Steps added until the matching end() run after the step, nested under it.
+   *
+   * @return static
+   *   The flow.
+   *
+   * @throws \LogicException
+   *   When the entry added last is not a step.
+   */
+  public function children(): static {
+    $scope = count($this->scopes) - 1;
+    $entry = array_key_last($this->scopes[$scope]);
+
+    if ($entry === NULL) {
+      throw new \LogicException($this->emptyScopeMessage('children() opens a scope under the step added before it'));
+    }
+
+    $step = $this->scopes[$scope][$entry];
+
+    if (!isset($step['__key']) || !is_string($step['__key'])) {
+      $kind = isset($step['__section']) ? 'section' : 'note';
+      /** @var string $text */
+      $text = $step['__section'] ?? $step['__note'];
+
+      throw new \LogicException(sprintf('children() follows the %s "%s". Only a step takes children.', $kind, $text));
+    }
+
+    /** @var list<array<string, mixed>> $children */
+    $children = $step['__children'];
+    $this->parents[] = $step['__key'];
+    $this->scopes[] = $children;
+
+    return $this;
+  }
+
+  /**
+   * Closes the scope the last children() opened.
+   *
+   * @return static
+   *   The flow.
+   *
+   * @throws \LogicException
+   *   When no scope is open.
+   */
+  public function end(): static {
+    if ($this->parents === []) {
+      throw new \LogicException($this->last === NULL ? 'end() closes a scope opened with children(), and none is open.' : sprintf('end() after step "%s" closes a scope opened with children(), and none is open.', $this->last));
+    }
+
+    $children = array_pop($this->scopes);
+    array_pop($this->parents);
+
+    $scope = count($this->scopes) - 1;
+    $entry = array_key_last($this->scopes[$scope]);
+
+    if ($entry !== NULL) {
+      $this->scopes[$scope][$entry]['__children'] = $children;
+    }
+
+    return $this;
+  }
+
+  /**
+   * Runs the flow.
+   *
+   * @param string|callable|null $intro
+   *   Intro message or callable to render before the first step. NULL keeps
+   *   the one set with intro().
+   * @param string|callable|null $outro
+   *   Outro message or callable to render after the last step.
+   * @param string|callable|null $cancelled
+   *   Message or callable to render when the flow is cancelled.
+   * @param bool|string $numbering
+   *   TRUE numbers steps as (1), (2) and nested (2.1). 'total' also shows the
+   *   number of top-level steps due, through the 'step_total' label. FALSE
+   *   draws no numbers.
+   * @param array<string, string>|null $symbols_unicode
+   *   Partial unicode symbol overrides.
+   * @param array<string, string>|null $symbols_ascii
+   *   Partial ASCII symbol overrides.
+   * @param array<string, string>|null $colors
+   *   Partial ANSI color overrides.
+   * @param array<string, string>|null $spacing
+   *   Partial spacing overrides.
+   * @param array<string, string>|null $labels
+   *   Partial label overrides.
+   * @param bool|null $unicode
+   *   Force unicode (TRUE) or ASCII (FALSE). NULL keeps the current setting.
+   * @param bool|null $ansi
+   *   Force ANSI colors (TRUE) or suppress them (FALSE). NULL keeps the
+   *   current setting.
+   * @param string|null $env_prefix
+   *   Environment variable prefix.
+   * @param list<string>|null $truthy
+   *   Values treated as TRUE.
+   * @param list<string>|null $falsy
+   *   Values treated as FALSE.
+   * @param mixed $output
+   *   Where rendered output is written: a writable stream resource, or a
+   *   callable that receives each chunk as a string.
+   * @param bool|null $interactive
+   *   Read input (TRUE), or answer every step without reading it (FALSE).
+   * @param int|null $scroll
+   *   Options a select or multiselect draws at once. 0 draws every option.
+   * @param bool|null $placeholder_fallback
+   *   Answer an empty text or suggest with its placeholder (TRUE), or with ''
+   *   (FALSE).
+   * @param int|null $width
+   *   Terminal columns that rendered lines wrap to. 0 detects the width.
+   * @param bool|null $legend
+   *   Draw the keys each widget accepts under it (TRUE), or leave them out.
+   * @param string|null $back_key
+   *   The key that steps back to the previous step, from 'ctrl-a' to
+   *   'ctrl-z'. '' turns stepping back off.
+   *
+   * @return PromptyAnswers|null
+   *   The answers keyed by step key, with NULL for a skipped step, or NULL
+   *   when the flow is cancelled.
+   *
+   * @throws \LogicException
+   *   When a scope opened with children() is still open.
+   */
+  public function run(
+    string|callable|null $intro = NULL,
+    string|callable|null $outro = NULL,
+    string|callable|null $cancelled = NULL,
+    bool|string $numbering = FALSE,
+    ?array $symbols_unicode = NULL,
+    ?array $symbols_ascii = NULL,
+    ?array $colors = NULL,
+    ?array $spacing = NULL,
+    ?array $labels = NULL,
+    ?bool $unicode = NULL,
+    ?bool $ansi = NULL,
+    ?string $env_prefix = NULL,
+    ?array $truthy = NULL,
+    ?array $falsy = NULL,
+    mixed $output = NULL,
+    ?bool $interactive = NULL,
+    ?int $scroll = NULL,
+    ?bool $placeholder_fallback = NULL,
+    ?int $width = NULL,
+    ?bool $legend = NULL,
+    ?string $back_key = NULL,
+  ): ?array {
+    if ($this->parents !== []) {
+      throw new \LogicException(sprintf('The children of step "%s" are still open. Close them with end() before run().', $this->parents[count($this->parents) - 1]));
+    }
+
+    $options = [
+      'intro' => $intro ?? $this->intro,
+      'outro' => $outro,
+      'cancelled' => $cancelled,
+      'numbering' => $numbering,
+      'symbols_unicode' => $symbols_unicode,
+      'symbols_ascii' => $symbols_ascii,
+      'colors' => $colors,
+      'spacing' => $spacing,
+      'labels' => $labels,
+      'unicode' => $unicode,
+      'ansi' => $ansi,
+      'env_prefix' => $env_prefix,
+      'truthy' => $truthy,
+      'falsy' => $falsy,
+      'output' => $output,
+      'interactive' => $interactive,
+      'scroll' => $scroll,
+      'placeholder_fallback' => $placeholder_fallback,
+      'width' => $width,
+      'legend' => $legend,
+      'back_key' => $back_key,
+    ];
+
+    return ($this->runner)($this->scopes[0], $options);
+  }
+
+  /**
+   * Adds a widget step whose closure arguments resolve when it is reached.
+   *
+   * @param string $key
+   *   The step key.
+   * @param \Closure $widget
+   *   Receives the named arguments and the flow context, and asks the step.
+   * @param array<string, mixed> $resolved
+   *   Arguments that take the return value of a closure given for them.
+   * @param array<string, mixed> $fixed
+   *   Arguments passed as given.
+   * @param \Closure|null $outcome
+   *   Maps the widget's return value to the answer the flow stores, or NULL
+   *   to store it as is.
+   *
+   * @return static
+   *   The flow.
+   */
+  protected function addWidget(string $key, \Closure $widget, array $resolved, array $fixed = [], ?\Closure $outcome = NULL): static {
+    $call = static function (array $ctx) use ($widget, $resolved, $fixed, $outcome): mixed {
+      /** @var array<string, mixed> $results */
+      $results = $ctx['results'];
+      $arguments = array_map(static fn(mixed $value): mixed => $value instanceof \Closure ? $value($results) : $value, $resolved);
+      $value = static::callWidget($widget, [...$arguments, ...$fixed], $ctx);
+
+      return $outcome instanceof \Closure ? $outcome($value) : $value;
+    };
+
+    return $this->addStep($key, $call);
+  }
+
+  /**
+   * Calls a widget with named arguments built when its step is reached.
+   *
+   * @param \Closure $widget
+   *   The widget.
+   * @param array<string, mixed> $arguments
+   *   The widget's named arguments.
+   * @param array<string, mixed> $ctx
+   *   The flow context.
+   *
+   * @return mixed
+   *   The widget's return value.
+   */
+  protected static function callWidget(\Closure $widget, array $arguments, array $ctx): mixed {
+    return $widget(...$arguments, ctx: $ctx);
+  }
+
+  /**
+   * Adds a keyed step to the current scope.
+   *
+   * @param string $key
+   *   The step key.
+   * @param \Closure $call
+   *   Receives the flow context and returns the answer, or NULL to cancel.
+   * @param callable|null $condition
+   *   The step condition, or NULL for none.
+   *
+   * @return static
+   *   The flow.
+   *
+   * @throws \InvalidArgumentException
+   *   When the key is empty or already used anywhere in the flow.
+   */
+  protected function addStep(string $key, \Closure $call, ?callable $condition = NULL): static {
+    if ($key === '') {
+      throw new \InvalidArgumentException('A step must have a key: it names the answer in the results and the variable the answer can come from.');
+    }
+
+    // The results are flat, so a key reused anywhere in the tree would let a
+    // later answer overwrite an earlier one.
+    if (isset($this->keys[$key])) {
+      throw new \InvalidArgumentException(sprintf('Step "%s" appears more than once in the flow. Each answer is stored under its step key, so a later step would overwrite the earlier answer in the results.', $key));
+    }
+
+    $this->keys[$key] = TRUE;
+    $this->last = $key;
+
+    return $this->addEntry(['__key' => $key, '__call' => $call, '__children' => [], '__condition' => $condition]);
+  }
+
+  /**
+   * Appends a step, section or note to the current scope.
+   *
+   * @param array<string, mixed> $entry
+   *   The step array.
+   *
+   * @return static
+   *   The flow.
+   */
+  protected function addEntry(array $entry): static {
+    $this->scopes[count($this->scopes) - 1][] = $entry;
+
+    return $this;
+  }
+
+  /**
+   * Builds the message for a call that needs an entry in an empty scope.
+   *
+   * @param string $action
+   *   What the call does, starting with its name.
+   *
+   * @return string
+   *   The message, naming the step whose children are empty.
+   */
+  protected function emptyScopeMessage(string $action): string {
+    if ($this->parents === []) {
+      return $action . ', and the flow has no step yet.';
+    }
+
+    return sprintf('%s, and the children of step "%s" have no step yet.', $action, $this->parents[count($this->parents) - 1]);
   }
 
 }
