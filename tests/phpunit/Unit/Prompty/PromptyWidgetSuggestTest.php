@@ -182,7 +182,7 @@ final class PromptyWidgetSuggestTest extends PromptyTestCase {
       return ['Pear Tart', 'Plum Compote'];
     };
 
-    $r = $this->runSuggest('p' . self::KEY_DOWN . self::KEY_DOWN . self::KEY_LEFT . 'l' . self::KEY_BACKSPACE . self::KEY_BACKSPACE . self::KEY_BACKSPACE . self::KEY_ENTER, $options);
+    $r = $this->runSuggest('p' . self::KEY_DOWN . self::KEY_DOWN . self::KEY_TAB . 'l' . self::KEY_BACKSPACE . self::KEY_BACKSPACE . self::KEY_BACKSPACE . self::KEY_ENTER, $options);
 
     $this->assertSame('', $r['result']);
     $this->assertSame(['', 'p', 'pl', 'p', ''], $calls);
