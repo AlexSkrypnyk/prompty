@@ -543,11 +543,11 @@ final class PromptyFlowBuilderTest extends PromptyTestCase {
   }
 
   #[DataProvider('dataProviderProviderErrors')]
-  public function testProviderErrors(PromptyFlowBuilderTestStep $promptyFlowBuilderTestStep, string $message): void {
+  public function testProviderErrors(PromptyFlowBuilderTestStep $step, string $message): void {
     $this->expectException(\UnexpectedValueException::class);
     $this->expectExceptionMessage($message);
 
-    $this->runFlow(static fn(PromptyFlow $flow): PromptyFlow => $flow->text('dish', 'Dish', default: 'tart')->add($promptyFlowBuilderTestStep), self::KEY_ENTER);
+    $this->runFlow(static fn(PromptyFlow $flow): PromptyFlow => $flow->text('dish', 'Dish', default: 'tart')->add($step), self::KEY_ENTER);
   }
 
   public static function dataProviderProviderErrors(): \Iterator {
