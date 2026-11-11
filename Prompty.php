@@ -349,6 +349,8 @@ class Prompty {
     'note_success' => "\033[32m",
     'note_warning' => "\033[33m",
     'note_error' => "\033[31m",
+    'input_default' => "\033[2m",
+    'input_cursor' => "\033[36;7m",
   ];
 
   /**
@@ -1291,12 +1293,8 @@ class Prompty {
       return $resolved_display;
     }
 
-    $render_active = function (string $value, ?string $error) use ($p, $label, $placeholder, $description, $help, $depth, $open): array {
-      // The buffer holds bytes as typed, and a paste can put a control
-      // character among them.
-      $value = $p->printable($value);
-      $cursor = $p->color('█', 'cyan');
-      $display = $value === '' ? $p->color($placeholder, 'gray') . $cursor : $p->color($value, 'white') . $cursor;
+    $render_active = function (string $before, string $after, ?string $error) use ($p, $label, $default, $placeholder, $description, $help, $depth, $open): array {
+      $display = $p->renderInput($before, $after, $default, $placeholder);
 
       if ($depth === 0) {
         $lines = $p->renderLabel($label, 'active', 'cyan');
@@ -1323,9 +1321,10 @@ class Prompty {
       return $lines;
     };
 
-    $value = $default;
+    $before = $default;
+    $after = '';
     $error = NULL;
-    $line_count = $p->printLines($render_active($value, $error));
+    $line_count = $p->printLines($render_active($before, $after, $error));
 
     while (TRUE) {
       $key = $p->readKey();
@@ -1335,7 +1334,7 @@ class Prompty {
       }
 
       if ($p->isCancelKey($key)) {
-        $p->redraw($line_count, $p->renderCancelled($label, $value, $depth, $open));
+        $p->redraw($line_count, $p->renderCancelled($label, $before . $after, $depth, $open));
 
         if ($is_standalone) {
           // @codeCoverageIgnoreStart
@@ -1347,7 +1346,7 @@ class Prompty {
       }
 
       if ($key === 'enter') {
-        $value = $p->printable($value);
+        $value = $p->printable($before . $after);
         $display = $value !== '' ? $value : $p->placeholderAnswer($placeholder);
         $display = $p->printable($p->transformString($plain_label, $transform, $display));
         $error = $p->validateAnswer($plain_label, $required, $validate, $display, $results);
@@ -1366,33 +1365,19 @@ class Prompty {
           return $display;
         }
 
-        $line_count = $p->redraw($line_count, $render_active($value, $error));
+        $line_count = $p->redraw($line_count, $render_active($before, $after, $error));
 
         continue;
       }
 
-      $previous = $value;
+      $previous = $before . $after;
+      [$before, $after] = $p->editInput($key, $before, $after);
 
-      if ($key === 'backspace') {
-        // Text that is not valid UTF-8 fails the /u match, so it loses its
-        // last byte instead of its last character.
-        $value = preg_replace('/.\z/su', '', $value) ?? substr($value, 0, -1);
-      }
-      elseif ($key === 'space') {
-        $value .= ' ';
-      }
-      // Reject control bytes (ord < 32); accept printable ASCII and bytes
-      // 0x80-0xFF, so UTF-8 characters delivered 1 byte per readKey() call
-      // accumulate in the buffer.
-      elseif (strlen($key) === 1 && ord($key) >= 32) {
-        $value .= $key;
-      }
-
-      if ($value !== $previous) {
+      if ($before . $after !== $previous) {
         $error = NULL;
       }
 
-      $line_count = $p->redraw($line_count, $render_active($value, $error));
+      $line_count = $p->redraw($line_count, $render_active($before, $after, $error));
     }
   }
 
@@ -2149,12 +2134,8 @@ class Prompty {
       return $resolved_display;
     }
 
-    $render_active = function (string $value, array $matches, ?int $focused, int $first, int $visible, ?string $error) use ($p, $label, $placeholder, $description, $help, $depth, $open): array {
-      // The buffer holds bytes as typed, and a paste can put a control
-      // character among them.
-      $value = $p->printable($value);
-      $cursor = $p->color('█', 'cyan');
-      $display = $value === '' ? $p->color($placeholder, 'gray') . $cursor : $p->color($value, 'white') . $cursor;
+    $render_active = function (string $before, string $after, array $matches, ?int $focused, int $first, int $visible, ?string $error) use ($p, $label, $default, $placeholder, $description, $help, $depth, $open): array {
+      $display = $p->renderInput($before, $after, $default, $placeholder);
       $body_prefix = $depth > 0 ? $p->bodyPrefix($depth, $open) : '';
       $rows = [];
 
@@ -2189,13 +2170,14 @@ class Prompty {
       return $lines;
     };
 
-    $value = $default;
-    $matches = $p->suggestMatches($options, $value);
+    $before = $default;
+    $after = '';
+    $matches = $p->suggestMatches($options, $before);
     $visible = $p->visibleOptions($label, $scroll, count($matches));
     $focused = NULL;
     $first = 0;
     $error = NULL;
-    $line_count = $p->printLines($render_active($value, $matches, $focused, $first, $visible, $error));
+    $line_count = $p->printLines($render_active($before, $after, $matches, $focused, $first, $visible, $error));
 
     while (TRUE) {
       $key = $p->readKey();
@@ -2205,7 +2187,7 @@ class Prompty {
       }
 
       if ($p->isCancelKey($key)) {
-        $p->redraw($line_count, $p->renderCancelled($label, $focused !== NULL ? $matches[$focused] : $value, $depth, $open));
+        $p->redraw($line_count, $p->renderCancelled($label, $focused !== NULL ? $matches[$focused] : $before . $after, $depth, $open));
 
         if ($is_standalone) {
           // @codeCoverageIgnoreStart
@@ -2217,7 +2199,7 @@ class Prompty {
       }
 
       if ($key === 'enter') {
-        $value = $p->printable($value);
+        $value = $p->printable($before . $after);
         $display = $focused !== NULL ? $matches[$focused] : ($value !== '' ? $value : $p->placeholderAnswer($placeholder));
         $display = $p->printable($p->transformString($plain_label, $transform, $display));
         $error = $p->validateAnswer($plain_label, $required, $validate, $display, $results);
@@ -2236,12 +2218,12 @@ class Prompty {
           return $display;
         }
 
-        $line_count = $p->redraw($line_count, $render_active($value, $matches, $focused, $first, $visible, $error));
+        $line_count = $p->redraw($line_count, $render_active($before, $after, $matches, $focused, $first, $visible, $error));
 
         continue;
       }
 
-      $typed = $value;
+      $typed = $before . $after;
       $previous_focus = $focused;
 
       // Focus steps through the matches and then back to none, so the typed
@@ -2252,17 +2234,11 @@ class Prompty {
       elseif ($key === 'up' && $matches !== []) {
         $focused = $focused === NULL ? count($matches) - 1 : ($focused > 0 ? $focused - 1 : NULL);
       }
-      elseif ($key === 'backspace') {
-        // Text that is not valid UTF-8 fails the /u match, so it loses its
-        // last byte instead of its last character.
-        $value = preg_replace('/.\z/su', '', $value) ?? substr($value, 0, -1);
+      else {
+        [$before, $after] = $p->editInput($key, $before, $after);
       }
-      elseif ($key === 'space') {
-        $value .= ' ';
-      }
-      elseif (strlen($key) === 1 && ord($key) >= 32) {
-        $value .= $key;
-      }
+
+      $value = $before . $after;
 
       if ($value !== $typed) {
         $matches = $p->suggestMatches($options, $value);
@@ -2278,7 +2254,7 @@ class Prompty {
         $error = NULL;
       }
 
-      $line_count = $p->redraw($line_count, $render_active($value, $matches, $focused, $first, $visible, $error));
+      $line_count = $p->redraw($line_count, $render_active($before, $after, $matches, $focused, $first, $visible, $error));
     }
   }
 
@@ -3789,8 +3765,9 @@ class Prompty {
    *   The input stream, positioned after the ESC byte.
    *
    * @return string
-   *   'up', 'down', 'right' or 'left' for a cursor key, 'unknown' for any
-   *   other complete sequence, or 'escape'.
+   *   'up', 'down', 'right', 'left', 'home' or 'end' for a cursor key,
+   *   'delete' for the Delete key, 'unknown' for any other complete
+   *   sequence, or 'escape'.
    */
   protected function readEscapeSequence($stream): string {
     $introducer = $this->readSequenceByte($stream);
@@ -3818,6 +3795,11 @@ class Prompty {
       'B' => 'down',
       'C' => 'right',
       'D' => 'left',
+      // Terminals disagree on Home and End: xterm sends 'H' and 'F', the
+      // Linux console '1~' and '4~', rxvt '7~' and '8~'.
+      'H', '1~', '7~' => 'home',
+      'F', '4~', '8~' => 'end',
+      '3~' => 'delete',
       default => 'unknown',
     };
   }
@@ -3886,6 +3868,43 @@ class Prompty {
    */
   protected function isCancelKey(string $key): bool {
     return in_array($key, ['ctrl-c', 'escape', 'eof'], TRUE);
+  }
+
+  /**
+   * Applies a key to an input buffer split at the cursor.
+   *
+   * Moving and deleting step over 1 character, as firstCluster() and
+   * lastCluster() measure it.
+   *
+   * @param string $key
+   *   A key name returned by readKey().
+   * @param string $before
+   *   The buffer before the cursor.
+   * @param string $after
+   *   The buffer from the cursor on.
+   *
+   * @return array{string, string}
+   *   The buffer before and from the cursor once the key is applied. A key
+   *   that does not edit leaves both unchanged.
+   */
+  protected function editInput(string $key, string $before, string $after): array {
+    $last = $this->lastCluster($before);
+    $next = $this->firstCluster($after);
+
+    return match (TRUE) {
+      $key === 'left' => [substr($before, 0, strlen($before) - strlen($last)), $last . $after],
+      $key === 'right' => [$before . $next, substr($after, strlen($next))],
+      $key === 'home' => ['', $before . $after],
+      $key === 'end' => [$before . $after, ''],
+      $key === 'backspace' => [substr($before, 0, strlen($before) - strlen($last)), $after],
+      $key === 'delete' => [$before, substr($after, strlen($next))],
+      $key === 'space' => [$before . ' ', $after],
+      // Reject control bytes (ord < 32); accept printable ASCII and bytes
+      // 0x80-0xFF, so UTF-8 characters delivered 1 byte per readKey() call
+      // accumulate in the buffer.
+      strlen($key) === 1 && ord($key) >= 32 => [$before . $key, $after],
+      default => [$before, $after],
+    };
   }
 
   /**
@@ -4751,10 +4770,21 @@ class Prompty {
    *   as 2. Text that is not valid UTF-8 counts 1 column per byte.
    */
   protected function displayWidth(string $text): int {
-    $text = $this->stripAnsi($text);
+    return array_sum(array_map($this->clusterWidth(...), $this->clusters($this->stripAnsi($text))));
+  }
 
+  /**
+   * Splits text into grapheme clusters.
+   *
+   * @param string $text
+   *   Text without escape sequences.
+   *
+   * @return list<string>
+   *   The clusters in order. Text that is not valid UTF-8 splits into bytes.
+   */
+  protected function clusters(string $text): array {
     if (preg_match_all('/./su', $text, $matches) === FALSE) {
-      return strlen($text);
+      return str_split($text);
     }
 
     $clusters = [];
@@ -4771,7 +4801,37 @@ class Prompty {
       $clusters[] = $char;
     }
 
-    return array_sum(array_map($this->clusterWidth(...), $clusters));
+    return $clusters;
+  }
+
+  /**
+   * Returns the first grapheme cluster of text.
+   *
+   * @param string $text
+   *   Text without escape sequences.
+   *
+   * @return string
+   *   The first cluster, the first byte of text that is not valid UTF-8, or
+   *   '' for empty text.
+   */
+  protected function firstCluster(string $text): string {
+    return $this->clusters($text)[0] ?? '';
+  }
+
+  /**
+   * Returns the last grapheme cluster of text.
+   *
+   * @param string $text
+   *   Text without escape sequences.
+   *
+   * @return string
+   *   The last cluster, the last byte of text that is not valid UTF-8, or ''
+   *   for empty text.
+   */
+  protected function lastCluster(string $text): string {
+    $clusters = $this->clusters($text);
+
+    return $clusters === [] ? '' : $clusters[count($clusters) - 1];
   }
 
   /**
@@ -5506,6 +5566,54 @@ class Prompty {
       ...$rows,
       $indicator('scroll_down', $count - $first - $visible),
     ];
+  }
+
+  /**
+   * Renders the input of a text or suggest widget with its cursor.
+   *
+   * A buffer equal to $default draws in 'input_default', any other buffer in
+   * 'white', and an empty buffer shows $placeholder. The cursor is a block
+   * after the buffer, or the character under it drawn in 'input_cursor'. That
+   * style draws nothing with ANSI off, so the block goes before the character.
+   *
+   * @param string $before
+   *   The buffer before the cursor.
+   * @param string $after
+   *   The buffer from the cursor on.
+   * @param string $default
+   *   The value the buffer was seeded with.
+   * @param string $placeholder
+   *   Text shown while the buffer is empty.
+   *
+   * @return string
+   *   The styled input, without a gutter.
+   */
+  protected function renderInput(string $before, string $after, string $default, string $placeholder): string {
+    $block = $this->color('█', 'cyan');
+
+    if ($before === '' && $after === '') {
+      return $this->color($placeholder, 'gray') . $block;
+    }
+
+    $style = $before . $after === $default ? 'input_default' : 'white';
+
+    // The buffer holds bytes as typed, and a paste can put a control
+    // character among them.
+    $before = $this->color($this->printable($before), $style);
+    $after = $this->printable($after);
+
+    if ($after === '') {
+      return $before . $block;
+    }
+
+    $next = $this->firstCluster($after);
+    $rest = $this->color(substr($after, strlen($next)), $style);
+
+    if ($this->cfgColors['input_cursor'] === '') {
+      return $before . $block . $next . $rest;
+    }
+
+    return $before . $this->color($next, 'input_cursor') . $rest;
   }
 
   /**

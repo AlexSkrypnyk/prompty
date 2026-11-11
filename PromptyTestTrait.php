@@ -65,6 +65,9 @@ trait PromptyTestTrait {
   public const KEY_DOWN = "\x1b[B";
   public const KEY_RIGHT = "\x1b[C";
   public const KEY_LEFT = "\x1b[D";
+  public const KEY_HOME = "\x1b[H";
+  public const KEY_END = "\x1b[F";
+  public const KEY_DELETE = "\x1b[3~";
 
   /**
    * The keystroke stream promptyInput() opened, closed by promptyTearDown().

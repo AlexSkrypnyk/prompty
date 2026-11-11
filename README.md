@@ -706,6 +706,9 @@ Pass these constants to `promptyKeys()`:
 | `KEY_DOWN`       | <kbd>↓</kbd>         |
 | `KEY_LEFT`       | <kbd>←</kbd>         |
 | `KEY_RIGHT`      | <kbd>→</kbd>         |
+| `KEY_HOME`       | <kbd>Home</kbd>      |
+| `KEY_END`        | <kbd>End</kbd>       |
+| `KEY_DELETE`     | <kbd>Delete</kbd>    |
 
 </details>
 
@@ -753,7 +756,23 @@ $dish = Prompty::text('Dish name',
 );
 ```
 
-`default` pre-fills the input with text the user can edit. `placeholder` is the gray text shown while the input is empty.
+`default` pre-fills the input with text the user can edit. Prompty draws it dim while the input still matches it. `placeholder` is the gray text shown while the input is empty.
+
+The user edits a pre-filled value in place with these keys:
+
+| Key                              | Effect                                  |
+|----------------------------------|-----------------------------------------|
+| <kbd>←</kbd> / <kbd>→</kbd>      | Moves the cursor 1 character.           |
+| <kbd>Home</kbd> / <kbd>End</kbd> | Moves the cursor to the start or end.   |
+| <kbd>Backspace</kbd>             | Deletes the character before the cursor. |
+| <kbd>Delete</kbd>                | Deletes the character under the cursor. |
+| Any printable character          | Inserts it at the cursor.               |
+
+To draw the default dim and italic, override the `input_default` color:
+
+```php
+Prompty::configure(colors: ['input_default' => "\e[2;3m"]);
+```
 
 Submitting an empty input returns the `placeholder` string itself, so a placeholder also works as a fallback answer. With a `default` set, submitting without typing returns the default. To let an empty answer stay empty, leave both unset.
 
@@ -1958,7 +1977,7 @@ The following table lists every option and its default:
 The map-valued options take these keys:
 
 - `symbols_unicode`, `symbols_ascii`: `bar`, `completed`, `active`, `intro`, `outro`, `section`, `pointer`, `radio_on`, `radio_off`, `check_on`, `check_off`, `hint_arrow`, `error`, `scroll_up`, `scroll_down`, `success`, `spinner`, `ellipsis`, `box_top_left`, `box_top_right`, `box_bottom_left`, `box_bottom_right`, `box_horizontal`, `box_vertical`, `box_cross`, `box_top_tee`, `box_bottom_tee`, `box_left_tee`, `box_right_tee`, `legend_vertical`, `legend_horizontal`, `legend_separator`, `note_info`, `note_success`, `note_warning`, `note_error`. Each character of `spinner` is 1 frame.
-- `colors`: `reset`, `dim`, `dim_italic`, `cyan`, `green`, `red`, `gray`, `bold`, `white`, `yellow`, `blue`, `italic`, `underline`, `note_info`, `note_success`, `note_warning`, `note_error`
+- `colors`: `reset`, `dim`, `dim_italic`, `cyan`, `green`, `red`, `gray`, `bold`, `white`, `yellow`, `blue`, `italic`, `underline`, `note_info`, `note_success`, `note_warning`, `note_error`, `input_default`, `input_cursor`
 - `spacing`: `indent`, `hint_indent`, `hint_cont`
 - `labels`: `yes`, `no`, `cancelled`, `none`, `separator`, `more`, `required`, `done`, `failed`, `line`, `lines`, `step_total`, `legend_move`, `legend_toggle`, `legend_enter`, `legend_space`, `legend_type`, `legend_yes_no`, `legend_any_key`, `legend_continue`, `legend_back`
 

@@ -118,7 +118,7 @@ final class PromptyTextHelpersTest extends PromptyTestCase {
     $this->createAndSetInstance(['ansi' => $ansi]);
 
     $this->expectException(\InvalidArgumentException::class);
-    $this->expectExceptionMessage(sprintf('Style "%s" is not valid. Available styles: dim, dim_italic, cyan, green, red, gray, bold, white, yellow, blue, italic, underline, note_info, note_success, note_warning, note_error.', $name));
+    $this->expectExceptionMessage(sprintf('Style "%s" is not valid. Available styles: dim, dim_italic, cyan, green, red, gray, bold, white, yellow, blue, italic, underline, note_info, note_success, note_warning, note_error, input_default, input_cursor.', $name));
 
     Prompty::style('Pear tart', ...$styles);
   }
