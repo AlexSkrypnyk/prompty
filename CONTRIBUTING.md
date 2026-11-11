@@ -99,6 +99,7 @@ The [`playground/`](playground) directory holds runnable demos. Each filename st
 | `02-widgets-pause.php`         | Pauses that wait for any key or for Enter only, or erase the message.                      |
 | `03-output.php`                | Notes of each type, standalone and in a nested flow, then summary tables and titled boxes. |
 | `04-tasks.php`                 | Tasks behind a spinner, and tasks streaming a child process's output.                      |
+| `04-tasks-nested.php`          | Streamed tasks nested 1, 2 and 3 levels deep, then a nested failure.                       |
 | `05-flows.php`                 | A linear flow with descriptions, hints and help.                                           |
 | `05-flows-nested.php`          | A nested flow with conditionals, 3 levels deep.                                            |
 | `05-flows-steps.php`           | Arguments built from earlier answers, section headings and a step provider.                |
@@ -118,7 +119,7 @@ To run a demo:
 php playground/05-flows-nested.php
 ```
 
-Every demo accepts `--no-unicode` and `--no-ansi` to force a display mode. `04-tasks.php` also accepts `--no-interaction`, which prints each task without redrawing it. `02-widgets-pause.php` accepts it too, and continues past each pause without a key:
+Every demo accepts `--no-unicode` and `--no-ansi` to force a display mode. `04-tasks.php` and `04-tasks-nested.php` also accept `--no-interaction`, which prints each task without redrawing it. `02-widgets-pause.php` accepts it too, and continues past each pause without a key:
 
 ```bash
 php playground/05-flows.php --no-unicode --no-ansi

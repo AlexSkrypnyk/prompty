@@ -1273,6 +1273,48 @@ The stream captures output that reaches PHP's output layer:
 
 Output written straight to a file descriptor reaches the terminal unstyled. That covers `fwrite(STDOUT, ...)` and a process started with `proc_open()` that inherits the terminal.
 
+A streamed action can run other tasks, streamed or behind a spinner, at any depth. Each nested task prints its label, output and result line once, indented under the task that runs it. After a nested task returns, the outer action keeps streaming. On a live terminal, the nested lines scroll through the outer window:
+
+```php
+Prompty::task('Baking the tart',
+  action: function (): bool {
+    echo "Oven at 180°C\n";
+
+    Prompty::task('Making the pastry',
+      action: function (): bool {
+        echo "Flour and butter rubbed together\n";
+
+        return TRUE;
+      },
+      success: 'Pastry made',
+      stream: TRUE,
+    );
+
+    echo "Tart in the top rack\n";
+
+    return TRUE;
+  },
+  success: 'Tart baked',
+  stream: TRUE,
+);
+```
+
+Without a live terminal, the tasks print:
+
+```
+◇  Baking the tart
+│    Oven at 180°C
+│    ◇  Making the pastry
+│    │    Flour and butter rubbed together
+│    │
+│    │  ✓ Pastry made
+│    │
+│    Tart in the top rack
+│
+│  ✓ Tart baked
+│
+```
+
 </details>
 
 ### Common arguments
