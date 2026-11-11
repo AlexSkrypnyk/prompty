@@ -3859,22 +3859,25 @@ class Prompty {
     $lines = explode("\n", $stream['partial'] . $chunk);
     $this->streams[$index]['partial'] = array_pop($lines);
 
-    foreach ($lines as $line) {
-      $line = $this->lastFrame($line);
-      $this->streams[$index]['lines'][] = $line;
+    try {
+      foreach ($lines as $line) {
+        $line = $this->lastFrame($line);
+        $this->streams[$index]['lines'][] = $line;
 
-      if (!$stream['is_live']) {
-        ($stream['draw'])($line);
+        if (!$stream['is_live']) {
+          ($stream['draw'])($line);
+        }
+      }
+
+      // A live window also shows the line being written, such as a progress
+      // meter that has not printed its newline yet.
+      if ($stream['is_live']) {
+        ($stream['draw'])();
       }
     }
-
-    // A live window also shows the line being written, such as a progress
-    // meter that has not printed its newline yet.
-    if ($stream['is_live']) {
-      ($stream['draw'])();
+    finally {
+      $this->streamDrawing = $drawing;
     }
-
-    $this->streamDrawing = $drawing;
   }
 
   /**

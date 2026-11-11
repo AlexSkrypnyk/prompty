@@ -651,6 +651,40 @@ final class PromptyTaskStreamTest extends PromptyTestCase {
     $this->assertSame([], $this->getProperty($p, 'streams'));
   }
 
+  public function testStreamTargetExceptionRestoresDrawing(): void {
+    $p = $this->createAndSetInstance(['interactive' => FALSE]);
+    $written = '';
+    $this->setProperty($p, 'cfgOutput', function (string $chunk) use (&$written): void {
+      if (str_contains($chunk, 'Butter too warm')) {
+        throw new \RuntimeException('The ticket printer jammed.');
+      }
+
+      $written .= $chunk;
+    });
+
+    $drawing = [];
+    Prompty::task('Baking the tart', action: function () use ($p, &$drawing): bool {
+      Prompty::task('Making the pastry', action: function () use ($p, &$drawing): bool {
+        try {
+          Prompty::output(['Butter too warm']);
+        }
+        catch (\RuntimeException) {
+          $drawing[] = $this->getProperty($p, 'streamDrawing');
+        }
+
+        Prompty::output(['Butter rubbed in']);
+
+        return TRUE;
+      }, success: 'Pastry made', stream: TRUE);
+
+      return TRUE;
+    }, success: 'Tart baked', stream: TRUE);
+
+    $this->assertSame([NULL], $drawing);
+    $this->assertSame("o  Baking the tart\n|    o  Making the pastry\n|    |    Butter rubbed in\n|    |\n|    |  + Pastry made\n|    |\n|\n|  + Tart baked\n|\n", $this->promptyNormalizeOutput($written));
+    $this->assertNull($this->getProperty($p, 'streamDrawing'));
+  }
+
   #[DataProvider('dataProviderStreamNestedLive')]
   public function testStreamNestedLive(bool $has_succeeded, string $last_frame): void {
     $p = $this->createAndSetInstance();
