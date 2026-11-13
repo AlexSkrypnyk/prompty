@@ -39,11 +39,11 @@ final class PromptyWidgetCancelOnNoTest extends PromptyTestCase {
     yield 'no by default' => [$confirm_no, self::KEY_ENTER, NULL, "+  Send order?\n|  No\n"];
     yield 'yes' => [$confirm, self::KEY_ENTER, TRUE, "+  Send order?\n|  Yes\n"];
     yield 'no without the argument' => [static fn(array $ctx): mixed => Prompty::confirm('Send order?', default: FALSE, ctx: $ctx), self::KEY_ENTER, FALSE, "+  Send order?\n|  No\n"];
-    yield 'no from discovered' => [static fn(array $ctx): mixed => Prompty::confirm('Send order?', discovered: 'no', cancel_on_no: TRUE, ctx: $ctx), '', NULL, "+  Send order?\n|  No\n"];
-    yield 'yes from discovered' => [static fn(array $ctx): mixed => Prompty::confirm('Send order?', discovered: 'yes', cancel_on_no: TRUE, ctx: $ctx), '', TRUE, "+  Send order?\n|  Yes\n"];
+    yield 'no from discovered' => [static fn(array $ctx): mixed => Prompty::confirm('Send order?', cancel_on_no: TRUE, discovered: 'no', ctx: $ctx), '', NULL, "+  Send order?\n|  No\n"];
+    yield 'yes from discovered' => [static fn(array $ctx): mixed => Prompty::confirm('Send order?', cancel_on_no: TRUE, discovered: 'yes', ctx: $ctx), '', TRUE, "+  Send order?\n|  Yes\n"];
     yield 'no from default, non-interactive' => [$confirm_no, '', NULL, "+  Send order?\n|  No\n", ['interactive' => FALSE]];
-    yield 'no after transform' => [static fn(array $ctx): mixed => Prompty::confirm('Send order?', transform: static fn(bool $answer): bool => !$answer, cancel_on_no: TRUE, ctx: $ctx), self::KEY_ENTER, NULL, "+  Send order?\n|  No\n"];
-    yield 'yes after transform' => [static fn(array $ctx): mixed => Prompty::confirm('Send order?', transform: static fn(bool $answer): bool => !$answer, cancel_on_no: TRUE, ctx: $ctx), self::KEY_RIGHT . self::KEY_ENTER, TRUE, "+  Send order?\n|  Yes\n"];
+    yield 'no after transform' => [static fn(array $ctx): mixed => Prompty::confirm('Send order?', cancel_on_no: TRUE, transform: static fn(bool $answer): bool => !$answer, ctx: $ctx), self::KEY_ENTER, NULL, "+  Send order?\n|  No\n"];
+    yield 'yes after transform' => [static fn(array $ctx): mixed => Prompty::confirm('Send order?', cancel_on_no: TRUE, transform: static fn(bool $answer): bool => !$answer, ctx: $ctx), self::KEY_RIGHT . self::KEY_ENTER, TRUE, "+  Send order?\n|  Yes\n"];
   }
 
   #[DataProvider('dataProviderLaterConditionsNotRun')]
