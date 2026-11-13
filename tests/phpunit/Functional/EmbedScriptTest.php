@@ -164,7 +164,8 @@ final class EmbedScriptTest extends EmbedTestCase {
   #[DataProvider('dataProviderReEmbedWithoutKillswitch')]
   public function testReEmbedWithoutKillswitch(bool $is_marker_bare): void {
     $target = self::$tmp . '/target.no-killswitch.php';
-    file_put_contents($target, "<?php\n// @embed-start\nrequire_once '" . self::$root . "/Prompty.php';\nuse AlexSkrypnyk\\Prompty\\Prompty;\n// @embed-end\necho 'VERSION:' . Prompty::version() . PHP_EOL;\n");
+    $source = "<?php\n// @embed-start\nrequire_once '" . self::$root . "/Prompty.php';\nuse AlexSkrypnyk\\Prompty\\Prompty;\n// @embed-end\n\n\n\necho 'VERSION:' . Prompty::version() . PHP_EOL;\n";
+    file_put_contents($target, $source);
 
     $this->runEmbed('--no-killswitch', $target);
 
@@ -172,14 +173,12 @@ final class EmbedScriptTest extends EmbedTestCase {
       file_put_contents($target, preg_replace('/^\/\/ @embed-start[^\n]*/m', '// @embed-start', $this->readFile($target)));
     }
 
-    $first_content = $this->readFile($target);
-
     $output = $this->runEmbedWithOutput($target);
     $re_embedded = $this->readFile($target);
 
     $this->assertStringNotContainsString("if (!getenv('SHOULD_PROCEED'))", $re_embedded);
     $this->assertStringNotContainsString('Added a kill switch', $output);
-    $this->assertSame($this->cutRegion($first_content), $this->cutRegion($re_embedded), 'Re-embedding changed the script outside the embed region.');
+    $this->assertSame($this->cutRegion($source), $this->cutRegion($re_embedded), 'Embedding changed the script outside the embed region.');
     $this->assertStringContainsString('VERSION:', $this->runScriptWithoutInput($target));
   }
 

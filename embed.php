@@ -1815,8 +1815,6 @@ if ($result === NULL) {
   exit(1);
 }
 
-$result = preg_replace('/\n{3,}/', "\n\n", $result);
-
 $has_killswitch = str_contains((string) $result, "if (!getenv('SHOULD_PROCEED'))");
 
 // A re-embed replaces only the region, so a script embedded without the kill
