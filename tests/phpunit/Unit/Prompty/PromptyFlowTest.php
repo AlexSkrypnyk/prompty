@@ -258,6 +258,54 @@ final class PromptyFlowTest extends PromptyTestCase {
       "+  Dish name\n|  pear tart\n|\n#  Order sent!\n\n",
     ];
 
+    yield 'outro callable returning a message' => [
+      static fn(): mixed => Prompty::flow()
+        ->text('dish', 'Dish name', discovered: 'pear tart')
+        ->run(intro: 'Kitchen order', outro: static fn(array $r): string => $r['dish'] . ' is ready.', unicode: FALSE, interactive: FALSE),
+      "\n#  Kitchen order\n|\n+  Dish name\n|  pear tart\n|\n#  pear tart is ready.\n\n",
+    ];
+
+    yield 'outro callable returning a message, nothing drawn' => [
+      static fn(): mixed => Prompty::flow()
+        ->text('dish', 'Dish name', discovered: 'pear tart')
+          ->when(static fn(): bool => FALSE)
+        ->run(outro: static fn(): string => 'Order sent!', unicode: FALSE, interactive: FALSE),
+      "|\n#  Order sent!\n\n",
+    ];
+
+    yield 'intro callable returning a message' => [
+      static fn(): mixed => Prompty::flow()
+        ->text('dish', 'Dish name', discovered: 'pear tart')
+        ->run(intro: static fn(array $r): string => 'Kitchen order (' . count($r) . ' answers)', outro: 'Order sent!', unicode: FALSE, interactive: FALSE),
+      "\n#  Kitchen order (0 answers)\n|\n+  Dish name\n|  pear tart\n|\n#  Order sent!\n\n",
+    ];
+
+    yield 'intro set on the builder returning a message' => [
+      static fn(): mixed => Prompty::flow()
+        ->intro(static fn(): string => 'Kitchen order')
+        ->text('dish', 'Dish name', discovered: 'pear tart')
+        ->run(unicode: FALSE, interactive: FALSE),
+      "\n#  Kitchen order\n|\n+  Dish name\n|  pear tart\n|\n",
+    ];
+
+    yield 'outro message naming a function' => [
+      static fn(): mixed => Prompty::flow()
+        ->text('dish', 'Dish name', discovered: 'pear tart')
+        ->run(intro: 'ucfirst', outro: 'strtoupper', unicode: FALSE, interactive: FALSE),
+      "\n#  ucfirst\n|\n+  Dish name\n|  pear tart\n|\n#  strtoupper\n\n",
+    ];
+
+    yield 'outro callable printing and returning a message' => [
+      static fn(): mixed => Prompty::flow()
+        ->text('dish', 'Dish name', discovered: 'pear tart')
+        ->run(outro: static function (): string {
+          Prompty::note('Plate warm.');
+
+          return 'Order sent!';
+        }, unicode: FALSE, interactive: FALSE),
+      "+  Dish name\n|  pear tart\n|\n*  Plate warm.\n|\n#  Order sent!\n\n",
+    ];
+
     yield 'standalone outro after a flow' => [
       static function (): void {
         Prompty::configure(unicode: FALSE, interactive: FALSE);
@@ -273,6 +321,41 @@ final class PromptyFlowTest extends PromptyTestCase {
 
     $this->assertNull($r['result']);
     $this->assertStringContainsString("(cancelled)\n|\n#  Order cancelled.\n", $r['output']);
+  }
+
+  public function testFlowCancelledCallableReturningMessage(): void {
+    $r = $this->promptyRun(fn(): mixed => Prompty::flow()->text('dish', 'Dish name')->run(cancelled: fn(array $r): string => 'Order cancelled after ' . count($r) . ' answers.', unicode: FALSE), self::KEY_ESCAPE);
+
+    $this->assertNull($r['result']);
+    $this->assertStringContainsString("(cancelled)\n|\n#  Order cancelled after 0 answers.\n", $r['output']);
+  }
+
+  #[DataProvider('dataProviderFlowMessageCallableReturnsNonString')]
+  public function testFlowMessageCallableReturnsNonString(\Closure $run, string $keystrokes, string $message): void {
+    $this->expectException(\UnexpectedValueException::class);
+    $this->expectExceptionMessage($message);
+
+    $this->promptyRun($run, $keystrokes);
+  }
+
+  public static function dataProviderFlowMessageCallableReturnsNonString(): \Iterator {
+    yield 'intro' => [
+      static fn(): mixed => Prompty::flow()->text('dish', 'Dish name')->run(intro: static fn(): int => 1, unicode: FALSE),
+      'pear tart' . self::KEY_ENTER,
+      'The intro callable of a flow returned int. It must return the text to draw, or NULL when it draws its own.',
+    ];
+
+    yield 'outro' => [
+      static fn(): mixed => Prompty::flow()->text('dish', 'Dish name')->run(outro: static fn(): bool => TRUE, unicode: FALSE),
+      'pear tart' . self::KEY_ENTER,
+      'The outro callable of a flow returned bool. It must return the text to draw, or NULL when it draws its own.',
+    ];
+
+    yield 'cancelled' => [
+      static fn(): mixed => Prompty::flow()->text('dish', 'Dish name')->run(cancelled: static fn(): array => [], unicode: FALSE),
+      self::KEY_ESCAPE,
+      'The cancelled callable of a flow returned array. It must return the text to draw, or NULL when it draws its own.',
+    ];
   }
 
   public function testResultsReturnsLastFlowAnswers(): void {
