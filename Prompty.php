@@ -2346,7 +2346,7 @@ class Prompty {
    */
   public static function outro(string $message): void {
     $p = static::instance();
-    $p->printLines($p->renderOutro($message));
+    $p->printLines($p->renderOutro($message, !$p->hasDrawn));
   }
 
   /**
@@ -4842,17 +4842,20 @@ class Prompty {
    *
    * @param string $message
    *   The outro message to display.
+   * @param bool $is_first
+   *   Whether nothing has been drawn above the outro in the flow. A drawn
+   *   entry ends with a bar line, so the outro draws its own only when first.
    *
    * @return array<int, string>
    *   The rendered outro lines.
    */
-  protected function renderOutro(string $message): array {
+  protected function renderOutro(string $message, bool $is_first = TRUE): array {
     $message = $this->printable($message);
     $gutter = $this->color($this->cfgSymbols['outro'], 'gray') . $this->cfgSpacing['indent'];
 
     // The outro ends the tree, so its continuation rows draw no bar.
     return [
-      $this->bar(),
+      ...($is_first ? [$this->bar()] : []),
       ...$this->wrap($gutter, $this->color($message, 'green'), $this->pad($gutter)),
       '',
     ];
@@ -5829,14 +5832,14 @@ class Prompty {
 
       if ($outcome === 'cancelled') {
         if ($cancelled !== NULL) {
-          is_callable($cancelled) ? $cancelled($p->results) : $p->printLines($p->renderOutro($cancelled));
+          is_callable($cancelled) ? $cancelled($p->results) : $p->printLines($p->renderOutro($cancelled, !$p->hasDrawn));
         }
 
         return NULL;
       }
 
       if ($outro !== NULL) {
-        is_callable($outro) ? $outro($p->results) : $p->printLines($p->renderOutro($outro));
+        is_callable($outro) ? $outro($p->results) : $p->printLines($p->renderOutro($outro, !$p->hasDrawn));
       }
 
       return $p->results;
@@ -6285,6 +6288,9 @@ class Prompty {
 
           return 'back';
         }
+
+        // The widget has drawn its cancelled state.
+        $this->hasDrawn = TRUE;
 
         return 'cancelled';
       }
