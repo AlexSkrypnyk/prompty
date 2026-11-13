@@ -1887,6 +1887,10 @@ class Prompty {
    *   The default selection (TRUE for yes, FALSE for no).
    * @param string $description
    *   Optional description rendered below the label.
+   * @param bool $cancel_on_no
+   *   Answer NULL instead of FALSE once the answer settles on no, after
+   *   $transform and $validate. The widget draws its completed line, and a
+   *   flow ends as cancelled.
    * @param string $help
    *   Optional help rendered below the answers while the widget is active.
    * @param mixed $discovered
@@ -1907,7 +1911,8 @@ class Prompty {
    *   Flow context passed by the flow walker.
    *
    * @return bool|null
-   *   TRUE for yes and FALSE for no, or NULL when the widget is cancelled.
+   *   TRUE for yes and FALSE for no, or NULL when the widget is cancelled or
+   *   answered no with $cancel_on_no.
    *
    * @throws \InvalidArgumentException
    *   When a discovered value appears in neither the truthy nor falsy list,
@@ -1920,6 +1925,7 @@ class Prompty {
     string $label,
     bool $default = TRUE,
     string $description = '',
+    bool $cancel_on_no = FALSE,
     string $help = '',
     mixed $discovered = NULL,
     ?callable $transform = NULL,
@@ -1979,7 +1985,7 @@ class Prompty {
         // @codeCoverageIgnoreEnd
       }
 
-      return $is_resolved_yes;
+      return $cancel_on_no && !$is_resolved_yes ? NULL : $is_resolved_yes;
     }
 
     $render_active = function (bool $is_yes_focused, ?string $error) use ($p, $label, $description, $help, $depth, $open): array {
@@ -2052,7 +2058,7 @@ class Prompty {
             // @codeCoverageIgnoreEnd
           }
 
-          return $answer;
+          return $cancel_on_no && !$answer ? NULL : $answer;
         }
 
         $line_count = $p->redraw($line_count, $render_active($is_yes, $error));
@@ -6843,6 +6849,8 @@ class PromptyFlow {
    *   The answer focused initially.
    * @param string|\Closure $description
    *   Optional description rendered below the label.
+   * @param bool|\Closure $cancel_on_no
+   *   Cancel the flow when the answer is no.
    * @param string|\Closure $help
    *   Optional help rendered below the answers.
    * @param mixed $discovered
@@ -6864,6 +6872,7 @@ class PromptyFlow {
     string|\Closure $label,
     bool|\Closure $default = TRUE,
     string|\Closure $description = '',
+    bool|\Closure $cancel_on_no = FALSE,
     string|\Closure $help = '',
     mixed $discovered = NULL,
     ?callable $transform = NULL,
@@ -6874,6 +6883,7 @@ class PromptyFlow {
       'label' => $label,
       'default' => $default,
       'description' => $description,
+      'cancel_on_no' => $cancel_on_no,
       'help' => $help,
       'discovered' => $discovered,
       'required' => $required,

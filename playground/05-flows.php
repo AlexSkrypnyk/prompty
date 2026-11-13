@@ -58,7 +58,7 @@ $results = Prompty::flow()
     default: [2, 4],
     description: 'Who at the table is having this dish.',
   )
-  ->confirm('send', 'Send order?', description: 'Passes the order to the kitchen.')
+  ->confirm('send', 'Send order?', description: 'Passes the order to the kitchen.', cancel_on_no: TRUE)
   ->run(
     intro: 'Compose an order',
     outro: function (array $results): void {

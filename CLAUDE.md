@@ -53,12 +53,14 @@ builder), `PromptyTestTrait.php` (test helper).
 
   ```
   label, [options], default, [placeholder], description, [hints], [scroll],
-  [order], help, discovered, transform, required, validate, ctx
+  [order], [cancel_on_no], help, discovered, transform, required, validate,
+  ctx
   ```
 
   Bracketed parameters appear only where they apply: `options` and `scroll`
   on `select`/`multiselect`/`suggest`, `hints` on `select`/`multiselect`,
-  `placeholder` on `text`/`suggest`, `order` on `multiselect`. `help`,
+  `placeholder` on `text`/`suggest`, `order` on `multiselect`,
+  `cancel_on_no` on `confirm`. `help`,
   `discovered`, `transform`, `required`, `validate` and `ctx` are common to
   every widget.
   `required` sits between `transform` and `validate` because it runs between
