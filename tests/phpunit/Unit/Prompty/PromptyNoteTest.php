@@ -214,6 +214,114 @@ final class PromptyNoteTest extends PromptyTestCase {
       "\n#  Service\n|\n*  The pass is ready.\n|\n",
       [],
     ];
+
+    yield 'closure message from an earlier answer' => [
+      static fn(PromptyFlow $flow): PromptyFlow => $flow
+        ->multiselect('stations', 'Stations', options: ['grill' => 'Grill', 'pastry' => 'Pastry'], discovered: 'pastry')
+        ->note(static fn(array $r): string => 'Next: ' . (in_array('grill', $r['stations'], TRUE) ? 'light the grill' : 'warm the pastry oven')),
+      "+  Stations (1)\n|  Pastry\n|\n*  Next: warm the pastry oven\n|\n",
+      ['stations' => ['pastry']],
+    ];
+
+    yield 'closure type from an earlier answer' => [
+      static fn(PromptyFlow $flow): PromptyFlow => $flow
+        ->confirm('stocked', 'Pears stocked?', default: FALSE)
+        ->note('Pear tart', type: static fn(array $r): string => $r['stocked'] ? 'success' : 'warning'),
+      "+  Pears stocked? (1)\n|  No\n|\n!  Pear tart\n|\n",
+      ['stocked' => FALSE],
+    ];
+
+    yield 'closure message on several lines' => [
+      static fn(PromptyFlow $flow): PromptyFlow => $flow
+        ->text('dish', 'Dish name', default: 'pear tart')
+        ->note(static fn(array $r): string => 'Plate the ' . $r['dish'] . ".\nSend it to the pass.", 'success'),
+      "+  Dish name (1)\n|  pear tart\n|\n+  Plate the pear tart.\n|  Send it to the pass.\n|\n",
+      ['dish' => 'pear tart'],
+    ];
+
+    yield 'closure message among children' => [
+      static fn(PromptyFlow $flow): PromptyFlow => $flow
+        ->select('course', 'Course', options: ['main' => 'Main', 'dessert' => 'Dessert'], default: 'dessert')
+          ->children()
+            ->note(static fn(array $r): string => 'Plated by the ' . ($r['course'] === 'dessert' ? 'pastry' : 'grill') . ' section.')
+          ->end(),
+      "+  Course (1)\n|  Dessert\n|\n|  |\n|  *  Plated by the pastry section.\n|     \n",
+      ['course' => 'dessert'],
+    ];
+  }
+
+  public function testNoteInFlowClosuresSkippedByCondition(): void {
+    $called = FALSE;
+    $closure = static function () use (&$called): string {
+      $called = TRUE;
+
+      return 'info';
+    };
+
+    $output = $this->captureOutput(function () use ($closure): void {
+      Prompty::flow()
+        ->text('dish', 'Dish name', default: 'pear tart')
+        ->note($closure, type: $closure)
+          ->when(static fn(array $r): bool => $r['dish'] === 'plum compote')
+        ->run(unicode: FALSE, ansi: FALSE, interactive: FALSE);
+    });
+
+    $this->assertFalse($called);
+    $this->assertSame("+  Dish name\n|  pear tart\n|\n", $output);
+  }
+
+  /**
+   * Tests that a closure message or type that resolves wrongly throws.
+   *
+   * @param \Closure $message
+   *   The note message.
+   * @param \Closure|string $type
+   *   The note type.
+   * @param class-string<\Throwable> $exception
+   *   The exception class the run throws.
+   * @param string $error
+   *   The exception message.
+   */
+  #[DataProvider('dataProviderNoteInFlowClosureErrors')]
+  public function testNoteInFlowClosureErrors(\Closure $message, \Closure|string $type, string $exception, string $error): void {
+    $flow = Prompty::flow()
+      ->text('dish', 'Dish name', default: 'pear tart')
+      ->note($message, type: $type);
+
+    $output = $this->captureOutputThrows($exception, $error, function () use ($flow): void {
+      $flow->run(unicode: FALSE, ansi: FALSE, interactive: FALSE);
+    });
+
+    $this->assertSame("+  Dish name\n|  pear tart\n|\n", $output);
+  }
+
+  public static function dataProviderNoteInFlowClosureErrors(): \Iterator {
+    $message = static fn(): string => 'The pass is ready.';
+
+    yield 'message returns a non-string' => [
+      static fn(): int => 5,
+      'info',
+      \UnexpectedValueException::class,
+      'The message closure of a note returned int. It must return the text to draw.',
+    ];
+    yield 'message returns NULL' => [
+      static fn(): null => NULL,
+      'info',
+      \UnexpectedValueException::class,
+      'The message closure of a note returned null. It must return the text to draw.',
+    ];
+    yield 'type returns a non-string' => [
+      $message,
+      static fn(): bool => TRUE,
+      \UnexpectedValueException::class,
+      'The type closure of a note returned bool. It must return 1 of: info, success, warning, error.',
+    ];
+    yield 'type returns an unknown type' => [
+      $message,
+      static fn(): string => 'notice',
+      \InvalidArgumentException::class,
+      'Note type "notice" is not valid. Use 1 of: info, success, warning, error.',
+    ];
   }
 
   public function testNotesLeaveTheStepTotal(): void {

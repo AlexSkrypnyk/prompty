@@ -435,6 +435,11 @@ final class PromptyFlowBuilderTest extends PromptyTestCase {
       \LogicException::class,
       'children() follows the note "Served cold.". Only a step takes children.',
     ];
+    yield 'children after a closure note' => [
+      static fn(PromptyFlow $flow): PromptyFlow => $flow->note(static fn(array $r): string => 'Served cold.')->children(),
+      \LogicException::class,
+      'children() follows a note. Only a step takes children.',
+    ];
     yield 'unnumbered with no step' => [
       static fn(PromptyFlow $flow): PromptyFlow => $flow->unnumbered(),
       \LogicException::class,
@@ -454,6 +459,11 @@ final class PromptyFlowBuilderTest extends PromptyTestCase {
       static fn(PromptyFlow $flow): PromptyFlow => $flow->note('Served cold.')->unnumbered(),
       \LogicException::class,
       'unnumbered() follows the note "Served cold.". Only a step has a number.',
+    ];
+    yield 'unnumbered after a closure note' => [
+      static fn(PromptyFlow $flow): PromptyFlow => $flow->note(static fn(array $r): string => 'Served cold.')->unnumbered(),
+      \LogicException::class,
+      'unnumbered() follows a note. Only a step has a number.',
     ];
     yield 'end with no step' => [
       static fn(PromptyFlow $flow): PromptyFlow => $flow->end(),

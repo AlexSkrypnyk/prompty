@@ -1145,6 +1145,17 @@ $results = Prompty::flow()
   ->run();
 ```
 
+To mention an earlier answer, pass a closure as the message or the type. The closure receives the answers so far and runs when the flow reaches the note:
+
+```php
+$results = Prompty::flow()
+  ->multiselect('stations', 'Stations', options: ['grill' => 'Grill', 'pastry' => 'Pastry'])
+  ->note(fn(array $r): string => 'Next: ' . (in_array('grill', $r['stations'], TRUE) ? 'light the grill' : 'warm the pastry oven'))
+  ->run();
+```
+
+A closure that returns anything other than a string throws an `UnexpectedValueException`. A type closure that returns a name other than `info`, `success`, `warning` or `error` throws an `InvalidArgumentException`. A note hidden by `->when()` calls neither closure.
+
 `Prompty::note()` called while the flow runs, such as from a task's action or the `outro` callable, prints straight away.
 
 </details>
@@ -1937,6 +1948,8 @@ Any argument that takes a value can take a closure instead, including `label`, `
 - A `suggest`'s `options` closure receives the typed text and returns the suggestions.
 - A `multiselect`'s `order` closure compares 2 option keys.
 - A task's `action` runs the work, and its `hint`, `success` and `failure` closures receive the action's return value.
+
+A [note](#notes) takes a closure for its message and its type in the same way.
 
 </details>
 

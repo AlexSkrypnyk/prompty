@@ -564,6 +564,37 @@ final class PromptyFlowStepBackTest extends PromptyTestCase {
     $this->assertSame('Ann', $value);
   }
 
+  public function testNoteClosureResolvedAgainAfterBack(): void {
+    $calls = [];
+    $message = static function (array $r) use (&$calls): string {
+      $calls[] = $r['dish'];
+
+      return 'Plate the ' . $r['dish'] . '.';
+    };
+
+    $r = $this->runFlow(static fn(PromptyFlow $flow): PromptyFlow => $flow->text('dish', 'Dish name')->note($message)->confirm('send', 'Send order?'), 'pear' . self::KEY_ENTER . self::KEY_CTRL_U . ' tart' . self::KEY_ENTER . self::KEY_ENTER);
+
+    $this->assertSame(['dish' => 'pear tart', 'send' => TRUE], $r['result']);
+    $this->assertSame(['pear', 'pear tart'], $calls);
+    $this->assertStringContainsString('Plate the pear tart.', $r['screen']);
+    $this->assertStringNotContainsString('Plate the pear.', $r['screen']);
+  }
+
+  public function testNoteClosureNotCalledWhenReplayed(): void {
+    $calls = [];
+    $message = static function (array $r) use (&$calls): string {
+      $calls[] = $r['dish'];
+
+      return 'Plate the ' . $r['dish'] . '.';
+    };
+
+    $r = $this->runFlow(static fn(PromptyFlow $flow): PromptyFlow => $flow->text('dish', 'Dish name')->note($message)->text('table', 'Table')->confirm('send', 'Send order?'), 'pear' . self::KEY_ENTER . '4' . self::KEY_ENTER . self::KEY_CTRL_U . self::KEY_ENTER . self::KEY_ENTER);
+
+    $this->assertSame(['dish' => 'pear', 'table' => '4', 'send' => TRUE], $r['result']);
+    $this->assertSame(['pear'], $calls);
+    $this->assertSame(1, substr_count($r['screen'], 'Plate the pear.'));
+  }
+
   #[DataProvider('dataProviderBackKeySetting')]
   public function testBackKeySetting(?string $back_key, string $keystrokes, array $expected): void {
     $r = $this->runFlow(static fn(PromptyFlow $flow): PromptyFlow => $flow->text('guest', 'Guest name')->text('table', 'Table'), $keystrokes, $back_key);
