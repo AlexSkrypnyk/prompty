@@ -330,6 +330,114 @@ final class PromptyFlowTest extends PromptyTestCase {
     $this->assertStringContainsString("(cancelled)\n|\n#  Order cancelled after 0 answers.\n", $r['output']);
   }
 
+  #[DataProvider('dataProviderFlowFailed')]
+  public function testFlowFailed(\Closure $build, array $options, string $expected): void {
+    $flow = $build(Prompty::flow());
+    $this->assertInstanceOf(PromptyFlow::class, $flow);
+
+    $output = $this->captureOutputThrows(\RuntimeException::class, 'The oven door is open.', fn(): mixed => $flow->run(...[...$options, 'unicode' => TRUE, 'interactive' => FALSE]));
+
+    $this->assertSame($expected, $output);
+    $this->assertFalse($this->getStaticProperty('isInFlow'));
+  }
+
+  public static function dataProviderFlowFailed(): \Iterator {
+    $throw = static function (): never {
+      throw new \RuntimeException('The oven door is open.');
+    };
+    $dish_and_oven = static fn(PromptyFlow $flow): PromptyFlow => $flow
+      ->text('dish', 'Dish name', discovered: 'pear tart')
+      ->task('oven', 'Preheating the oven', action: $throw)
+      ->confirm('send', 'Send order?');
+
+    yield 'task exception closes the tree with the failed label' => [
+      $dish_and_oven,
+      ['intro' => 'Compose an order', 'outro' => 'Order sent.'],
+      "\n┌  Compose an order\n│\n◆  Dish name\n│  pear tart\n│\n◇  Preheating the oven\n│  ▲ The oven door is open.\n│\n└  Failed\n\n",
+    ];
+
+    yield 'failed string' => [
+      $dish_and_oven,
+      ['failed' => 'Order not sent.'],
+      "◆  Dish name\n│  pear tart\n│\n◇  Preheating the oven\n│  ▲ The oven door is open.\n│\n└  Order not sent.\n\n",
+    ];
+
+    yield 'failed callable receives the answers' => [
+      $dish_and_oven,
+      ['failed' => static fn(array $r): string => sprintf('Order for %s not sent.', $r['dish'])],
+      "◆  Dish name\n│  pear tart\n│\n◇  Preheating the oven\n│  ▲ The oven door is open.\n│\n└  Order for pear tart not sent.\n\n",
+    ];
+
+    yield 'failed callable returning NULL draws nothing' => [
+      $dish_and_oven,
+      ['failed' => static fn(): null => NULL],
+      "◆  Dish name\n│  pear tart\n│\n◇  Preheating the oven\n│  ▲ The oven door is open.\n│\n",
+    ];
+
+    yield 'failed label override' => [
+      $dish_and_oven,
+      ['labels' => ['failed' => 'Burnt']],
+      "◆  Dish name\n│  pear tart\n│\n◇  Preheating the oven\n│  ▲ The oven door is open.\n│\n└  Burnt\n\n",
+    ];
+
+    yield 'task failure line from the failure callable' => [
+      static fn(PromptyFlow $flow): PromptyFlow => $flow->task('oven', 'Preheating the oven', action: $throw, failure: static fn(\Throwable $throwable): string => 'Oven: ' . $throwable->getMessage()),
+      [],
+      "◇  Preheating the oven\n│  ▲ Oven: The oven door is open.\n│\n└  Failed\n\n",
+    ];
+
+    yield 'nested task' => [
+      static fn(PromptyFlow $flow): PromptyFlow => $flow
+        ->text('dish', 'Dish name', discovered: 'pear tart')
+          ->children()
+            ->task('oven', 'Preheating the oven', action: $throw)
+            ->confirm('rest', 'Rest before serving?')
+          ->end()
+        ->confirm('send', 'Send order?'),
+      [],
+      "◆  Dish name\n│  pear tart\n│\n│  │\n│  ◇  Preheating the oven\n│  │  ▲ The oven door is open.\n│  │  \n└  Failed\n\n",
+    ];
+
+    yield 'exception outside a task' => [
+      static fn(PromptyFlow $flow): PromptyFlow => $flow
+        ->text('dish', 'Dish name', discovered: 'pear tart')
+        ->text('note', $throw),
+      [],
+      "◆  Dish name\n│  pear tart\n│\n└  Failed\n\n",
+    ];
+
+    yield 'exception in a condition' => [
+      static fn(PromptyFlow $flow): PromptyFlow => $flow
+        ->text('dish', 'Dish name', discovered: 'pear tart')
+          ->children()
+            ->confirm('send', 'Send order?')
+              ->when($throw)
+          ->end(),
+      [],
+      "◆  Dish name\n│  pear tart\n│\n└  Failed\n\n",
+    ];
+
+    yield 'exception before anything is drawn draws no banner' => [
+      static fn(PromptyFlow $flow): PromptyFlow => $flow->text('dish', $throw),
+      [],
+      '',
+    ];
+
+    yield 'exception after the intro alone' => [
+      static fn(PromptyFlow $flow): PromptyFlow => $flow->text('dish', $throw),
+      ['intro' => 'Compose an order'],
+      "\n┌  Compose an order\n│\n└  Failed\n\n",
+    ];
+  }
+
+  public function testFlowFailedCallableReturnsNonString(): void {
+    $flow = Prompty::flow()->task('oven', 'Preheating the oven', action: static function (): never {
+      throw new \RuntimeException('The oven door is open.');
+    });
+
+    $this->captureOutputThrows(\UnexpectedValueException::class, 'The failed callable of a flow returned int. It must return the text to draw, or NULL when it draws its own.', fn(): mixed => $flow->run(failed: static fn(): int => 1, interactive: FALSE));
+  }
+
   #[DataProvider('dataProviderFlowMessageCallableReturnsNonString')]
   public function testFlowMessageCallableReturnsNonString(\Closure $run, string $keystrokes, string $message): void {
     $this->expectException(\UnexpectedValueException::class);

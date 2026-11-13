@@ -187,7 +187,7 @@ final class PromptyTaskOutputTest extends PromptyTestCase {
       $this->assertSame('The oven door is open.', $runtime_exception->getMessage());
     }
 
-    $this->assertSame("\033[?25lo  Baking the tart\n\033[1A\r\033[Jo  Baking the tart\n|    Oven at 180°C\n\033[2A\r\033[Jo  Baking the tart\n|    Oven at 180°C\n\033[?25h", $this->stripColors($this->started));
+    $this->assertSame("\033[?25lo  Baking the tart\n\033[1A\r\033[Jo  Baking the tart\n|    Oven at 180°C\n\033[2A\r\033[Jo  Baking the tart\n|    Oven at 180°C\n|\n|  ! The oven door is open.\n|\n\033[?25h", $this->stripColors($this->started));
     $this->assertSame('', $this->configured);
   }
 
