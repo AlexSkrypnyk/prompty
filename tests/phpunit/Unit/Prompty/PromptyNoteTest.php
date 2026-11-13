@@ -270,6 +270,18 @@ final class PromptyNoteTest extends PromptyTestCase {
     $this->assertSame("+  Dish name\n|  pear tart\n|\n", $output);
   }
 
+  /**
+   * Tests that a closure message or type that resolves wrongly throws.
+   *
+   * @param \Closure $message
+   *   The note message.
+   * @param \Closure|string $type
+   *   The note type.
+   * @param class-string<\Throwable> $exception
+   *   The exception class the run throws.
+   * @param string $error
+   *   The exception message.
+   */
   #[DataProvider('dataProviderNoteInFlowClosureErrors')]
   public function testNoteInFlowClosureErrors(\Closure $message, \Closure|string $type, string $exception, string $error): void {
     $flow = Prompty::flow()
