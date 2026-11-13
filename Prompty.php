@@ -6860,7 +6860,8 @@ class PromptyFlow {
    * @param string|\Closure $label
    *   The task label.
    * @param callable $action
-   *   The work to run. It returns FALSE on failure.
+   *   The work to run. Receives the answers collected so far, with NULL for a
+   *   skipped step, and returns FALSE on failure.
    * @param string|callable $hint
    *   Optional dim line under the label, or a callable that receives the
    *   action's return value.
@@ -6887,8 +6888,11 @@ class PromptyFlow {
     string|callable $failure = '',
     bool|\Closure $stream = FALSE,
   ): static {
-    $resolved = ['label' => $label, 'stream' => $stream];
-    $fixed = ['action' => $action, 'hint' => $hint, 'success' => $success, 'failure' => $failure];
+    // Prompty::task() calls the action with no arguments, so the action is
+    // resolved to a closure bound to the answers.
+    $bind = static fn(array $results): \Closure => static fn(): mixed => $action($results);
+    $resolved = ['label' => $label, 'action' => $bind, 'stream' => $stream];
+    $fixed = ['hint' => $hint, 'success' => $success, 'failure' => $failure];
 
     // A flow stores the outcome rather than the return value, which can be
     // NULL, the value a cancelled step answers with.

@@ -283,8 +283,8 @@ final class PromptyTaskStreamTest extends PromptyTestCase {
       $result = Prompty::flow()
         ->select('course', 'Course', options: ['main' => 'Main', 'dessert' => 'Dessert'], default: 'dessert')
           ->children()
-            ->task('bake', 'Baking the tart', action: function (): bool {
-              echo "Oven at 180°C\n";
+            ->task('bake', 'Baking the tart', action: function (array $results): bool {
+              echo 'Oven at 180°C for ' . $results['course'] . "\n";
 
               return TRUE;
             }, success: 'Tart baked', stream: TRUE)
@@ -294,7 +294,7 @@ final class PromptyTaskStreamTest extends PromptyTestCase {
     });
 
     $this->assertSame(['course' => 'dessert', 'bake' => TRUE, 'warm' => TRUE], $result);
-    $this->assertSame("◆  Course (1)\n│  Dessert\n│\n│  │\n│  ◇  Baking the tart (1.1)\n│  │    Oven at 180°C\n│  │  \n│  │  ✓ Tart baked\n│  │  \n│  ◆  Serve warm? (1.2)\n│     Yes\n│     \n", $output);
+    $this->assertSame("◆  Course (1)\n│  Dessert\n│\n│  │\n│  ◇  Baking the tart (1.1)\n│  │    Oven at 180°C for dessert\n│  │  \n│  │  ✓ Tart baked\n│  │  \n│  ◆  Serve warm? (1.2)\n│     Yes\n│     \n", $output);
   }
 
   #[DataProvider('dataProviderStreamLive')]
