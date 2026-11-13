@@ -49,10 +49,10 @@ EXPECTED,
   }
 
   #[DataProvider('dataProviderRenderOutro')]
-  public function testRenderOutro(string $message, string $expected): void {
+  public function testRenderOutro(string $message, bool $is_first, string $expected): void {
     $p = $this->createInstance();
 
-    $lines = $this->callProtectedLines($p, 'renderOutro', $message);
+    $lines = $this->callProtectedLines($p, 'renderOutro', $message, $is_first);
 
     $actual = $this->stripAnsi(implode("\n", $lines));
 
@@ -62,6 +62,7 @@ EXPECTED,
   public static function dataProviderRenderOutro(): \Iterator {
     yield 'simple outro' => [
       "You're all set!",
+      TRUE,
       <<<'EXPECTED'
 |
 #  You're all set!
@@ -71,9 +72,19 @@ EXPECTED,
 
     yield 'cancelled outro' => [
       'Cancelled.',
+      TRUE,
       <<<'EXPECTED'
 |
 #  Cancelled.
+
+EXPECTED,
+    ];
+
+    yield 'outro after a drawn entry' => [
+      "You're all set!",
+      FALSE,
+      <<<'EXPECTED'
+#  You're all set!
 
 EXPECTED,
     ];

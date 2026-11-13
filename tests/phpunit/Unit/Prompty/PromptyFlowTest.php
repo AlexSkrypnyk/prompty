@@ -150,7 +150,6 @@ final class PromptyFlowTest extends PromptyTestCase {
     +  Name
     |  test
     |
-    |
     #  Done!
 
     EXPECTED;
@@ -191,6 +190,89 @@ final class PromptyFlowTest extends PromptyTestCase {
     EXPECTED;
 
     $this->assertSame($expected . "\n", $output);
+  }
+
+  #[DataProvider('dataProviderFlowOutroDrawsOneBar')]
+  public function testFlowOutroDrawsOneBar(\Closure $run, string $expected): void {
+    $output = $this->captureOutput($run);
+
+    $this->assertSame($expected, $output);
+  }
+
+  public static function dataProviderFlowOutroDrawsOneBar(): \Iterator {
+    yield 'after a question' => [
+      static fn(): mixed => Prompty::flow()
+        ->text('dish', 'Dish name', discovered: 'pear tart')
+        ->confirm('send', 'Send order?', discovered: 'yes')
+        ->run(intro: 'Kitchen order', outro: 'Order sent!', unicode: FALSE, interactive: FALSE),
+      "\n#  Kitchen order\n|\n+  Dish name\n|  pear tart\n|\n+  Send order?\n|  Yes\n|\n#  Order sent!\n\n",
+    ];
+
+    yield 'after a note' => [
+      static fn(): mixed => Prompty::flow()
+        ->text('dish', 'Dish name', discovered: 'pear tart')
+        ->note("Next steps:\n  plate the tart")
+        ->run(intro: 'Kitchen order', outro: 'Order sent!', unicode: FALSE, interactive: FALSE),
+      "\n#  Kitchen order\n|\n+  Dish name\n|  pear tart\n|\n*  Next steps:\n|    plate the tart\n|\n#  Order sent!\n\n",
+    ];
+
+    yield 'after a task' => [
+      static fn(): mixed => Prompty::flow()
+        ->task('fire', 'Firing the order', static fn(): bool => TRUE)
+        ->run(intro: 'Kitchen order', outro: 'Order sent!', unicode: FALSE, interactive: FALSE),
+      "\n#  Kitchen order\n|\no  Firing the order\n|  + Done\n|\n#  Order sent!\n\n",
+    ];
+
+    yield 'after a nested child' => [
+      static fn(): mixed => Prompty::flow()
+        ->confirm('extras', 'Extras', discovered: 'yes')
+          ->children()
+            ->text('note', 'Note', discovered: 'no nuts')
+          ->end()
+        ->run(intro: 'Kitchen order', outro: 'Order sent!', unicode: FALSE, interactive: FALSE),
+      "\n#  Kitchen order\n|\n+  Extras\n|  Yes\n|\n|  |\n|  +  Note\n|     no nuts\n|     \n#  Order sent!\n\n",
+    ];
+
+    yield 'after the intro, every step skipped' => [
+      static fn(): mixed => Prompty::flow()
+        ->text('dish', 'Dish name', discovered: 'pear tart')
+          ->when(static fn(): bool => FALSE)
+        ->run(intro: 'Kitchen order', outro: 'Order sent!', unicode: FALSE, interactive: FALSE),
+      "\n#  Kitchen order\n|\n#  Order sent!\n\n",
+    ];
+
+    yield 'nothing drawn' => [
+      static fn(): mixed => Prompty::flow()
+        ->text('dish', 'Dish name', discovered: 'pear tart')
+          ->when(static fn(): bool => FALSE)
+        ->run(outro: 'Order sent!', unicode: FALSE, interactive: FALSE),
+      "|\n#  Order sent!\n\n",
+    ];
+
+    yield 'outro callable printing an outro' => [
+      static fn(): mixed => Prompty::flow()
+        ->text('dish', 'Dish name', discovered: 'pear tart')
+        ->run(outro: static function (): void {
+          Prompty::outro('Order sent!');
+        }, unicode: FALSE, interactive: FALSE),
+      "+  Dish name\n|  pear tart\n|\n#  Order sent!\n\n",
+    ];
+
+    yield 'standalone outro after a flow' => [
+      static function (): void {
+        Prompty::configure(unicode: FALSE, interactive: FALSE);
+        Prompty::flow()->text('dish', 'Dish name', discovered: 'pear tart')->run();
+        Prompty::outro('Order sent!');
+      },
+      "+  Dish name\n|  pear tart\n|\n|\n#  Order sent!\n\n",
+    ];
+  }
+
+  public function testFlowCancelledDrawsOneBar(): void {
+    $r = $this->promptyRun(fn(): mixed => Prompty::flow()->text('dish', 'Dish name')->run(cancelled: 'Order cancelled.', unicode: FALSE), self::KEY_ESCAPE);
+
+    $this->assertNull($r['result']);
+    $this->assertStringContainsString("(cancelled)\n|\n#  Order cancelled.\n", $r['output']);
   }
 
   public function testResultsReturnsLastFlowAnswers(): void {

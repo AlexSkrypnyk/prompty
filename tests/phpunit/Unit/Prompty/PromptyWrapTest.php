@@ -576,7 +576,6 @@ EXPECTED,
 |  +  Bread
 |     Yes
 |
-|
 #  The order is on the pass
    and the kitchen has
    started.
