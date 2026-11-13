@@ -1048,6 +1048,8 @@ $send = Prompty::confirm('Send order?',
 );
 ```
 
+To end a flow when the answer is No, pass `cancel_on_no: TRUE`. A No then draws its answer line and returns `null`, so a [flow](#flows) draws its `cancelled` message and `run()` returns `null`, as on <kbd>Escape</kbd>. The No can come from a key press, a `discovered` value or an environment variable.
+
 </details>
 
 ### Pause
@@ -1601,7 +1603,7 @@ $results = Prompty::flow()
 
 The chain has a method for each widget: `->text()`, `->select()`, `->multiselect()`, `->suggest()`, `->confirm()`, `->pause()` and `->task()`. `->note()` and `->section()` add a [note](#notes) and a [heading](#section-headings), and take no key. Each key can appear once in the flow, so a reused key throws an `InvalidArgumentException` where you add it.
 
-`run()` returns the answers keyed by step, or `null` when the user cancels any step.
+`run()` returns the answers keyed by step, or `null` when the user cancels any step. A No on a `->confirm()` step with `cancel_on_no: TRUE` cancels the flow too.
 
 An input stream with nothing left to read counts as a cancellation. A flow run from a pipe, from `/dev/null` or in CI without a terminal returns `null` at the first prompt it can't read. To answer every step from its default instead, use [non-interactive mode](#non-interactive-mode).
 

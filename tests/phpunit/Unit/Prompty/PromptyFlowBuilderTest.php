@@ -616,6 +616,14 @@ final class PromptyFlowBuilderTest extends PromptyTestCase {
     yield 'confirm' => ['confirm', ['label' => 'Dessert?', 'default' => FALSE], self::KEY_ENTER, FALSE];
   }
 
+  public function testProviderConfirmCancelsOnNo(): void {
+    $step = new PromptyFlowBuilderTestStep('confirm', ['label' => 'Dessert?', 'default' => FALSE, 'cancel_on_no' => TRUE]);
+
+    $r = $this->runFlow(static fn(PromptyFlow $flow): PromptyFlow => $flow->text('dish', 'Dish', default: 'tart')->add($step), self::KEY_ENTER . self::KEY_ENTER);
+
+    $this->assertNull($r['result']);
+  }
+
 }
 
 /**

@@ -100,7 +100,7 @@ The [`playground/`](playground) directory holds runnable demos. Each filename st
 | `03-output.php`                | Notes of each type, standalone and in a nested flow, then summary tables and titled boxes. |
 | `04-tasks.php`                 | Tasks behind a spinner, and tasks streaming a child process's output.                      |
 | `04-tasks-nested.php`          | Streamed tasks nested 1, 2 and 3 levels deep, then a nested failure.                       |
-| `05-flows.php`                 | A linear flow with descriptions, hints and help.                                           |
+| `05-flows.php`                 | A linear flow with descriptions, hints and help, ending on a No that cancels it.           |
 | `05-flows-nested.php`          | A nested flow with conditionals, 3 levels deep.                                            |
 | `05-flows-steps.php`           | Arguments from earlier answers, section headings, an unnumbered task and a step provider.  |
 | `05-flows-step-keys.php`       | What a step key becomes, and which are turned down.                                        |
