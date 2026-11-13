@@ -230,7 +230,7 @@ final class PromptyTaskTest extends PromptyTestCase {
     yield 'empty spinner' => ['', '  Preheating the oven'];
   }
 
-  public function testTaskLiveExceptionClearsLabel(): void {
+  public function testTaskLiveExceptionDrawsFailure(): void {
     $p = $this->createAndSetInstance();
     $this->setProperty($p, 'isTerminal', TRUE);
 
@@ -248,7 +248,9 @@ final class PromptyTaskTest extends PromptyTestCase {
 
     $output = (string) ob_get_clean();
 
-    $this->assertSame("\033[?25l|  Preheating the oven\n\033[1A\r\033[J\033[?25h", str_replace(PHP_EOL, "\n", $this->stripColors($output)));
+    $this->assertSame("\033[?25l|  Preheating the oven\n\033[1A\r\033[Jo  Preheating the oven\n|  ! The oven door is open.\n|\n\033[?25h", str_replace(PHP_EOL, "\n", $this->stripColors($output)));
+    $this->assertStringContainsString("\033[31mo\033[0m  Preheating the oven", $output);
+    $this->assertStringContainsString("\033[31m! The oven door is open.\033[0m", $output);
   }
 
   public function testTaskLiveExceptionInFlowKeepsCursorHidden(): void {
@@ -268,16 +270,90 @@ final class PromptyTaskTest extends PromptyTestCase {
 
     $output = (string) ob_get_clean();
 
-    $this->assertSame("|  Preheating the oven\n\033[1A\r\033[J", str_replace(PHP_EOL, "\n", $this->stripColors($output)));
+    $this->assertSame("|  Preheating the oven\n\033[1A\r\033[Jo  Preheating the oven\n|  ! The oven door is open.\n|\n", str_replace(PHP_EOL, "\n", $this->stripColors($output)));
   }
 
-  public function testTaskPrintedExceptionKeepsLabel(): void {
+  #[DataProvider('dataProviderTaskPrintedException')]
+  public function testTaskPrintedException(array $arguments, string $expected): void {
     $this->createAndSetInstance(['interactive' => FALSE]);
 
-    $output = $this->captureOutputThrows(\RuntimeException::class, 'The oven door is open.', fn(): mixed => Prompty::task('Preheating the oven', action: function (): never {
+    $action = function (): never {
       throw new \RuntimeException('The oven door is open.');
+    };
+
+    $output = $this->captureOutputThrows(\RuntimeException::class, 'The oven door is open.', fn(): mixed => Prompty::task('Preheating the oven', ...['action' => $action, ...$arguments]));
+
+    $this->assertSame($expected, $output);
+  }
+
+  public static function dataProviderTaskPrintedException(): \Iterator {
+    yield 'exception message as the failure line' => [
+      [],
+      "o  Preheating the oven\n|  ! The oven door is open.\n|\n",
+    ];
+
+    yield 'failure string replaces the message' => [
+      ['failure' => 'Oven did not reach temperature'],
+      "o  Preheating the oven\n|  ! Oven did not reach temperature\n|\n",
+    ];
+
+    yield 'failure callable receives the exception' => [
+      ['failure' => fn(\Throwable $throwable): string => 'Oven failed: ' . $throwable->getMessage()],
+      "o  Preheating the oven\n|  ! Oven failed: The oven door is open.\n|\n",
+    ];
+
+    yield 'failure callable returning empty draws the message' => [
+      ['failure' => fn(): string => ''],
+      "o  Preheating the oven\n|  ! The oven door is open.\n|\n",
+    ];
+
+    yield 'string hint is drawn' => [
+      ['hint' => 'Fan oven, 180°C'],
+      "o  Preheating the oven\n|  Fan oven, 180°C\n|  ! The oven door is open.\n|\n",
+    ];
+
+    yield 'hint callable is not called' => [
+      ['hint' => fn(int $degrees): string => sprintf('Oven at %d°C', $degrees)],
+      "o  Preheating the oven\n|  ! The oven door is open.\n|\n",
+    ];
+
+    yield 'success callable is not called' => [
+      ['success' => fn(int $degrees): string => sprintf('Oven at %d°C', $degrees)],
+      "o  Preheating the oven\n|  ! The oven door is open.\n|\n",
+    ];
+  }
+
+  public function testTaskPrintedExceptionWithoutMessage(): void {
+    $this->createAndSetInstance(['interactive' => FALSE]);
+
+    $output = $this->captureOutputThrows(\RuntimeException::class, '', fn(): mixed => Prompty::task('Preheating the oven', action: function (): never {
+      throw new \RuntimeException();
     }));
 
+    $this->assertSame("o  Preheating the oven\n|  ! Failed\n|\n", $output);
+  }
+
+  public function testTaskExceptionFailureCallableInvalid(): void {
+    $this->createAndSetInstance(['interactive' => FALSE]);
+    $thrown = NULL;
+
+    ob_start();
+
+    try {
+      Prompty::task('Preheating the oven', action: function (): never {
+        throw new \RuntimeException('The oven door is open.');
+      }, failure: fn(): int => 180);
+    }
+    catch (\UnexpectedValueException $unexpected_value_exception) {
+      $thrown = $unexpected_value_exception;
+    }
+
+    $output = $this->promptyNormalizeOutput((string) ob_get_clean());
+
+    $this->assertInstanceOf(\UnexpectedValueException::class, $thrown);
+    $this->assertSame('The failure callable for task "Preheating the oven" returned int. It must return the text to draw.', $thrown->getMessage());
+    $this->assertInstanceOf(\RuntimeException::class, $thrown->getPrevious());
+    $this->assertSame('The oven door is open.', $thrown->getPrevious()->getMessage());
     $this->assertSame("o  Preheating the oven\n", $output);
   }
 

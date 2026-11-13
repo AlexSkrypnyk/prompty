@@ -315,6 +315,7 @@ Work a demo runs with `Prompty::task()`, between its questions:
 - `Proving the dough` - fails with `Dough did not rise`.
 - `Baking the tart` - streamed. Writes `Oven at 180°C`, `Tray 1 of 2 in the top rack`, a `Rising 20%` to `Rising 100%` progress meter, `Crust golden at the edges`, `Tray 2 of 2 in the top rack`, `Fan cycling, temperature held` and `Both trays out, resting on the rack`. Success `Tart baked`.
 - `Poaching the pears` - streamed. Writes `Syrup at a low simmer`, `Pears in, lid half on` and `Checked at 20 minutes: still firm`, then fails with `Pears are not soft yet`.
+- `Lighting the grill` - hint `Top burner, high heat`. Throws `The gas supply is off.`, and its flow closes with `Kitchen order not sent.`
 
 Nested tasks run inside a streamed task's action, 1 inside the next. `04-tasks-nested.php` adds them a level at a time:
 

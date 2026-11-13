@@ -235,7 +235,7 @@ final class PromptyTaskStreamTest extends PromptyTestCase {
       throw new \RuntimeException('The oven door is open.');
     }, stream: TRUE));
 
-    $this->assertSame("o  Baking the tart\n|    Oven at 180°C\n|    Door\n", $output);
+    $this->assertSame("o  Baking the tart\n|    Oven at 180°C\n|    Door\n|\n|  ! The oven door is open.\n|\n", $output);
     $this->assertSame([], $this->getProperty($p, 'streams'));
   }
 
@@ -442,7 +442,7 @@ final class PromptyTaskStreamTest extends PromptyTestCase {
 
     $output = (string) ob_get_clean();
 
-    $this->assertStringEndsWith("\033[2A\r\033[Jo  Baking the tart\n|    Oven at 180°C\n\033[?25h", str_replace(PHP_EOL, "\n", $this->stripColors($output)));
+    $this->assertStringEndsWith("\033[2A\r\033[Jo  Baking the tart\n|    Oven at 180°C\n|\n|  ! The oven door is open.\n|\n\033[?25h", str_replace(PHP_EOL, "\n", $this->stripColors($output)));
     $this->assertStringContainsString("\033[31mo\033[0m  Baking the tart", $output);
   }
 
@@ -652,7 +652,7 @@ final class PromptyTaskStreamTest extends PromptyTestCase {
       return TRUE;
     }, success: 'Tart baked', stream: TRUE));
 
-    $this->assertSame("o  Baking the tart\n|    o  Making the pastry\n|    |    Butter too warm\n|    Pastry made again\n|\n|  + Tart baked\n|\n", $output);
+    $this->assertSame("o  Baking the tart\n|    o  Making the pastry\n|    |    Butter too warm\n|    |\n|    |  ! The butter melted.\n|    |\n|    Pastry made again\n|\n|  + Tart baked\n|\n", $output);
     $this->assertSame([], $this->getProperty($p, 'streams'));
   }
 

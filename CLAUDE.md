@@ -15,8 +15,8 @@ builder), `PromptyTestTrait.php` (test helper).
   `ctx`.
 - **Tasks** - `task()` redraws only when `isLive()`; tests set the `isTerminal`
   property to force it. A flow calls a task's action with the answers and
-  stores its outcome as a bool. The spinner
-  runs in a `pcntl_fork()` child. `stream: TRUE` captures output with
+  stores its outcome as a bool. An action's exception draws the failure line,
+  then is rethrown. The spinner runs in a `pcntl_fork()` child. `stream: TRUE` captures output with
   `ob_start()` at chunk size 1; a buffer handler can't echo, so `write()`
   collects drawn output in `$streamBuffer` for the handler to return.
 - **Typed config properties** - `cfgUseUnicode`, `cfgSymbols`, `cfgColors`,
@@ -37,6 +37,8 @@ builder), `PromptyTestTrait.php` (test helper).
 - **Skipped steps** - a step skipped by its condition answers `NULL`, and so
   does every step under it (`skipSteps()`). Step back keeps `NULL`s out of
   `$previous`, so a replay never mistakes one for a cancellation.
+- **Failed flows** - `runFlow()` catches an exception from the walk, draws the
+  `failed` banner when the flow has printed rows, and rethrows.
 - **Step providers** - `PromptyFlow::add()` takes a `PromptyStepInterface`;
   its `widget()` and `arguments()` are asked when the step is reached.
 - **Sections** - `walkFlow()` draws a section only when a step in its group

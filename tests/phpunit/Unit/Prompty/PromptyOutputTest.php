@@ -382,7 +382,7 @@ final class PromptyOutputTest extends PromptyTestCase {
     }
 
     $this->assertSame('Kitchen closed.', $thrown);
-    $this->assertSame('Table 4' . PHP_EOL, $written);
+    $this->assertSame(implode(PHP_EOL, ['Table 4', "\033[90m#\033[0m  \033[31mFailed\033[0m", '']) . PHP_EOL, $written);
     $this->assertNull(Prompty::config()['output']);
   }
 

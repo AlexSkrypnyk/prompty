@@ -1214,7 +1214,18 @@ $degrees = Prompty::task('Preheating the oven',
 );
 ```
 
-An empty `success` or `failure` draws the `done` or `failed` label. When the action returns a list of strings, each string is drawn as a dim detail line under the label. An exception from the action clears the spinner and is rethrown.
+An empty `success` or `failure` draws the `done` or `failed` label. When the action returns a list of strings, each string is drawn as a dim detail line under the label.
+
+An exception from the action draws a failure line, and then `task()` rethrows it. The failure line is the exception message, unless you pass `failure`. A `failure` callable receives the exception, so it can reword the message:
+
+```php
+Prompty::task('Lighting the grill',
+  action: fn(): bool => $grill->light(),
+  failure: fn(\Throwable $e): string => 'Grill not lit: ' . $e->getMessage(),
+);
+```
+
+A `hint` callable isn't called after an exception, because the action returned no value.
 
 The spinner animates in a forked child process, which needs the `pcntl` and `posix` extensions. Without them, it shows 1 still frame. It also shows a still frame while your script buffers output with `ob_start()` or writes to a callable [output target](#output-target).
 
@@ -1607,7 +1618,7 @@ The chain has a method for each widget: `->text()`, `->select()`, `->multiselect
 
 An input stream with nothing left to read counts as a cancellation. A flow run from a pipe, from `/dev/null` or in CI without a terminal returns `null` at the first prompt it can't read. To answer every step from its default instead, use [non-interactive mode](#non-interactive-mode).
 
-`run()` takes the flow's options as named arguments. `intro`, `outro` and `cancelled` each take a string or a callable. A callable receives the answers collected so far and returns the message to draw:
+`run()` takes the flow's options as named arguments. `intro`, `outro`, `cancelled` and `failed` each take a string or a callable. A callable receives the answers collected so far and returns the message to draw:
 
 ```php
 $results = Prompty::flow()
@@ -1630,6 +1641,34 @@ outro: function (array $results): void {
 ```
 
 Any other return value throws an `UnexpectedValueException`.
+
+When a step throws, the flow closes the tree with the `failed` message in red, and then `run()` rethrows the exception. `failed` takes a string or a callable, as `outro` does. It defaults to the `failed` label. A task draws the exception message as its failure line, so your `catch` block only sets the exit code:
+
+```php
+try {
+  Prompty::flow()
+    ->text('dish', 'Dish name', placeholder: 'pear tart')
+    ->task('grill', 'Lighting the grill', action: fn(): bool => $grill->light())
+    ->run(intro: 'Kitchen order', failed: 'Kitchen order not sent.');
+}
+catch (\RuntimeException $e) {
+  exit(1);
+}
+```
+
+```
+┌  Kitchen order
+│
+◆  Dish name
+│  pear tart
+│
+◇  Lighting the grill
+│  ▲ The gas supply is off.
+│
+└  Kitchen order not sent.
+```
+
+The flow draws no `failed` message when the step throws before the flow has drawn anything.
 
 `->intro('Compose an order')` sets the intro inside the chain instead. An `intro` passed to `run()` replaces it.
 

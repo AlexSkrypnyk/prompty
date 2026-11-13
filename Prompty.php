@@ -50,6 +50,7 @@ namespace AlexSkrypnyk\Prompty;
  *   intro: string|callable|null,
  *   outro: string|callable|null,
  *   cancelled: string|callable|null,
+ *   failed: string|callable|null,
  *   numbering: bool|string,
  *   symbols_unicode: array<string, string>|null,
  *   symbols_ascii: array<string, string>|null,
@@ -2216,8 +2217,7 @@ class Prompty {
    * a terminal - the label is printed before the action runs and the rest is
    * printed after it.
    *
-   * An exception from the action is rethrown once the spinner is cleared, or
-   * once a streamed window is expanded into the full output.
+   * An exception from the action draws the failure line, then is rethrown.
    *
    * @param string $label
    *   The task label shown to the user.
@@ -2226,13 +2226,15 @@ class Prompty {
    *   success. A list of strings is drawn as detail lines under the label.
    * @param string|callable $hint
    *   Optional dim line under the label, or a callable that receives the
-   *   action's return value and returns the line.
+   *   action's return value and returns the line. A callable is not called
+   *   when the action throws.
    * @param string|callable $success
    *   The result line on success, or a callable that receives the action's
    *   return value and returns the line. '' draws the 'done' label.
    * @param string|callable $failure
    *   The result line on failure, or a callable that receives the action's
-   *   return value and returns the line. '' draws the 'failed' label.
+   *   return value, or the exception it threw, and returns the line. '' draws
+   *   the exception message, or the 'failed' label when there is none.
    * @param bool $stream
    *   Draw what the action writes instead of a spinner: 'echo' and 'print'
    *   output, child process output passed through PHP's output layer, such as
@@ -2277,16 +2279,22 @@ class Prompty {
     // stream, which cannot hold cursor movement.
     $is_live = $p->isLive() && !$p->isCapturedByStream();
 
-    $outcome = function (mixed $value) use ($p, $plain_label, $hint, $success, $failure, $open): array {
-      $has_succeeded = $value !== FALSE;
-      $message = $p->taskText($plain_label, $has_succeeded ? 'success' : 'failure', $has_succeeded ? $success : $failure, $value);
+    $outcome = function (mixed $value, ?\Throwable $throwable = NULL) use ($p, $plain_label, $hint, $success, $failure, $open): array {
+      $has_succeeded = !$throwable instanceof \Throwable && $value !== FALSE;
+      $message = $p->taskText($plain_label, $has_succeeded ? 'success' : 'failure', $has_succeeded ? $success : $failure, $throwable ?? $value);
+
+      if ($message === '' && $throwable instanceof \Throwable) {
+        $message = $throwable->getMessage();
+      }
 
       return [
         'ok' => $has_succeeded,
-        'hint' => $p->taskText($plain_label, 'hint', $hint, $value),
+        'hint' => !$throwable instanceof \Throwable || is_string($hint) ? $p->taskText($plain_label, 'hint', $hint, $value) : '',
         'details' => is_array($value) && array_is_list($value) && count(array_filter($value, is_string(...))) === count($value) ? $value : [],
         'message' => $message !== '' ? $message : $p->label($has_succeeded ? 'done' : 'failed'),
-        'open' => $p->settleOpen($has_succeeded, $open),
+        // No later sibling runs after an exception, so their conditions are
+        // not evaluated.
+        'open' => $throwable instanceof \Throwable ? $open : $p->settleOpen($has_succeeded, $open),
       ];
     };
 
@@ -3674,13 +3682,14 @@ class Prompty {
    * @param string|callable $text
    *   The text, or a callable that receives the action's return value.
    * @param mixed $value
-   *   The action's return value.
+   *   The action's return value, or the exception it threw.
    *
    * @return string
    *   The text to draw.
    *
    * @throws \UnexpectedValueException
-   *   When the callable returns anything other than a string.
+   *   When the callable returns anything other than a string. An exception
+   *   the action threw is its previous exception.
    */
   protected function taskText(string $label, string $parameter, string|callable $text, mixed $value): string {
     if (is_string($text)) {
@@ -3690,7 +3699,7 @@ class Prompty {
     $resolved = $text($value);
 
     if (!is_string($resolved)) {
-      throw new \UnexpectedValueException(sprintf('The %s callable for task "%s" returned %s. It must return the text to draw.', $parameter, $label, get_debug_type($resolved)));
+      throw new \UnexpectedValueException(sprintf('The %s callable for task "%s" returned %s. It must return the text to draw.', $parameter, $label, get_debug_type($resolved)), 0, $value instanceof \Throwable ? $value : NULL);
     }
 
     return $resolved;
@@ -3704,7 +3713,8 @@ class Prompty {
    * @param callable $action
    *   The work to run.
    * @param \Closure $outcome
-   *   Receives the return value and resolves what is drawn for it.
+   *   Receives the return value, or NULL and the exception the action threw,
+   *   and resolves what is drawn for it.
    * @param int $depth
    *   The current nesting depth.
    * @param array<int, bool> $open
@@ -3722,11 +3732,19 @@ class Prompty {
 
     $rows = $this->printLines($is_live ? $frame(0) : $this->renderLabel($label, 'active', 'cyan', $depth, $open));
     $spinner = $is_live ? $this->animate($frame, $rows) : NULL;
+    $value = NULL;
+    $thrown = NULL;
 
     try {
-      $value = $action();
+      try {
+        $value = $action();
+      }
+      catch (\Throwable $thrown) {
+        // Drawn as the failure, then rethrown.
+      }
+
       /** @var array{ok: bool, hint: string, details: list<string>, message: string, open: array<int, bool>} $resolved */
-      $resolved = $outcome($value);
+      $resolved = $outcome($value, $thrown);
     }
     catch (\Throwable $throwable) {
       $this->stopAnimation($spinner);
@@ -3744,6 +3762,10 @@ class Prompty {
     $drawn = $is_live ? [...$this->renderTaskLabel($label, $resolved['ok'], $depth, $resolved['open']), ...$result] : $result;
     $this->drawTo($output, fn(): int => $is_live ? $this->redraw($rows, $drawn) : $this->printLines($drawn));
 
+    if ($thrown instanceof \Throwable) {
+      throw $thrown;
+    }
+
     return $value;
   }
 
@@ -3755,7 +3777,8 @@ class Prompty {
    * @param callable $action
    *   The work to run.
    * @param \Closure $outcome
-   *   Receives the return value and resolves what is drawn for it.
+   *   Receives the return value, or NULL and the exception the action threw,
+   *   and resolves what is drawn for it.
    * @param int $depth
    *   The current nesting depth.
    * @param array<int, bool> $open
@@ -3789,17 +3812,22 @@ class Prompty {
     ob_start(fn(string $buffer): string => $this->captureStream($index, $buffer), 1);
 
     $lines = [];
+    $value = NULL;
+    $thrown = NULL;
 
     try {
       try {
         $value = $action();
+      }
+      catch (\Throwable $thrown) {
+        // Drawn as the failure, then rethrown.
       }
       finally {
         $lines = $this->endStream($index, $level);
       }
 
       /** @var array{ok: bool, hint: string, details: list<string>, message: string, open: array<int, bool>} $resolved */
-      $resolved = $outcome($value);
+      $resolved = $outcome($value, $thrown);
     }
     catch (\Throwable $throwable) {
       if ($is_live) {
@@ -3819,16 +3847,19 @@ class Prompty {
     $note = $is_live && $has_succeeded && $count > 0 ? sprintf(' (%d %s)', $count, $this->label($count === 1 ? 'line' : 'lines')) : '';
     $result = $this->renderTaskResult($has_succeeded, $resolved['hint'], $resolved['details'], $resolved['message'], $note, $depth, $settled);
 
-    if (!$is_live) {
+    if ($is_live) {
+      // A failure keeps every line, since the cause is among them.
+      $body = $has_succeeded ? $result : array_merge($this->renderTaskLines($lines, $depth, $settled), $gap, $result);
+      $drawn = array_merge($this->renderTaskLabel($label, $has_succeeded, $depth, $settled), $body);
+      $this->drawTo($output, fn(): int => $this->redraw($rows, $drawn));
+    }
+    else {
       $this->drawTo($output, fn(): int => $this->printLines(array_merge($gap, $result)));
-
-      return $value;
     }
 
-    // A failure keeps every line, since the cause is among them.
-    $body = $has_succeeded ? $result : array_merge($this->renderTaskLines($lines, $depth, $settled), $gap, $result);
-    $drawn = array_merge($this->renderTaskLabel($label, $has_succeeded, $depth, $settled), $body);
-    $this->drawTo($output, fn(): int => $this->redraw($rows, $drawn));
+    if ($thrown instanceof \Throwable) {
+      throw $thrown;
+    }
 
     return $value;
   }
@@ -4855,18 +4886,20 @@ class Prompty {
    * @param bool $is_first
    *   Whether nothing has been drawn above the outro in the flow. A drawn
    *   entry ends with a bar line, so the outro draws its own only when first.
+   * @param string $color
+   *   The color of the message.
    *
    * @return array<int, string>
    *   The rendered outro lines.
    */
-  protected function renderOutro(string $message, bool $is_first = TRUE): array {
+  protected function renderOutro(string $message, bool $is_first = TRUE, string $color = 'green'): array {
     $message = $this->printable($message);
     $gutter = $this->color($this->cfgSymbols['outro'], 'gray') . $this->cfgSpacing['indent'];
 
     // The outro ends the tree, so its continuation rows draw no bar.
     return [
       ...($is_first ? [$this->bar()] : []),
-      ...$this->wrap($gutter, $this->color($message, 'green'), $this->pad($gutter)),
+      ...$this->wrap($gutter, $this->color($message, $color), $this->pad($gutter)),
       '',
     ];
   }
@@ -5737,7 +5770,9 @@ class Prompty {
    * Runs the steps a flow builder declared.
    *
    * Flow state and terminal state are restored on every exit path, including
-   * when a step, condition or callback throws.
+   * when a step, condition or callback throws. An exception thrown while the
+   * steps run draws the failed message below what the flow has drawn, then
+   * is rethrown.
    *
    * @param list<array<string, mixed>> $steps
    *   The top-level steps, as PromptyFlow builds them.
@@ -5753,6 +5788,7 @@ class Prompty {
       'intro' => $intro,
       'outro' => $outro,
       'cancelled' => $cancelled,
+      'failed' => $failed,
       'numbering' => $numbering,
       'symbols_unicode' => $symbols_unicode,
       'symbols_ascii' => $symbols_ascii,
@@ -5829,14 +5865,26 @@ class Prompty {
 
       $p->drawFlowMessage('intro', $intro);
 
-      // Stepping back restarts the walk, which replays the steps before the
-      // reopened one from their answers without drawing them.
-      do {
-        $p->results = [];
-        $p->open = [];
-        $p->hasDrawn = $intro !== NULL;
-        $outcome = $p->walkFlow($steps, 0, $options, '');
-      } while ($outcome === 'back');
+      try {
+        // Stepping back restarts the walk, which replays the steps before the
+        // reopened one from their answers without drawing them.
+        do {
+          $p->results = [];
+          $p->open = [];
+          $p->hasDrawn = $intro !== NULL;
+          $outcome = $p->walkFlow($steps, 0, $options, '');
+        } while ($outcome === 'back');
+      }
+      catch (\Throwable $throwable) {
+        // The walk marks a step drawn only once it returns, so the rows a
+        // throwing step printed count too.
+        if ($p->hasDrawn || $p->rows > 0) {
+          $p->hasDrawn = TRUE;
+          $p->drawFlowMessage('failed', $failed ?? $p->label('failed'));
+        }
+
+        throw $throwable;
+      }
 
       if ($outcome === 'cancelled') {
         $p->drawFlowMessage('cancelled', $cancelled);
@@ -5862,11 +5910,12 @@ class Prompty {
   }
 
   /**
-   * Draws a flow's intro, outro or cancelled message.
+   * Draws a flow's intro, outro, cancelled or failed message.
    *
    * @param string $parameter
-   *   The run() parameter the message came from: 'intro', 'outro' or
-   *   'cancelled'. 'intro' draws an intro banner, the others an outro banner.
+   *   The run() parameter the message came from: 'intro', 'outro',
+   *   'cancelled' or 'failed'. 'intro' draws an intro banner, the others an
+   *   outro banner, red for 'failed'.
    * @param string|callable|null $message
    *   The message, a callable that receives the answers so far and returns
    *   the message or NULL, or NULL to draw nothing.
@@ -5890,7 +5939,7 @@ class Prompty {
       return;
     }
 
-    $this->printLines($parameter === 'intro' ? $this->renderIntro($message) : $this->renderOutro($message, !$this->hasDrawn));
+    $this->printLines($parameter === 'intro' ? $this->renderIntro($message) : $this->renderOutro($message, !$this->hasDrawn, $parameter === 'failed' ? 'red' : 'green'));
   }
 
   /**
@@ -6196,10 +6245,10 @@ class Prompty {
     // The answers so far are known, so the connector settles before drawing.
     $this->markOpen($depth, !$this->isAnyStepVisible($rest, $this->results));
 
-    $this->hasDrawn = TRUE;
-
     // A replayed note is already on screen, so its closures don't run again.
     if ($this->replay !== NULL) {
+      $this->hasDrawn = TRUE;
+
       return;
     }
 
@@ -6208,6 +6257,7 @@ class Prompty {
     $this->assertNoteType($type);
 
     $this->printLines($this->renderNote($message, $type, $depth, $this->open));
+    $this->hasDrawn = TRUE;
   }
 
   /**
@@ -6958,7 +7008,7 @@ class PromptyFlow {
    *   return value.
    * @param string|callable $failure
    *   The result line on failure, or a callable that receives the action's
-   *   return value.
+   *   return value, or the exception it threw.
    * @param bool|\Closure $stream
    *   Draw what the action writes instead of a spinner.
    *
@@ -7140,6 +7190,10 @@ class PromptyFlow {
    *   Outro message drawn after the last step, or a callable as for $intro.
    * @param string|callable|null $cancelled
    *   Message drawn when the flow is cancelled, or a callable as for $intro.
+   * @param string|callable|null $failed
+   *   Message drawn when a step throws after the flow has drawn anything,
+   *   before the exception is rethrown, or a callable as for $intro. NULL
+   *   draws the 'failed' label.
    * @param bool|string $numbering
    *   TRUE numbers steps as (1), (2) and nested (2.1). 'total' also shows the
    *   number of top-level steps due, through the 'step_total' label. FALSE
@@ -7190,13 +7244,14 @@ class PromptyFlow {
    * @throws \LogicException
    *   When a scope opened with children() is still open.
    * @throws \UnexpectedValueException
-   *   When an intro, outro or cancelled callable returns anything other than
-   *   a string or NULL.
+   *   When an intro, outro, cancelled or failed callable returns anything
+   *   other than a string or NULL.
    */
   public function run(
     string|callable|null $intro = NULL,
     string|callable|null $outro = NULL,
     string|callable|null $cancelled = NULL,
+    string|callable|null $failed = NULL,
     bool|string $numbering = FALSE,
     ?array $symbols_unicode = NULL,
     ?array $symbols_ascii = NULL,
@@ -7224,6 +7279,7 @@ class PromptyFlow {
       'intro' => $intro ?? $this->intro,
       'outro' => $outro,
       'cancelled' => $cancelled,
+      'failed' => $failed,
       'numbering' => $numbering,
       'symbols_unicode' => $symbols_unicode,
       'symbols_ascii' => $symbols_ascii,

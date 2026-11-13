@@ -292,7 +292,7 @@ final class PromptyNoteTest extends PromptyTestCase {
       $flow->run(unicode: FALSE, ansi: FALSE, interactive: FALSE);
     });
 
-    $this->assertSame("+  Dish name\n|  pear tart\n|\n", $output);
+    $this->assertSame("+  Dish name\n|  pear tart\n|\n#  Failed\n\n", $output);
   }
 
   public static function dataProviderNoteInFlowClosureErrors(): \Iterator {
