@@ -435,6 +435,26 @@ final class PromptyFlowBuilderTest extends PromptyTestCase {
       \LogicException::class,
       'children() follows the note "Served cold.". Only a step takes children.',
     ];
+    yield 'unnumbered with no step' => [
+      static fn(PromptyFlow $flow): PromptyFlow => $flow->unnumbered(),
+      \LogicException::class,
+      'unnumbered() leaves out the number of the step added before it, and the flow has no step yet.',
+    ];
+    yield 'unnumbered in an empty child scope' => [
+      static fn(PromptyFlow $flow): PromptyFlow => $flow->text('dish', 'Dish')->children()->unnumbered(),
+      \LogicException::class,
+      'unnumbered() leaves out the number of the step added before it, and the children of step "dish" have no step yet.',
+    ];
+    yield 'unnumbered after a section' => [
+      static fn(PromptyFlow $flow): PromptyFlow => $flow->section('Service')->unnumbered(),
+      \LogicException::class,
+      'unnumbered() follows the section "Service". Only a step has a number.',
+    ];
+    yield 'unnumbered after a note' => [
+      static fn(PromptyFlow $flow): PromptyFlow => $flow->note('Served cold.')->unnumbered(),
+      \LogicException::class,
+      'unnumbered() follows the note "Served cold.". Only a step has a number.',
+    ];
     yield 'end with no step' => [
       static fn(PromptyFlow $flow): PromptyFlow => $flow->end(),
       \LogicException::class,
@@ -507,6 +527,18 @@ final class PromptyFlowBuilderTest extends PromptyTestCase {
 
     $this->assertSame(['dish' => 'pear tart', 'dessert' => 'compote', 'cream' => TRUE], $r['result']);
     $this->assertStringContainsString('Dessert for pear tart', $r['output']);
+  }
+
+  public function testUnnumberedProvider(): void {
+    $r = $this->runFlow(static fn(PromptyFlow $flow): PromptyFlow => $flow
+      ->text('dish', 'Dish name', default: 'pear tart')
+      ->add(new PromptyFlowBuilderTestStep())
+        ->unnumbered()
+      ->confirm('cream', 'Cream?'), self::KEY_ENTER . self::KEY_DOWN . self::KEY_ENTER . self::KEY_ENTER, static fn(PromptyFlow $flow): ?array => $flow->run(numbering: 'total'));
+
+    $this->assertSame(['dish' => 'pear tart', 'dessert' => 'compote', 'cream' => TRUE], $r['result']);
+    $this->assertOutputContainsAll($r['output'], ['Dish name (1/2)', 'Cream? (2/2)']);
+    $this->assertStringNotContainsString('Dessert for pear tart (', $r['output']);
   }
 
   public function testProviderConditionSkipsItsChildren(): void {

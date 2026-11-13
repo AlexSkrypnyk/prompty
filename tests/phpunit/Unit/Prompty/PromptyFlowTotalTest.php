@@ -118,6 +118,88 @@ final class PromptyFlowTotalTest extends PromptyTestCase {
     yield 'format with the total first' => [$order, [], ['step_total' => '(%2$d steps, now %1$d)'], ['Dish name (3 steps, now 1)', 'Course (3 steps, now 2)', 'Extras (3 steps, now 3)']];
   }
 
+  /**
+   * Tests that an unnumbered step takes no number and is not counted.
+   *
+   * @param \Closure $build
+   *   Adds the steps to the flow builder it receives.
+   * @param bool|string $numbering
+   *   The numbering passed to run().
+   * @param list<string> $expected
+   *   The completed step and task labels, in the order they are drawn.
+   */
+  #[DataProvider('dataProviderUnnumbered')]
+  public function testUnnumbered(\Closure $build, bool|string $numbering, array $expected): void {
+    $output = $this->captureOutput(fn(): ?array => $build(Prompty::flow())->run(numbering: $numbering, unicode: FALSE, interactive: FALSE));
+
+    preg_match_all('/^[| ]*[+o]  (.+)$/m', $output, $matches);
+    $this->assertSame($expected, $matches[1]);
+  }
+
+  public static function dataProviderUnnumbered(): \Iterator {
+    $order = static fn(PromptyFlow $flow): PromptyFlow => $flow
+      ->text('dish', 'Dish name', default: 'pear tart')
+      ->select('course', 'Course', options: ['main' => 'Main'], default: 'main')
+      ->confirm('send', 'Send order?')
+      ->task('oven', 'Heating the oven', static fn(): bool => TRUE)
+        ->unnumbered()
+      ->task('ticket', 'Printing the ticket', static fn(): bool => TRUE)
+        ->unnumbered();
+
+    $between = static fn(PromptyFlow $flow): PromptyFlow => $flow
+      ->text('dish', 'Dish name', default: 'pear tart')
+      ->task('oven', 'Heating the oven', static fn(): bool => TRUE)
+        ->unnumbered()
+      ->confirm('send', 'Send order?');
+
+    $parent = static fn(PromptyFlow $flow): PromptyFlow => $flow
+      ->select('course', 'Course', options: ['main' => 'Main'], default: 'main')
+        ->unnumbered()
+        ->children()
+          ->select('method', 'Method', options: ['baked' => 'Baked'])
+            ->children()
+              ->select('temperature', 'Temperature', options: ['low' => 'Low'])
+            ->end()
+        ->end()
+      ->select('table', 'Table', options: ['4' => 'Table 4'], default: '4');
+
+    $child = static fn(PromptyFlow $flow): PromptyFlow => $flow
+      ->select('course', 'Course', options: ['main' => 'Main'], default: 'main')
+        ->children()
+          ->task('oven', 'Heating the oven', static fn(): bool => TRUE)
+            ->unnumbered()
+          ->select('method', 'Method', options: ['baked' => 'Baked'])
+        ->end()
+      ->select('table', 'Table', options: ['4' => 'Table 4'], default: '4');
+
+    $conditional = static fn(PromptyFlow $flow): PromptyFlow => $flow
+      ->select('course', 'Course', options: ['main' => 'Main', 'dessert' => 'Dessert'], default: 'dessert')
+      ->confirm('dust', 'Dust with sugar?')
+        ->when(fn(array $r): bool => $r['course'] === 'dessert')
+        ->unnumbered()
+      ->confirm('send', 'Send order?');
+
+    yield 'total: tasks after the questions' => [$order, 'total', ['Dish name (1/3)', 'Course (2/3)', 'Send order? (3/3)', 'Heating the oven', 'Printing the ticket']];
+
+    yield 'numbered: tasks after the questions' => [$order, TRUE, ['Dish name (1)', 'Course (2)', 'Send order? (3)', 'Heating the oven', 'Printing the ticket']];
+
+    yield 'none: tasks after the questions' => [$order, FALSE, ['Dish name', 'Course', 'Send order?', 'Heating the oven', 'Printing the ticket']];
+
+    yield 'total: next step continues the sequence' => [$between, 'total', ['Dish name (1/2)', 'Heating the oven', 'Send order? (2/2)']];
+
+    yield 'numbered: next step continues the sequence' => [$between, TRUE, ['Dish name (1)', 'Heating the oven', 'Send order? (2)']];
+
+    yield 'total: children of an unnumbered step' => [$parent, 'total', ['Course', 'Method', 'Temperature', 'Table (1/1)']];
+
+    yield 'numbered: children of an unnumbered step' => [$parent, TRUE, ['Course', 'Method', 'Temperature', 'Table (1)']];
+
+    yield 'total: unnumbered child' => [$child, 'total', ['Course (1/2)', 'Heating the oven', 'Method (1.1)', 'Table (2/2)']];
+
+    yield 'numbered: unnumbered child' => [$child, TRUE, ['Course (1)', 'Heating the oven', 'Method (1.1)', 'Table (2)']];
+
+    yield 'total: unnumbered conditional step' => [$conditional, 'total', ['Course (1/2)', 'Dust with sugar?', 'Send order? (2/2)']];
+  }
+
   public function testTotalKeepsTheErrorHandler(): void {
     $notices = [];
     set_error_handler(function (int $severity, string $message) use (&$notices): bool {

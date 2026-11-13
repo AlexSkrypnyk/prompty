@@ -1777,7 +1777,7 @@ Input is on by default, so a flow without a terminal still cancels at its first 
 
 ### Step numbering
 
-`numbering: TRUE` adds the step number to each label: `(1)` and `(2)` at the top level, `(2.1)` for a child of step 2. To show how many top-level steps are due as well, pass `numbering: 'total'`.
+`numbering: TRUE` adds the step number to each label: `(1)` and `(2)` at the top level, `(2.1)` for a child of step 2. To show how many top-level steps are due as well, pass `numbering: 'total'`. To leave a step unnumbered, such as a task, follow it with `->unnumbered()`.
 
 <details>
 <summary>Details: Step numbering</summary>
@@ -1812,6 +1812,34 @@ Prompty::flow()
 ```
 
 A `step_total` format that needs more than 2 values, or holds an unknown conversion, throws an `InvalidArgumentException`. So does a `numbering` string other than `'total'`.
+
+To leave a step out of the numbering, follow it with `->unnumbered()`. The step draws no number, the next step takes the number it would have had, and `'total'` leaves it out of the count. Use it for a task that acts on the answers:
+
+```php
+$results = Prompty::flow()
+  ->text('dish', 'Dish name', default: 'pear tart')
+  ->select('table', 'Table', options: ['4' => 'Table 4', '7' => 'Table 7'], default: '7')
+  ->confirm('send', 'Send order?')
+  ->task('oven', 'Preheating the oven', action: fn(): bool => $oven->preheat(180), success: 'Oven ready')
+    ->unnumbered()
+  ->run(numbering: 'total');
+```
+
+```text
+◆  Dish name (1/3)
+│  pear tart
+│
+◆  Table (2/3)
+│  Table 7
+│
+◆  Send order? (3/3)
+│  Yes
+│
+◇  Preheating the oven
+│  ✓ Oven ready
+```
+
+The children of an unnumbered step draw no numbers either. `->unnumbered()` after a section or a note, or with no step before it, throws a `LogicException`.
 
 </details>
 
