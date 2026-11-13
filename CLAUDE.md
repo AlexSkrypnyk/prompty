@@ -42,7 +42,9 @@ builder), `PromptyTestTrait.php` (test helper).
   (the steps up to the next section) renders, and stores no result. Top
   level only.
 - **Notes** - the static `note()` prints. A flow note is a `PromptyFlow::note()`
-  entry that `drawNote()` draws at its depth; it stores no result.
+  entry that `drawNote()` draws at its depth; it stores no result. A closure
+  message or type resolves against the answers in `drawNote()`, so `run()`
+  checks only a string type up front.
 - **Tree rendering** - nested children use bar connectors; `open` array
   tracks continuing siblings.
 - **Widget signatures** - all 5 widgets share one parameter order, and any
