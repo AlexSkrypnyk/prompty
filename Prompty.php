@@ -5943,6 +5943,19 @@ class Prompty {
   }
 
   /**
+   * Checks whether a flow step takes a number when numbering is on.
+   *
+   * @param array<string, mixed> $step
+   *   A flow step array.
+   *
+   * @return bool
+   *   FALSE when the step was declared with PromptyFlow::unnumbered().
+   */
+  protected function isNumbered(array $step): bool {
+    return ($step['__numbered'] ?? TRUE) !== FALSE;
+  }
+
+  /**
    * Checks whether any of the given steps would render against the results.
    *
    * @param list<array<string, mixed>> $steps
@@ -5972,14 +5985,13 @@ class Prompty {
    *   Flow steps still to come at 1 depth.
    *
    * @return int
-   *   The number of steps that are not sections or notes and whose condition
-   *   is absent or passes.
+   *   The number of numbered steps whose condition is absent or passes.
    */
   protected function dueStepCount(array $steps): int {
     $count = 0;
 
     foreach ($steps as $step) {
-      if ($this->isSection($step) || $this->isNote($step)) {
+      if ($this->isSection($step) || $this->isNote($step) || !$this->isNumbered($step)) {
         continue;
       }
 
@@ -6219,7 +6231,11 @@ class Prompty {
         continue;
       }
 
-      $step_number++;
+      $is_numbered = ($options['numbering'] ?? FALSE) && $this->isNumbered($step);
+
+      if ($is_numbered) {
+        $step_number++;
+      }
 
       $rest = array_slice($steps, $index);
 
@@ -6230,7 +6246,7 @@ class Prompty {
       $this->pending = ['key' => $key, 'depth' => $depth, 'rest' => $rest];
 
       $number = $number_prefix !== '' ? $number_prefix . '.' . $step_number : (string) $step_number;
-      $total = $depth === 0 && ($options['numbering'] ?? FALSE) === 'total' ? $step_number + $this->dueStepCount($rest) : NULL;
+      $total = $is_numbered && $depth === 0 && $options['numbering'] === 'total' ? $step_number + $this->dueStepCount($rest) : NULL;
       $env_value = getenv($this->cfgEnvPrefix . strtoupper($key));
 
       $ctx = [
@@ -6238,7 +6254,7 @@ class Prompty {
         'is_last' => $rest === [],
         'open' => $this->open,
         'results' => $this->results,
-        'number' => ($options['numbering'] ?? FALSE) ? $number : NULL,
+        'number' => $is_numbered ? $number : NULL,
         'total' => $total,
         'discovered' => $env_value !== FALSE ? $env_value : NULL,
         'truthy' => $this->cfgTruthy,
@@ -6291,7 +6307,8 @@ class Prompty {
       $sep = $this->bar() . $this->labelPrefix($child_depth, $this->open) . $this->bar();
       $this->printLines([$sep]);
 
-      $outcome = $this->walkFlow($children, $child_depth, $options, $number);
+      $child_options = $is_numbered ? $options : [...$options, 'numbering' => FALSE];
+      $outcome = $this->walkFlow($children, $child_depth, $child_options, $number);
 
       if ($outcome !== 'done') {
         return $outcome;
@@ -6944,6 +6961,25 @@ class PromptyFlow {
   }
 
   /**
+   * Leaves the step added last out of the step numbering.
+   *
+   * The step draws no number and is not counted in the 'total' numbering.
+   * Its children draw no numbers either.
+   *
+   * @return static
+   *   The flow.
+   *
+   * @throws \LogicException
+   *   When the entry added last is not a step.
+   */
+  public function unnumbered(): static {
+    $entry = $this->lastStep('unnumbered()', 'leaves out the number of the step added before it', 'Only a step has a number.');
+    $this->scopes[count($this->scopes) - 1][$entry]['__numbered'] = FALSE;
+
+    return $this;
+  }
+
+  /**
    * Opens a scope for the children of the step added last.
    *
    * Steps added until the matching end() run after the step, nested under it.
@@ -6955,26 +6991,14 @@ class PromptyFlow {
    *   When the entry added last is not a step.
    */
   public function children(): static {
-    $scope = count($this->scopes) - 1;
-    $entry = array_key_last($this->scopes[$scope]);
+    $entry = $this->lastStep('children()', 'opens a scope under the step added before it', 'Only a step takes children.');
+    $step = $this->scopes[count($this->scopes) - 1][$entry];
 
-    if ($entry === NULL) {
-      throw new \LogicException($this->emptyScopeMessage('children() opens a scope under the step added before it'));
-    }
-
-    $step = $this->scopes[$scope][$entry];
-
-    if (!isset($step['__key']) || !is_string($step['__key'])) {
-      $kind = isset($step['__section']) ? 'section' : 'note';
-      /** @var string $text */
-      $text = $step['__section'] ?? $step['__note'];
-
-      throw new \LogicException(sprintf('children() follows the %s "%s". Only a step takes children.', $kind, $text));
-    }
-
+    /** @var string $key */
+    $key = $step['__key'];
     /** @var list<array<string, mixed>> $children */
     $children = $step['__children'];
-    $this->parents[] = $step['__key'];
+    $this->parents[] = $key;
     $this->scopes[] = $children;
 
     return $this;
@@ -7020,7 +7044,7 @@ class PromptyFlow {
    * @param bool|string $numbering
    *   TRUE numbers steps as (1), (2) and nested (2.1). 'total' also shows the
    *   number of top-level steps due, through the 'step_total' label. FALSE
-   *   draws no numbers.
+   *   draws no numbers. A step marked with unnumbered() takes no number.
    * @param array<string, string>|null $symbols_unicode
    *   Partial unicode symbol overrides.
    * @param array<string, string>|null $symbols_ascii
@@ -7199,7 +7223,7 @@ class PromptyFlow {
     $this->keys[$key] = TRUE;
     $this->last = $key;
 
-    return $this->addEntry(['__key' => $key, '__call' => $call, '__children' => [], '__condition' => $condition]);
+    return $this->addEntry(['__key' => $key, '__call' => $call, '__children' => [], '__condition' => $condition, '__numbered' => TRUE]);
   }
 
   /**
@@ -7215,6 +7239,44 @@ class PromptyFlow {
     $this->scopes[count($this->scopes) - 1][] = $entry;
 
     return $this;
+  }
+
+  /**
+   * Finds the step added last to the current scope.
+   *
+   * @param string $method
+   *   The calling method's name, such as 'children()'.
+   * @param string $action
+   *   What the method does, for the message when the scope is empty.
+   * @param string $rule
+   *   Why the entry must be a step, for the message when it is not.
+   *
+   * @return int
+   *   The step's index in the current scope.
+   *
+   * @throws \LogicException
+   *   When the current scope is empty, or its last entry is a section or a
+   *   note.
+   */
+  protected function lastStep(string $method, string $action, string $rule): int {
+    $scope = $this->scopes[count($this->scopes) - 1];
+    $entry = array_key_last($scope);
+
+    if ($entry === NULL) {
+      throw new \LogicException($this->emptyScopeMessage($method . ' ' . $action));
+    }
+
+    $step = $scope[$entry];
+
+    if (!isset($step['__key'])) {
+      $kind = isset($step['__section']) ? 'section' : 'note';
+      /** @var string $text */
+      $text = $step['__section'] ?? $step['__note'];
+
+      throw new \LogicException(sprintf('%s follows the %s "%s". %s', $method, $kind, $text, $rule));
+    }
+
+    return $entry;
   }
 
   /**
