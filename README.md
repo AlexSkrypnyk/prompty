@@ -1605,20 +1605,29 @@ The chain has a method for each widget: `->text()`, `->select()`, `->multiselect
 
 An input stream with nothing left to read counts as a cancellation. A flow run from a pipe, from `/dev/null` or in CI without a terminal returns `null` at the first prompt it can't read. To answer every step from its default instead, use [non-interactive mode](#non-interactive-mode).
 
-`run()` takes the flow's options as named arguments. `intro`, `outro` and `cancelled` each take a string or a callable. A callable receives the answers collected so far:
+`run()` takes the flow's options as named arguments. `intro`, `outro` and `cancelled` each take a string or a callable. A callable receives the answers collected so far and returns the message to draw:
 
 ```php
 $results = Prompty::flow()
   // ...
   ->run(
     intro: 'Compose an order',
-    outro: function (array $results): void {
-      echo 'Dish: ' . $results['dish'] . "\n";
-    },
+    outro: fn(array $results): string => $results['dish'] . ' is on its way.',
     cancelled: 'Order cancelled.',
     numbering: TRUE, // Renders (1), (2), nested as (1.1), (1.2), etc.
   );
 ```
+
+When the callable returns `null`, the flow draws no message, so the callable can print its own output:
+
+```php
+outro: function (array $results): void {
+  Prompty::note('Plate the ' . $results['dish'] . ' warm.');
+  Prompty::outro('Order sent!');
+},
+```
+
+Any other return value throws an `UnexpectedValueException`.
 
 `->intro('Compose an order')` sets the intro inside the chain instead. An `intro` passed to `run()` replaces it.
 
@@ -2451,8 +2460,8 @@ $results = Prompty::flow()
 // Or read them later.
 $results = Prompty::results();
 
-// Print a banner yourself. Passing a callable as run()'s outro suppresses
-// the built-in one, so call this from inside it to keep the banner.
+// Print a banner yourself, such as from an outro callable that draws its
+// own output.
 Prompty::outro('Order sent to the kitchen!');
 ```
 
