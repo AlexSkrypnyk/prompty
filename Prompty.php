@@ -5817,9 +5817,7 @@ class Prompty {
         // @codeCoverageIgnoreEnd
       }
 
-      if ($intro !== NULL) {
-        is_callable($intro) ? $intro($p->results) : $p->printLines($p->renderIntro($intro));
-      }
+      $p->drawFlowMessage('intro', $intro);
 
       // Stepping back restarts the walk, which replays the steps before the
       // reopened one from their answers without drawing them.
@@ -5831,16 +5829,12 @@ class Prompty {
       } while ($outcome === 'back');
 
       if ($outcome === 'cancelled') {
-        if ($cancelled !== NULL) {
-          is_callable($cancelled) ? $cancelled($p->results) : $p->printLines($p->renderOutro($cancelled, !$p->hasDrawn));
-        }
+        $p->drawFlowMessage('cancelled', $cancelled);
 
         return NULL;
       }
 
-      if ($outro !== NULL) {
-        is_callable($outro) ? $outro($p->results) : $p->printLines($p->renderOutro($outro, !$p->hasDrawn));
-      }
+      $p->drawFlowMessage('outro', $outro);
 
       return $p->results;
     }
@@ -5855,6 +5849,38 @@ class Prompty {
         $p->restoreConfig($snapshot);
       }
     }
+  }
+
+  /**
+   * Draws a flow's intro, outro or cancelled message.
+   *
+   * @param string $parameter
+   *   The run() parameter the message came from: 'intro', 'outro' or
+   *   'cancelled'. 'intro' draws an intro banner, the others an outro banner.
+   * @param string|callable|null $message
+   *   The message, a callable that receives the answers so far and returns
+   *   the message or NULL, or NULL to draw nothing.
+   *
+   * @throws \UnexpectedValueException
+   *   When the callable returns anything other than a string or NULL.
+   */
+  protected function drawFlowMessage(string $parameter, string|callable|null $message): void {
+    // A string that names a function is callable, so it is checked first.
+    if ($message !== NULL && !is_string($message)) {
+      $resolved = $message($this->results);
+
+      if ($resolved !== NULL && !is_string($resolved)) {
+        throw new \UnexpectedValueException(sprintf('The %s callable of a flow returned %s. It must return the text to draw, or NULL when it draws its own.', $parameter, get_debug_type($resolved)));
+      }
+
+      $message = $resolved;
+    }
+
+    if ($message === NULL) {
+      return;
+    }
+
+    $this->printLines($parameter === 'intro' ? $this->renderIntro($message) : $this->renderOutro($message, !$this->hasDrawn));
   }
 
   /**
@@ -6493,7 +6519,8 @@ class PromptyFlow {
    * Sets the message drawn before the first step.
    *
    * @param string|callable $message
-   *   The intro message, or a callable that draws its own intro. A message
+   *   The intro message, or a callable that receives the answers so far and
+   *   returns the message, or NULL when it draws its own output. An intro
    *   passed to run() replaces it.
    *
    * @return static
@@ -7092,12 +7119,13 @@ class PromptyFlow {
    * Runs the flow.
    *
    * @param string|callable|null $intro
-   *   Intro message or callable to render before the first step. NULL keeps
-   *   the one set with intro().
+   *   Intro message drawn before the first step. NULL keeps the one set with
+   *   intro(). A callable receives the answers so far and returns the
+   *   message, or NULL when it draws its own output.
    * @param string|callable|null $outro
-   *   Outro message or callable to render after the last step.
+   *   Outro message drawn after the last step, or a callable as for $intro.
    * @param string|callable|null $cancelled
-   *   Message or callable to render when the flow is cancelled.
+   *   Message drawn when the flow is cancelled, or a callable as for $intro.
    * @param bool|string $numbering
    *   TRUE numbers steps as (1), (2) and nested (2.1). 'total' also shows the
    *   number of top-level steps due, through the 'step_total' label. FALSE
@@ -7147,6 +7175,9 @@ class PromptyFlow {
    *
    * @throws \LogicException
    *   When a scope opened with children() is still open.
+   * @throws \UnexpectedValueException
+   *   When an intro, outro or cancelled callable returns anything other than
+   *   a string or NULL.
    */
   public function run(
     string|callable|null $intro = NULL,
