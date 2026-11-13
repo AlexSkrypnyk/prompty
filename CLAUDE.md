@@ -28,8 +28,11 @@ builder), `PromptyTestTrait.php` (test helper).
   takes the per-flow options. The builder can't reach `Prompty`'s protected
   members, so `flow()` hands it a closure that calls `runFlow()`.
 - **Step arrays** - the builder compiles to lists of step arrays:
-  `__key`/`__call`/`__children`/`__condition` for a step, `__section` and
-  `__note` for the keyless kinds. `walkFlow()` walks them.
+  `__key`/`__call`/`__children`/`__condition`/`__numbered` for a step,
+  `__section` and `__note` for the keyless kinds. `walkFlow()` walks them.
+- **Unnumbered steps** - `PromptyFlow::unnumbered()` sets `__numbered` to
+  `FALSE`. The step takes no number, `dueStepCount()` leaves it out of the
+  total, and its children walk with numbering off.
 - **Skipped steps** - a step skipped by its condition answers `NULL`, and so
   does every step under it (`skipSteps()`). Step back keeps `NULL`s out of
   `$previous`, so a replay never mistakes one for a cancellation.

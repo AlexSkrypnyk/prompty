@@ -288,7 +288,7 @@ Headings that group a flow's steps with `->section()`:
 - `The dish` - `Name the dish and place it in the meal.` Groups Dish name and Course.
 - `Finishing` - `Applied just before serving.` and `Only asked for desserts.` on 2 lines. Groups Finishes, which shows only for dessert.
 - `Service` - with `Table and extras` as a second title line, and the description `Where the order is going and what is served alongside.` Groups Table and Extras.
-- `Ticket` - no description. Groups Send order?.
+- `Ticket` - no description. Groups Send order? and, once the order is sent, the unnumbered `Preheating the oven` task.
 
 ### Notes
 

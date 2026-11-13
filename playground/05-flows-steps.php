@@ -112,6 +112,13 @@ Prompty::flow()
   )
   ->section('Ticket')
   ->confirm('send', 'Send order?', description: 'Passes the order to the kitchen.')
+  ->task('oven', 'Preheating the oven', action: function (): bool {
+    sleep(1);
+
+    return TRUE;
+  }, hint: 'Fan oven, 180°C', success: 'Oven ready', failure: 'Oven did not reach temperature')
+    ->when(fn(array $r): bool => $r['send'])
+    ->unnumbered()
   ->run(
     intro: 'Compose an order',
     outro: function (array $results): void {
