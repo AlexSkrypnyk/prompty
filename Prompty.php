@@ -7223,7 +7223,13 @@ class PromptyFlow {
     $this->keys[$key] = TRUE;
     $this->last = $key;
 
-    return $this->addEntry(['__key' => $key, '__call' => $call, '__children' => [], '__condition' => $condition, '__numbered' => TRUE]);
+    return $this->addEntry([
+      '__key' => $key,
+      '__call' => $call,
+      '__children' => [],
+      '__condition' => $condition,
+      '__numbered' => TRUE,
+    ]);
   }
 
   /**
