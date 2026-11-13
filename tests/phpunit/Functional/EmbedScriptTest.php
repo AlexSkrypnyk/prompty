@@ -161,6 +161,33 @@ final class EmbedScriptTest extends EmbedTestCase {
     $this->assertSame(1, substr_count($re_embedded, "if (!getenv('SHOULD_PROCEED'))"), 'Kill switch should appear exactly once after re-embed.');
   }
 
+  #[DataProvider('dataProviderReEmbedWithoutKillswitch')]
+  public function testReEmbedWithoutKillswitch(bool $is_marker_bare): void {
+    $target = self::$tmp . '/target.no-killswitch.php';
+    $source = "<?php\n// @embed-start\nrequire_once '" . self::$root . "/Prompty.php';\nuse AlexSkrypnyk\\Prompty\\Prompty;\n// @embed-end\n\n\n\necho 'VERSION:' . Prompty::version() . PHP_EOL;\n";
+    file_put_contents($target, $source);
+
+    $this->runEmbed('--no-killswitch', $target);
+
+    if ($is_marker_bare) {
+      file_put_contents($target, preg_replace('/^\/\/ @embed-start[^\n]*/m', '// @embed-start', $this->readFile($target)));
+    }
+
+    $output = $this->runEmbedWithOutput($target);
+    $re_embedded = $this->readFile($target);
+
+    $this->assertStringNotContainsString("if (!getenv('SHOULD_PROCEED'))", $re_embedded);
+    $this->assertStringNotContainsString('Added a kill switch', $output);
+    $this->assertSame($this->cutRegion($source), $this->cutRegion($re_embedded), 'Embedding changed the script outside the embed region.');
+    $this->assertStringContainsString('VERSION:', $this->runScriptWithoutInput($target));
+  }
+
+  public static function dataProviderReEmbedWithoutKillswitch(): \Iterator {
+    yield 'marker with a hash' => [FALSE];
+
+    yield 'bare marker' => [TRUE];
+  }
+
   public function testStdout(): void {
     $output_path = $this->generateMinified();
 
@@ -361,6 +388,7 @@ final class EmbedScriptTest extends EmbedTestCase {
     $this->assertSame($expects_killswitch ? 1 : 0, substr_count($content, "if (!getenv('SHOULD_PROCEED'))"), 'Kill switch count in the embedded file.');
     $this->assertSame($expects_verification, str_contains($embed_output, 'Verifying embedded script'), 'Verification run in the embedder output.');
     $this->assertSame(!$expects_killswitch, str_contains(strtolower($embed_output), 'no kill switch'), 'Missing kill switch warning in the embedder output.');
+    $this->assertSame(!$has_killswitch && $expects_killswitch, str_contains($embed_output, 'Added a kill switch'), 'Added kill switch notice in the embedder output.');
   }
 
   public static function dataProviderEmbedKillswitchAndVerification(): \Iterator {

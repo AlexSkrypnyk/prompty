@@ -216,7 +216,7 @@ To silence coding-standard warnings on the minified code, wrap the markers in `/
 | `--payload`       | Writes only the code that embedding puts between the markers.                           |
 | `--check`         | Checks an embedded script. See [Verify an embedded script](#verify-an-embedded-script). |
 | `--sums <path>`   | With `--check`, sets the `SHA256SUMS` file of the release that the start marker names. |
-| `--no-killswitch` | Skips adding the kill switch block and the verification run.                            |
+| `--no-killswitch` | Skips adding the kill switch block on the first embed, and the verification run.        |
 | `--no-verify`     | Skips the verification run but still adds the kill switch block.                        |
 | `--no-payload-file` | Skips writing the embedded code to a `.payload` file beside the output script.        |
 
@@ -235,7 +235,7 @@ With `--stdout` or `--payload`, `embed.php` takes an output file path in place o
 <details>
 <summary><a name="re-embedding"></a>Re-embedding: update an embedded script to a newer Prompty</summary>
 
-To update an embedded script to a newer Prompty, replace `Prompty.php` with the new version and run `embed.php` again. `embed.php` replaces the code between the markers and keeps everything outside them:
+To update an embedded script to a newer Prompty, replace `Prompty.php` with the new version and run `embed.php` again. `embed.php` replaces the code between the markers and leaves everything outside them as it is, so it adds no [kill switch](#kill-switch):
 
 ```bash
 php embed.php my-script.php
@@ -252,7 +252,7 @@ php embed.php --source /path/to/new/Prompty.php my-script.php
 <details>
 <summary><a name="kill-switch"></a>Kill switch: the block that stops the script under tests</summary>
 
-`embed.php` looks for `if (!getenv('SHOULD_PROCEED'))` in your script. If the line is missing, `embed.php` adds this block after the embed region:
+On the first embed, `embed.php` looks for `if (!getenv('SHOULD_PROCEED'))` in your script. If the line is missing, `embed.php` adds this block after the embed region and prints a line saying so:
 
 ```php
 // Kill switch - stop here when running under tests.
@@ -264,7 +264,7 @@ if (!getenv('SHOULD_PROCEED')) {
 
 The added block sits before your prompts, so the script asks nothing and does nothing unless `SHOULD_PROCEED` is set. For tests that answer the prompts and stop before the real work, write the kill switch yourself after the flow, as [`starter.php`](starter.php) does.
 
-To skip adding the block, pass `--no-killswitch`:
+To skip adding the block on the first embed, pass `--no-killswitch`:
 
 ```bash
 php embed.php --no-killswitch my-script.php

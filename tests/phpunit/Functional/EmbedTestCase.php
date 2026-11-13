@@ -153,6 +153,13 @@ abstract class EmbedTestCase extends FunctionalTestCase {
   }
 
   /**
+   * Remove the embed region, markers included, from a script's content.
+   */
+  protected function cutRegion(string $content): string {
+    return (string) preg_replace('/^\/\/ @embed-start.*?^\/\/ @embed-end[^\n]*/ms', '', $content);
+  }
+
+  /**
    * Assert that embed.php printed the size row of a file.
    *
    * @param string $output
