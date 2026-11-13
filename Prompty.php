@@ -5878,9 +5878,10 @@ class Prompty {
       }
 
       if ($this->isNote($step)) {
-        /** @var string $type */
-        $type = $step['__type'];
-        $this->assertNoteType($type);
+        // A closure type is checked when the note is drawn.
+        if (is_string($step['__type'])) {
+          $this->assertNoteType($step['__type']);
+        }
 
         continue;
       }
@@ -6140,6 +6141,11 @@ class Prompty {
    *   The steps after the note at the same depth.
    * @param int $depth
    *   The nesting depth of the note.
+   *
+   * @throws \UnexpectedValueException
+   *   When a closure message or type returns anything other than a string.
+   * @throws \InvalidArgumentException
+   *   When a closure type returns a type that is not one of NOTE_TYPES.
    */
   protected function drawNote(array $note, array $rest, int $depth): void {
     $condition = $this->stepCondition($note);
@@ -6148,15 +6154,46 @@ class Prompty {
       return;
     }
 
+    $message = $this->noteText('message', $note['__note'], 'the text to draw');
+    $type = $this->noteText('type', $note['__type'], sprintf('1 of: %s', implode(', ', static::NOTE_TYPES)));
+    $this->assertNoteType($type);
+
     // The answers so far are known, so the connector settles before drawing.
     $this->markOpen($depth, !$this->isAnyStepVisible($rest, $this->results));
 
-    /** @var string $message */
-    $message = $note['__note'];
-    /** @var string $type */
-    $type = $note['__type'];
     $this->printLines($this->renderNote($message, $type, $depth, $this->open));
     $this->hasDrawn = TRUE;
+  }
+
+  /**
+   * Resolves a flow note's message or type against the answers so far.
+   *
+   * @param string $parameter
+   *   The note() parameter the value came from.
+   * @param mixed $value
+   *   A string, or a closure that receives the answers so far.
+   * @param string $expected
+   *   What the closure must return, for the error message.
+   *
+   * @return string
+   *   The resolved string.
+   *
+   * @throws \UnexpectedValueException
+   *   When the closure returns anything other than a string.
+   */
+  protected function noteText(string $parameter, mixed $value, string $expected): string {
+    if (!$value instanceof \Closure) {
+      /** @var string $value */
+      return $value;
+    }
+
+    $resolved = $value($this->results);
+
+    if (!is_string($resolved)) {
+      throw new \UnexpectedValueException(sprintf('The %s closure of a note returned %s. It must return %s.', $parameter, get_debug_type($resolved), $expected));
+    }
+
+    return $resolved;
   }
 
   /**
@@ -6489,15 +6526,19 @@ class PromptyFlow {
   /**
    * Adds a note drawn in the tree where it sits.
    *
-   * @param string $message
+   * A closure given for the message or the type receives the answers so far
+   * and runs when the note is reached.
+   *
+   * @param string|\Closure $message
    *   The message. A newline starts another line, and SGR styling is kept.
-   * @param string $type
-   *   One of 'info', 'success', 'warning' or 'error'. run() rejects any other.
+   * @param string|\Closure $type
+   *   One of 'info', 'success', 'warning' or 'error'. run() rejects any other
+   *   string, and a closure's return value is checked when the note is drawn.
    *
    * @return static
    *   The flow.
    */
-  public function note(string $message, string $type = 'info'): static {
+  public function note(string|\Closure $message, string|\Closure $type = 'info'): static {
     return $this->addEntry(['__note' => $message, '__type' => $type, '__condition' => NULL]);
   }
 
@@ -7276,10 +7317,10 @@ class PromptyFlow {
 
     if (!isset($step['__key'])) {
       $kind = isset($step['__section']) ? 'section' : 'note';
-      /** @var string $text */
       $text = $step['__section'] ?? $step['__note'];
 
-      throw new \LogicException(sprintf('%s follows the %s "%s". %s', $method, $kind, $text, $rule));
+      // A closure message has no text until the note is reached.
+      throw new \LogicException(is_string($text) ? sprintf('%s follows the %s "%s". %s', $method, $kind, $text, $rule) : sprintf('%s follows a note. %s', $method, $rule));
     }
 
     return $entry;
