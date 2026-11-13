@@ -330,6 +330,53 @@ final class PromptyTaskTest extends PromptyTestCase {
     $this->assertCount(1, $runs);
   }
 
+  public function testTaskActionWithoutFlowGetsNoArguments(): void {
+    $this->createAndSetInstance(['interactive' => FALSE]);
+    $calls = new \ArrayObject();
+
+    $this->captureOutput(fn(): mixed => Prompty::task('Preheating the oven', action: function () use ($calls): bool {
+      $calls->append(func_get_args());
+
+      return TRUE;
+    }));
+
+    $this->assertSame([[]], $calls->getArrayCopy());
+  }
+
+  public function testTaskInFlowActionGetsAnswers(): void {
+    $result = NULL;
+    $answers = NULL;
+    $output = $this->captureOutput(function () use (&$result, &$answers): void {
+      $result = Prompty::flow()
+        ->text('dish', 'Dish name', discovered: 'Pear tart')
+        ->confirm('rush', 'Rush order?', default: FALSE)
+        ->text('note', 'Note for the kitchen', default: 'No nuts')
+          ->when(fn(array $r): bool => $r['rush'] === TRUE)
+        ->task('oven', 'Preheating the oven', action: function (array $results) use (&$answers): string {
+          $answers = $results;
+
+          return 'Oven ready for ' . $results['dish'];
+        }, success: fn(string $value): string => $value)
+        ->run(intro: 'Compose an order', unicode: TRUE, interactive: FALSE);
+    });
+
+    $this->assertSame(['dish' => 'Pear tart', 'rush' => FALSE, 'note' => NULL], $answers);
+    $this->assertSame(['dish' => 'Pear tart', 'rush' => FALSE, 'note' => NULL, 'oven' => TRUE], $result);
+    $this->assertStringContainsString("◇  Preheating the oven\n│  ✓ Oven ready for Pear tart\n│\n", $output);
+  }
+
+  public function testTaskInFlowActionCallableGetsAnswers(): void {
+    $result = NULL;
+    $this->captureOutput(function () use (&$result): void {
+      $result = Prompty::flow()
+        ->text('dish', 'Dish name', default: 'pear tart')
+        ->task('count', 'Counting the orders', action: 'count')
+        ->run(interactive: FALSE);
+    });
+
+    $this->assertSame(['dish' => 'pear tart', 'count' => TRUE], $result);
+  }
+
   public function testTaskInFlow(): void {
     $result = NULL;
     $output = $this->captureOutput(function () use (&$result): void {

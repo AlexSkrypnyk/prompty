@@ -1218,6 +1218,20 @@ $results = Prompty::flow()
   ->run();
 ```
 
+In a flow, the action receives the answers collected so far, with `null` for a skipped step:
+
+```php
+$results = Prompty::flow()
+  ->text('dish', 'Dish name', placeholder: 'pear tart')
+  ->task('order', 'Preparing the order',
+    action: fn(array $r): bool => $kitchen->prepare($r['dish']),
+    success: 'Order ready',
+  )
+  ->run();
+```
+
+Wrap a built-in function such as `time` in a closure. A built-in function that takes no arguments throws an `ArgumentCountError` when the flow passes it the answers.
+
 </details>
 
 #### Streamed output

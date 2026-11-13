@@ -14,7 +14,8 @@ builder), `PromptyTestTrait.php` (test helper).
   `pause` and `task` always run and return their answer. A flow passes them
   `ctx`.
 - **Tasks** - `task()` redraws only when `isLive()`; tests set the `isTerminal`
-  property to force it. A flow stores a task's outcome as a bool. The spinner
+  property to force it. A flow calls a task's action with the answers and
+  stores its outcome as a bool. The spinner
   runs in a `pcntl_fork()` child. `stream: TRUE` captures output with
   `ob_start()` at chunk size 1; a buffer handler can't echo, so `write()`
   collects drawn output in `$streamBuffer` for the handler to return.
