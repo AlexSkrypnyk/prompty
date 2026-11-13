@@ -186,3 +186,27 @@ Prompty::flow()
     ansi: $ansi,
     interactive: $interactive,
   );
+
+echo "\n--- Flow: a task that throws ---\n";
+
+try {
+  Prompty::flow()
+    ->text('dish', 'Dish name', default: 'pear tart')
+    ->task('grill', 'Lighting the grill', action: function (): never {
+      sleep(1);
+
+      throw new \RuntimeException('The gas supply is off.');
+    }, hint: 'Top burner, high heat')
+    ->confirm('send', 'Send order?', description: 'Passes the order to the kitchen.')
+    ->run(
+      intro: 'Kitchen order',
+      outro: 'Order sent to the kitchen!',
+      failed: 'Kitchen order not sent.',
+      unicode: $unicode,
+      ansi: $ansi,
+      interactive: $interactive,
+    );
+}
+catch (\RuntimeException $runtime_exception) {
+  echo PHP_EOL . 'Caught: ' . $runtime_exception->getMessage() . PHP_EOL;
+}
