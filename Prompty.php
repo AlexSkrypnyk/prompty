@@ -2282,7 +2282,9 @@ class Prompty {
         'hint' => !$throwable instanceof \Throwable || is_string($hint) ? $p->taskText($plain_label, 'hint', $hint, $value) : '',
         'details' => is_array($value) && array_is_list($value) && count(array_filter($value, is_string(...))) === count($value) ? $value : [],
         'message' => $message !== '' ? $message : $p->label($has_succeeded ? 'done' : 'failed'),
-        'open' => $p->settleOpen($has_succeeded, $open),
+        // No later sibling runs after an exception, so their conditions are
+        // not evaluated.
+        'open' => $throwable instanceof \Throwable ? $open : $p->settleOpen($has_succeeded, $open),
       ];
     };
 
@@ -6233,10 +6235,10 @@ class Prompty {
     // The answers so far are known, so the connector settles before drawing.
     $this->markOpen($depth, !$this->isAnyStepVisible($rest, $this->results));
 
-    $this->hasDrawn = TRUE;
-
     // A replayed note is already on screen, so its closures don't run again.
     if ($this->replay !== NULL) {
+      $this->hasDrawn = TRUE;
+
       return;
     }
 
@@ -6245,6 +6247,7 @@ class Prompty {
     $this->assertNoteType($type);
 
     $this->printLines($this->renderNote($message, $type, $depth, $this->open));
+    $this->hasDrawn = TRUE;
   }
 
   /**

@@ -417,6 +417,26 @@ final class PromptyFlowTest extends PromptyTestCase {
       "◆  Dish name\n│  pear tart\n│\n└  Failed\n\n",
     ];
 
+    yield 'task exception skips the conditions of later siblings' => [
+      static fn(PromptyFlow $flow): PromptyFlow => $flow
+        ->text('dish', 'Dish name', discovered: 'pear tart')
+          ->children()
+            ->task('oven', 'Preheating the oven', action: $throw)
+            ->confirm('rest', 'Rest before serving?')
+              ->when(static function (): never {
+                throw new \LogicException('The condition ran.');
+              })
+          ->end(),
+      [],
+      "◆  Dish name\n│  pear tart\n│\n│  │\n│  ◇  Preheating the oven\n│  │  ▲ The oven door is open.\n│  │  \n└  Failed\n\n",
+    ];
+
+    yield 'exception in the first note draws no banner' => [
+      static fn(PromptyFlow $flow): PromptyFlow => $flow->note($throw)->text('dish', 'Dish name', discovered: 'pear tart'),
+      [],
+      '',
+    ];
+
     yield 'exception before anything is drawn draws no banner' => [
       static fn(PromptyFlow $flow): PromptyFlow => $flow->text('dish', $throw),
       [],
