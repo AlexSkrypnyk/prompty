@@ -1976,7 +1976,10 @@ class Prompty {
     $label = $p->numberLabel($label, $ctx);
 
     if ($is_resolved_yes !== NULL) {
-      $open = $p->settleOpen($is_resolved_yes, $open);
+      $is_cancelling = $cancel_on_no && !$is_resolved_yes;
+      // A cancelling answer ends the flow, so later steps' conditions stay
+      // unevaluated.
+      $open = $is_cancelling ? $open : $p->settleOpen($is_resolved_yes, $open);
       $p->printLines($p->renderCompleted($label, $is_resolved_yes ? $p->label('yes') : $p->label('no'), $depth, $open));
 
       if ($is_standalone) {
@@ -1985,7 +1988,7 @@ class Prompty {
         // @codeCoverageIgnoreEnd
       }
 
-      return $cancel_on_no && !$is_resolved_yes ? NULL : $is_resolved_yes;
+      return $is_cancelling ? NULL : $is_resolved_yes;
     }
 
     $render_active = function (bool $is_yes_focused, ?string $error) use ($p, $label, $description, $help, $depth, $open): array {
@@ -2049,7 +2052,8 @@ class Prompty {
 
         if ($error === NULL) {
           $p->recordInput($is_yes);
-          $open = $p->settleOpen($answer, $open);
+          $is_cancelling = $cancel_on_no && !$answer;
+          $open = $is_cancelling ? $open : $p->settleOpen($answer, $open);
           $p->redraw($line_count, $p->renderCompleted($label, $answer ? $p->label('yes') : $p->label('no'), $depth, $open));
 
           if ($is_standalone) {
@@ -2058,7 +2062,7 @@ class Prompty {
             // @codeCoverageIgnoreEnd
           }
 
-          return $cancel_on_no && !$answer ? NULL : $answer;
+          return $is_cancelling ? NULL : $answer;
         }
 
         $line_count = $p->redraw($line_count, $render_active($is_yes, $error));

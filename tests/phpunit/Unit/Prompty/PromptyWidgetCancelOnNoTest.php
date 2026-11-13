@@ -46,6 +46,34 @@ final class PromptyWidgetCancelOnNoTest extends PromptyTestCase {
     yield 'yes after transform' => [static fn(array $ctx): mixed => Prompty::confirm('Send order?', transform: static fn(bool $answer): bool => !$answer, cancel_on_no: TRUE, ctx: $ctx), self::KEY_RIGHT . self::KEY_ENTER, TRUE, "+  Send order?\n|  Yes\n"];
   }
 
+  #[DataProvider('dataProviderLaterConditionsNotRun')]
+  public function testLaterConditionsNotRun(array $env, string $keystrokes): void {
+    $this->setEnvVars($env);
+    $calls = new \ArrayObject();
+
+    $r = $this->promptyRun(static fn(): mixed => Prompty::flow()
+      ->text('dish', 'Dish name')
+        ->children()
+          ->confirm('send', 'Send order?', cancel_on_no: TRUE)
+          ->text('note', 'Kitchen note')
+            ->when(static function () use ($calls): bool {
+              $calls->append('note');
+
+              return TRUE;
+            })
+        ->end()
+      ->run(unicode: FALSE), $keystrokes);
+
+    $this->assertNull($r['result']);
+    $this->assertCount(0, $calls);
+    $this->assertStringContainsString("|  +  Send order?\n|  |  No\n", $r['output']);
+  }
+
+  public static function dataProviderLaterConditionsNotRun(): \Iterator {
+    yield 'no from env' => [['dish' => 'pear tart', 'send' => 'no'], ''];
+    yield 'no by key' => [[], 'pear tart' . self::KEY_ENTER . 'n' . self::KEY_ENTER];
+  }
+
   public function testValidatorRejectingNoKeepsWidgetActive(): void {
     $validate = static fn(bool $answer): ?string => $answer ? NULL : 'Send the order to continue.';
 
