@@ -16,8 +16,9 @@
  * inserted code and the SHA-256 of this script.
  *
  * The same source and mode always produce the same bytes, so the inserted
- * code can be compared with the payload assets of a release. A kill switch
- * block is injected after the embed region if one is not already present.
+ * code can be compared with the payload assets of a release. On the first
+ * embed, a kill switch block is injected after the embed region if one is not
+ * already present; a re-embed changes nothing outside the markers.
  * The embedded script is then run to verify it works, and the snippets that
  * let the consumer's repository verify the embedded code are printed.
  *
@@ -987,6 +988,22 @@ function embed_marker_parse(string $attributes): array {
 }
 
 /**
+ * Checks whether a region holds code from an earlier embed.
+ *
+ * Markers record a hash from 1.1.0 on; an earlier embed is recognised by the
+ * class it declares.
+ *
+ * @param array{attributes: string, region: string} $region
+ *   A region as returned by embed_region_find().
+ *
+ * @return bool
+ *   TRUE if the region was written by an earlier embed.
+ */
+function embed_region_is_embedded(array $region): bool {
+  return isset(embed_marker_parse($region['attributes'])['sha256']) || preg_match('/^class\s+\w+/m', $region['region']) === 1;
+}
+
+/**
  * Builds a start marker line.
  *
  * @param array<string, string> $attributes
@@ -1444,8 +1461,8 @@ Options:
                     start marker and, with --sums, against a release.
   --sums <path>     With --check, the SHA256SUMS of the release named in the
                     start marker. Verify its signature before passing it.
-  --no-killswitch   Skip injecting the kill switch block and post-embed
-                    verification run.
+  --no-killswitch   Skip injecting the kill switch block on the first embed and
+                    the post-embed verification run.
   --no-verify       Skip the post-embed verification run, still injecting the
                     kill switch block.
   --no-payload-file Skip writing the embedded code to <Class>.<mode>.payload
@@ -1460,8 +1477,9 @@ Embedding:
 
 Re-embedding:
   Running embed.php on a previously embedded script replaces the embedded region
-  with the latest class content. All code outside the markers is preserved. Use
-  --source to point at an updated Prompty.php for version updates.
+  with the latest class content. All code outside the markers is preserved, and
+  no kill switch is added. Use --source to point at an updated Prompty.php for
+  version updates.
 
 Verifying:
   After embedding, embed.php prints a README section and 2 GitHub Actions
@@ -1775,7 +1793,8 @@ if ($target === FALSE) {
   exit(1);
 }
 
-$region_count = count(embed_region_find($target));
+$target_regions = embed_region_find($target);
+$region_count = count($target_regions);
 
 if ($region_count === 0) {
   fwrite(STDERR, sprintf('Error: Could not find // %s and // %s markers in target file.%s', EMBED_MARKER_START, EMBED_MARKER_END, PHP_EOL));
@@ -1800,7 +1819,11 @@ $result = preg_replace('/\n{3,}/', "\n\n", $result);
 
 $has_killswitch = str_contains((string) $result, "if (!getenv('SHOULD_PROCEED'))");
 
-if (!$has_killswitch && !$is_killswitch_skipped) {
+// A re-embed replaces only the region, so a script embedded without the kill
+// switch keeps running.
+$should_add_killswitch = !$has_killswitch && !$is_killswitch_skipped && !embed_region_is_embedded($target_regions[0]);
+
+if ($should_add_killswitch) {
   $killswitch = <<<'KILLSWITCH'
 
 // Kill switch - stop here when running under tests.
@@ -1840,6 +1863,10 @@ if ($lint_exit !== 0) {
 }
 
 echo sprintf('Embedded into %s%s', $target_path, PHP_EOL);
+
+if ($should_add_killswitch) {
+  echo sprintf('Added a kill switch after the embed region: the script returns early unless SHOULD_PROCEED is set. Pass --no-killswitch to skip it.%s', PHP_EOL);
+}
 
 $growth = strlen((string) $result) - strlen($target);
 $before_row = ['label' => 'Target script before', 'path' => $target_path, 'content' => $target];
