@@ -6154,15 +6154,21 @@ class Prompty {
       return;
     }
 
+    // The answers so far are known, so the connector settles before drawing.
+    $this->markOpen($depth, !$this->isAnyStepVisible($rest, $this->results));
+
+    $this->hasDrawn = TRUE;
+
+    // A replayed note is already on screen, so its closures don't run again.
+    if ($this->replay !== NULL) {
+      return;
+    }
+
     $message = $this->noteText('message', $note['__note'], 'the text to draw');
     $type = $this->noteText('type', $note['__type'], sprintf('1 of: %s', implode(', ', static::NOTE_TYPES)));
     $this->assertNoteType($type);
 
-    // The answers so far are known, so the connector settles before drawing.
-    $this->markOpen($depth, !$this->isAnyStepVisible($rest, $this->results));
-
     $this->printLines($this->renderNote($message, $type, $depth, $this->open));
-    $this->hasDrawn = TRUE;
   }
 
   /**
