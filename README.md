@@ -15,6 +15,7 @@
 ![LICENSE](https://img.shields.io/github/license/alexskrypnyk/prompty)
 ![Renovate](https://img.shields.io/badge/renovate-enabled-green?logo=renovatebot)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/AlexSkrypnyk/prompty/badge)](https://scorecard.dev/viewer/?uri=github.com/AlexSkrypnyk/prompty)
+[![OpenSSF Best Practices](https://www.bestpractices.dev/projects/16691/badge)](https://www.bestpractices.dev/projects/16691)
 
 </div>
 
