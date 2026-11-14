@@ -109,6 +109,7 @@ jobs:
 
       # Assets go onto a draft, because a published release is immutable.
       - name: Upload the assets to the draft release
+        id: upload
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
@@ -131,20 +132,20 @@ jobs:
           fi
 
           # Release Drafter names its draft after the version it guesses, which
-          # can differ from the pushed tag.
+          # can differ from the pushed tag. A prerelease leaves the draft for
+          # the final release.
           draft=''
-          if [ "${state}" = 'none' ]; then
+          if [ "${state}" = 'none' ] && [[ "${TAG}" != *-* ]]; then
             draft="$(gh release list --json tagName,isDraft --jq '[.[] | select(.isDraft) | .tagName][0] // empty')"
           fi
 
           if [ -n "${draft}" ]; then
             gh release edit "${draft}" --tag "${TAG}" --title "${TAG}"
-            notes="$(gh release view "${TAG}" --json body --jq .body)"
-            printf '%s\n' "${notes//...${draft}/...${TAG}}" > "${RUNNER_TEMP}/notes.md"
-            gh release edit "${TAG}" --notes-file "${RUNNER_TEMP}/notes.md"
           elif [ "${state}" = 'none' ]; then
             gh release create "${TAG}" --title "${TAG}" --generate-notes --draft --verify-tag
           fi
+
+          echo "draft=${draft}" >> "${GITHUB_OUTPUT}"
 
           gh release upload "${TAG}" \
             Prompty.php \
@@ -186,6 +187,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
           TAG: ${{ github.ref_name }}
+          DRAFT: ${{ steps.upload.outputs.draft }}
         run: |
           prerelease='false'
           if [[ "${TAG}" == *-* ]]; then
@@ -205,4 +207,10 @@ jobs:
             fi
           fi
 
-          gh release edit "${TAG}" --draft=false --prerelease="${prerelease}" --latest="${latest}" --verify-tag
+          notes="$(gh release view "${TAG}" --json body --jq .body)"
+          if [ -n "${DRAFT}" ]; then
+            notes="${notes//"...${DRAFT}"/"...${TAG}"}"
+          fi
+          printf '%s\n' "${notes}" > "${RUNNER_TEMP}/notes.md"
+
+          gh release edit "${TAG}" --notes-file "${RUNNER_TEMP}/notes.md" --draft=false --prerelease="${prerelease}" --latest="${latest}" --verify-tag
