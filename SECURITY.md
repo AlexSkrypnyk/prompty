@@ -21,7 +21,7 @@ You get a reply within 3 business days. After the report is confirmed, we agree 
 
 Every release ships 2 files for verification:
 
-- `SHA256SUMS`, with the checksum of every asset
+- `SHA256SUMS`, with the checksum of every PHP file and payload
 - `SHA256SUMS.asc`, a detached GPG signature of `SHA256SUMS`
 
 The signing key's public half is [`PUBLIC_KEY.asc`](PUBLIC_KEY.asc) in this repository. Its fingerprint is:
@@ -53,15 +53,15 @@ sha256sum --ignore-missing -c SHA256SUMS
 
 The release workflow runs the same `gpg --verify` and `sha256sum` check before it uploads the assets, and again on the uploaded copies.
 
-Every asset, `SHA256SUMS` included, also has a build attestation from GitHub Actions. To check that an asset was built by the release workflow, run the [GitHub CLI](https://cli.github.com) instead of GPG:
+Every PHP file, every payload and `SHA256SUMS` also have a build attestation from GitHub Actions. To check that an asset was built by the release workflow, run the [GitHub CLI](https://cli.github.com) instead of GPG:
 
 ```bash
 gh attestation verify Prompty.php --repo AlexSkrypnyk/prompty --signer-workflow AlexSkrypnyk/prompty/.github/workflows/release.yml
 ```
 
-The command checks the attestation through GitHub's attestation API. Releases after `1.3.0` also attach `Prompty.intoto.jsonl`, the attestation bundle for every asset. To check against that file instead, add `--bundle Prompty.intoto.jsonl` to the command.
+The command checks the attestation through GitHub's attestation API. Releases after `1.3.0` also attach `Prompty.intoto.jsonl`, the attestation bundle for those files. To check against that file instead, add `--bundle Prompty.intoto.jsonl` to the command.
 
-The release workflow uploads the assets to a draft release and verifies every attestation. Before it publishes the release, it embeds the uploaded `Prompty.php` with the uploaded `embed.php` in both modes and runs `embed.php --check` against the uploaded `SHA256SUMS`.
+Before it publishes the release, the release workflow uploads the assets to a draft release and verifies every attestation. It also embeds the uploaded `Prompty.php` with the uploaded `embed.php` in both modes and runs `embed.php --check` against the uploaded `SHA256SUMS`.
 
 To check a script that already embeds Prompty, see [Verify an embedded script](README.md#verify-an-embedded-script).
 

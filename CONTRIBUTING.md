@@ -226,13 +226,13 @@ The job runs in the `release` environment, which holds the `GPG_PRIVATE_KEY` sec
 2. Substitutes the tag name for the `__PROMPTY_VERSION__` token in `Prompty.php`, so `Prompty::version()` reports the release instead of `development`.
 3. Runs `starter.php` once as a smoke test.
 4. Builds `Prompty.min.php` and `Prompty.compact.php` with `embed.php --stdout`, and `Prompty.min.payload` and `Prompty.compact.payload` with `embed.php --payload`.
-5. Generates `SHA256SUMS` over every asset and signs it with the maintainer's GPG key.
-6. Creates a build attestation for every asset, `SHA256SUMS` included.
-7. Renames the draft to the tag's version and fixes the version in its compare link, or creates a draft with generated notes when none exists.
-8. Uploads every asset, `SHA256SUMS.asc` and the `Prompty.intoto.jsonl` attestation bundle to the draft.
+5. Generates `SHA256SUMS` over every PHP file and payload, and signs it with the maintainer's GPG key.
+6. Creates a build attestation for every PHP file and payload, and for `SHA256SUMS`.
+7. Renames Release Drafter's draft to the tag's version, or creates a draft with generated notes when none exists. A prerelease tag, such as `1.2.3-rc.1`, always gets its own draft.
+8. Uploads the PHP files, the payloads, `SHA256SUMS`, `SHA256SUMS.asc` and the `Prompty.intoto.jsonl` attestation bundle to the draft.
 9. Downloads the assets again and verifies the signature, the checksums and the attestations.
 10. Runs [`.util/check-embed-release.php`](.util/check-embed-release.php) on the downloaded assets. It embeds the downloaded `Prompty.php` into a copy of `starter.php` with the downloaded `embed.php`, in both modes. It then confirms that `embed.php --check` passes the embed and fails a copy with 1 changed byte.
-11. Publishes the release. A release becomes the latest GitHub release only when no published release has a higher version.
+11. Fixes the version in the notes' compare link and publishes the release. A release becomes the latest GitHub release only when no published release has a higher version.
 
 Release runs queue behind each other, so tags pushed together release 1 at a time. When you push 3 or more tags together, GitHub cancels every waiting run except the newest, so re-run each canceled release from the **Actions** tab.
 

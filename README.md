@@ -112,7 +112,7 @@ To embed the class in your script, see [Embedding](#embedding).
 <details>
 <summary><a name="verifying-a-download"></a>Verifying a download: check the signed checksums and the attestations</summary>
 
-Every release ships a `SHA256SUMS` file signed with the maintainer's GPG key, and a build attestation for every asset. To check a download with GPG or the GitHub CLI, follow [Verifying a release](SECURITY.md#verifying-a-release) in `SECURITY.md`, which also lists the key's fingerprint.
+Every release ships a `SHA256SUMS` file signed with the maintainer's GPG key, and a build attestation for every PHP file and payload. To check a download with GPG or the GitHub CLI, follow [Verifying a release](SECURITY.md#verifying-a-release) in `SECURITY.md`, which also lists the key's fingerprint.
 
 </details>
 
