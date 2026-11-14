@@ -14,6 +14,7 @@
 ![GitHub release (latest by date)](https://img.shields.io/github/v/release/alexskrypnyk/prompty)
 ![LICENSE](https://img.shields.io/github/license/alexskrypnyk/prompty)
 ![Renovate](https://img.shields.io/badge/renovate-enabled-green?logo=renovatebot)
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/AlexSkrypnyk/prompty/badge)](https://scorecard.dev/viewer/?uri=github.com/AlexSkrypnyk/prompty)
 
 </div>
 
@@ -2626,7 +2627,11 @@ For local setup, the lint and test commands, the playground scripts and the rele
 
 ## Security
 
-To report a vulnerability or verify a downloaded release, see [`SECURITY.md`](SECURITY.md).
+Prompty reads keystrokes from a stream and writes ANSI escape sequences to stdout. It makes no network requests, writes no files and runs no input as code. It runs `stty` through the shell to switch the terminal into raw mode and back.
+
+`embed.php` is a build-time tool. It runs `php -l` and `git`, and runs the embedded script only when the script has a [kill switch](#kill-switch).
+
+To report a vulnerability, verify a downloaded release or read the full scope, see [`SECURITY.md`](SECURITY.md).
 
 ---
 _This repository was created using the [Scaffold](https://getscaffold.dev/) project template_
