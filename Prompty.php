@@ -4537,6 +4537,29 @@ class Prompty {
   }
 
   /**
+   * Wraps a line of styled text so its further rows keep its leading spaces.
+   *
+   * The leading spaces are dropped from the further rows when they leave no
+   * room for content.
+   *
+   * @param string $gutter
+   *   The tree prefix drawn before the first row.
+   * @param string $content
+   *   The line to wrap, with any color sequences.
+   * @param string $continuation
+   *   The tree prefix drawn before every further row, ahead of the spaces.
+   *
+   * @return list<string>
+   *   The rows, as wrap() returns them.
+   */
+  protected function wrapIndented(string $gutter, string $content, string $continuation): array {
+    $indent = str_repeat(' ', strspn($this->stripAnsi($content), ' '));
+    $indent = $this->displayWidth($continuation . $indent) < $this->columns() ? $indent : '';
+
+    return $this->wrap($gutter, $content, $continuation . $indent);
+  }
+
+  /**
    * Wraps styled content to given row widths after a gutter.
    *
    * Breaks and styles follow wrap().
@@ -4931,7 +4954,7 @@ class Prompty {
 
     if ($description !== '') {
       foreach (explode("\n", $description) as $text_line) {
-        $lines = array_merge($lines, $this->wrap($gutter, $this->color($this->printable($text_line), 'dim'), $gutter));
+        $lines = array_merge($lines, $this->wrapIndented($gutter, $this->color($this->printable($text_line), 'dim'), $gutter));
       }
     }
 
@@ -4963,7 +4986,7 @@ class Prompty {
     $lines = $this->renderMarkedLabel($this->styled(array_shift($text_lines), $key), $this->color($this->cfgSymbols[$key], $key), $depth, $open);
 
     foreach ($text_lines as $text_line) {
-      $lines = array_merge($lines, $this->wrap($body, $this->styled($text_line, $key), $body));
+      $lines = array_merge($lines, $this->wrapIndented($body, $this->styled($text_line, $key), $body));
     }
 
     $lines[] = $this->bar() . ($depth > 0 ? $this->bodyPrefix($depth, $open) : '');
@@ -5031,7 +5054,7 @@ class Prompty {
     $lines = [];
 
     foreach (explode("\n", $description) as $text_line) {
-      $lines = array_merge($lines, $this->wrap($gutter, $this->styled($text_line, 'dim_italic'), $gutter));
+      $lines = array_merge($lines, $this->wrapIndented($gutter, $this->styled($text_line, 'dim_italic'), $gutter));
     }
 
     $lines[] = $this->bar() . ($depth > 0 ? $this->bodyPrefix($depth, $open) : '');
@@ -5059,7 +5082,7 @@ class Prompty {
     $lines = [];
 
     foreach (explode("\n", $hint) as $text_line) {
-      $lines = array_merge($lines, $this->wrap($gutter, $this->color($this->printable($text_line), 'dim_italic'), $continuation));
+      $lines = array_merge($lines, $this->wrapIndented($gutter, $this->color($this->printable($text_line), 'dim_italic'), $continuation));
       $gutter = $continuation;
     }
 
@@ -5092,7 +5115,7 @@ class Prompty {
     $lines = [$this->bar() . ($depth > 0 ? $body_prefix : '')];
 
     foreach (explode("\n", $help) as $text_line) {
-      $lines = array_merge($lines, $this->wrap($this->bar() . $body_prefix, $this->color($this->printable($text_line), 'dim'), $this->bar() . $body_prefix));
+      $lines = array_merge($lines, $this->wrapIndented($this->bar() . $body_prefix, $this->color($this->printable($text_line), 'dim'), $this->bar() . $body_prefix));
     }
 
     return $lines;
@@ -5359,7 +5382,7 @@ class Prompty {
 
     if ($hint !== '') {
       foreach (explode("\n", $hint) as $text_line) {
-        $lines = array_merge($lines, $this->wrap($gutter, $this->styled($text_line, 'dim'), $gutter));
+        $lines = array_merge($lines, $this->wrapIndented($gutter, $this->styled($text_line, 'dim'), $gutter));
       }
     }
 
@@ -5448,7 +5471,7 @@ class Prompty {
   protected function renderTaskLine(string $line, int $depth = 0, array $open = []): array {
     $gutter = $this->bar() . ($depth > 0 ? $this->bodyPrefix($depth, $open) : $this->cfgSpacing['indent']) . $this->cfgSpacing['indent'];
 
-    return $this->wrap($gutter, $this->styled($line, 'dim'), $gutter);
+    return $this->wrapIndented($gutter, $this->styled($line, 'dim'), $gutter);
   }
 
   /**

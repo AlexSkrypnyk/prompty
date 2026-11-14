@@ -354,6 +354,26 @@ final class PromptyNoteTest extends PromptyTestCase {
     $this->assertSame("o  Preheating the oven\n*  Fan oven, 180°C.\n|\n|  + Done\n|\n+  Order sent to the kitchen.\n|\n", $output);
   }
 
+  public function testNoteInFlowKeepsLeadingSpacesOfWrappedLine(): void {
+    $output = $this->captureOutput(function (): void {
+      Prompty::flow()
+        ->note("Before service:\n  1. Prep: slice the pears, whip the cream and warm the plates\n  2. Bake: pear tart")
+        ->run(intro: 'Kitchen order', unicode: FALSE, ansi: FALSE, interactive: FALSE, width: 50);
+    });
+
+    $this->assertSame(<<<'EXPECTED'
+
+#  Kitchen order
+|
+*  Before service:
+|    1. Prep: slice the pears, whip the cream and
+|    warm the plates
+|    2. Bake: pear tart
+|
+
+EXPECTED, $output);
+  }
+
   /**
    * Run a callable and return its raw output.
    */
