@@ -61,7 +61,7 @@ gh attestation verify Prompty.php --repo AlexSkrypnyk/prompty --signer-workflow 
 
 The command checks the attestation through GitHub's attestation API. Releases after `1.3.0` also attach `Prompty.intoto.jsonl`, the attestation bundle for every asset. To check against that file instead, add `--bundle Prompty.intoto.jsonl` to the command.
 
-The release workflow uploads the assets to a draft release and verifies every attestation before it publishes the release. It then embeds the uploaded `Prompty.php` with the uploaded `embed.php` in both modes and runs `embed.php --check` against the uploaded `SHA256SUMS`.
+The release workflow uploads the assets to a draft release and verifies every attestation. Before it publishes the release, it embeds the uploaded `Prompty.php` with the uploaded `embed.php` in both modes and runs `embed.php --check` against the uploaded `SHA256SUMS`.
 
 To check a script that already embeds Prompty, see [Verify an embedded script](README.md#verify-an-embedded-script).
 

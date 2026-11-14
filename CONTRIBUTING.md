@@ -193,7 +193,7 @@ Recordings run a few at a time. Running every session at once stalls them enough
 
 Report a bug or request a feature in [GitHub issues](https://github.com/AlexSkrypnyk/prompty/issues). Report a vulnerability privately instead, as [`SECURITY.md`](SECURITY.md) describes.
 
-To submit a change, open a pull request against `main`. A pull request merges after these checks pass:
+To submit a change, open a pull request against `main`. A pull request merges after it meets these requirements:
 
 - `composer lint` reports no errors.
 - `composer test` passes, and coverage stays at or above the threshold in [Code quality](#code-quality).

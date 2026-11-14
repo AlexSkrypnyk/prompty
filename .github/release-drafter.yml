@@ -26,8 +26,8 @@ template: |
   | `PromptyTestTrait.php` | PHPUnit helper for testing scripts that use Prompty |
   | `starter.php` | Example script template |
   | `embed.php` | Embed/minify helper |
-  | `SHA256SUMS`, `SHA256SUMS.asc` | Checksums of every asset and their GPG signature |
-  | `Prompty.intoto.jsonl` | Build provenance attestation for every asset |
+  | `SHA256SUMS`, `SHA256SUMS.asc` | Checksums of the PHP files and payloads, and their GPG signature |
+  | `Prompty.intoto.jsonl` | Build provenance attestation for the PHP files, payloads and `SHA256SUMS` |
 
   ## Verifying release assets
 
