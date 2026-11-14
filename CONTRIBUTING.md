@@ -37,7 +37,7 @@ The project's commands run through Composer:
 `composer lint` runs 4 checks, and CI runs it on every change:
 
 - **PHPCS** - the Drupal standard plus DrevOps rules, with `strict_types` required in every file. Config in [`phpcs.xml`](phpcs.xml).
-- **PHPStan** - level 9, the strictest level. Config in [`phpstan.neon`](phpstan.neon).
+- **PHPStan** - level 9. Config in [`phpstan.neon`](phpstan.neon).
 - **Rector** - PHP 8.3 modernization plus the dead-code, code-quality, coding-style, type-declaration, naming, instanceof, early-return and PHPUnit code-quality sets. Linting runs it in dry-run mode. Config in [`rector.php`](rector.php).
 - **Embedded demo check** - embeds `playground/05-flows-embed.php` and fails if the copy prints anything different from the original. See [The embedded demo](#the-embedded-demo).
 
@@ -199,7 +199,7 @@ To submit a change, open a pull request against `main`. A pull request merges af
 - `composer test` passes, and coverage stays at or above the threshold in [Code quality](#code-quality).
 - New behavior and every bug fix come with a test.
 
-The `main` ruleset requires every **PHP** test job in [`test-php.yml`](.github/workflows/test-php.yml), plus the **Lint, ubuntu-latest** and **Check embed release, ubuntu-latest** checks. The **Audit** and **Security** checks from [`audit.yml`](.github/workflows/audit.yml) also run on every pull request. They run OpenSSF Scorecard, CodeQL on the workflows and Semgrep on the PHP code.
+The `main` ruleset requires every **PHP** test job in [`test-php.yml`](.github/workflows/test-php.yml), plus the **Lint, ubuntu-latest** and **Check embed release, ubuntu-latest** checks. It also requires the **Audit** and **Security** checks from [`audit.yml`](.github/workflows/audit.yml), which run OpenSSF Scorecard, CodeQL on the workflows and Semgrep on the PHP code. A new high or critical alert from CodeQL or Semgrep blocks the merge.
 
 ## Releases
 
