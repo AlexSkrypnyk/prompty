@@ -17,6 +17,7 @@ jobs:
   release:
     name: Build and upload release assets, ubuntu-latest
     runs-on: ubuntu-latest
+    timeout-minutes: 30
 
     # The signing key is an environment secret, so a reviewer approves each
     # run before the job can read it.
@@ -118,9 +119,10 @@ jobs:
           cp "${PROVENANCE}" Prompty.intoto.jsonl
 
           # The merge that precedes the tag starts Release Drafter, which sets
-          # its draft's tag back to its own guess.
-          for run in $(gh run list --workflow draft-release-notes.yml --json databaseId,status --jq '.[] | select(.status != "completed") | .databaseId'); do
-            gh run watch "${run}" > /dev/null || true
+          # its draft's tag back to its own guess. Only the run for the tagged
+          # commit matters, and a run GitHub never starts stays queued forever.
+          for run in $(gh run list --workflow draft-release-notes.yml --commit "${GITHUB_SHA}" --json databaseId,status --jq '.[] | select(.status != "completed") | .databaseId'); do
+            timeout 600 gh run watch "${run}" > /dev/null || true
           done
 
           state="$(gh release view "${TAG}" --json isDraft --jq 'if .isDraft then "draft" else "published" end' || echo 'none')"
