@@ -1,6 +1,6 @@
 # Contributing
 
-Thanks for helping with Prompty. This guide covers local setup, the checks and tests every change passes, the playground demos and the release process. To report a bug or suggest an idea, open an [issue](https://github.com/AlexSkrypnyk/prompty/issues) or send a pull request.
+Thanks for helping with Prompty. This guide covers local setup, the checks and tests every change passes, the playground demos and the release process. To report a bug or send a change, see [Submit a change](#submit-a-change).
 
 ## Requirements
 
@@ -189,19 +189,52 @@ Recording the same session twice produces the same SVG, byte for byte. After a r
 
 Recordings run a few at a time. Running every session at once stalls them enough to blur the pauses between steps into the gaps within a step.
 
+## Submit a change
+
+Report a bug or request a feature in [GitHub issues](https://github.com/AlexSkrypnyk/prompty/issues). Report a vulnerability privately instead, as [`SECURITY.md`](SECURITY.md) describes.
+
+To submit a change, open a pull request against `main`. A pull request merges after these checks pass:
+
+- `composer lint` reports no errors.
+- `composer test` passes, and coverage stays at or above the threshold in [Code quality](#code-quality).
+- New behavior and every bug fix come with a test.
+
+The `main` ruleset requires every **PHP** test job in [`test-php.yml`](.github/workflows/test-php.yml), plus the **Lint, ubuntu-latest** and **Check embed release, ubuntu-latest** checks. The **Audit** and **Security** checks from [`audit.yml`](.github/workflows/audit.yml) also run on every pull request. They run OpenSSF Scorecard, CodeQL on the workflows and Semgrep on the PHP code.
+
 ## Releases
 
-Publishing a GitHub release triggers [`release.yml`](.github/workflows/release.yml), which does the following:
+Release Drafter keeps 1 draft release and adds every pull request merged into `main` to its notes. A release goes out when a maintainer pushes its version tag, such as `1.2.3`. Only maintainers can create tags.
 
-1. Substitutes the tag name for the `__PROMPTY_VERSION__` token in `Prompty.php`, so `Prompty::version()` reports the release instead of `development`.
-2. Runs `starter.php` once as a smoke test.
-3. Builds `Prompty.min.php` and `Prompty.compact.php` with `embed.php --stdout`, and `Prompty.min.payload` and `Prompty.compact.payload` with `embed.php --payload`.
-4. Generates `SHA256SUMS` over every asset and signs it with the maintainer's GPG key.
-5. Creates a build attestation for every asset, `SHA256SUMS` included.
-6. Verifies the signature and checksums, uploads everything, then downloads it all again and re-verifies the signature, the checksums and the attestations.
-7. Runs [`.util/check-embed-release.php`](.util/check-embed-release.php) on the downloaded assets. It embeds the downloaded `Prompty.php` into a copy of `starter.php` with the downloaded `embed.php`, in both modes. It then confirms that `embed.php --check` passes the embed and fails a copy with 1 changed byte.
+Release only by pushing the tag. Never click **Publish release** on the draft: releases are immutable, so a release published before the workflow runs can never get its assets.
 
-The job runs in the `release` environment. Store `GPG_PRIVATE_KEY` as a secret of that environment and give the environment a required reviewer, so each release waits for approval before the job can read the key.
+To publish a release:
+
+1. Open the draft release on GitHub and edit its notes, if they need it. The draft's version is Release Drafter's guess, and the tag you push replaces it.
+2. On an up-to-date `main` with no uncommitted changes, tag the last commit:
+
+       git tag 1.2.3
+
+3. Push the tag:
+
+       git push origin 1.2.3
+
+4. Approve the run of [`release.yml`](.github/workflows/release.yml) from the **Actions** tab.
+
+The job runs in the `release` environment, which holds the `GPG_PRIVATE_KEY` secret. The environment has a required reviewer, so the job can't read the key until you approve the run. The workflow then does the following:
+
+1. Checks that the tag is a version and points to a commit on `main`.
+2. Substitutes the tag name for the `__PROMPTY_VERSION__` token in `Prompty.php`, so `Prompty::version()` reports the release instead of `development`.
+3. Runs `starter.php` once as a smoke test.
+4. Builds `Prompty.min.php` and `Prompty.compact.php` with `embed.php --stdout`, and `Prompty.min.payload` and `Prompty.compact.payload` with `embed.php --payload`.
+5. Generates `SHA256SUMS` over every asset and signs it with the maintainer's GPG key.
+6. Creates a build attestation for every asset, `SHA256SUMS` included.
+7. Renames the draft to the tag's version and fixes the version in its compare link, or creates a draft with generated notes when none exists.
+8. Uploads every asset, `SHA256SUMS.asc` and the `Prompty.intoto.jsonl` attestation bundle to the draft.
+9. Downloads the assets again and verifies the signature, the checksums and the attestations.
+10. Runs [`.util/check-embed-release.php`](.util/check-embed-release.php) on the downloaded assets. It embeds the downloaded `Prompty.php` into a copy of `starter.php` with the downloaded `embed.php`, in both modes. It then confirms that `embed.php --check` passes the embed and fails a copy with 1 changed byte.
+11. Publishes the release. A release becomes the latest GitHub release only when no published release has a higher version.
+
+Release runs queue behind each other, so tags pushed together release 1 at a time. When you push 3 or more tags together, GitHub cancels every waiting run except the newest, so re-run each canceled release from the **Actions** tab.
 
 The `Check embed release, ubuntu-latest` job in [`test-php.yml`](.github/workflows/test-php.yml) builds the same payloads and an unsigned `SHA256SUMS` on every pull request, and runs the same script against them.
 
