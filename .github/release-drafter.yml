@@ -22,9 +22,12 @@ template: |
   | `Prompty.php` | Full class with comments |
   | `Prompty.min.php` | Minified - comments stripped, class body on 1 line |
   | `Prompty.compact.php` | Compacted - minified + shortened internals (~60% smaller) |
+  | `Prompty.min.payload`, `Prompty.compact.payload` | The exact code `embed.php` writes between the markers, in each mode |
   | `PromptyTestTrait.php` | PHPUnit helper for testing scripts that use Prompty |
   | `starter.php` | Example script template |
   | `embed.php` | Embed/minify helper |
+  | `SHA256SUMS`, `SHA256SUMS.asc` | Checksums of the PHP files and payloads, and their GPG signature |
+  | `Prompty.intoto.jsonl` | Build provenance attestation for the PHP files, payloads and `SHA256SUMS` |
 
   ## Verifying release assets
 

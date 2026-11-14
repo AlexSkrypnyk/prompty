@@ -5,6 +5,8 @@
     "dependencyDashboard": true,
     "pinDigests": true,
     "branchPrefix": "deps/",
+    "minimumReleaseAge": "7 days",
+    "internalChecksFilter": "strict",
     "enabledManagers": ["github-actions", "custom.regex"],
     "customManagers": [
         {
@@ -15,6 +17,13 @@
             "datasourceTemplate": "github-tags",
             "extractVersionTemplate": "^v(?<version>\\d+)(\\.\\d+)*$",
             "versioningTemplate": "loose"
+        },
+        {
+            "customType": "regex",
+            "description": "Docker images that workflows run with 'docker run'.",
+            "managerFilePatterns": ["/^\\.github/workflows/[^/]+\\.ya?ml$/"],
+            "matchStrings": ["docker run .*? (?<depName>[\\w.-]+/[\\w.-]+):(?<currentValue>[\\w.-]+)@(?<currentDigest>sha256:[a-f0-9]{64})"],
+            "datasourceTemplate": "docker"
         }
     ],
     "packageRules": [

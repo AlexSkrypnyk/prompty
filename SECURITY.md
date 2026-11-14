@@ -2,7 +2,7 @@
 
 ## Supported versions
 
-Prompty is pre-1.0, and only the [latest release](https://github.com/AlexSkrypnyk/prompty/releases/latest) is supported. Fixes ship in a new release and aren't backported, so on an older release, upgrade to get a fix.
+Security fixes go into the [latest release](https://github.com/AlexSkrypnyk/prompty/releases/latest) only. Fixes aren't backported, so upgrade to the latest release before you report an issue.
 
 ## Reporting a vulnerability
 
@@ -15,13 +15,13 @@ Include as much of the following as you can:
 - Steps to reproduce, ideally as a short script.
 - What an attacker could actually do with it.
 
-You'll get an acknowledgment within a few days. If the report is confirmed, we'll agree on a disclosure timeline with you. The advisory credits you unless you'd rather stay anonymous.
+You get a reply within 3 business days. After the report is confirmed, we agree on a disclosure timeline with you. The fix ships in a new release, and the report is published as a security advisory that credits you, unless you ask to stay anonymous.
 
 ## Verifying a release
 
 Every release ships 2 files for verification:
 
-- `SHA256SUMS`, with the checksum of every asset
+- `SHA256SUMS`, with the checksum of every PHP file and payload
 - `SHA256SUMS.asc`, a detached GPG signature of `SHA256SUMS`
 
 The signing key's public half is [`PUBLIC_KEY.asc`](PUBLIC_KEY.asc) in this repository. Its fingerprint is:
@@ -53,13 +53,15 @@ sha256sum --ignore-missing -c SHA256SUMS
 
 The release workflow runs the same `gpg --verify` and `sha256sum` check before it uploads the assets, and again on the uploaded copies.
 
-Every asset, `SHA256SUMS` included, also has a build attestation from GitHub Actions. To verify an asset with the [GitHub CLI](https://cli.github.com) instead of GPG:
+Every PHP file, every payload and `SHA256SUMS` also have a build attestation from GitHub Actions. To check that an asset was built by the release workflow, run the [GitHub CLI](https://cli.github.com) instead of GPG:
 
 ```bash
-gh attestation verify Prompty.php --repo AlexSkrypnyk/prompty
+gh attestation verify Prompty.php --repo AlexSkrypnyk/prompty --signer-workflow AlexSkrypnyk/prompty/.github/workflows/release.yml
 ```
 
-After uploading, the release workflow also verifies every attestation. It then embeds the uploaded `Prompty.php` with the uploaded `embed.php` in both modes and runs `embed.php --check` against the uploaded `SHA256SUMS`.
+The command checks the attestation through GitHub's attestation API. Releases after `1.3.0` also attach `Prompty.intoto.jsonl`, the attestation bundle for those files. To check against that file instead, add `--bundle Prompty.intoto.jsonl` to the command.
+
+Before it publishes the release, the release workflow uploads the assets to a draft release and verifies every attestation. It also embeds the uploaded `Prompty.php` with the uploaded `embed.php` in both modes and runs `embed.php --check` against the uploaded `SHA256SUMS`.
 
 To check a script that already embeds Prompty, see [Verify an embedded script](README.md#verify-an-embedded-script).
 
