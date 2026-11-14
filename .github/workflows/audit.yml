@@ -1,0 +1,82 @@
+name: Audit
+
+on:
+  schedule:
+    - cron: '37 5 * * 1'
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+      - 'feature/**'
+  branch_protection_rule:
+
+permissions: {}
+
+jobs:
+  audit:
+    name: Audit
+    runs-on: ubuntu-latest
+
+    permissions:
+      actions: read
+      contents: read
+      id-token: write # Sign the results published to the Scorecard API.
+      security-events: write # Upload the results to code scanning.
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: Audit security practices with OpenSSF Scorecard
+        uses: ossf/scorecard-action@fa7117db83c52d787ae5a89f350999701505d78e # v2.5.0
+        with:
+          results_file: results.sarif
+          results_format: sarif
+          # The archive omits 'export-ignore' paths such as '.github'.
+          file_mode: git
+          # The Scorecard API accepts results from the default branch only.
+          publish_results: ${{ github.event_name != 'pull_request' }}
+
+      - name: Upload the audit results to code scanning
+        uses: github/codeql-action/upload-sarif@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
+        with:
+          sarif_file: results.sarif
+
+  security:
+    name: Security
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name != 'branch_protection_rule' }}
+
+    permissions:
+      actions: read
+      contents: read
+      security-events: write # Upload the results to code scanning.
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      # CodeQL has no PHP extractor, so it scans the workflows only.
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
+        with:
+          languages: actions
+          build-mode: none
+
+      - name: Scan workflows for vulnerabilities with CodeQL
+        uses: github/codeql-action/analyze@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
+
+      - name: Scan PHP code for vulnerabilities with Semgrep
+        run: docker run --rm -v "${GITHUB_WORKSPACE}:/src" -w /src semgrep/semgrep@sha256:67518c174185a2043fdbed16c70631b79209499b3671178e7194379b48295a0d semgrep scan --config p/php --metrics=off --sarif --output semgrep.sarif
+
+      - name: Upload the Semgrep results to code scanning
+        uses: github/codeql-action/upload-sarif@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
+        with:
+          sarif_file: semgrep.sarif
+          category: semgrep
