@@ -167,11 +167,14 @@ abstract class PromptyTestCase extends TestCase {
    *   Expected exception message, matched exactly.
    * @param callable $fn
    *   The callable expected to throw.
+   * @param bool|null $is_drawn
+   *   Whether Prompty::isDrawn() reports the exception as drawn, or NULL to
+   *   leave it unchecked.
    *
    * @return string
    *   ANSI-stripped output emitted before the throw.
    */
-  protected function captureOutputThrows(string $exception, string $message, callable $fn): string {
+  protected function captureOutputThrows(string $exception, string $message, callable $fn, ?bool $is_drawn = NULL): string {
     ob_start();
 
     try {
@@ -182,6 +185,10 @@ abstract class PromptyTestCase extends TestCase {
 
       $this->assertInstanceOf($exception, $throwable);
       $this->assertSame($message, $throwable->getMessage());
+
+      if ($is_drawn !== NULL) {
+        $this->assertSame($is_drawn, Prompty::isDrawn($throwable));
+      }
 
       return $this->promptyNormalizeOutput($output ?: '');
     }
@@ -217,7 +224,24 @@ abstract class PromptyTestCase extends TestCase {
   }
 
   /**
-   * Assert a widget call throws before it draws anything or reads a key.
+   * Build the ASCII output of a top-level widget whose answer was rejected.
+   *
+   * @param string $label
+   *   The widget label.
+   * @param string $value
+   *   The rejected answer as drawn, or '' for no value row.
+   * @param string $error
+   *   The error message.
+   *
+   * @return string
+   *   The expected output.
+   */
+  protected static function failedOutput(string $label, string $value, string $error): string {
+    return 'o  ' . $label . "\n" . ($value === '' ? '' : '|  ' . $value . "\n") . '|  ! ' . $error . "\n|\n";
+  }
+
+  /**
+   * Assert a widget call throws before it reads a key.
    *
    * @param callable $run
    *   The widget call under test.
@@ -225,13 +249,16 @@ abstract class PromptyTestCase extends TestCase {
    *   The expected exception message.
    * @param string $keystrokes
    *   Raw keystroke bytes made available to the widget.
+   * @param string $output
+   *   The output drawn before the throw. Any output marks the exception as
+   *   drawn.
    */
-  protected function assertWidgetRejects(callable $run, string $message, string $keystrokes = self::KEY_ENTER): void {
+  protected function assertWidgetRejects(callable $run, string $message, string $keystrokes = self::KEY_ENTER, string $output = ''): void {
     $stream = $this->installKeystrokes($keystrokes);
 
-    $output = $this->captureOutputThrows(\InvalidArgumentException::class, $message, $run);
+    $actual = $this->captureOutputThrows(\InvalidArgumentException::class, $message, $run, $output !== '');
 
-    $this->assertSame('', $output);
+    $this->assertSame($output, $actual);
     $this->assertSame(0, ftell($stream));
 
     fclose($stream);

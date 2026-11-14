@@ -210,3 +210,22 @@ try {
 catch (\RuntimeException $runtime_exception) {
   echo PHP_EOL . 'Caught: ' . $runtime_exception->getMessage() . PHP_EOL;
 }
+
+echo "\n--- Flow: a discovered answer that fails validation ---\n";
+
+try {
+  Prompty::flow()
+    ->text('dish', 'Dish name', discovered: 'pear', validate: fn(string $dish): ?string => str_contains($dish, ' ') ? NULL : 'Name the whole dish, such as "pear tart".')
+    ->confirm('send', 'Send order?', description: 'Passes the order to the kitchen.')
+    ->run(
+      intro: 'Kitchen order',
+      outro: 'Order sent to the kitchen!',
+      failed: 'Kitchen order not sent.',
+      unicode: $unicode,
+      ansi: $ansi,
+      interactive: $interactive,
+    );
+}
+catch (\InvalidArgumentException $invalid_argument_exception) {
+  echo PHP_EOL . (Prompty::isDrawn($invalid_argument_exception) ? 'Already drawn, so nothing more to print.' : 'Caught: ' . $invalid_argument_exception->getMessage()) . PHP_EOL;
+}

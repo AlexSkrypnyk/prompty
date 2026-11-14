@@ -153,48 +153,56 @@ final class PromptyWidgetRequiredTest extends PromptyTestCase {
   }
 
   #[DataProvider('dataProviderResolvedEmptyAnswerThrows')]
-  public function testResolvedEmptyAnswerThrows(\Closure $widget, string $message, bool $interactive = TRUE): void {
+  public function testResolvedEmptyAnswerThrows(\Closure $widget, string $message, string $expected, bool $interactive = TRUE): void {
     $this->createAndSetInstance(['interactive' => $interactive], TRUE);
 
-    $output = $this->captureOutputThrows(\InvalidArgumentException::class, $message, fn(): mixed => $widget($this->defaultCtx()));
+    $output = $this->captureOutputThrows(\InvalidArgumentException::class, $message, fn(): mixed => $widget($this->defaultCtx()), TRUE);
 
-    $this->assertSame('', $output);
+    $this->assertSame($expected, $output);
   }
 
   public static function dataProviderResolvedEmptyAnswerThrows(): \Iterator {
     yield 'text, discovered blank' => [
       static fn(array $ctx): mixed => Prompty::text('Guest name', discovered: '  ', required: TRUE, ctx: $ctx),
       'Discovered value "" for "Guest name" is not valid. Required.',
+      self::failedOutput('Guest name', '', 'Required.'),
     ];
     yield 'text, non-interactive default' => [
       static fn(array $ctx): mixed => Prompty::text('Guest name', placeholder: 'Jane Doe', required: self::MESSAGE, ctx: $ctx),
       'Default value "" for "Guest name" is not valid. ' . self::MESSAGE,
+      self::failedOutput('Guest name', '', self::MESSAGE),
       FALSE,
     ];
     yield 'text, discovered transformed to empty' => [
       static fn(array $ctx): mixed => Prompty::text('Guest name', discovered: 'none', transform: fn(string $v): string => $v === 'none' ? '' : $v, required: TRUE, ctx: $ctx),
       'Discovered value "" for "Guest name" is not valid. Required.',
+      self::failedOutput('Guest name', '', 'Required.'),
     ];
     yield 'select, discovered transformed to empty' => [
       static fn(array $ctx): mixed => Prompty::select('Course', options: self::COURSES, discovered: 'main', transform: fn(string $v): string => '', required: TRUE, ctx: $ctx),
       'Discovered value "" for "Course" is not valid. Required.',
+      self::failedOutput('Course', '', 'Required.'),
     ];
     yield 'multiselect, discovered blank' => [
       static fn(array $ctx): mixed => Prompty::multiselect('Extras', options: self::EXTRAS, discovered: '', required: TRUE, ctx: $ctx),
       'Discovered value "" for "Extras" is not valid. Required.',
+      self::failedOutput('Extras', 'None', 'Required.'),
     ];
     yield 'multiselect, non-interactive default' => [
       static fn(array $ctx): mixed => Prompty::multiselect('Extras', options: self::EXTRAS, required: 'Pick at least one extra.', ctx: $ctx),
       'Default value "" for "Extras" is not valid. Pick at least one extra.',
+      self::failedOutput('Extras', 'None', 'Pick at least one extra.'),
       FALSE,
     ];
     yield 'suggest, discovered blank' => [
       static fn(array $ctx): mixed => Prompty::suggest('Dish', options: self::DISHES, discovered: '', required: TRUE, ctx: $ctx),
       'Discovered value "" for "Dish" is not valid. Required.',
+      self::failedOutput('Dish', '', 'Required.'),
     ];
     yield 'suggest, non-interactive default' => [
       static fn(array $ctx): mixed => Prompty::suggest('Dish', options: self::DISHES, placeholder: 'Pear Tart', required: 'Pick a dish.', ctx: $ctx),
       'Default value "" for "Dish" is not valid. Pick a dish.',
+      self::failedOutput('Dish', '', 'Pick a dish.'),
       FALSE,
     ];
   }

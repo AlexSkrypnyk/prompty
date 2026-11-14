@@ -233,7 +233,7 @@ final class PromptyTaskStreamTest extends PromptyTestCase {
       echo "Oven at 180°C\nDoor";
 
       throw new \RuntimeException('The oven door is open.');
-    }, stream: TRUE));
+    }, stream: TRUE), TRUE);
 
     $this->assertSame("o  Baking the tart\n|    Oven at 180°C\n|    Door\n|\n|  ! The oven door is open.\n|\n", $output);
     $this->assertSame([], $this->getProperty($p, 'streams'));
@@ -438,6 +438,7 @@ final class PromptyTaskStreamTest extends PromptyTestCase {
     }
     catch (\RuntimeException $runtime_exception) {
       $this->assertSame('The oven door is open.', $runtime_exception->getMessage());
+      $this->assertTrue(Prompty::isDrawn($runtime_exception));
     }
 
     $output = (string) ob_get_clean();
@@ -454,7 +455,7 @@ final class PromptyTaskStreamTest extends PromptyTestCase {
       echo "Oven at 180°C\n";
 
       return TRUE;
-    }, success: fn(): int => 1, stream: TRUE));
+    }, success: fn(): int => 1, stream: TRUE), FALSE);
 
     $this->assertSame("o  Baking the tart\n\ro  Baking the tart\n|    Oven at 180°C\n\ro  Baking the tart\n|    Oven at 180°C\n", $output);
     $this->assertSame([], $this->getProperty($p, 'streams'));
@@ -712,6 +713,7 @@ final class PromptyTaskStreamTest extends PromptyTestCase {
     }
     catch (\RuntimeException $runtime_exception) {
       $this->assertSame('The ticket printer jammed.', $runtime_exception->getMessage());
+      $this->assertFalse(Prompty::isDrawn($runtime_exception));
     }
 
     $after = ob_get_level();

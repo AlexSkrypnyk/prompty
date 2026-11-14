@@ -120,7 +120,7 @@ final class PromptyThrowOnInvalidTest extends PromptyTestCase {
     $stream = $this->installKeystrokes(self::KEY_ENTER);
     Prompty::configure(interactive: $interactive);
 
-    $output = $this->captureOutputThrows(PromptyValidationException::class, $message, fn(): mixed => Prompty::text('Dish name', default: 'pear', discovered: $discovered, validate: self::reject(), ctx: $this->ctx()));
+    $output = $this->captureOutputThrows(PromptyValidationException::class, $message, fn(): mixed => Prompty::text('Dish name', default: 'pear', discovered: $discovered, validate: self::reject(), ctx: $this->ctx()), FALSE);
 
     $this->assertSame('', $output);
     $this->assertSame(0, ftell($stream));
