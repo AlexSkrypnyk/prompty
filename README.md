@@ -1133,7 +1133,7 @@ Prompty::note("The oven did not reach temperature.\nCheck the fan and try again.
 │
 ```
 
-The type defaults to `info`. A newline starts another line, and a long line wraps with the bar and indent kept. Each type has a `note_<type>` symbol and a `note_<type>` color that you can [configure](#configuration). A note waits for no answer, so it also prints in [non-interactive mode](#non-interactive-mode).
+The type defaults to `info`. A newline starts another line, and a long line wraps with the bar and indent kept. The continuation rows of a line keep its leading spaces, so an indented list stays together. Each type has a `note_<type>` symbol and a `note_<type>` color that you can [configure](#configuration). A note waits for no answer, so it also prints in [non-interactive mode](#non-interactive-mode).
 
 Inside a [flow](#flows), `->note()` adds a note without a key. It sits in the tree where you declare it, among top-level steps or children, and adds nothing to the results. Follow it with `->when()` to show it only for some answers:
 
@@ -1301,7 +1301,7 @@ When the action succeeds, the window collapses into the result line:
 
 When the action fails or throws, the window expands into every line it wrote, because the cause is usually among them. Without a live terminal, each line is printed once as it arrives.
 
-Each line is drawn dim and indented on the tree's bar, with its colors kept. A long line wraps with its indent kept. In the window, it's cut to 1 row with an ellipsis. A line redrawn with carriage returns shows only its last state.
+Each line is drawn dim and indented on the tree's bar, with its colors kept. A long line wraps with its indent and its own leading spaces kept. In the window, it's cut to 1 row with an ellipsis. A line redrawn with carriage returns shows only its last state.
 
 The stream captures output that reaches PHP's output layer:
 
@@ -2340,7 +2340,7 @@ Prompty::configure(scroll: 10);
 <details>
 <summary><a name="long-lines"></a>Long lines: how lines wider than the terminal wrap</summary>
 
-Prompty wraps every line that's wider than the terminal. Labels, descriptions, options, hints, help, errors and answers break between words, and each continuation row starts with the same bar and indent as its first row. A word wider than the row breaks at the row's edge:
+Prompty wraps every line that's wider than the terminal. Labels, descriptions, options, hints, help, errors and answers break between words, and each continuation row starts with the same bar and indent as its first row. In labels, notes, descriptions, hints, help and task lines, a line that starts with spaces keeps them on its continuation rows too. A word wider than the row breaks at the row's edge:
 
 ```text
 ◆  Extras

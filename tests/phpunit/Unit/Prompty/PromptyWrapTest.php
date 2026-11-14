@@ -119,6 +119,90 @@ final class PromptyWrapTest extends PromptyTestCase {
     yield 'continuation fills the width' => [8, '|', 'Plum compote', '|       ', ['|Plum compote']];
   }
 
+  /**
+   * Tests wrapping content whose further rows keep its leading spaces.
+   *
+   * @param int $width
+   *   The terminal width.
+   * @param string $content
+   *   The text to wrap.
+   * @param list<string> $expected
+   *   The expected rows.
+   */
+  #[DataProvider('dataProviderWrapIndented')]
+  public function testWrapIndented(int $width, string $content, array $expected): void {
+    $p = $this->createInstance(['ansi' => FALSE, 'width' => $width]);
+
+    $this->assertSame($expected, $this->callProtectedLines($p, 'wrapIndented', '|  ', $content, '|  '));
+  }
+
+  public static function dataProviderWrapIndented(): \Iterator {
+    yield 'fits' => [20, '  Plum tart', ['|    Plum tart']];
+
+    yield 'empty content' => [10, '', ['|  ']];
+
+    yield 'no leading spaces' => [16, 'Plum compote with cream', ['|  Plum compote', '|  with cream']];
+
+    yield 'keeps leading spaces' => [14, '  Plum compote with cream', ['|    Plum', '|    compote', '|    with', '|    cream']];
+
+    yield 'keeps deeper leading spaces' => [16, '    1. Plum tart with cream', ['|      1. Plum', '|      tart with', '|      cream']];
+
+    yield 'drops leading spaces that leave no room' => [6, '   Plum tart', ['|     ', '|  Plu', '|  m', '|  tar', '|  t']];
+
+    yield 'drops leading spaces that leave no room for a wide character' => [8, '    日本', ['|      ', '|  日本']];
+
+    yield 'keeps leading spaces that leave room for a wide character' => [9, '    日本', ['|      ', '|      日', '|      本']];
+  }
+
+  public function testWrapIndentedMeasuresSpacesInsideStyle(): void {
+    $p = $this->createInstance(['ansi' => TRUE, 'width' => 12]);
+
+    $lines = $this->callProtectedLines($p, 'wrapIndented', '| ', "\033[2m  one two three\033[0m", '| ');
+
+    $this->assertSame(["| \033[2m  one two\033[0m", "|   \033[2mthree\033[0m"], $lines);
+  }
+
+  /**
+   * Tests each text body keeps a wrapped line's leading spaces.
+   *
+   * @param string $method
+   *   The renderer to call.
+   * @param list<mixed> $arguments
+   *   The renderer's arguments.
+   * @param list<string> $expected
+   *   The expected rows.
+   */
+  #[DataProvider('dataProviderTextBodiesKeepLeadingSpaces')]
+  public function testTextBodiesKeepLeadingSpaces(string $method, array $arguments, array $expected): void {
+    $p = $this->createInstance(['ansi' => FALSE, 'width' => 24]);
+
+    $this->assertSame($expected, $this->callProtectedLines($p, $method, ...$arguments));
+  }
+
+  public static function dataProviderTextBodiesKeepLeadingSpaces(): \Iterator {
+    $text = "Dishes:\n  1. Plum compote with cream";
+
+    yield 'single-line note' => ['renderNote', ['  Plum compote with cream', 'info'], ['*    Plum compote with', '|    cream', '|']];
+
+    yield 'label' => ['renderLabel', ['  Plum compote with cream', 'active', 'cyan'], ['o    Plum compote with', '|    cream']];
+
+    yield 'note' => ['renderNote', [$text, 'info'], ['*  Dishes:', '|    1. Plum compote', '|    with cream', '|']];
+
+    yield 'nested note' => ['renderNote', [$text, 'info', 1, [1 => TRUE]], ['|  *  Dishes:', '|  |    1. Plum compote', '|  |    with cream', '|  |  ']];
+
+    yield 'description' => ['renderDescription', [$text], ['|  Dishes:', '|    1. Plum compote', '|    with cream', '|']];
+
+    yield 'help' => ['renderHelp', [$text], ['|', '|  Dishes:', '|    1. Plum compote', '|    with cream']];
+
+    yield 'hint' => ['renderHint', [$text], ['|    --> Dishes:', '|        1. Plum compote', '|        with cream']];
+
+    yield 'section description' => ['renderSection', ['Order', $text, FALSE], ['#  Order', '|  Dishes:', '|    1. Plum compote', '|    with cream', '|']];
+
+    yield 'task line' => ['renderTaskLine', ['  1. Plum compote with cream'], ['|      1. Plum compote', '|      with cream']];
+
+    yield 'task hint' => ['renderTaskResult', [TRUE, $text, [], 'Done'], ['|  Dishes:', '|    1. Plum compote', '|    with cream', '|  + Done', '|']];
+  }
+
   public function testWrapReopensStyleAfterTheContinuation(): void {
     $p = $this->createInstance(['ansi' => TRUE, 'width' => 10]);
 
