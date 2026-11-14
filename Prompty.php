@@ -540,9 +540,18 @@ class Prompty {
   protected ?string $streamBuffer = NULL;
 
   /**
+   * Exceptions whose failure has been drawn before they were thrown.
+   *
+   * @var \WeakMap<\Throwable, true>
+   */
+  protected \WeakMap $drawnFailures;
+
+  /**
    * Constructs a Prompty instance.
    */
   protected function __construct() {
+    $this->drawnFailures = new \WeakMap();
+
     if ($this->cfgUseUnicode === NULL) {
       $lang = getenv('LANG') ?: getenv('LC_ALL') ?: getenv('LC_CTYPE') ?: setlocale(LC_CTYPE, '0') ?: '';
       $this->cfgUseUnicode = stripos($lang, 'utf') !== FALSE;
@@ -873,6 +882,22 @@ class Prompty {
   }
 
   /**
+   * Checks whether Prompty drew an exception's failure before throwing it.
+   *
+   * A rejected discovered or default answer and a task's failed action are
+   * drawn, so the caller has nothing left to print for them.
+   *
+   * @param \Throwable $throwable
+   *   The exception a widget, a task or a flow threw.
+   *
+   * @return bool
+   *   TRUE when the failure is already on screen.
+   */
+  public static function isDrawn(\Throwable $throwable): bool {
+    return isset(static::instance()->drawnFailures[$throwable]);
+  }
+
+  /**
    * Get the library version.
    *
    * Returns 'development' when the version token has not been replaced
@@ -967,6 +992,11 @@ class Prompty {
     $placeholder = $p->printable($placeholder);
     $resolved = $discovered ?? $ctx['discovered'] ?? NULL;
     $resolved_display = NULL;
+    /** @var int $depth */
+    $depth = $ctx['depth'] ?? 0;
+    /** @var array<int, bool> $open */
+    $open = $ctx['open'] ?? [];
+    $label = $p->numberLabel($label, $ctx);
 
     if ($resolved !== NULL || !$p->cfgIsInteractive) {
       /** @var int|float|string|bool|null $resolved */
@@ -981,18 +1011,12 @@ class Prompty {
       // Transform and validate before raw mode is entered, so a rejected value
       // cannot leave the terminal unrestored.
       $resolved_display = $p->printable($p->transformString($plain_label, $transform, $resolved_display));
-      $p->assertResolvedValid($resolved !== NULL ? 'Discovered' : 'Default', $plain_label, $required, $validate, $resolved_display, $results);
+      $p->assertResolvedValid($resolved !== NULL ? 'Discovered' : 'Default', $plain_label, $required, $validate, $resolved_display, $results, fn(string $error): array => $p->renderFailed($label, $resolved_display, $error, $depth, $open));
     }
 
     if ($is_standalone && $p->cfgIsInteractive) {
       $p->setupTty();
     }
-
-    /** @var int $depth */
-    $depth = $ctx['depth'] ?? 0;
-    /** @var array<int, bool> $open */
-    $open = $ctx['open'] ?? [];
-    $label = $p->numberLabel($label, $ctx);
 
     if ($resolved_display !== NULL) {
       $open = $p->settleOpen($resolved_display, $open);
@@ -1183,20 +1207,20 @@ class Prompty {
       $resolved_key = $default_key ?? $p->optionKeys($options)[0];
     }
 
-    if ($resolved_key !== NULL) {
-      $resolved_key = $p->transformString($plain_label, $transform, $resolved_key);
-      $p->assertResolvedValid($resolved !== NULL ? 'Discovered' : 'Default', $plain_label, $required, $validate, $resolved_key, $results);
-    }
-
-    if ($is_standalone && $p->cfgIsInteractive) {
-      $p->setupTty();
-    }
-
     /** @var int $depth */
     $depth = $ctx['depth'] ?? 0;
     /** @var array<int, bool> $open */
     $open = $ctx['open'] ?? [];
     $label = $p->numberLabel($label, $ctx);
+
+    if ($resolved_key !== NULL) {
+      $resolved_key = $p->transformString($plain_label, $transform, $resolved_key);
+      $p->assertResolvedValid($resolved !== NULL ? 'Discovered' : 'Default', $plain_label, $required, $validate, $resolved_key, $results, fn(string $error): array => $p->renderFailed($label, $p->optionDisplay($resolved_key, $options), $error, $depth, $open));
+    }
+
+    if ($is_standalone && $p->cfgIsInteractive) {
+      $p->setupTty();
+    }
 
     $option_keys = $p->optionKeys($options);
     $option_labels = array_map($p->printable(...), array_values($options));
@@ -1450,21 +1474,21 @@ class Prompty {
       $resolved_keys = $default_keys;
     }
 
-    if ($resolved_keys !== NULL) {
-      $resolved_keys = $p->orderKeys($plain_label, $resolved_keys, $order, $options, $default_keys);
-      $resolved_keys = $p->transformKeys($plain_label, $transform, $resolved_keys);
-      $p->assertResolvedValid($resolved !== NULL ? 'Discovered' : 'Default', $plain_label, $required, $validate, $resolved_keys, $results);
-    }
-
-    if ($is_standalone && $p->cfgIsInteractive) {
-      $p->setupTty();
-    }
-
     /** @var int $depth */
     $depth = $ctx['depth'] ?? 0;
     /** @var array<int, bool> $open */
     $open = $ctx['open'] ?? [];
     $label = $p->numberLabel($label, $ctx);
+
+    if ($resolved_keys !== NULL) {
+      $resolved_keys = $p->orderKeys($plain_label, $resolved_keys, $order, $options, $default_keys);
+      $resolved_keys = $p->transformKeys($plain_label, $transform, $resolved_keys);
+      $p->assertResolvedValid($resolved !== NULL ? 'Discovered' : 'Default', $plain_label, $required, $validate, $resolved_keys, $results, fn(string $error): array => $p->renderFailed($label, $p->optionsDisplay($resolved_keys, $options), $error, $depth, $open));
+    }
+
+    if ($is_standalone && $p->cfgIsInteractive) {
+      $p->setupTty();
+    }
 
     $option_keys = $p->optionKeys($options);
     $option_labels = array_map($p->printable(...), array_values($options));
@@ -1717,6 +1741,11 @@ class Prompty {
     $placeholder = $p->printable($placeholder);
     $resolved = $discovered ?? $ctx['discovered'] ?? NULL;
     $resolved_display = NULL;
+    /** @var int $depth */
+    $depth = $ctx['depth'] ?? 0;
+    /** @var array<int, bool> $open */
+    $open = $ctx['open'] ?? [];
+    $label = $p->numberLabel($label, $ctx);
 
     if ($resolved !== NULL || !$p->cfgIsInteractive) {
       /** @var int|float|string|bool|null $resolved */
@@ -1729,18 +1758,12 @@ class Prompty {
       }
 
       $resolved_display = $p->printable($p->transformString($plain_label, $transform, $resolved_display));
-      $p->assertResolvedValid($resolved !== NULL ? 'Discovered' : 'Default', $plain_label, $required, $validate, $resolved_display, $results);
+      $p->assertResolvedValid($resolved !== NULL ? 'Discovered' : 'Default', $plain_label, $required, $validate, $resolved_display, $results, fn(string $error): array => $p->renderFailed($label, $resolved_display, $error, $depth, $open));
     }
 
     if ($is_standalone && $p->cfgIsInteractive) {
       $p->setupTty();
     }
-
-    /** @var int $depth */
-    $depth = $ctx['depth'] ?? 0;
-    /** @var array<int, bool> $open */
-    $open = $ctx['open'] ?? [];
-    $label = $p->numberLabel($label, $ctx);
 
     if ($resolved_display !== NULL) {
       $open = $p->settleOpen($resolved_display, $open);
@@ -1961,20 +1984,20 @@ class Prompty {
       $is_resolved_yes = $default;
     }
 
-    if ($is_resolved_yes !== NULL) {
-      $is_resolved_yes = $p->transformBool($plain_label, $transform, $is_resolved_yes);
-      $p->assertResolvedValid($resolved !== NULL ? 'Discovered' : 'Default', $plain_label, $required, $validate, $is_resolved_yes, $results);
-    }
-
-    if ($is_standalone && $p->cfgIsInteractive) {
-      $p->setupTty();
-    }
-
     /** @var int $depth */
     $depth = $ctx['depth'] ?? 0;
     /** @var array<int, bool> $open */
     $open = $ctx['open'] ?? [];
     $label = $p->numberLabel($label, $ctx);
+
+    if ($is_resolved_yes !== NULL) {
+      $is_resolved_yes = $p->transformBool($plain_label, $transform, $is_resolved_yes);
+      $p->assertResolvedValid($resolved !== NULL ? 'Discovered' : 'Default', $plain_label, $required, $validate, $is_resolved_yes, $results, fn(string $error): array => $p->renderFailed($label, $is_resolved_yes ? $p->label('yes') : $p->label('no'), $error, $depth, $open));
+    }
+
+    if ($is_standalone && $p->cfgIsInteractive) {
+      $p->setupTty();
+    }
 
     if ($is_resolved_yes !== NULL) {
       $is_cancelling = $cancel_on_no && !$is_resolved_yes;
@@ -3228,6 +3251,9 @@ class Prompty {
   /**
    * Rejects an empty or invalid answer that was resolved without input.
    *
+   * The rejected answer is drawn with its error message before the exception
+   * is thrown.
+   *
    * @param string $parameter
    *   The source of the answer, capitalized, opening the error message:
    *   'Discovered' or 'Default'.
@@ -3242,12 +3268,15 @@ class Prompty {
    *   The resolved answer, as the widget would return it.
    * @param array<string, mixed> $results
    *   The flow results collected so far.
+   * @param \Closure $render_failed
+   *   Receives the error message and returns the lines that draw the rejected
+   *   answer.
    *
    * @throws \InvalidArgumentException
    *   When the answer is required and empty, or the validator returns an
    *   error message.
    */
-  protected function assertResolvedValid(string $parameter, string $label, bool|string $required, ?callable $validate, string|bool|array $value, array $results): void {
+  protected function assertResolvedValid(string $parameter, string $label, bool|string $required, ?callable $validate, string|bool|array $value, array $results, \Closure $render_failed): void {
     $error = $this->validateAnswer($label, $required, $validate, $value, $results);
 
     if ($error === NULL) {
@@ -3261,7 +3290,11 @@ class Prompty {
       default => $value,
     };
 
-    throw new \InvalidArgumentException(sprintf('%s value "%s" for "%s" is not valid. %s', $parameter, $display, $label, $error));
+    /** @var array<int, string> $lines */
+    $lines = $render_failed($error);
+    $this->printLines($lines);
+
+    $this->throwDrawn(new \InvalidArgumentException(sprintf('%s value "%s" for "%s" is not valid. %s', $parameter, $display, $label, $error)));
   }
 
   /**
@@ -3763,7 +3796,7 @@ class Prompty {
     $this->drawTo($output, fn(): int => $is_live ? $this->redraw($rows, $drawn) : $this->printLines($drawn));
 
     if ($thrown instanceof \Throwable) {
-      throw $thrown;
+      $this->throwDrawn($thrown);
     }
 
     return $value;
@@ -3858,7 +3891,7 @@ class Prompty {
     }
 
     if ($thrown instanceof \Throwable) {
-      throw $thrown;
+      $this->throwDrawn($thrown);
     }
 
     return $value;
@@ -4117,6 +4150,21 @@ class Prompty {
     finally {
       array_pop($this->drawTargets);
     }
+  }
+
+  /**
+   * Throws an exception whose failure has been drawn, marking it for isDrawn().
+   *
+   * @param \Throwable $throwable
+   *   The exception.
+   *
+   * @throws \Throwable
+   *   Always.
+   */
+  protected function throwDrawn(\Throwable $throwable): never {
+    $this->drawnFailures[$throwable] = TRUE;
+
+    throw $throwable;
   }
 
   /**
@@ -5333,6 +5381,37 @@ class Prompty {
     return [
       ...$this->renderLabel($label, 'active', 'red', $depth, $open),
       ...$this->wrap($gutter, $value === '' ? $cancelled : $this->color($value, 'dim') . ' ' . $cancelled, $gutter),
+      $this->bar() . ($depth > 0 ? $this->bodyPrefix($depth, $open) : ''),
+    ];
+  }
+
+  /**
+   * Renders the lines for a widget whose answer was rejected without input.
+   *
+   * @param string $label
+   *   The widget label.
+   * @param string $value
+   *   The rejected answer to display, or '' to draw no value row.
+   * @param string $error
+   *   The error message.
+   * @param int $depth
+   *   The current nesting depth.
+   * @param array<int, bool> $open
+   *   Tracks which depth levels have continuing siblings.
+   *
+   * @return array<int, string>
+   *   The rendered failed-state lines.
+   */
+  protected function renderFailed(string $label, string $value, string $error, int $depth = 0, array $open = []): array {
+    $label = $this->printable($label);
+    $value = $this->printable($value);
+
+    $gutter = $this->bar() . ($depth > 0 ? $this->bodyPrefix($depth, $open) : $this->cfgSpacing['indent']);
+
+    return [
+      ...$this->renderLabel($label, 'active', 'red', $depth, $open),
+      ...($value === '' ? [] : $this->wrap($gutter, $this->color($value, 'dim'), $gutter)),
+      ...$this->renderError($error, $depth, $open),
       $this->bar() . ($depth > 0 ? $this->bodyPrefix($depth, $open) : ''),
     ];
   }

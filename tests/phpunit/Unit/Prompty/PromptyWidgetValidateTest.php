@@ -316,6 +316,40 @@ final class PromptyWidgetValidateTest extends PromptyTestCase {
     yield 'configured symbol' => ['Too salty.', ['ansi' => FALSE, 'symbols_ascii' => ['error' => 'x', 'bar' => '|']], 0, [], ['|  x Too salty.']];
   }
 
+  #[DataProvider('dataProviderRenderFailed')]
+  public function testRenderFailed(string $label, string $value, array $config, int $depth, array $open, array $expected): void {
+    $p = $this->createInstance($config);
+
+    $this->assertSame($expected, $this->callProtectedLines($p, 'renderFailed', $label, $value, 'Too salty.', $depth, $open));
+  }
+
+  public static function dataProviderRenderFailed(): \Iterator {
+    yield 'value and message' => ['Dish name', 'pear', ['ansi' => FALSE], 0, [], ['o  Dish name', '|  pear', '|  ! Too salty.', '|']];
+    yield 'empty value draws no value row' => ['Dish name', '', ['ansi' => FALSE], 0, [], ['o  Dish name', '|  ! Too salty.', '|']];
+    yield 'ansi colors the label symbol and the message red' => ['Dish name', 'pear', ['ansi' => TRUE], 0, [], [
+      "\033[31mo\033[0m  Dish name",
+      "\033[90m|\033[0m  \033[2mpear\033[0m",
+      "\033[90m|\033[0m  \033[31m! Too salty.\033[0m",
+      "\033[90m|\033[0m",
+    ]];
+    yield 'nested under an open level' => ['Dish name', 'pear', ['ansi' => FALSE], 2, [1 => TRUE], [
+      '|  |  o  Dish name',
+      '|  |     pear',
+      '|  |     ! Too salty.',
+      '|  |     ',
+    ]];
+    yield 'control characters are neutralized' => ["Dish\033[2J name", "pe\nar", ['ansi' => FALSE], 0, [], ['o  Dish name', '|  pe ar', '|  ! Too salty.', '|']];
+  }
+
+  public function testStandaloneDiscoveredRejectedDrawn(): void {
+    $stream = $this->installKeystrokes(self::KEY_ENTER, FALSE);
+
+    $output = $this->captureOutputThrows(\InvalidArgumentException::class, 'Discovered value "pear" for "Dish name" is not valid. ' . self::MESSAGE, fn(): mixed => Prompty::text('Dish name', discovered: 'pear', validate: fn(): string => self::MESSAGE), TRUE);
+
+    $this->assertSame(self::failedOutput('Dish name', 'pear', self::MESSAGE), $output);
+    $this->assertSame(0, ftell($stream));
+  }
+
   public function testStandaloneValidatorReceivesNoResults(): void {
     $r = $this->runValidated(self::textWidget(), fn(): ?string => NULL, 'pear' . self::KEY_ENTER);
 
@@ -365,9 +399,9 @@ final class PromptyWidgetValidateTest extends PromptyTestCase {
 
     $output = $this->captureOutputThrows(\InvalidArgumentException::class, 'Discovered value "Lentil Stew" for "Dish" is not valid. Pick a dish from the menu.', fn(): mixed => Prompty::flow()
       ->suggest('dish', 'Dish', options: self::DISHES, validate: fn(string $dish): ?string => in_array($dish, self::DISHES, TRUE) ? NULL : 'Pick a dish from the menu.')
-      ->run(unicode: FALSE));
+      ->run(unicode: FALSE), TRUE);
 
-    $this->assertSame('', $output);
+    $this->assertSame(self::failedOutput('Dish', 'Lentil Stew', 'Pick a dish from the menu.') . "#  Failed\n\n", $output);
     $this->assertSame(0, ftell($stream));
     $this->assertFalse($this->getStaticProperty('isInFlow'));
   }
@@ -437,6 +471,7 @@ final class PromptyWidgetValidateTest extends PromptyTestCase {
       \UnexpectedValueException::class,
       sprintf('Validator for "Dish name" returned %s. A validator returns NULL for a valid answer or an error message string.', $type),
       fn(): mixed => Prompty::text('Dish name', discovered: $discovered, validate: fn(): mixed => $returned, ctx: $this->defaultCtx()),
+      FALSE,
     );
 
     fclose($stream);
@@ -481,7 +516,7 @@ final class PromptyWidgetValidateTest extends PromptyTestCase {
   }
 
   #[DataProvider('dataProviderDiscoveredRejected')]
-  public function testDiscoveredRejected(\Closure $widget, mixed $discovered, ?string $ctx_discovered, string $message): void {
+  public function testDiscoveredRejected(\Closure $widget, mixed $discovered, ?string $ctx_discovered, string $message, string $output): void {
     $answers = [];
     $validate = function (mixed $value) use (&$answers): string {
       $answers[] = $value;
@@ -489,31 +524,32 @@ final class PromptyWidgetValidateTest extends PromptyTestCase {
       return self::MESSAGE;
     };
 
-    $this->assertWidgetRejects(fn(): mixed => $widget($validate, $this->ctx(['discovered' => $ctx_discovered]), $discovered), $message);
+    $this->assertWidgetRejects(fn(): mixed => $widget($validate, $this->ctx(['discovered' => $ctx_discovered]), $discovered), $message, output: $output);
     $this->assertCount(1, $answers);
   }
 
   public static function dataProviderDiscoveredRejected(): \Iterator {
     $message = static fn(string $value, string $label): string => sprintf('Discovered value "%s" for "%s" is not valid. %s', $value, $label, self::MESSAGE);
+    $drawn = static fn(string $label, string $value): string => self::failedOutput($label, $value, self::MESSAGE);
 
-    yield 'text argument' => [self::textWidget(), 'pear', NULL, $message('pear', 'Dish name')];
-    yield 'text env value' => [self::textWidget(), NULL, 'pear', $message('pear', 'Dish name')];
-    yield 'text trimmed' => [self::textWidget(), '  pear  ', NULL, $message('pear', 'Dish name')];
-    yield 'text blank takes the placeholder' => [self::textWidget(), '', NULL, $message('pear tart', 'Dish name')];
-    yield 'text blank takes the default' => [self::textWidget('onion soup'), ' ', NULL, $message('onion soup', 'Dish name')];
-    yield 'select argument' => [self::selectWidget(), 'main', NULL, $message('main', 'Course')];
-    yield 'select env value' => [self::selectWidget(), NULL, ' main ', $message('main', 'Course')];
-    yield 'multiselect list' => [self::multiselectWidget(), ['olives', 'bread'], NULL, $message('bread,olives', 'Extras')];
-    yield 'multiselect env value' => [self::multiselectWidget(), NULL, 'herbs,bread', $message('bread,herbs', 'Extras')];
-    yield 'multiselect blank selects nothing' => [self::multiselectWidget(), NULL, '', $message('', 'Extras')];
-    yield 'suggest argument' => [self::suggestWidget(), 'Pear Tart', NULL, $message('Pear Tart', 'Dish')];
-    yield 'suggest argument not among the suggestions' => [self::suggestWidget(), 'lentil stew', NULL, $message('lentil stew', 'Dish')];
-    yield 'suggest env value' => [self::suggestWidget(), NULL, ' Onion Soup ', $message('Onion Soup', 'Dish')];
-    yield 'suggest blank takes the placeholder' => [self::suggestWidget(), '', NULL, $message('pear tart', 'Dish')];
-    yield 'suggest blank takes the default' => [self::suggestWidget(default: 'Apple Crumble'), ' ', NULL, $message('Apple Crumble', 'Dish')];
-    yield 'confirm truthy' => [self::confirmWidget(), 'yes', NULL, $message('true', 'Send order?')];
-    yield 'confirm falsy env value' => [self::confirmWidget(), NULL, '0', $message('false', 'Send order?')];
-    yield 'confirm boolean' => [self::confirmWidget(), FALSE, NULL, $message('false', 'Send order?')];
+    yield 'text argument' => [self::textWidget(), 'pear', NULL, $message('pear', 'Dish name'), $drawn('Dish name', 'pear')];
+    yield 'text env value' => [self::textWidget(), NULL, 'pear', $message('pear', 'Dish name'), $drawn('Dish name', 'pear')];
+    yield 'text trimmed' => [self::textWidget(), '  pear  ', NULL, $message('pear', 'Dish name'), $drawn('Dish name', 'pear')];
+    yield 'text blank takes the placeholder' => [self::textWidget(), '', NULL, $message('pear tart', 'Dish name'), $drawn('Dish name', 'pear tart')];
+    yield 'text blank takes the default' => [self::textWidget('onion soup'), ' ', NULL, $message('onion soup', 'Dish name'), $drawn('Dish name', 'onion soup')];
+    yield 'select argument' => [self::selectWidget(), 'main', NULL, $message('main', 'Course'), $drawn('Course', 'Main')];
+    yield 'select env value' => [self::selectWidget(), NULL, ' main ', $message('main', 'Course'), $drawn('Course', 'Main')];
+    yield 'multiselect list' => [self::multiselectWidget(), ['olives', 'bread'], NULL, $message('bread,olives', 'Extras'), $drawn('Extras', 'Bread, Olives')];
+    yield 'multiselect env value' => [self::multiselectWidget(), NULL, 'herbs,bread', $message('bread,herbs', 'Extras'), $drawn('Extras', 'Bread, Herbs')];
+    yield 'multiselect blank selects nothing' => [self::multiselectWidget(), NULL, '', $message('', 'Extras'), $drawn('Extras', 'None')];
+    yield 'suggest argument' => [self::suggestWidget(), 'Pear Tart', NULL, $message('Pear Tart', 'Dish'), $drawn('Dish', 'Pear Tart')];
+    yield 'suggest argument not among the suggestions' => [self::suggestWidget(), 'lentil stew', NULL, $message('lentil stew', 'Dish'), $drawn('Dish', 'lentil stew')];
+    yield 'suggest env value' => [self::suggestWidget(), NULL, ' Onion Soup ', $message('Onion Soup', 'Dish'), $drawn('Dish', 'Onion Soup')];
+    yield 'suggest blank takes the placeholder' => [self::suggestWidget(), '', NULL, $message('pear tart', 'Dish'), $drawn('Dish', 'pear tart')];
+    yield 'suggest blank takes the default' => [self::suggestWidget(default: 'Apple Crumble'), ' ', NULL, $message('Apple Crumble', 'Dish'), $drawn('Dish', 'Apple Crumble')];
+    yield 'confirm truthy' => [self::confirmWidget(), 'yes', NULL, $message('true', 'Send order?'), $drawn('Send order?', 'Yes')];
+    yield 'confirm falsy env value' => [self::confirmWidget(), NULL, '0', $message('false', 'Send order?'), $drawn('Send order?', 'No')];
+    yield 'confirm boolean' => [self::confirmWidget(), FALSE, NULL, $message('false', 'Send order?'), $drawn('Send order?', 'No')];
   }
 
   #[DataProvider('dataProviderDiscoveredAccepted')]
@@ -559,32 +595,33 @@ final class PromptyWidgetValidateTest extends PromptyTestCase {
   }
 
   #[DataProvider('dataProviderNonInteractiveAnswerRejected')]
-  public function testNonInteractiveAnswerRejected(\Closure $widget, mixed $discovered, string $message): void {
+  public function testNonInteractiveAnswerRejected(\Closure $widget, mixed $discovered, string $message, string $expected): void {
     $stream = $this->installKeystrokes(self::KEY_ENTER);
     Prompty::configure(interactive: FALSE);
 
-    $output = $this->captureOutputThrows(\InvalidArgumentException::class, $message, fn(): mixed => $widget(fn(): string => self::MESSAGE, $this->ctx(), $discovered));
+    $output = $this->captureOutputThrows(\InvalidArgumentException::class, $message, fn(): mixed => $widget(fn(): string => self::MESSAGE, $this->ctx(), $discovered), TRUE);
 
-    $this->assertSame('', $output);
+    $this->assertSame($expected, $output);
     $this->assertSame(0, ftell($stream));
     fclose($stream);
   }
 
   public static function dataProviderNonInteractiveAnswerRejected(): \Iterator {
     $message = static fn(string $parameter, string $value, string $label): string => sprintf('%s value "%s" for "%s" is not valid. %s', $parameter, $value, $label, self::MESSAGE);
+    $drawn = static fn(string $label, string $value): string => self::failedOutput($label, $value, self::MESSAGE);
 
-    yield 'text default' => [self::textWidget('pear'), NULL, $message('Default', 'pear', 'Dish name')];
-    yield 'text empty default ignores the placeholder' => [self::textWidget(), NULL, $message('Default', '', 'Dish name')];
-    yield 'text discovered' => [self::textWidget('pear'), 'onion', $message('Discovered', 'onion', 'Dish name')];
-    yield 'select first option' => [self::selectWidget(), NULL, $message('Default', 'starter', 'Course')];
-    yield 'select discovered' => [self::selectWidget(), 'main', $message('Discovered', 'main', 'Course')];
-    yield 'multiselect empty default' => [self::multiselectWidget(), NULL, $message('Default', '', 'Extras')];
-    yield 'multiselect discovered' => [self::multiselectWidget(), 'herbs', $message('Discovered', 'herbs', 'Extras')];
-    yield 'suggest default' => [self::suggestWidget(default: 'Pear Tart'), NULL, $message('Default', 'Pear Tart', 'Dish')];
-    yield 'suggest empty default ignores the placeholder' => [self::suggestWidget(), NULL, $message('Default', '', 'Dish')];
-    yield 'suggest discovered' => [self::suggestWidget(default: 'Pear Tart'), 'Onion Soup', $message('Discovered', 'Onion Soup', 'Dish')];
-    yield 'confirm default' => [self::confirmWidget(FALSE), NULL, $message('Default', 'false', 'Send order?')];
-    yield 'confirm discovered' => [self::confirmWidget(FALSE), 'yes', $message('Discovered', 'true', 'Send order?')];
+    yield 'text default' => [self::textWidget('pear'), NULL, $message('Default', 'pear', 'Dish name'), $drawn('Dish name', 'pear')];
+    yield 'text empty default ignores the placeholder' => [self::textWidget(), NULL, $message('Default', '', 'Dish name'), $drawn('Dish name', '')];
+    yield 'text discovered' => [self::textWidget('pear'), 'onion', $message('Discovered', 'onion', 'Dish name'), $drawn('Dish name', 'onion')];
+    yield 'select first option' => [self::selectWidget(), NULL, $message('Default', 'starter', 'Course'), $drawn('Course', 'Starter')];
+    yield 'select discovered' => [self::selectWidget(), 'main', $message('Discovered', 'main', 'Course'), $drawn('Course', 'Main')];
+    yield 'multiselect empty default' => [self::multiselectWidget(), NULL, $message('Default', '', 'Extras'), $drawn('Extras', 'None')];
+    yield 'multiselect discovered' => [self::multiselectWidget(), 'herbs', $message('Discovered', 'herbs', 'Extras'), $drawn('Extras', 'Herbs')];
+    yield 'suggest default' => [self::suggestWidget(default: 'Pear Tart'), NULL, $message('Default', 'Pear Tart', 'Dish'), $drawn('Dish', 'Pear Tart')];
+    yield 'suggest empty default ignores the placeholder' => [self::suggestWidget(), NULL, $message('Default', '', 'Dish'), $drawn('Dish', '')];
+    yield 'suggest discovered' => [self::suggestWidget(default: 'Pear Tart'), 'Onion Soup', $message('Discovered', 'Onion Soup', 'Dish'), $drawn('Dish', 'Onion Soup')];
+    yield 'confirm default' => [self::confirmWidget(FALSE), NULL, $message('Default', 'false', 'Send order?'), $drawn('Send order?', 'No')];
+    yield 'confirm discovered' => [self::confirmWidget(FALSE), 'yes', $message('Discovered', 'true', 'Send order?'), $drawn('Send order?', 'Yes')];
   }
 
   #[DataProvider('dataProviderNonInteractiveDefaultAccepted')]
@@ -669,7 +706,7 @@ final class PromptyWidgetValidateTest extends PromptyTestCase {
       transform: fn(string $value): string => strtoupper($value),
       validate: fn(string $dish): ?string => $dish === 'PEAR' ? self::MESSAGE : NULL,
       ctx: $this->ctx(),
-    ), sprintf('Discovered value "PEAR" for "Dish name" is not valid. %s', self::MESSAGE));
+    ), sprintf('Discovered value "PEAR" for "Dish name" is not valid. %s', self::MESSAGE), output: self::failedOutput('Dish name', 'PEAR', self::MESSAGE));
   }
 
   public function testFlowEnvValueRejected(): void {
@@ -678,11 +715,72 @@ final class PromptyWidgetValidateTest extends PromptyTestCase {
 
     $output = $this->captureOutputThrows(\InvalidArgumentException::class, 'Discovered value "pear" for "Dish name" is not valid. Name the whole dish.', fn(): mixed => Prompty::flow()
       ->text('dish', 'Dish name', validate: fn(string $dish): ?string => str_contains($dish, ' ') ? NULL : 'Name the whole dish.')
-      ->run(unicode: FALSE));
+      ->run(unicode: FALSE), TRUE);
 
-    $this->assertSame('', $output);
+    $this->assertSame(self::failedOutput('Dish name', 'pear', 'Name the whole dish.') . "#  Failed\n\n", $output);
     $this->assertSame(0, ftell($stream));
     $this->assertFalse($this->getStaticProperty('isInFlow'));
+  }
+
+  #[DataProvider('dataProviderFlowRejectedStepDrawn')]
+  public function testFlowRejectedStepDrawn(\Closure $build, array $env, array $options, string $message, string $expected): void {
+    $this->setEnvVars($env);
+    $stream = $this->installKeystrokes(self::KEY_ENTER, FALSE);
+
+    $output = $this->captureOutputThrows(\InvalidArgumentException::class, $message, fn(): mixed => $build(Prompty::flow())->run(...$options), TRUE);
+
+    $this->assertSame($expected, $output);
+    $this->assertSame(0, ftell($stream));
+  }
+
+  public static function dataProviderFlowRejectedStepDrawn(): \Iterator {
+    $dish = static fn(string $value): ?string => preg_match('/^[a-z][a-z ]*$/', $value) ? NULL : 'Use lowercase letters and spaces.';
+    $flow = static fn(PromptyFlow $flow): PromptyFlow => $flow
+      ->text('dish', 'Dish name', placeholder: 'pear tart', validate: $dish)
+      ->multiselect('extras', 'Extras', options: self::EXTRAS, required: 'Pick at least 1 extra.');
+
+    yield 'first step rejected' => [
+      $flow,
+      ['dish' => 'Pear-Tart'],
+      ['intro' => 'Kitchen order', 'failed' => 'Order not sent.'],
+      'Discovered value "Pear-Tart" for "Dish name" is not valid. Use lowercase letters and spaces.',
+      "\n#  Kitchen order\n|\no  Dish name\n|  Pear-Tart\n|  ! Use lowercase letters and spaces.\n|\n#  Order not sent.\n\n",
+    ];
+    yield 'later step rejected' => [
+      $flow,
+      ['dish' => 'pear tart', 'extras' => ''],
+      ['intro' => 'Kitchen order', 'failed' => 'Order not sent.'],
+      'Discovered value "" for "Extras" is not valid. Pick at least 1 extra.',
+      "\n#  Kitchen order\n|\n+  Dish name\n|  pear tart\n|\no  Extras\n|  None\n|  ! Pick at least 1 extra.\n|\n#  Order not sent.\n\n",
+    ];
+    yield 'numbered step' => [
+      $flow,
+      ['dish' => 'Pear-Tart'],
+      ['numbering' => 'total'],
+      'Discovered value "Pear-Tart" for "Dish name" is not valid. Use lowercase letters and spaces.',
+      "o  Dish name (1/2)\n|  Pear-Tart\n|  ! Use lowercase letters and spaces.\n|\n#  Failed\n\n",
+    ];
+    yield 'nested step with a later sibling' => [
+      static fn(PromptyFlow $flow): PromptyFlow => $flow
+        ->confirm('send', 'Send order?')
+        ->children()
+          ->text('dish', 'Dish name', validate: $dish)
+          ->text('note', 'Note for the kitchen')
+        ->end(),
+      ['send' => 'yes', 'dish' => 'Pear-Tart', 'note' => 'no salt'],
+      [],
+      'Discovered value "Pear-Tart" for "Dish name" is not valid. Use lowercase letters and spaces.',
+      "+  Send order?\n|  Yes\n|\n|  |\n|  o  Dish name\n|  |  Pear-Tart\n|  |  ! Use lowercase letters and spaces.\n|  |  \n#  Failed\n\n",
+    ];
+    yield 'unnumbered step' => [
+      static fn(PromptyFlow $flow): PromptyFlow => $flow
+        ->text('dish', 'Dish name', validate: $dish)->unnumbered()
+        ->text('note', 'Note for the kitchen'),
+      ['dish' => 'Pear-Tart'],
+      ['numbering' => TRUE],
+      'Discovered value "Pear-Tart" for "Dish name" is not valid. Use lowercase letters and spaces.',
+      "o  Dish name\n|  Pear-Tart\n|  ! Use lowercase letters and spaces.\n|\n#  Failed\n\n",
+    ];
   }
 
 }

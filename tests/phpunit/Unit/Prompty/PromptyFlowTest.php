@@ -331,11 +331,11 @@ final class PromptyFlowTest extends PromptyTestCase {
   }
 
   #[DataProvider('dataProviderFlowFailed')]
-  public function testFlowFailed(\Closure $build, array $options, string $expected): void {
+  public function testFlowFailed(\Closure $build, array $options, string $expected, bool $is_drawn): void {
     $flow = $build(Prompty::flow());
     $this->assertInstanceOf(PromptyFlow::class, $flow);
 
-    $output = $this->captureOutputThrows(\RuntimeException::class, 'The oven door is open.', fn(): mixed => $flow->run(...[...$options, 'unicode' => TRUE, 'interactive' => FALSE]));
+    $output = $this->captureOutputThrows(\RuntimeException::class, 'The oven door is open.', fn(): mixed => $flow->run(...[...$options, 'unicode' => TRUE, 'interactive' => FALSE]), $is_drawn);
 
     $this->assertSame($expected, $output);
     $this->assertFalse($this->getStaticProperty('isInFlow'));
@@ -354,36 +354,42 @@ final class PromptyFlowTest extends PromptyTestCase {
       $dish_and_oven,
       ['intro' => 'Compose an order', 'outro' => 'Order sent.'],
       "\n┌  Compose an order\n│\n◆  Dish name\n│  pear tart\n│\n◇  Preheating the oven\n│  ▲ The oven door is open.\n│\n└  Failed\n\n",
+      TRUE,
     ];
 
     yield 'failed string' => [
       $dish_and_oven,
       ['failed' => 'Order not sent.'],
       "◆  Dish name\n│  pear tart\n│\n◇  Preheating the oven\n│  ▲ The oven door is open.\n│\n└  Order not sent.\n\n",
+      TRUE,
     ];
 
     yield 'failed callable receives the answers' => [
       $dish_and_oven,
       ['failed' => static fn(array $r): string => sprintf('Order for %s not sent.', $r['dish'])],
       "◆  Dish name\n│  pear tart\n│\n◇  Preheating the oven\n│  ▲ The oven door is open.\n│\n└  Order for pear tart not sent.\n\n",
+      TRUE,
     ];
 
     yield 'failed callable returning NULL draws nothing' => [
       $dish_and_oven,
       ['failed' => static fn(): null => NULL],
       "◆  Dish name\n│  pear tart\n│\n◇  Preheating the oven\n│  ▲ The oven door is open.\n│\n",
+      TRUE,
     ];
 
     yield 'failed label override' => [
       $dish_and_oven,
       ['labels' => ['failed' => 'Burnt']],
       "◆  Dish name\n│  pear tart\n│\n◇  Preheating the oven\n│  ▲ The oven door is open.\n│\n└  Burnt\n\n",
+      TRUE,
     ];
 
     yield 'task failure line from the failure callable' => [
       static fn(PromptyFlow $flow): PromptyFlow => $flow->task('oven', 'Preheating the oven', action: $throw, failure: static fn(\Throwable $throwable): string => 'Oven: ' . $throwable->getMessage()),
       [],
       "◇  Preheating the oven\n│  ▲ Oven: The oven door is open.\n│\n└  Failed\n\n",
+      TRUE,
     ];
 
     yield 'nested task' => [
@@ -396,6 +402,7 @@ final class PromptyFlowTest extends PromptyTestCase {
         ->confirm('send', 'Send order?'),
       [],
       "◆  Dish name\n│  pear tart\n│\n│  │\n│  ◇  Preheating the oven\n│  │  ▲ The oven door is open.\n│  │  \n└  Failed\n\n",
+      TRUE,
     ];
 
     yield 'exception outside a task' => [
@@ -404,6 +411,7 @@ final class PromptyFlowTest extends PromptyTestCase {
         ->text('note', $throw),
       [],
       "◆  Dish name\n│  pear tart\n│\n└  Failed\n\n",
+      FALSE,
     ];
 
     yield 'exception in a condition' => [
@@ -415,6 +423,7 @@ final class PromptyFlowTest extends PromptyTestCase {
           ->end(),
       [],
       "◆  Dish name\n│  pear tart\n│\n└  Failed\n\n",
+      FALSE,
     ];
 
     yield 'task exception skips the conditions of later siblings' => [
@@ -429,24 +438,28 @@ final class PromptyFlowTest extends PromptyTestCase {
           ->end(),
       [],
       "◆  Dish name\n│  pear tart\n│\n│  │\n│  ◇  Preheating the oven\n│  │  ▲ The oven door is open.\n│  │  \n└  Failed\n\n",
+      TRUE,
     ];
 
     yield 'exception in the first note draws no banner' => [
       static fn(PromptyFlow $flow): PromptyFlow => $flow->note($throw)->text('dish', 'Dish name', discovered: 'pear tart'),
       [],
       '',
+      FALSE,
     ];
 
     yield 'exception before anything is drawn draws no banner' => [
       static fn(PromptyFlow $flow): PromptyFlow => $flow->text('dish', $throw),
       [],
       '',
+      FALSE,
     ];
 
     yield 'exception after the intro alone' => [
       static fn(PromptyFlow $flow): PromptyFlow => $flow->text('dish', $throw),
       ['intro' => 'Compose an order'],
       "\n┌  Compose an order\n│\n└  Failed\n\n",
+      FALSE,
     ];
   }
 

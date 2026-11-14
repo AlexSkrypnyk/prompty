@@ -244,6 +244,7 @@ final class PromptyTaskTest extends PromptyTestCase {
     }
     catch (\RuntimeException $runtime_exception) {
       $this->assertSame('The oven door is open.', $runtime_exception->getMessage());
+      $this->assertTrue(Prompty::isDrawn($runtime_exception));
     }
 
     $output = (string) ob_get_clean();
@@ -281,7 +282,7 @@ final class PromptyTaskTest extends PromptyTestCase {
       throw new \RuntimeException('The oven door is open.');
     };
 
-    $output = $this->captureOutputThrows(\RuntimeException::class, 'The oven door is open.', fn(): mixed => Prompty::task('Preheating the oven', ...['action' => $action, ...$arguments]));
+    $output = $this->captureOutputThrows(\RuntimeException::class, 'The oven door is open.', fn(): mixed => Prompty::task('Preheating the oven', ...['action' => $action, ...$arguments]), TRUE);
 
     $this->assertSame($expected, $output);
   }
@@ -328,7 +329,7 @@ final class PromptyTaskTest extends PromptyTestCase {
 
     $output = $this->captureOutputThrows(\RuntimeException::class, '', fn(): mixed => Prompty::task('Preheating the oven', action: function (): never {
       throw new \RuntimeException();
-    }));
+    }), TRUE);
 
     $this->assertSame("o  Preheating the oven\n|  ! Failed\n|\n", $output);
   }
@@ -354,6 +355,8 @@ final class PromptyTaskTest extends PromptyTestCase {
     $this->assertSame('The failure callable for task "Preheating the oven" returned int. It must return the text to draw.', $thrown->getMessage());
     $this->assertInstanceOf(\RuntimeException::class, $thrown->getPrevious());
     $this->assertSame('The oven door is open.', $thrown->getPrevious()->getMessage());
+    $this->assertFalse(Prompty::isDrawn($thrown));
+    $this->assertFalse(Prompty::isDrawn($thrown->getPrevious()));
     $this->assertSame("o  Preheating the oven\n", $output);
   }
 
