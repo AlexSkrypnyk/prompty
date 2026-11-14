@@ -148,6 +148,10 @@ final class PromptyWrapTest extends PromptyTestCase {
     yield 'keeps deeper leading spaces' => [16, '    1. Plum tart with cream', ['|      1. Plum', '|      tart with', '|      cream']];
 
     yield 'drops leading spaces that leave no room' => [6, '   Plum tart', ['|     ', '|  Plu', '|  m', '|  tar', '|  t']];
+
+    yield 'drops leading spaces that leave no room for a wide character' => [8, '    日本', ['|      ', '|  日本']];
+
+    yield 'keeps leading spaces that leave room for a wide character' => [9, '    日本', ['|      ', '|      日', '|      本']];
   }
 
   public function testWrapIndentedMeasuresSpacesInsideStyle(): void {
@@ -177,6 +181,10 @@ final class PromptyWrapTest extends PromptyTestCase {
 
   public static function dataProviderTextBodiesKeepLeadingSpaces(): \Iterator {
     $text = "Dishes:\n  1. Plum compote with cream";
+
+    yield 'single-line note' => ['renderNote', ['  Plum compote with cream', 'info'], ['*    Plum compote with', '|    cream', '|']];
+
+    yield 'label' => ['renderLabel', ['  Plum compote with cream', 'active', 'cyan'], ['o    Plum compote with', '|    cream']];
 
     yield 'note' => ['renderNote', [$text, 'info'], ['*  Dishes:', '|    1. Plum compote', '|    with cream', '|']];
 

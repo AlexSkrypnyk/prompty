@@ -4540,7 +4540,7 @@ class Prompty {
    * Wraps a line of styled text so its further rows keep its leading spaces.
    *
    * The leading spaces are dropped from the further rows when they leave no
-   * room for content.
+   * room for the widest character of the content.
    *
    * @param string $gutter
    *   The tree prefix drawn before the first row.
@@ -4554,7 +4554,8 @@ class Prompty {
    */
   protected function wrapIndented(string $gutter, string $content, string $continuation): array {
     $indent = str_repeat(' ', strspn($this->stripAnsi($content), ' '));
-    $indent = $this->displayWidth($continuation . $indent) < $this->columns() ? $indent : '';
+    $room = preg_match(static::WIDE_PATTERN, $content) === 1 ? 2 : 1;
+    $indent = $this->columns() - $this->displayWidth($continuation . $indent) >= $room ? $indent : '';
 
     return $this->wrap($gutter, $content, $continuation . $indent);
   }
@@ -5033,7 +5034,7 @@ class Prompty {
   protected function renderMarkedLabel(string $label, string $marker, int $depth = 0, array $open = []): array {
     $gutter = ($depth > 0 ? $this->bar() . $this->labelPrefix($depth, $open) : '') . $marker . $this->cfgSpacing['indent'];
 
-    return $this->wrap($gutter, $label, $this->bar() . ($depth > 0 ? $this->bodyPrefix($depth, $open) : $this->cfgSpacing['indent']));
+    return $this->wrapIndented($gutter, $label, $this->bar() . ($depth > 0 ? $this->bodyPrefix($depth, $open) : $this->cfgSpacing['indent']));
   }
 
   /**

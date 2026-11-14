@@ -2340,7 +2340,7 @@ Prompty::configure(scroll: 10);
 <details>
 <summary><a name="long-lines"></a>Long lines: how lines wider than the terminal wrap</summary>
 
-Prompty wraps every line that's wider than the terminal. Labels, descriptions, options, hints, help, errors and answers break between words, and each continuation row starts with the same bar and indent as its first row. In notes, descriptions, hints, help and task lines, a line that starts with spaces keeps them on its continuation rows too. A word wider than the row breaks at the row's edge:
+Prompty wraps every line that's wider than the terminal. Labels, descriptions, options, hints, help, errors and answers break between words, and each continuation row starts with the same bar and indent as its first row. In labels, notes, descriptions, hints, help and task lines, a line that starts with spaces keeps them on its continuation rows too. A word wider than the row breaks at the row's edge:
 
 ```text
 ◆  Extras
