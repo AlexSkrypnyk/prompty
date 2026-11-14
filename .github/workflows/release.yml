@@ -109,7 +109,6 @@ jobs:
 
       # Assets go onto a draft, because a published release is immutable.
       - name: Upload the assets to the draft release
-        id: upload
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
@@ -144,8 +143,6 @@ jobs:
           elif [ "${state}" = 'none' ]; then
             gh release create "${TAG}" --title "${TAG}" --generate-notes --draft --verify-tag
           fi
-
-          echo "draft=${draft}" >> "${GITHUB_OUTPUT}"
 
           gh release upload "${TAG}" \
             Prompty.php \
@@ -187,7 +184,6 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
           TAG: ${{ github.ref_name }}
-          DRAFT: ${{ steps.upload.outputs.draft }}
         run: |
           prerelease='false'
           if [[ "${TAG}" == *-* ]]; then
@@ -207,9 +203,12 @@ jobs:
             fi
           fi
 
+          # The compare link ends on Release Drafter's guess. Read the guess from
+          # the body, because a re-run doesn't know which draft it renamed.
           notes="$(gh release view "${TAG}" --json body --jq .body)"
-          if [ -n "${DRAFT}" ]; then
-            notes="${notes//"...${DRAFT}"/"...${TAG}"}"
+          if [[ "${notes}" =~ /compare/[0-9A-Za-z.-]+\.\.\.([0-9A-Za-z.-]+) ]]; then
+            guess="${BASH_REMATCH[1]}"
+            notes="${notes//"...${guess}"/"...${TAG}"}"
           fi
           printf '%s\n' "${notes}" > "${RUNNER_TEMP}/notes.md"
 
