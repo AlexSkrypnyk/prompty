@@ -39,6 +39,10 @@ builder), `PromptyTestTrait.php` (test helper).
   `$previous`, so a replay never mistakes one for a cancellation.
 - **Failed flows** - `runFlow()` catches an exception from the walk, draws the
   `failed` banner when the flow has printed rows, and rethrows.
+- **Drawn failures** - a discovered or default answer that fails `required` or
+  `validate` draws `renderFailed()` in `assertResolvedValid()`, then throws.
+  That exception and a task's rethrown one go through `throwDrawn()`, which
+  records them in the `drawnFailures` WeakMap that `isDrawn()` reads.
 - **Step providers** - `PromptyFlow::add()` takes a `PromptyStepInterface`;
   its `widget()` and `arguments()` are asked when the step is reached.
 - **Sections** - `walkFlow()` draws a section only when a step in its group

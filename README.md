@@ -1552,7 +1552,16 @@ An empty message counts as valid, like `null`. Any other return type throws an `
 Validator for "Dish name" returned bool. A validator returns NULL for a valid answer or an error message string.
 ```
 
-A `discovered:` value or a `PROMPTY_*` variable goes through `validate` too. With nobody to ask again, a rejected value throws an `InvalidArgumentException` before the widget draws:
+A `discovered:` value or a `PROMPTY_*` variable goes through `validate` too. With nobody to ask again, the widget draws the rejected value and the message:
+
+```
+◇  Dish name
+│  pear
+│  ▲ Name the whole dish, such as "pear tart".
+│
+```
+
+Then it throws an `InvalidArgumentException`. [`Prompty::isDrawn()`](#other-methods) returns `true` for it, because the message is already on screen:
 
 ```text
 Discovered value "pear" for "Dish name" is not valid. Name the whole dish, such as "pear tart".
@@ -1669,6 +1678,18 @@ catch (\RuntimeException $e) {
 ```
 
 The flow draws no `failed` message when the step throws before the flow has drawn anything.
+
+A rejected `discovered:` value, `PROMPTY_*` variable or non-interactive `default` also draws its message in the tree. Other exceptions draw only the `failed` message, such as one thrown by a closure argument. To print the message only when the tree lacks it, check `Prompty::isDrawn()`:
+
+```php
+catch (\Throwable $e) {
+  if (!Prompty::isDrawn($e)) {
+    fwrite(STDERR, $e->getMessage() . PHP_EOL);
+  }
+
+  exit(1);
+}
+```
 
 `->intro('Compose an order')` sets the intro inside the chain instead. An `intro` passed to `run()` replaces it.
 
@@ -2477,6 +2498,7 @@ Besides the 5 widgets, `flow()` and `configure()`, the class has these methods:
 | `Prompty::results()`         | `array`  | The answers collected by the last flow.                         |
 | `Prompty::config()`          | `array`  | The resolved configuration, including detected values.          |
 | `Prompty::version()`         | `string` | The release version, or `development` when running from source. |
+| `Prompty::isDrawn($e)`       | `bool`   | Whether Prompty drew the failure before throwing the exception. |
 | `Prompty::intro($message)`   | `void`   | Prints an intro banner outside `flow()`.                        |
 | `Prompty::outro($message)`   | `void`   | Prints an outro banner outside `flow()`.                        |
 | `Prompty::output($lines)`    | `int`    | Prints an array of lines, 1 per line. Returns the count.        |
