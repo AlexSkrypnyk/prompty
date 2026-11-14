@@ -2,13 +2,10 @@ name: Draft release notes
 
 on:
   push:
-    tags:
-      - '*'
     branches:
       - main
 
-permissions:
-  contents: write
+permissions: {}
 
 jobs:
   release-drafter:

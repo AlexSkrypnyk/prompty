@@ -1,6 +1,8 @@
 name: Test PHP
 
 on:
+  schedule:
+    - cron: '23 4 * * *'
   push:
     branches:
       - main
@@ -9,15 +11,8 @@ on:
       - main
       - 'feature/**'
   workflow_dispatch:
-    inputs:
-      enable_terminal:
-        type: boolean
-        description: 'Enable terminal session.'
-        required: false
-        default: false
 
-permissions:
-  contents: read
+permissions: {}
 
 jobs:
   lint:
@@ -122,11 +117,14 @@ jobs:
           ini-values: pcov.directory=.
 
       - name: Install dependencies
+        env:
+          DEPS: ${{ matrix.deps }}
+          PLATFORM_FLAG: ${{ matrix.php-versions == '8.5' && '--ignore-platform-reqs' || '' }}
         run: |
-          if [[ "${{ matrix.deps }}" == "lowest" ]]; then
-            composer update --prefer-lowest --prefer-stable ${{ matrix.php-versions == '8.5' && '--ignore-platform-reqs' || '' }}
+          if [[ "${DEPS}" == "lowest" ]]; then
+            composer update --prefer-lowest --prefer-stable ${PLATFORM_FLAG:+"${PLATFORM_FLAG}"}
           else
-            composer install --audit ${{ matrix.php-versions == '8.5' && '--ignore-platform-reqs' || '' }}
+            composer install --audit ${PLATFORM_FLAG:+"${PLATFORM_FLAG}"}
           fi
 
       - name: Validate composer.json
@@ -206,11 +204,6 @@ jobs:
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
-      - name: Setup tmate session
-        if: ${{ !cancelled() && github.event.inputs.enable_terminal }}
-        uses: mxschmitt/action-tmate@35b54afac29c97fb54faba5b513f8fbd1882f113 # v3
-        timeout-minutes: 30
-
   test-php-os:
     name: PHP ${{ matrix.php-versions }}, Deps normal, ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
@@ -237,7 +230,10 @@ jobs:
           coverage: none
 
       - name: Install dependencies
-        run: composer install --audit ${{ matrix.php-versions == '8.5' && '--ignore-platform-reqs' || '' }}
+        shell: bash
+        env:
+          PLATFORM_FLAG: ${{ matrix.php-versions == '8.5' && '--ignore-platform-reqs' || '' }}
+        run: composer install --audit ${PLATFORM_FLAG:+"${PLATFORM_FLAG}"}
 
       - name: Run tests
         run: composer test
