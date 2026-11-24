@@ -94,7 +94,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        php-versions: ['8.3', '8.4', '8.5']
+        php-versions: ['8.3', '8.4', '8.5', '8.6']
         deps: ['normal', 'lowest']
 
     steps:
@@ -119,7 +119,7 @@ jobs:
       - name: Install dependencies
         env:
           DEPS: ${{ matrix.deps }}
-          PLATFORM_FLAG: ${{ matrix.php-versions == '8.5' && '--ignore-platform-reqs' || '' }}
+          PLATFORM_FLAG: ${{ (matrix.php-versions == '8.5' || matrix.php-versions == '8.6') && '--ignore-platform-reqs' || '' }}
         run: |
           if [[ "${DEPS}" == "lowest" ]]; then
             composer update --prefer-lowest --prefer-stable ${PLATFORM_FLAG:+"${PLATFORM_FLAG}"}
@@ -215,7 +215,7 @@ jobs:
       fail-fast: false
       matrix:
         os: ['macos-26', 'macos-15', 'windows-2025', 'windows-2022']
-        php-versions: ['8.3', '8.5']
+        php-versions: ['8.3', '8.5', '8.6']
 
     steps:
       - name: Checkout code
@@ -232,7 +232,7 @@ jobs:
       - name: Install dependencies
         shell: bash
         env:
-          PLATFORM_FLAG: ${{ matrix.php-versions == '8.5' && '--ignore-platform-reqs' || '' }}
+          PLATFORM_FLAG: ${{ (matrix.php-versions == '8.5' || matrix.php-versions == '8.6') && '--ignore-platform-reqs' || '' }}
         run: composer install --audit ${PLATFORM_FLAG:+"${PLATFORM_FLAG}"}
 
       - name: Run tests

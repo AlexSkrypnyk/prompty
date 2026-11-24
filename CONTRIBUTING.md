@@ -4,7 +4,7 @@ Thanks for helping with Prompty. This guide covers local setup, the checks and t
 
 ## Requirements
 
-You need PHP 8.3 or later and Composer. CI runs the suite on Ubuntu with PHP 8.3, 8.4 and 8.5, with both the latest and the lowest dependency versions. It also runs it with PHP 8.3 and 8.5 on macOS 26, macOS 15, Windows Server 2025 and Windows Server 2022. A change that needs PHP newer than 8.3 fails CI.
+You need PHP 8.3 or later and Composer. CI runs the suite on Ubuntu with PHP 8.3, 8.4, 8.5 and 8.6, with both the latest and the lowest dependency versions. It also runs it with PHP 8.3, 8.5 and 8.6 on macOS 26, macOS 15, Windows Server 2025 and Windows Server 2022. A change that needs PHP newer than 8.3 fails CI.
 
 `composer.lock` isn't committed, so a fresh clone resolves dependencies from scratch.
 
