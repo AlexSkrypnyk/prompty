@@ -141,7 +141,7 @@ To ask a series of questions as 1 wizard, chain them into a [flow](#flows). A sc
 // Standalone widgets can sit between flows.
 $dish = Prompty::flow()->text('dish', 'Dish name')->run(intro: 'Step 1: The dish');
 $note = Prompty::text('Kitchen note');
-$extras = Prompty::flow()->multiselect('extras', 'Extras', options: $extras)->run(intro: 'Step 2: Extras');
+$extras = Prompty::flow()->multiselect('extras', 'Extras', options: ['bread' => 'Bread', 'olives' => 'Olives'])->run(intro: 'Step 2: Extras');
 ```
 
 To ship a single file instead, [embed](#embedding) the minified class in your script. To start from a template, copy the [starter script](#starter-script).
@@ -2566,7 +2566,7 @@ A widget whose [`validate`](#validation) callback rejects an answer asks again. 
 public function testRejectsSingleWord(): void {
   $this->promptyThrowOnInvalid();
 
-  $this->expectException(PromptyValidationException::class);
+  $this->expectException(\AlexSkrypnyk\Prompty\PromptyValidationException::class);
   $this->expectExceptionMessage('Name the whole dish');
 
   $this->promptyRun(fn(): mixed => Prompty::text('Dish name',
