@@ -2126,7 +2126,7 @@ With `--stdout` or `--payload`, `embed.php` takes an output file path in place o
 <details>
 <summary><a name="re-embedding"></a>Re-embedding: update an embedded script to a newer Prompty</summary>
 
-To update an embedded script to a newer Prompty, replace `Prompty.php` with the new version and run `embed.php` again. `embed.php` replaces the code between the markers and leaves everything outside them as it is, so it adds no [kill switch](#kill-switch):
+To update an embedded script to a newer Prompty, replace `Prompty.php` and `embed.php` with the files from the new release, then run `embed.php` again. The marker records the embedder's hash, so a check against the release fails for a script embedded by an older `embed.php`. `embed.php` replaces the code between the markers and leaves everything outside them as it is, so it adds no [kill switch](#kill-switch):
 
 ```bash
 php embed.php my-script.php
@@ -2405,8 +2405,9 @@ php embed.php my-script.php
 ```bash
 BASE=https://github.com/AlexSkrypnyk/prompty/releases/latest/download
 
-# Download the new Prompty.php, overwriting the old one.
+# Download the new Prompty.php and embed.php, overwriting the old ones.
 curl -LO $BASE/Prompty.php
+curl -LO $BASE/embed.php
 
 # Re-run the embedder. Code outside the markers is preserved.
 php embed.php my-script.php
