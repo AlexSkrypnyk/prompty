@@ -35,12 +35,9 @@ template: |
   directory, then:
 
   ```bash
-  # Fetch the public key and check its fingerprint before importing it
-  # (first time only).
-  curl -LO \
-    https://raw.githubusercontent.com/AlexSkrypnyk/prompty/main/PUBLIC_KEY.asc
-  gpg --show-keys --with-fingerprint PUBLIC_KEY.asc
-  gpg --import PUBLIC_KEY.asc
+  # Fetch the public key by its fingerprint (first time only).
+  gpg --keyserver hkps://keys.openpgp.org \
+    --recv-keys 755E824E80F849135F5F4043E71EDB25C4F6D89D
 
   # Verify the signature.
   gpg --verify SHA256SUMS.asc SHA256SUMS

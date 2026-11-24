@@ -2395,7 +2395,7 @@ A job for the workflow that tests your pull requests. It downloads the Prompty r
           GH_TOKEN: ${{ github.token }}
         run: |
           gh attestation verify .prompty/embed.php --repo AlexSkrypnyk/prompty
-          curl -fsSL https://raw.githubusercontent.com/AlexSkrypnyk/prompty/main/PUBLIC_KEY.asc | gpg --batch --import
+          gpg --batch --keyserver hkps://keys.openpgp.org --recv-keys 755E824E80F849135F5F4043E71EDB25C4F6D89D
           gpg --batch --status-fd 1 --verify .prompty/SHA256SUMS.asc .prompty/SHA256SUMS | grep -q '^\[GNUPG:\] VALIDSIG 755E824E80F849135F5F4043E71EDB25C4F6D89D '
           cd .prompty
           sha256sum --ignore-missing -c SHA256SUMS

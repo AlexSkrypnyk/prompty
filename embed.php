@@ -1332,7 +1332,7 @@ SNIPPET;
           GH_TOKEN: ${{ github.token }}
         run: |
           gh attestation verify .prompty/embed.php --repo {release_repo}
-          curl -fsSL https://raw.githubusercontent.com/{release_repo}/main/PUBLIC_KEY.asc | gpg --batch --import
+          gpg --batch --keyserver hkps://keys.openpgp.org --recv-keys {fingerprint}
           gpg --batch --status-fd 1 --verify .prompty/SHA256SUMS.asc .prompty/SHA256SUMS | grep -q '^\[GNUPG:\] VALIDSIG {fingerprint} '
           cd .prompty
           sha256sum --ignore-missing -c SHA256SUMS
