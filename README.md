@@ -132,7 +132,9 @@ $course = Prompty::select('Course', options: [
 ]);
 $send = Prompty::confirm('Send order?');
 
-echo "Sending $dish for the $course course...\n";
+if ($send) {
+  echo "Sending $dish for the $course course...\n";
+}
 ```
 
 To ask a series of questions as 1 wizard, chain them into a [flow](#flows). A script can mix standalone widgets and flows:
@@ -810,7 +812,7 @@ The class has 4 helpers:
   </tr>
 </table>
 
-`task()` runs work between your questions, such as a download or a build step, and reports the result. While the action runs, the label shows a spinner. After the action returns, the label, the `hint` and a result line replace the spinner.
+`task()` runs work between your questions, such as preheating the oven, and reports the result. While the action runs, the label shows a spinner. After the action returns, the label, the `hint` and a result line replace the spinner.
 
 <details>
 <summary>Details: Tasks</summary>
@@ -889,7 +891,7 @@ Wrap a built-in function such as `time` in a closure. A built-in function that t
 <details>
 <summary><a name="streamed-output"></a>Streamed output: draw the action's own output under the task</summary>
 
-Some work prints its own output while it runs, such as a build or a package install. To draw that output under the task in place of a spinner, pass `stream: TRUE`.
+Some work prints its own output while it runs, such as a bake that reports each stage. To draw that output under the task in place of a spinner, pass `stream: TRUE`.
 
 ```php
 Prompty::task('Baking the tart',
