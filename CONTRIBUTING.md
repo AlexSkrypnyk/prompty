@@ -156,7 +156,17 @@ Take labels, keys and hints from that file. If a demo needs a concept the file d
 
 ## README layout
 
-The README shows headings, screenshots and short summaries. It folds code and detail into `<details>` toggles. It has 5 main sections: **Installation**, **Usage** (with embedding, the starter script and the test harness), **Widgets**, **Flows** and **Configuration**. Add every new heading to the **Contents** list, nested under its parent heading.
+The README shows headings, screenshots and short summaries. It folds code and detail into `<details>` toggles. Its main sections follow the playground order:
+
+- **Installation** and **Quick start**
+- **Widgets**: the 6 widgets and their common arguments
+- **Output**: notes, tables, boxes and tasks
+- **Flows**: nesting, steps built from earlier answers, numbering, sections and step back
+- **Answers**: where an answer comes from, and how it's transformed and validated
+- **Configuration**: the options, the display and the other methods
+- **Ship and test a script**: embedding, the starter script and the test harness
+
+Keep the **Features** list to 1 bullet per main section. Add every new heading to the **Contents** list, nested under its parent heading.
 
 Pick the shape that fits the new content:
 
