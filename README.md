@@ -2170,6 +2170,8 @@ After writing the file, `embed.php` checks it with `php -l` and then runs it to 
 
 The run happens only when the file has a kill switch, which stops the run before the real work unless `SHOULD_PROCEED` is set. The run inherits your environment, so with `SHOULD_PROCEED` set, unset it or pass `--no-verify`. `--no-killswitch` skips the run too, even when the script has its own kill switch.
 
+The kill switch stops only the code after it. A [task](#tasks) that comes before it, such as a task step in the flow, still runs its action during the run. Pass `--no-verify` when such a task changes anything outside the script.
+
 To add the kill switch but skip the run, pass `--no-verify`. Use it in build steps, CI jobs and scripts that regenerate an embedded file:
 
 ```bash
