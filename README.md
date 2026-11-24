@@ -31,8 +31,8 @@ Prompty asks questions in the terminal for PHP command-line scripts, from a sing
 
 - 📦 [**Zero dependencies**](#installation) - 1 file for PHP 8.3 or later: require it, install it with Composer or [embed](#embedding) it in your script
 - 🧩 [**Widgets**](#widgets) - `text`, `select`, `multiselect`, `suggest`, `confirm` and `pause`, with descriptions, hints and help
-- 📣 [**Output**](#output) - notes, tables and boxes in the tree, and tasks that run work behind a spinner or stream its output
-- 🔀 [**Flows**](#flows) - a wizard declared as 1 chain, with nested conditional steps, steps built from earlier answers, numbering, sections and step back
+- 📣 [**Output**](#output) - notes, tables, boxes and your own styled lines in the tree, and tasks that run work behind a spinner or stream its output
+- 🔀 [**Flows**](#flows) - a wizard declared as 1 chain, with nested conditional steps, steps built from earlier answers, your own step objects, numbering, sections and step back
 - 🌍 [**Answers**](#answers) - answers from environment variables, script values or defaults for CI, transformed and validated before they return
 - ⚙️ [**Configuration**](#configuration) - Unicode or ASCII, ANSI colors, long lists, a key legend, labels, symbols and the output target
 - 🧪 [**Ship and test**](#ship-and-test-a-script) - an embedder, a starter script and a PHPUnit test harness
@@ -56,6 +56,7 @@ Prompty asks questions in the terminal for PHP command-line scripts, from a sing
 - [Flows](#flows)
   - [Nested flows with conditions](#nested-flows-with-conditions)
   - [Steps built from earlier answers](#steps-built-from-earlier-answers)
+  - [Step providers](#step-providers)
   - [Numbering and sections](#numbering-and-sections)
   - [Step back to an earlier step](#step-back-to-an-earlier-step)
 - [Answers](#answers)
@@ -522,7 +523,7 @@ In [non-interactive mode](#non-interactive-mode), `pause()` returns `true` witho
 
 ### Common arguments
 
-The 5 question widgets, `text`, `select`, `multiselect`, `suggest` and `confirm`, share these arguments. `pause` also takes `description` and `help`:
+The 5 question widgets, `text`, `select`, `multiselect`, `suggest` and `confirm`, take these arguments. `pause` also takes `description` and `help`. The **Widgets** column lists which take each one:
 
 | Argument                          | Widgets                   | Effect                                            |
 |-----------------------------------|---------------------------|---------------------------------------------------|
@@ -622,7 +623,7 @@ Like a description, the help can span several lines.
 
 ## Output
 
-Between questions, Prompty prints notes, tables and boxes. It also runs tasks that report their result. Each one draws in the same tree, with the same symbols and colors as the widgets.
+Between questions, Prompty prints notes, tables, boxes and lines you style yourself. It also runs tasks that report their result. Each one draws in the same tree, with the same symbols and colors as the widgets.
 
 ### Notes
 
@@ -1167,10 +1168,12 @@ A [note](#notes) takes a closure for its message and its type in the same way.
 
 </details>
 
-<details>
-<summary><a name="step-providers"></a>Step providers: add your own step objects to a flow</summary>
+### Step providers
 
 An app that already describes its questions as objects can pass them into the chain with `->add()`. Each object implements `PromptyStepInterface`, which names the step's key, its widget and the widget's arguments, and decides whether the flow asks the step.
+
+<details>
+<summary>Details: Step providers</summary>
 
 
 `PromptyStepInterface` has 4 methods:
@@ -1379,11 +1382,11 @@ The flow erases the rows it drew since the reopened step. Rows that scrolled off
 
 ## Answers
 
-Each widget takes its answer from the first source that has one: a `discovered:` value, then an environment variable inside a flow, then the prompt. In non-interactive mode, the `default` takes the place of the prompt. Whatever its source, the answer then goes through `transform`, `required` and `validate`.
+Each widget takes its answer from the first source that has one: a `discovered:` value, then an environment variable when the widget runs in a flow, then the prompt. In non-interactive mode, the `default` takes the place of the prompt. Whatever its source, the answer then goes through `transform`, `required` and `validate`.
 
 ### Where answers come from
 
-A `discovered:` value and an environment variable each skip the prompt. Prompty checks them and the `default` when the widget starts, before it draws, so a mistyped value fails at the widget that reads it.
+A `discovered:` value and an environment variable each skip the prompt. Prompty validates them and the `default` when the widget starts, before it draws, so a mistyped value fails at the widget that reads it.
 
 <details>
 <summary><a name="environment-variable-discovery"></a>Environment variable discovery: fill answers from environment variables</summary>
@@ -1729,6 +1732,8 @@ The following table lists every option and its default:
 | `spacing`         | `array<string, string>` | Indentation strings.                                                          |
 | `output`          | `resource\|callable`    | Where Prompty writes: a writable stream or a callable. Default `echo`.        |
 
+These options each have a section of their own: [`interactive`](#non-interactive-mode), [`scroll`](#long-option-lists), [`width`](#long-lines), [`legend`](#key-legend), [`back_key`](#step-back-to-an-earlier-step) and [`output`](#output-target).
+
 <details>
 <summary>Option keys: the keys of labels, symbols, colors and spacing</summary>
 
@@ -1791,7 +1796,7 @@ A filename, a closed stream and a read-only stream each throw an `InvalidArgumen
 
 ### Display
 
-`unicode` and `ansi` combine into 4 display modes. Prompty detects both from the environment, and you can force either. The following table shows a flat flow in each mode:
+Prompty detects Unicode support, ANSI colors and the terminal width from the environment, and you can force each one. A long option list can scroll, and a legend can list the keys each widget accepts. `unicode` and `ansi` combine into 4 display modes. The following table shows a flat flow in each mode:
 
 <table align="center">
   <tr>
