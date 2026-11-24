@@ -78,7 +78,7 @@ Prompty asks questions in the terminal for PHP command-line scripts, from a sing
 Prompty is a single PHP file with no dependencies. It requires PHP 8.3 or later.
 
 <details>
-<summary><a name="download-from-releases"></a>Download from releases: the 3 class variants and the payload files</summary>
+<summary><a name="download-from-releases"></a><strong>Download from releases:</strong> the 3 class variants and the payload files</summary>
 
 Download `Prompty.php` from the [latest release](https://github.com/AlexSkrypnyk/prompty/releases/latest) assets.
 
@@ -99,14 +99,14 @@ To embed the class in your script, see [Embedding](#embedding).
 </details>
 
 <details>
-<summary><a name="verifying-a-download"></a>Verifying a download: check the signed checksums and the attestations</summary>
+<summary><a name="verifying-a-download"></a><strong>Verifying a download:</strong> check the signed checksums and the attestations</summary>
 
 Every release ships a `SHA256SUMS` file signed with the maintainer's GPG key, and a build attestation for every PHP file and payload. To check a download with GPG or the GitHub CLI, follow [Verifying a release](SECURITY.md#verifying-a-release) in `SECURITY.md`, which also lists the key's fingerprint.
 
 </details>
 
 <details>
-<summary><a name="composer"></a>Composer: install the package with Composer</summary>
+<summary><a name="composer"></a><strong>Composer:</strong> install the package with Composer</summary>
 
 ```bash
 composer require alexskrypnyk/prompty
@@ -140,10 +140,17 @@ if ($send) {
 To ask a series of questions as 1 wizard, chain them into a [flow](#flows). A script can mix standalone widgets and flows:
 
 ```php
-// Standalone widgets can sit between flows.
-$dish = Prompty::flow()->text('dish', 'Dish name')->run(intro: 'Step 1: The dish');
+$order = Prompty::flow()
+  ->text('dish', 'Dish name')
+  ->select('course', 'Course', options: ['main' => 'Main', 'dessert' => 'Dessert'])
+  ->run(intro: 'Step 1: The dish');
+
+// A standalone widget between 2 flows.
 $note = Prompty::text('Kitchen note');
-$extras = Prompty::flow()->multiselect('extras', 'Extras', options: ['bread' => 'Bread', 'olives' => 'Olives'])->run(intro: 'Step 2: Extras');
+
+$sides = Prompty::flow()
+  ->multiselect('extras', 'Extras', options: ['bread' => 'Bread', 'olives' => 'Olives'])
+  ->run(intro: 'Step 2: Extras');
 ```
 
 To ship a single file instead, [embed](#embedding) the minified class in your script. To start from a template, copy the [starter script](#starter-script).
@@ -181,7 +188,7 @@ Widgets draw only printable text. A newline or tab in a value, label or option l
 Free-form text input, with an optional `default` and `placeholder`.
 
 <details>
-<summary>Details: Text</summary>
+<summary><strong>Details:</strong> Text</summary>
 
 ```php
 $dish = Prompty::text('Dish name',
@@ -261,7 +268,7 @@ The option covers `text` and `suggest`, and both still draw the placeholder whil
 Pick 1 option from a list. Press the arrow keys to move and <kbd>Enter</kbd> to confirm. To focus an option other than the first, pass its key as `default`.
 
 <details>
-<summary>Details: Select</summary>
+<summary><strong>Details:</strong> Select</summary>
 
 ```php
 $course = Prompty::select('Course',
@@ -311,7 +318,7 @@ No options declared for "Course". Provide at least one option.
 Pick any number of options from a list. Press <kbd>Space</kbd> to toggle an option and <kbd>Enter</kbd> to confirm. To pre-check options, pass a list of their keys as `default`. Pre-checking every option makes an opt-out list.
 
 <details>
-<summary>Details: Multiselect</summary>
+<summary><strong>Details:</strong> Multiselect</summary>
 
 ```php
 $extras = Prompty::multiselect('Extras',
@@ -393,7 +400,7 @@ The same `order` applies to a [discovered](#environment-variable-discovery) valu
 Free-form text input with suggestions. As you type, the options that contain the typed text show under the input, ignoring case. Press <kbd>↑</kbd> or <kbd>↓</kbd> to focus a suggestion and <kbd>Enter</kbd> to take it. With no suggestion focused, <kbd>Enter</kbd> takes the typed text as is, so the answer can be anything.
 
 <details>
-<summary>Details: Suggest</summary>
+<summary><strong>Details:</strong> Suggest</summary>
 
 ```php
 $dish = Prompty::suggest('Dish',
@@ -474,7 +481,7 @@ $dish = Prompty::suggest('Dish', options: $starts_with);
 A yes/no toggle. Press the arrow keys or <kbd>Tab</kbd> to switch, <kbd>y</kbd> or <kbd>n</kbd> to pick directly and <kbd>Enter</kbd> to confirm.
 
 <details>
-<summary>Details: Confirm</summary>
+<summary><strong>Details:</strong> Confirm</summary>
 
 ```php
 $send = Prompty::confirm('Send order?',
@@ -509,7 +516,7 @@ To end a flow when the answer is No, pass `cancel_on_no: TRUE`. A No then draws 
 A message that waits for a key, such as "Press any key to continue" after a welcome screen. Any key continues and returns `true`.
 
 <details>
-<summary>Details: Pause</summary>
+<summary><strong>Details:</strong> Pause</summary>
 
 ```php
 Prompty::pause('Press any key to start the order...',
@@ -540,7 +547,7 @@ The 5 question widgets, `text`, `select`, `multiselect`, `suggest` and `confirm`
 [Answers](#answers) covers `default`, `transform`, `required` and `validate`.
 
 <details>
-<summary><a name="descriptions-hints-and-help"></a>Descriptions, hints and help: text under the label, the options and the input</summary>
+<summary><a name="descriptions-hints-and-help"></a><strong>Descriptions, hints and help:</strong> text under the label, the options and the input</summary>
 
 Every widget takes a `description`, shown under the label. A description can span several lines:
 
@@ -650,7 +657,7 @@ Between questions, Prompty prints notes, tables, boxes and lines you style yours
 `note()` prints a message between your questions: an informational note, a success, a warning or an error. The type's symbol takes the place of the bar, and the message is drawn in the type's color.
 
 <details>
-<summary>Details: Notes</summary>
+<summary><strong>Details:</strong> Notes</summary>
 
 ```php
 Prompty::note('The kitchen opens at 5pm.');
@@ -705,7 +712,7 @@ A closure that returns anything other than a string throws an `UnexpectedValueEx
 `Prompty::table()` prints a summary table and `Prompty::box()` prints a titled panel. Both print straight away and return nothing.
 
 <details>
-<summary>Details: Tables and boxes</summary>
+<summary><strong>Details:</strong> Tables and boxes</summary>
 
 To print a table, pass its rows and optional header cells. A string in `rows` becomes a section row that spans every column:
 
@@ -764,7 +771,7 @@ Borders are gray, and header cells, section rows and the box title are bold. Bol
 </details>
 
 <details>
-<summary><a name="style-your-own-lines"></a>Style your own lines: style and measure the lines you print</summary>
+<summary><a name="style-your-own-lines"></a><strong>Style your own lines:</strong> style and measure the lines you print</summary>
 
 To print lines of your own between widgets, style and measure them with the helpers Prompty uses for its own layout. Each one follows the `ansi` setting and `NO_COLOR`. To line up a column of styled dishes:
 
@@ -815,7 +822,7 @@ The class has 4 helpers:
 `task()` runs work between your questions, such as preheating the oven, and reports the result. While the action runs, the label shows a spinner. After the action returns, the label, the `hint` and a result line replace the spinner.
 
 <details>
-<summary>Details: Tasks</summary>
+<summary><strong>Details:</strong> Tasks</summary>
 
 ```php
 $ready = Prompty::task('Preheating the oven',
@@ -889,7 +896,7 @@ Wrap a built-in function such as `time` in a closure. A built-in function that t
 </details>
 
 <details>
-<summary><a name="streamed-output"></a>Streamed output: draw the action's own output under the task</summary>
+<summary><a name="streamed-output"></a><strong>Streamed output:</strong> draw the action's own output under the task</summary>
 
 Some work prints its own output while it runs, such as a bake that reports each stage. To draw that output under the task in place of a spinner, pass `stream: TRUE`.
 
@@ -990,7 +997,7 @@ Without a live terminal, the tasks print:
 `Prompty::flow()` starts a step-by-step wizard. You add each step to 1 chain under its own key. `run()` then asks the steps in order.
 
 <details>
-<summary>Details: Flows</summary>
+<summary><strong>Details:</strong> Flows</summary>
 
 Each widget method takes the step key first, then the same arguments as the [widget](#widgets) on its own:
 
@@ -1090,7 +1097,7 @@ catch (\Throwable $e) {
 `->children()` opens a scope under the step added before it, and `->end()` closes it. Prompty draws the steps in between as an indented tree under that step, joined by vertical bars. `->when()` gives the step, note or section added before it a condition, which receives the answers collected so far. When the condition returns `false`, the flow skips the step and its children.
 
 <details>
-<summary>Details: Nested flows with conditions</summary>
+<summary><strong>Details:</strong> Nested flows with conditions</summary>
 
 Indent the chain the way the tree draws: the steps inside `->children()` 1 level under their parent, and each `->when()` under the step it applies to:
 
@@ -1134,7 +1141,7 @@ A step the flow hasn't reached yet has no key in the answers, so `null` always m
 A widget argument can be a closure that receives the answers collected so far. The flow calls it when it reaches the step, so a step's label, options, default or description can come from an earlier answer.
 
 <details>
-<summary>Details: Steps built from earlier answers</summary>
+<summary><strong>Details:</strong> Steps built from earlier answers</summary>
 
 ```php
 $results = Prompty::flow()
@@ -1175,7 +1182,7 @@ A [note](#notes) takes a closure for its message and its type in the same way.
 An app that already describes its questions as objects can pass them into the chain with `->add()`. Each object implements `PromptyStepInterface`, which names the step's key, its widget and the widget's arguments, and decides whether the flow asks the step.
 
 <details>
-<summary>Details: Step providers</summary>
+<summary><strong>Details:</strong> Step providers</summary>
 
 
 `PromptyStepInterface` has 4 methods:
@@ -1239,7 +1246,7 @@ The flow calls `key()` when you add the step, and the other 3 methods when it re
 `numbering: TRUE` adds the step number to each label: `(1)` and `(2)` at the top level, `(2.1)` for a child of step 2. To show how many top-level steps are due as well, pass `numbering: 'total'`. To group a long flow's steps under headings, add `->section()` between top-level steps.
 
 <details>
-<summary><a name="step-numbering"></a>Step numbering: show the total, change the format and leave a step unnumbered</summary>
+<summary><a name="step-numbering"></a><strong>Step numbering:</strong> show the total, change the format and leave a step unnumbered</summary>
 
 ```php
 $results = Prompty::flow()
@@ -1303,7 +1310,7 @@ The children of an unnumbered step draw no numbers either. `->unnumbered()` afte
 </details>
 
 <details>
-<summary><a name="section-headings"></a>Section headings: group a long flow's steps under headings</summary>
+<summary><a name="section-headings"></a><strong>Section headings:</strong> group a long flow's steps under headings</summary>
 
 Add `->section()` between top-level steps. The flow draws its title in bold, with an optional dim description under it.
 
@@ -1363,7 +1370,7 @@ A section's group is the steps up to the next section. The flow draws a heading 
 In a flow, press <kbd>Ctrl+U</kbd> to go back. The widget you're on disappears, and the previous step opens again with your answer filled in, as you gave it before any `transform`. Its children don't count as previous steps, so from a later sibling the key reopens the parent. From a step's first child, it reopens that parent. When the parent asked nothing, the key reopens the last of its children that did.
 
 <details>
-<summary>Details: Step back to an earlier step</summary>
+<summary><strong>Details:</strong> Step back to an earlier step</summary>
 
 Answers you gave after the reopened step become those steps' defaults, so you only press <kbd>Enter</kbd> to move forward again. A step starts from its declared `default` instead in 2 cases:
 
@@ -1391,7 +1398,7 @@ Each widget takes its answer from the first source that has one: a `discovered:`
 A `discovered:` value and an environment variable each skip the prompt. Prompty validates them and the `default` when the widget starts, before it draws, so a mistyped value fails at the widget that reads it.
 
 <details>
-<summary><a name="environment-variable-discovery"></a>Environment variable discovery: fill answers from environment variables</summary>
+<summary><a name="environment-variable-discovery"></a><strong>Environment variable discovery:</strong> fill answers from environment variables</summary>
 
 Inside a flow, each step can take its answer from an environment variable named after the step key, uppercased, with the `PROMPTY_` prefix. A widget called outside a flow reads no variables:
 
@@ -1444,7 +1451,7 @@ Step "dish" appears more than once in the flow. Each answer is stored under its 
 </details>
 
 <details>
-<summary><a name="default-values"></a>Default values: the starting answer of each widget</summary>
+<summary><a name="default-values"></a><strong>Default values:</strong> the starting answer of each widget</summary>
 
 Every widget takes a `default` that sets its starting state:
 
@@ -1463,7 +1470,7 @@ For `select` and `multiselect`, every key in `default` must be a key of `options
 </details>
 
 <details>
-<summary><a name="non-interactive-mode"></a>Non-interactive mode: answer every prompt from its default, for CI and scripted runs</summary>
+<summary><a name="non-interactive-mode"></a><strong>Non-interactive mode:</strong> answer every prompt from its default, for CI and scripted runs</summary>
 
 A script run in CI or with a `--no-interaction` flag has nobody to answer its prompts. Pass `interactive: FALSE`, and every widget answers without reading a key:
 
@@ -1505,7 +1512,7 @@ Input is on by default, so a flow without a terminal still cancels at its first 
 </details>
 
 <details>
-<summary><a name="discovered-and-default-values-must-be-valid-answers"></a>Discovered and default values must be valid answers: an invalid value throws before the widget draws</summary>
+<summary><a name="discovered-and-default-values-must-be-valid-answers"></a><strong>Discovered and default values must be valid answers:</strong> an invalid value throws before the widget draws</summary>
 
 A discovered value must be an answer the widget accepts interactively:
 
@@ -1532,7 +1539,7 @@ An empty default is always valid. `''` makes `select` focus the first option, an
 </details>
 
 <details>
-<summary><a name="a-blank-value-means-no-answer-was-supplied"></a>A blank value means no answer was supplied: how each widget treats an empty value</summary>
+<summary><a name="a-blank-value-means-no-answer-was-supplied"></a><strong>A blank value means no answer was supplied:</strong> how each widget treats an empty value</summary>
 
 A blank value is empty or holds only whitespace. An exported variable that was never filled gives one, and so does `DISH="$(some-command)"` when the command prints nothing. A widget with an answer that means "nothing supplied" takes that answer, and the other widgets reject a blank value:
 
@@ -1559,7 +1566,7 @@ The rule covers both the `discovered:` argument and the `PROMPTY_*` variable.
 Every widget can rewrite and check its answer before returning it. `transform` runs first, then `required` rejects an empty answer, then `validate` rejects an answer with a message and asks again.
 
 <details>
-<summary><a name="transform-answers"></a>Transform answers: normalize an answer before the widget returns it</summary>
+<summary><a name="transform-answers"></a><strong>Transform answers:</strong> normalize an answer before the widget returns it</summary>
 
 Every widget takes a `transform` callback that rewrites the answer before the widget returns it. Use it to normalize free input, such as a dish name typed in any case:
 
@@ -1591,7 +1598,7 @@ Transform for "Dish name" returned null. A transform returns a string, the type 
 </details>
 
 <details>
-<summary><a name="required-answers"></a>Required answers: reject an empty answer</summary>
+<summary><a name="required-answers"></a><strong>Required answers:</strong> reject an empty answer</summary>
 
 To reject an empty answer, pass `required` to any widget. `TRUE` shows the `required` label, which reads `Required.` by default. A string shows that message instead:
 
@@ -1613,7 +1620,7 @@ Discovered value "" for "Guest name" is not valid. Enter a name for the ticket.
 </details>
 
 <details>
-<summary><a name="validation"></a>Validation: reject an answer, show why and ask again</summary>
+<summary><a name="validation"></a><strong>Validation:</strong> reject an answer, show why and ask again</summary>
 
 Every widget takes a `validate` callback that can reject an answer. The callback receives the answer and returns `null` for a valid answer, or an error message:
 
@@ -1684,7 +1691,7 @@ The message shows a `multiselect` answer comma-separated and a `confirm` answer 
 `Prompty::configure()` sets options for the rest of the process. A flow's `run()` takes the same options as named arguments and merges them over the global ones for that flow. Every option is optional, so pass only what you change.
 
 <details>
-<summary>Details: Configuration</summary>
+<summary><strong>Details:</strong> Configuration</summary>
 
 A per-flow option lasts until the flow returns, whether the flow completes, is canceled or throws. The next flow gets the global settings again.
 
@@ -1737,7 +1744,7 @@ The following table lists every option and its default:
 These options each have a section of their own: [`interactive`](#non-interactive-mode), [`scroll`](#long-option-lists), [`width`](#long-lines), [`legend`](#key-legend), [`back_key`](#step-back-to-an-earlier-step) and [`output`](#output-target).
 
 <details>
-<summary>Option keys: the keys of labels, symbols, colors and spacing</summary>
+<summary><strong>Option keys:</strong> the keys of labels, symbols, colors and spacing</summary>
 
 The map-valued options take these keys:
 
@@ -1749,7 +1756,7 @@ The map-valued options take these keys:
 </details>
 
 <details>
-<summary><a name="unknown-keys-are-rejected"></a>Unknown keys are rejected: a misspelled key throws at the call</summary>
+<summary><a name="unknown-keys-are-rejected"></a><strong>Unknown keys are rejected:</strong> a misspelled key throws at the call</summary>
 
 The map-valued options accept only the keys in the preceding list, which `Prompty::config()` also returns. An unknown key throws an `InvalidArgumentException` that lists the valid keys, so a misspelling fails at the call:
 
@@ -1775,7 +1782,7 @@ An empty `env_prefix` makes discovery read the uppercased step key alone. A step
 </details>
 
 <details>
-<summary><a name="output-target"></a>Output target: send the output to a stream or a callable</summary>
+<summary><a name="output-target"></a><strong>Output target:</strong> send the output to a stream or a callable</summary>
 
 Prompty writes with `echo` by default. To send its output to your own writer, pass `output` a writable stream or a callable. The callable receives each chunk as a string:
 
@@ -1819,7 +1826,7 @@ Prompty detects Unicode support, ANSI colors and the terminal width from the env
 </table>
 
 <details>
-<summary><a name="unicode-and-ascii"></a><a name="ansi-colors"></a>Unicode, ASCII and ANSI colors: how each is detected, and how to force it</summary>
+<summary><a name="unicode-and-ascii"></a><a name="ansi-colors"></a><strong>Unicode, ASCII and ANSI colors:</strong> how each is detected, and how to force it</summary>
 
 Prompty detects Unicode support from the locale in `LANG`, `LC_ALL` or `LC_CTYPE`. A UTF-8 locale gets symbols such as `◆`, `◇`, `│` and `●`. Any other locale gets their ASCII forms: `+`, `o`, `|` and `(*)`.
 
@@ -1865,7 +1872,7 @@ The following table shows a nested flow in each mode:
 </details>
 
 <details>
-<summary><a name="long-option-lists"></a>Long option lists: show a long list a few options at a time</summary>
+<summary><a name="long-option-lists"></a><strong>Long option lists:</strong> show a long list a few options at a time</summary>
 
 `select`, `multiselect` and `suggest` draw every option by default. For a long list, pass `scroll` with the number of options to show at once:
 
@@ -1918,7 +1925,7 @@ Prompty::configure(scroll: 10);
 </details>
 
 <details>
-<summary><a name="long-lines"></a>Long lines: how lines wider than the terminal wrap</summary>
+<summary><a name="long-lines"></a><strong>Long lines:</strong> how lines wider than the terminal wrap</summary>
 
 Prompty wraps every line that's wider than the terminal. Labels, descriptions, options, hints, help, errors and answers break between words, and each continuation row starts with the same bar and indent as its first row. In labels, notes, descriptions, hints, help and task lines, a line that starts with spaces keeps them on its continuation rows too. A word wider than the row breaks at the row's edge:
 
@@ -1942,7 +1949,7 @@ Lines you print with `Prompty::output()` keep your layout, so Prompty doesn't wr
 </details>
 
 <details>
-<summary><a name="key-legend"></a>Key legend: list the keys each widget accepts under it</summary>
+<summary><a name="key-legend"></a><strong>Key legend:</strong> list the keys each widget accepts under it</summary>
 
 To show the keys each widget accepts, pass `legend: TRUE` to [`Prompty::configure()`](#configuration). To show them for 1 flow, pass it to the flow's `run()`. Each widget then draws a dim legend after its `help`, so `help` can hold tips about the answer itself:
 
@@ -2005,7 +2012,7 @@ Besides the 5 widgets, `flow()` and `configure()`, the class has these methods:
 | `Prompty::box($content)`     | `void`   | Prints a [box](#tables-and-boxes), with an optional `title`.    |
 
 <details>
-<summary>Details: Other methods</summary>
+<summary><strong>Details:</strong> Other methods</summary>
 
 The following example reads the answers 2 ways and prints a banner:
 
@@ -2040,7 +2047,7 @@ Prompty comes with 3 tools for the script that uses it:
 Download `embed.php` with `Prompty.php` from the [latest release](https://github.com/AlexSkrypnyk/prompty/releases/latest) assets.
 
 <details>
-<summary><a name="setup"></a>Setup: put the embed markers in your script</summary>
+<summary><a name="setup"></a><strong>Setup:</strong> put the embed markers in your script</summary>
 
 In your script, put `// @embed-start` and `// @embed-end` markers around the `require_once` line and the `use` import:
 
@@ -2064,7 +2071,7 @@ Keep the `use` import inside the markers. The embedded class has no namespace, s
 </details>
 
 <details>
-<summary><a name="run-the-embedder"></a>Run the embedder: embed in place or into a separate file</summary>
+<summary><a name="run-the-embedder"></a><strong>Run the embedder:</strong> embed in place or into a separate file</summary>
 
 To embed in place, run `embed.php` on your script:
 
@@ -2097,7 +2104,7 @@ To silence coding-standard warnings on the minified code, wrap the markers in `/
 </details>
 
 <details>
-<summary><a name="options"></a>Options: every embed.php option</summary>
+<summary><a name="options"></a><strong>Options:</strong> every embed.php option</summary>
 
 `embed.php` takes these options:
 
@@ -2126,7 +2133,7 @@ With `--stdout` or `--payload`, `embed.php` takes an output file path in place o
 </details>
 
 <details>
-<summary><a name="re-embedding"></a>Re-embedding: update an embedded script to a newer Prompty</summary>
+<summary><a name="re-embedding"></a><strong>Re-embedding:</strong> update an embedded script to a newer Prompty</summary>
 
 To update an embedded script to a newer Prompty, replace `Prompty.php` and `embed.php` with the files from the new release, then run `embed.php` again. The marker records the embedder's hash, so a check against the release fails for a script embedded by an older `embed.php`. `embed.php` replaces the code between the markers and leaves everything outside them as it is, so it adds no [kill switch](#kill-switch):
 
@@ -2143,7 +2150,7 @@ php embed.php --source /path/to/new/Prompty.php my-script.php
 </details>
 
 <details>
-<summary><a name="kill-switch"></a>Kill switch: the block that stops the script under tests</summary>
+<summary><a name="kill-switch"></a><strong>Kill switch:</strong> the block that stops the script under tests</summary>
 
 On the first embed, `embed.php` looks for `if (!getenv('SHOULD_PROCEED'))` in your script. If the line is missing, `embed.php` adds this block after the embed region and prints a line saying so:
 
@@ -2166,7 +2173,7 @@ php embed.php --no-killswitch my-script.php
 </details>
 
 <details>
-<summary><a name="verification-run"></a>Verification run: how embed.php checks the file it wrote</summary>
+<summary><a name="verification-run"></a><strong>Verification run:</strong> how embed.php checks the file it wrote</summary>
 
 After writing the file, `embed.php` checks it with `php -l` and then runs it to confirm the embedded class works. In a terminal, you answer any prompts that come before the kill switch. Without a terminal, `embed.php` pipes in a few newlines and discards the output.
 
@@ -2183,7 +2190,7 @@ php embed.php --no-verify my-script.php
 </details>
 
 <details>
-<summary><a name="verify-an-embedded-script"></a>Verify an embedded script: check embedded code against its marker or a release</summary>
+<summary><a name="verify-an-embedded-script"></a><strong>Verify an embedded script:</strong> check embedded code against its marker or a release</summary>
 
 Embedded code sits on 1 line that's too long to review in a diff, so `embed.php` records what it embedded and can check it later. Embedding writes 5 attributes into the start marker line:
 
@@ -2354,7 +2361,7 @@ The job passes only for a script embedded from a release. Re-embed from the rele
 </details>
 
 <details>
-<summary><a name="for-ai-agents"></a>For AI agents: commands to embed and update</summary>
+<summary><a name="for-ai-agents"></a><strong>For AI agents:</strong> commands to embed and update</summary>
 
 <details>
 <summary>Embed into starter script</summary>
@@ -2433,7 +2440,7 @@ php embed.php --source /path/to/new/Prompty.php my-script.php
 3. Returns unless `SHOULD_PROCEED` is set, so tests stop before the real work.
 
 <details>
-<summary>Details: Starter script</summary>
+<summary><strong>Details:</strong> Starter script</summary>
 
 The following excerpt shows the pattern:
 
@@ -2464,7 +2471,7 @@ To start a script, copy `starter.php` under a new name and replace its steps wit
 `PromptyTestTrait` drives widgets from PHPUnit. It feeds keystrokes from a memory stream and captures the output, so tests run without a terminal.
 
 <details>
-<summary>Details: Test harness</summary>
+<summary><strong>Details:</strong> Test harness</summary>
 
 To assert on what a flow returns, use `promptyRun()`:
 
@@ -2533,7 +2540,7 @@ A widget that reads past the last keystroke cancels, so a test with too few keys
 </details>
 
 <details>
-<summary><a name="test-a-script-that-configures-prompty"></a>Test a script that configures Prompty: keep the script's own settings in a test</summary>
+<summary><a name="test-a-script-that-configures-prompty"></a><strong>Test a script that configures Prompty:</strong> keep the script's own settings in a test</summary>
 
 `promptyRun()` and `promptyRunScript()` each install a new instance, so they drop any settings passed to `Prompty::configure()` before the helper runs. To keep those settings, let the script configure Prompty first, then pass the keystrokes to `promptyInput()`:
 
@@ -2560,7 +2567,7 @@ public function testTakeOrder(): void {
 </details>
 
 <details>
-<summary><a name="test-a-rejected-answer"></a>Test a rejected answer: assert on a validation message</summary>
+<summary><a name="test-a-rejected-answer"></a><strong>Test a rejected answer:</strong> assert on a validation message</summary>
 
 A widget whose [`validate`](#validation) callback rejects an answer asks again. In a test, it then reads past the last keystroke and cancels, so the test gets `null`. To assert on the message instead, call `promptyThrowOnInvalid()` first:
 
@@ -2587,7 +2594,7 @@ The switch lasts across `promptyRun()` calls until `promptyTearDown()` resets it
 </details>
 
 <details>
-<summary><a name="available-key-constants"></a>Available key constants: the keys promptyKeys() accepts</summary>
+<summary><a name="available-key-constants"></a><strong>Available key constants:</strong> the keys promptyKeys() accepts</summary>
 
 Pass these constants to `promptyKeys()`:
 
