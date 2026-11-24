@@ -167,23 +167,7 @@ Widgets draw only printable text. A newline or tab in a value, label or option l
 
 ### Text
 
-<table>
-  <tr>
-    <td></td>
-    <td align="center"><strong>ANSI</strong></td>
-    <td align="center"><strong>No ANSI</strong></td>
-  </tr>
-  <tr>
-    <td align="right"><strong>Unicode</strong></td>
-    <td><img src=".util/assets/widget-text.svg" alt="Text: Unicode + ANSI"></td>
-    <td><img src=".util/assets/widget-text-no-ansi.svg" alt="Text: Unicode + No ANSI"></td>
-  </tr>
-  <tr>
-    <td align="right"><strong>ASCII</strong></td>
-    <td><img src=".util/assets/widget-text-ascii.svg" alt="Text: ASCII + ANSI"></td>
-    <td><img src=".util/assets/widget-text-ascii-no-ansi.svg" alt="Text: ASCII + No ANSI"></td>
-  </tr>
-</table>
+<img src=".util/assets/widget-text.svg" alt="Text: Unicode + ANSI">
 
 Free-form text input, with an optional `default` and `placeholder`.
 
@@ -245,7 +229,8 @@ The option covers `text` and `suggest`, and both still draw the placeholder whil
 
 </details>
 
-### Select
+<details>
+<summary><strong>Display modes:</strong> Unicode and ASCII, with and without ANSI</summary>
 
 <table>
   <tr>
@@ -255,15 +240,21 @@ The option covers `text` and `suggest`, and both still draw the placeholder whil
   </tr>
   <tr>
     <td align="right"><strong>Unicode</strong></td>
-    <td><img src=".util/assets/widget-select.svg" alt="Select: Unicode + ANSI"></td>
-    <td><img src=".util/assets/widget-select-no-ansi.svg" alt="Select: Unicode + No ANSI"></td>
+    <td><img src=".util/assets/widget-text.svg" alt="Text: Unicode + ANSI"></td>
+    <td><img src=".util/assets/widget-text-no-ansi.svg" alt="Text: Unicode + No ANSI"></td>
   </tr>
   <tr>
     <td align="right"><strong>ASCII</strong></td>
-    <td><img src=".util/assets/widget-select-ascii.svg" alt="Select: ASCII + ANSI"></td>
-    <td><img src=".util/assets/widget-select-ascii-no-ansi.svg" alt="Select: ASCII + No ANSI"></td>
+    <td><img src=".util/assets/widget-text-ascii.svg" alt="Text: ASCII + ANSI"></td>
+    <td><img src=".util/assets/widget-text-ascii-no-ansi.svg" alt="Text: ASCII + No ANSI"></td>
   </tr>
 </table>
+
+</details>
+
+### Select
+
+<img src=".util/assets/widget-select.svg" alt="Select: Unicode + ANSI">
 
 Pick 1 option from a list. Press the arrow keys to move and <kbd>Enter</kbd> to confirm. To focus an option other than the first, pass its key as `default`.
 
@@ -295,7 +286,8 @@ No options declared for "Course". Provide at least one option.
 
 </details>
 
-### Multiselect
+<details>
+<summary><strong>Display modes:</strong> Unicode and ASCII, with and without ANSI</summary>
 
 <table>
   <tr>
@@ -305,15 +297,21 @@ No options declared for "Course". Provide at least one option.
   </tr>
   <tr>
     <td align="right"><strong>Unicode</strong></td>
-    <td><img src=".util/assets/widget-multiselect.svg" alt="Multiselect: Unicode + ANSI"></td>
-    <td><img src=".util/assets/widget-multiselect-no-ansi.svg" alt="Multiselect: Unicode + No ANSI"></td>
+    <td><img src=".util/assets/widget-select.svg" alt="Select: Unicode + ANSI"></td>
+    <td><img src=".util/assets/widget-select-no-ansi.svg" alt="Select: Unicode + No ANSI"></td>
   </tr>
   <tr>
     <td align="right"><strong>ASCII</strong></td>
-    <td><img src=".util/assets/widget-multiselect-ascii.svg" alt="Multiselect: ASCII + ANSI"></td>
-    <td><img src=".util/assets/widget-multiselect-ascii-no-ansi.svg" alt="Multiselect: ASCII + No ANSI"></td>
+    <td><img src=".util/assets/widget-select-ascii.svg" alt="Select: ASCII + ANSI"></td>
+    <td><img src=".util/assets/widget-select-ascii-no-ansi.svg" alt="Select: ASCII + No ANSI"></td>
   </tr>
 </table>
+
+</details>
+
+### Multiselect
+
+<img src=".util/assets/widget-multiselect.svg" alt="Multiselect: Unicode + ANSI">
 
 Pick any number of options from a list. Press <kbd>Space</kbd> to toggle an option and <kbd>Enter</kbd> to confirm. To pre-check options, pass a list of their keys as `default`. Pre-checking every option makes an opt-out list.
 
@@ -377,7 +375,8 @@ The same `order` applies to a [discovered](#environment-variable-discovery) valu
 
 </details>
 
-### Suggest
+<details>
+<summary><strong>Display modes:</strong> Unicode and ASCII, with and without ANSI</summary>
 
 <table>
   <tr>
@@ -387,15 +386,21 @@ The same `order` applies to a [discovered](#environment-variable-discovery) valu
   </tr>
   <tr>
     <td align="right"><strong>Unicode</strong></td>
-    <td><img src=".util/assets/widget-suggest.svg" alt="Suggest: Unicode + ANSI"></td>
-    <td><img src=".util/assets/widget-suggest-no-ansi.svg" alt="Suggest: Unicode + No ANSI"></td>
+    <td><img src=".util/assets/widget-multiselect.svg" alt="Multiselect: Unicode + ANSI"></td>
+    <td><img src=".util/assets/widget-multiselect-no-ansi.svg" alt="Multiselect: Unicode + No ANSI"></td>
   </tr>
   <tr>
     <td align="right"><strong>ASCII</strong></td>
-    <td><img src=".util/assets/widget-suggest-ascii.svg" alt="Suggest: ASCII + ANSI"></td>
-    <td><img src=".util/assets/widget-suggest-ascii-no-ansi.svg" alt="Suggest: ASCII + No ANSI"></td>
+    <td><img src=".util/assets/widget-multiselect-ascii.svg" alt="Multiselect: ASCII + ANSI"></td>
+    <td><img src=".util/assets/widget-multiselect-ascii-no-ansi.svg" alt="Multiselect: ASCII + No ANSI"></td>
   </tr>
 </table>
+
+</details>
+
+### Suggest
+
+<img src=".util/assets/widget-suggest.svg" alt="Suggest: Unicode + ANSI">
 
 Free-form text input with suggestions. As you type, the options that contain the typed text show under the input, ignoring case. Press <kbd>↑</kbd> or <kbd>↓</kbd> to focus a suggestion and <kbd>Enter</kbd> to take it. With no suggestion focused, <kbd>Enter</kbd> takes the typed text as is, so the answer can be anything.
 
@@ -458,7 +463,50 @@ $dish = Prompty::suggest('Dish', options: $starts_with);
 
 </details>
 
+<details>
+<summary><strong>Display modes:</strong> Unicode and ASCII, with and without ANSI</summary>
+
+<table>
+  <tr>
+    <td></td>
+    <td align="center"><strong>ANSI</strong></td>
+    <td align="center"><strong>No ANSI</strong></td>
+  </tr>
+  <tr>
+    <td align="right"><strong>Unicode</strong></td>
+    <td><img src=".util/assets/widget-suggest.svg" alt="Suggest: Unicode + ANSI"></td>
+    <td><img src=".util/assets/widget-suggest-no-ansi.svg" alt="Suggest: Unicode + No ANSI"></td>
+  </tr>
+  <tr>
+    <td align="right"><strong>ASCII</strong></td>
+    <td><img src=".util/assets/widget-suggest-ascii.svg" alt="Suggest: ASCII + ANSI"></td>
+    <td><img src=".util/assets/widget-suggest-ascii-no-ansi.svg" alt="Suggest: ASCII + No ANSI"></td>
+  </tr>
+</table>
+
+</details>
+
 ### Confirm
+
+<img src=".util/assets/widget-confirm.svg" alt="Confirm: Unicode + ANSI">
+
+A yes/no toggle. Press the arrow keys or <kbd>Tab</kbd> to switch, <kbd>y</kbd> or <kbd>n</kbd> to pick directly and <kbd>Enter</kbd> to confirm.
+
+<details>
+<summary><strong>Details:</strong> Confirm</summary>
+
+```php
+$send = Prompty::confirm('Send order?',
+  description: 'Passes the order to the kitchen.',
+);
+```
+
+To end a flow when the answer is No, pass `cancel_on_no: TRUE`. A No then draws its answer line and returns `null`, so a [flow](#flows) draws its `cancelled` message and `run()` returns `null`, as on <kbd>Escape</kbd>. The No can come from a key press, a `discovered` value or an environment variable.
+
+</details>
+
+<details>
+<summary><strong>Display modes:</strong> Unicode and ASCII, with and without ANSI</summary>
 
 <table>
   <tr>
@@ -478,22 +526,31 @@ $dish = Prompty::suggest('Dish', options: $starts_with);
   </tr>
 </table>
 
-A yes/no toggle. Press the arrow keys or <kbd>Tab</kbd> to switch, <kbd>y</kbd> or <kbd>n</kbd> to pick directly and <kbd>Enter</kbd> to confirm.
-
-<details>
-<summary><strong>Details:</strong> Confirm</summary>
-
-```php
-$send = Prompty::confirm('Send order?',
-  description: 'Passes the order to the kitchen.',
-);
-```
-
-To end a flow when the answer is No, pass `cancel_on_no: TRUE`. A No then draws its answer line and returns `null`, so a [flow](#flows) draws its `cancelled` message and `run()` returns `null`, as on <kbd>Escape</kbd>. The No can come from a key press, a `discovered` value or an environment variable.
-
 </details>
 
 ### Pause
+
+<img src=".util/assets/widget-pause.svg" alt="Pause: Unicode + ANSI">
+
+A message that waits for a key, such as "Press any key to continue" after a welcome screen. Any key continues and returns `true`.
+
+<details>
+<summary><strong>Details:</strong> Pause</summary>
+
+```php
+Prompty::pause('Press any key to start the order...',
+  description: 'The kitchen opens at noon.',
+);
+```
+
+To continue only on <kbd>Enter</kbd> and ignore every other key, pass `enter_only: TRUE`. After the key, a completed line replaces the message. To erase the message instead, pass `erase: TRUE`.
+
+In [non-interactive mode](#non-interactive-mode), `pause()` returns `true` without reading a key. Inside a [flow](#flows), a pause is a keyed step that stores `true`.
+
+</details>
+
+<details>
+<summary><strong>Display modes:</strong> Unicode and ASCII, with and without ANSI</summary>
 
 <table>
   <tr>
@@ -512,21 +569,6 @@ To end a flow when the answer is No, pass `cancel_on_no: TRUE`. A No then draws 
     <td><img src=".util/assets/widget-pause-ascii-no-ansi.svg" alt="Pause: ASCII + No ANSI"></td>
   </tr>
 </table>
-
-A message that waits for a key, such as "Press any key to continue" after a welcome screen. Any key continues and returns `true`.
-
-<details>
-<summary><strong>Details:</strong> Pause</summary>
-
-```php
-Prompty::pause('Press any key to start the order...',
-  description: 'The kitchen opens at noon.',
-);
-```
-
-To continue only on <kbd>Enter</kbd> and ignore every other key, pass `enter_only: TRUE`. After the key, a completed line replaces the message. To erase the message instead, pass `erase: TRUE`.
-
-In [non-interactive mode](#non-interactive-mode), `pause()` returns `true` without reading a key. Inside a [flow](#flows), a pause is a keyed step that stores `true`.
 
 </details>
 
@@ -636,23 +678,7 @@ Between questions, Prompty prints notes, tables, boxes and lines you style yours
 
 ### Notes
 
-<table>
-  <tr>
-    <td></td>
-    <td align="center"><strong>ANSI</strong></td>
-    <td align="center"><strong>No ANSI</strong></td>
-  </tr>
-  <tr>
-    <td align="right"><strong>Unicode</strong></td>
-    <td><img src=".util/assets/widget-note.svg" alt="Notes: Unicode + ANSI"></td>
-    <td><img src=".util/assets/widget-note-no-ansi.svg" alt="Notes: Unicode + No ANSI"></td>
-  </tr>
-  <tr>
-    <td align="right"><strong>ASCII</strong></td>
-    <td><img src=".util/assets/widget-note-ascii.svg" alt="Notes: ASCII + ANSI"></td>
-    <td><img src=".util/assets/widget-note-ascii-no-ansi.svg" alt="Notes: ASCII + No ANSI"></td>
-  </tr>
-</table>
+<img src=".util/assets/widget-note.svg" alt="Notes: Unicode + ANSI">
 
 `note()` prints a message between your questions: an informational note, a success, a warning or an error. The type's symbol takes the place of the bar, and the message is drawn in the type's color.
 
@@ -704,6 +730,29 @@ $results = Prompty::flow()
 A closure that returns anything other than a string throws an `UnexpectedValueException`. A type closure that returns a name other than `info`, `success`, `warning` or `error` throws an `InvalidArgumentException`. A note hidden by `->when()` calls neither closure.
 
 `Prompty::note()` called while the flow runs, such as from a task's action or the `outro` callable, prints straight away.
+
+</details>
+
+<details>
+<summary><strong>Display modes:</strong> Unicode and ASCII, with and without ANSI</summary>
+
+<table>
+  <tr>
+    <td></td>
+    <td align="center"><strong>ANSI</strong></td>
+    <td align="center"><strong>No ANSI</strong></td>
+  </tr>
+  <tr>
+    <td align="right"><strong>Unicode</strong></td>
+    <td><img src=".util/assets/widget-note.svg" alt="Notes: Unicode + ANSI"></td>
+    <td><img src=".util/assets/widget-note-no-ansi.svg" alt="Notes: Unicode + No ANSI"></td>
+  </tr>
+  <tr>
+    <td align="right"><strong>ASCII</strong></td>
+    <td><img src=".util/assets/widget-note-ascii.svg" alt="Notes: ASCII + ANSI"></td>
+    <td><img src=".util/assets/widget-note-ascii-no-ansi.svg" alt="Notes: ASCII + No ANSI"></td>
+  </tr>
+</table>
 
 </details>
 
@@ -801,23 +850,7 @@ The class has 4 helpers:
 
 ### Tasks
 
-<table>
-  <tr>
-    <td></td>
-    <td align="center"><strong>ANSI</strong></td>
-    <td align="center"><strong>No ANSI</strong></td>
-  </tr>
-  <tr>
-    <td align="right"><strong>Unicode</strong></td>
-    <td><img src=".util/assets/widget-task.svg" alt="Tasks: Unicode + ANSI"></td>
-    <td><img src=".util/assets/widget-task-no-ansi.svg" alt="Tasks: Unicode + No ANSI"></td>
-  </tr>
-  <tr>
-    <td align="right"><strong>ASCII</strong></td>
-    <td><img src=".util/assets/widget-task-ascii.svg" alt="Tasks: ASCII + ANSI"></td>
-    <td><img src=".util/assets/widget-task-ascii-no-ansi.svg" alt="Tasks: ASCII + No ANSI"></td>
-  </tr>
-</table>
+<img src=".util/assets/widget-task.svg" alt="Tasks: Unicode + ANSI">
 
 `task()` runs work between your questions, such as preheating the oven, and reports the result. While the action runs, the label shows a spinner. After the action returns, the label, the `hint` and a result line replace the spinner.
 
@@ -989,6 +1022,29 @@ Without a live terminal, the tasks print:
 │  ✓ Tart baked
 │
 ```
+
+</details>
+
+<details>
+<summary><strong>Display modes:</strong> Unicode and ASCII, with and without ANSI</summary>
+
+<table>
+  <tr>
+    <td></td>
+    <td align="center"><strong>ANSI</strong></td>
+    <td align="center"><strong>No ANSI</strong></td>
+  </tr>
+  <tr>
+    <td align="right"><strong>Unicode</strong></td>
+    <td><img src=".util/assets/widget-task.svg" alt="Tasks: Unicode + ANSI"></td>
+    <td><img src=".util/assets/widget-task-no-ansi.svg" alt="Tasks: Unicode + No ANSI"></td>
+  </tr>
+  <tr>
+    <td align="right"><strong>ASCII</strong></td>
+    <td><img src=".util/assets/widget-task-ascii.svg" alt="Tasks: ASCII + ANSI"></td>
+    <td><img src=".util/assets/widget-task-ascii-no-ansi.svg" alt="Tasks: ASCII + No ANSI"></td>
+  </tr>
+</table>
 
 </details>
 
