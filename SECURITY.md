@@ -24,7 +24,7 @@ Every release ships 2 files for verification:
 - `SHA256SUMS`, with the checksum of every PHP file and payload
 - `SHA256SUMS.asc`, a detached GPG signature of `SHA256SUMS`
 
-The signing key's public half is [`PUBLIC_KEY.asc`](PUBLIC_KEY.asc) in this repository. Its fingerprint is:
+The signing key is on [keys.openpgp.org](https://keys.openpgp.org/search?q=755E824E80F849135F5F4043E71EDB25C4F6D89D), confirmed for <alex+prompty@drevops.com>. Its fingerprint is:
 
 ```text
 755E 824E 80F8 4913 5F5F  4043 E71E DB25 C4F6 D89D
@@ -34,24 +34,22 @@ Prompty ends up copied or embedded in your own script, so verify a download befo
 
 ```bash
 BASE=https://github.com/AlexSkrypnyk/prompty/releases/latest/download
-RAW=https://raw.githubusercontent.com/AlexSkrypnyk/prompty/main
+KEY=755E824E80F849135F5F4043E71EDB25C4F6D89D
 
 curl -LO $BASE/Prompty.php
 curl -LO $BASE/SHA256SUMS
 curl -LO $BASE/SHA256SUMS.asc
-curl -LO $RAW/PUBLIC_KEY.asc
 
-# Check the fingerprint against the one above before trusting the key.
-gpg --show-keys --with-fingerprint PUBLIC_KEY.asc
-
-gpg --import PUBLIC_KEY.asc
+gpg --keyserver hkps://keys.openpgp.org --recv-keys $KEY
 gpg --verify SHA256SUMS.asc SHA256SUMS
 sha256sum --ignore-missing -c SHA256SUMS
 ```
 
 `--ignore-missing` lets the check pass when you've downloaded only some of the assets. If you've downloaded all of them, drop it.
 
-The release workflow runs the same `gpg --verify` and `sha256sum` check before it uploads the assets, and again on the uploaded copies.
+After `Good signature`, `gpg --verify` warns that the key `is not certified with a trusted signature`. gpg prints this for every key you haven't marked as trusted in your own keyring, so expect it on a first check.
+
+Before it signs anything, the release workflow fetches the key that keys.openpgp.org has confirmed for <alex+prompty@drevops.com>. The release stops when that key isn't the workflow's signing key. The workflow checks the signature against the keyserver's copy with `gpgv` and runs `sha256sum`, before it uploads the assets and again on the uploaded copies.
 
 Every PHP file, every payload and `SHA256SUMS` also have a build attestation from GitHub Actions. To check that an asset was built by the release workflow, run the [GitHub CLI](https://cli.github.com) instead of GPG:
 
@@ -70,11 +68,13 @@ To check a script that already embeds Prompty, see [Verify an embedded script](R
 A passing check proves 2 things:
 
 - The files you downloaded match the signed checksums.
-- The signature was made with a key in your keyring. Confirm that the key `gpg --verify` names matches the fingerprint in the preceding block.
+- The signature was made with a key in your keyring. Confirm that `gpg --verify` names `<alex+prompty@drevops.com>` and the fingerprint in the preceding block.
 
-It doesn't prove that the key belongs to the maintainer. The key, its fingerprint and this page all live in this repository. Anyone who took over the repository or the maintainer's account could replace all 3, and the check on a first-time download would still pass.
+The key is also tied to the maintainer's release address. The keyserver publishes an address on a key only after it's confirmed from that mailbox. Replacing the key there requires control of <alex+prompty@drevops.com>, so taking over this repository isn't enough.
 
-An attestation has the same limit. It proves that a workflow run in this repository built the asset from the commit it names. Anyone who controls the repository can start that workflow.
+Anyone who controls the repository can still change the fingerprint on this page and the release workflow's check. A key swapped in that way can't carry a confirmed <alex+prompty@drevops.com>, so the name check in the preceding list fails.
+
+An attestation has no such tie. It proves that a workflow run in this repository built the asset from the commit it names. Anyone who controls the repository can start that workflow.
 
 Comparing fingerprints does catch a key swap after you've trusted the key. Record the fingerprint on your first download and compare it on every later download. If the fingerprint changes without a note in the release notes, treat that release as suspect. [Report it](#reporting-a-vulnerability) before you run anything from it.
 
