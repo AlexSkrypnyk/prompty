@@ -24,7 +24,7 @@ Every release ships 2 files for verification:
 - `SHA256SUMS`, with the checksum of every PHP file and payload
 - `SHA256SUMS.asc`, a detached GPG signature of `SHA256SUMS`
 
-The signing key is on [keys.openpgp.org](https://keys.openpgp.org/search?q=755E824E80F849135F5F4043E71EDB25C4F6D89D), confirmed for <alex@drevops.com>. Its fingerprint is:
+The signing key is on [keys.openpgp.org](https://keys.openpgp.org/search?q=755E824E80F849135F5F4043E71EDB25C4F6D89D), confirmed for <alex+prompty@drevops.com>. Its fingerprint is:
 
 ```text
 755E 824E 80F8 4913 5F5F  4043 E71E DB25 C4F6 D89D
@@ -49,7 +49,7 @@ sha256sum --ignore-missing -c SHA256SUMS
 
 After `Good signature`, `gpg --verify` warns that the key `is not certified with a trusted signature`. gpg prints this for every key you haven't marked as trusted in your own keyring, so expect it on a first check.
 
-Before it signs anything, the release workflow looks up its signing key on keys.openpgp.org by fingerprint. The release stops when the keyserver doesn't have that key, or hasn't confirmed it for <alex@drevops.com>. The workflow checks the signature against the keyserver's copy with `gpgv` and runs `sha256sum`, before it uploads the assets and again on the uploaded copies.
+Before it signs anything, the release workflow fetches the key that keys.openpgp.org has confirmed for <alex+prompty@drevops.com>. The release stops when that key isn't the workflow's signing key. The workflow checks the signature against the keyserver's copy with `gpgv` and runs `sha256sum`, before it uploads the assets and again on the uploaded copies.
 
 Every PHP file, every payload and `SHA256SUMS` also have a build attestation from GitHub Actions. To check that an asset was built by the release workflow, run the [GitHub CLI](https://cli.github.com) instead of GPG:
 
@@ -68,11 +68,11 @@ To check a script that already embeds Prompty, see [Verify an embedded script](R
 A passing check proves 2 things:
 
 - The files you downloaded match the signed checksums.
-- The signature was made with a key in your keyring. Confirm that `gpg --verify` names `Alex Skrypnyk <alex@drevops.com>` and the fingerprint in the preceding block.
+- The signature was made with a key in your keyring. Confirm that `gpg --verify` names `<alex+prompty@drevops.com>` and the fingerprint in the preceding block.
 
-The key is also tied to the maintainer's email address. The keyserver publishes an address on a key only after it's confirmed from that mailbox. Replacing the key there requires control of <alex@drevops.com>, so taking over this repository isn't enough.
+The key is also tied to the maintainer's release address. The keyserver publishes an address on a key only after it's confirmed from that mailbox. Replacing the key there requires control of <alex+prompty@drevops.com>, so taking over this repository isn't enough.
 
-Anyone who controls the repository can still change the fingerprint on this page and the release workflow's check. A key swapped in that way can't carry a confirmed <alex@drevops.com>, so the name check in the preceding list fails.
+Anyone who controls the repository can still change the fingerprint on this page and the release workflow's check. A key swapped in that way can't carry a confirmed <alex+prompty@drevops.com>, so the name check in the preceding list fails.
 
 An attestation has no such tie. It proves that a workflow run in this repository built the asset from the commit it names. Anyone who controls the repository can start that workflow.
 
