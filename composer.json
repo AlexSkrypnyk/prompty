@@ -29,7 +29,7 @@
         "opis/closure": "^4.5.0",
         "phpstan/phpstan": "^2.3.5",
         "phpunit/phpunit": "^12.5.44",
-        "rector/rector": "^2.8.4"
+        "rector/rector": "^2.9.2"
     },
     "minimum-stability": "stable",
     "prefer-stable": true,
